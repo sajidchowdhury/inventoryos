@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Box,
@@ -1032,24 +1032,25 @@ function getStepPath(step: string, businesses: number): string[] {
 // ── Main Page ──
 export default function HomePage() {
   const { step, businesses, session, reset, setStep } = useAuthStore();
-  const [hydrated, setHydrated] = useState(false);
   const stepPath = getStepPath(step, businesses.length);
 
-  // Wait for Zustand persist to hydrate from localStorage
-  const hasMounted = useRef<boolean | null>(null);
-  if (hasMounted.current === null) {
-    hasMounted.current = true;
-    // Schedule hydration for next tick after persist loads
-    requestAnimationFrame(() => setHydrated(true));
-  }
+  // On mount, check if we have a persisted session and redirect to dashboard
+  // This setState-in-effect is intentional: we need to hydrate from localStorage
+  // after the first render to avoid SSR/client mismatch
+  const [ready, setReady] = useState(false);
 
-  // If session exists but step is not dashboard, redirect to dashboard
-  if (hydrated && session && step !== "dashboard") {
-    setStep("dashboard");
-  }
+  useEffect(() => {
+    // Restore session from persisted state
+    const store = useAuthStore.getState();
+    if (store.session && store.step !== "dashboard") {
+      store.setStep("dashboard");
+    }
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setReady(true);
+  }, []);
 
-  // Show nothing until hydration is complete to avoid flash
-  if (!hydrated) {
+  // Show nothing until first check is complete to avoid flash of wrong state
+  if (!ready) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center animate-pulse">
