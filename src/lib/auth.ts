@@ -24,9 +24,9 @@ export function generateSessionToken(): string {
   return crypto.randomBytes(32).toString("hex");
 }
 
-/** Generate a 6-digit OTP code */
+/** Generate a 4-digit OTP code */
 export function generateOtp(): string {
-  return Math.floor(100000 + Math.random() * 900000).toString();
+  return Math.floor(1000 + Math.random() * 9000).toString();
 }
 
 /** Validate BD phone number format (+8801XXXXXXXXX or 01XXXXXXXXX) */

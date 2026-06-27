@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Box,
@@ -24,6 +24,9 @@ import {
   MapPin,
   Sparkles,
   ChevronRight,
+  Eye,
+  EyeOff,
+  RefreshCw,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -35,7 +38,7 @@ import { getAllModules } from "@/lib/modules";
 import { useAuthStore } from "@/lib/auth-store";
 import { cn } from "@/lib/utils";
 
-// ── Icon map ──
+// ── Icon maps ──
 const iconMap: Record<string, React.ReactNode> = {
   Pill: <Pill className="h-7 w-7" />,
   ShoppingCart: <ShoppingCart className="h-7 w-7" />,
@@ -71,28 +74,71 @@ const fadeIn = {
   transition: { duration: 0.3, ease: "easeOut" },
 };
 
-// ── Step indicator dots ──
+// ── Step indicator ──
 function StepIndicator({ current, steps }: { current: string; steps: string[] }) {
   const idx = steps.indexOf(current);
   return (
     <div className="flex items-center gap-1.5 justify-center">
-      {steps.map((_, i) => (
-        <div
-          key={i}
+      {steps.map((step, i) => (
+        <button
+          key={step}
           className={cn(
             "h-2 rounded-full transition-all duration-500",
             i === idx ? "w-8 bg-primary" : i < idx ? "w-2 bg-primary/50" : "w-2 bg-muted-foreground/20"
           )}
+          aria-label={`Step ${i + 1}: ${step}`}
         />
       ))}
     </div>
   );
 }
 
+// ── Password Input with visibility toggle ──
+function PasswordInput({
+  id,
+  value,
+  onChange,
+  placeholder,
+}: {
+  id: string;
+  value: string;
+  onChange: (val: string) => void;
+  placeholder?: string;
+}) {
+  const [show, setShow] = useState(false);
+  return (
+    <div className="relative">
+      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+      <Input
+        id={id}
+        type={show ? "text" : "password"}
+        placeholder={placeholder}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="h-11 pl-9 pr-10"
+      />
+      <button
+        type="button"
+        onClick={() => setShow(!show)}
+        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+        aria-label={show ? "Hide password" : "Show password"}
+      >
+        {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+      </button>
+    </div>
+  );
+}
+
 // ── Landing Step ──
 function LandingStep() {
-  const { setStep } = useAuthStore();
+  const { setStep, setSelectedBusinessTypeSlug } = useAuthStore();
   const modules = getAllModules();
+
+  const handleBusinessClick = (slug: string, isActive: boolean) => {
+    if (!isActive) return;
+    setSelectedBusinessTypeSlug(slug);
+    setStep("phone");
+  };
 
   return (
     <motion.div {...fadeIn} className="space-y-8">
@@ -110,38 +156,41 @@ function LandingStep() {
         </p>
       </div>
 
-      {/* Business type showcase */}
+      {/* Business type cards — clickable for active types! */}
       <div className="space-y-3">
         <p className="text-sm text-center text-muted-foreground font-medium">
-          We manage inventory for
+          Choose your business type to get started
         </p>
-        <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
+        <div className="space-y-2">
           {modules.map((mod) => (
-            <div
+            <Card
               key={mod.slug}
-              className="flex flex-col items-center gap-1.5 p-2"
-            >
-              <div
-                className={cn(
-                  "w-12 h-12 rounded-xl flex items-center justify-center text-white transition-transform hover:scale-110",
-                  mod.isActive ? "shadow-md" : "opacity-40"
-                )}
-                style={{ backgroundColor: mod.color }}
-              >
-                {iconMap[mod.icon] || <Box className="h-7 w-7" />}
-              </div>
-              <span className={cn(
-                "text-[10px] font-medium text-center leading-tight",
-                mod.isActive ? "text-foreground" : "text-muted-foreground"
-              )}>
-                {mod.name}
-              </span>
-              {mod.isActive && (
-                <Badge className="text-[8px] px-1 py-0 h-4 text-white" style={{ backgroundColor: mod.color }}>
-                  Live
-                </Badge>
+              className={cn(
+                "transition-all",
+                mod.isActive
+                  ? "cursor-pointer hover:shadow-md active:scale-[0.98] border-primary/20"
+                  : "opacity-50 cursor-not-allowed"
               )}
-            </div>
+              onClick={() => handleBusinessClick(mod.slug, mod.isActive)}
+            >
+              <CardContent className="p-3 flex items-center gap-3">
+                <div
+                  className="w-11 h-11 rounded-xl flex items-center justify-center text-white shrink-0"
+                  style={{ backgroundColor: mod.color }}
+                >
+                  {smallIconMap[mod.icon] || <Box className="h-5 w-5" />}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-sm">{mod.name}</p>
+                  <p className="text-[11px] text-muted-foreground truncate">{mod.description}</p>
+                </div>
+                {mod.isActive ? (
+                  <ChevronRight className="h-5 w-5 text-primary shrink-0" />
+                ) : (
+                  <Badge variant="secondary" className="text-[10px] shrink-0">Soon</Badge>
+                )}
+              </CardContent>
+            </Card>
           ))}
         </div>
       </div>
@@ -155,29 +204,20 @@ function LandingStep() {
           <div className="space-y-2 text-sm text-muted-foreground">
             <div className="flex items-start gap-2">
               <span className="text-primary font-bold shrink-0">1.</span>
-              <span>Enter your phone number to get started</span>
+              <span>Choose your business type above</span>
             </div>
             <div className="flex items-start gap-2">
               <span className="text-primary font-bold shrink-0">2.</span>
-              <span>Choose your business type and set it up</span>
+              <span>Verify your phone number</span>
             </div>
             <div className="flex items-start gap-2">
               <span className="text-primary font-bold shrink-0">3.</span>
-              <span>Start managing your inventory instantly</span>
+              <span>Set up your business and start managing inventory</span>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* CTA */}
-      <Button
-        size="lg"
-        className="w-full h-14 text-lg gap-2 shadow-lg shadow-primary/25"
-        onClick={() => setStep("phone")}
-      >
-        Get Started
-        <ArrowRight className="h-5 w-5" />
-      </Button>
       <p className="text-xs text-center text-muted-foreground">
         No credit card needed. Free for small businesses.
       </p>
@@ -187,7 +227,7 @@ function LandingStep() {
 
 // ── Phone Step ──
 function PhoneStep() {
-  const { phone, setPhone, setStep, setIsLoading, setError, error } = useAuthStore();
+  const { phone, setPhone, setStep, setIsLoading, setError, isLoading, error } = useAuthStore();
   const [localPhone, setLocalPhone] = useState(phone || "");
 
   const handleSendOtp = async () => {
@@ -262,10 +302,10 @@ function PhoneStep() {
         size="lg"
         className="w-full h-12 gap-2"
         onClick={handleSendOtp}
-        disabled={localPhone.length < 11 || useAuthStore.getState().isLoading}
+        disabled={localPhone.length < 11 || isLoading}
       >
-        {useAuthStore.getState().isLoading ? "Sending..." : "Send Verification Code"}
-        <ArrowRight className="h-4 w-4" />
+        {isLoading ? "Sending..." : "Send Verification Code"}
+        {!isLoading && <ArrowRight className="h-4 w-4" />}
       </Button>
 
       <Button variant="ghost" className="w-full gap-2" onClick={() => setStep("landing")}>
@@ -277,9 +317,16 @@ function PhoneStep() {
 
 // ── OTP Step ──
 function OtpStep() {
-  const { phone, setStep, setUserId, setUserName, setBusinesses, setIsLoading, setError, error } = useAuthStore();
+  const { phone, setStep, setUserId, setUserName, setBusinesses, setIsLoading, setError, isLoading, error } = useAuthStore();
   const [otp, setOtp] = useState(["", "", "", ""]);
-  const inputRefs = useState<(HTMLInputElement | null)[]>([]);
+  const [resendCooldown, setResendCooldown] = useState(0);
+
+  // Cooldown timer for resend
+  useState(() => {
+    if (resendCooldown <= 0) return;
+    const timer = setTimeout(() => setResendCooldown(resendCooldown - 1), 1000);
+    return () => clearTimeout(timer);
+  });
 
   const handleVerify = async (code?: string) => {
     const otpCode = code || otp.join("");
@@ -308,6 +355,27 @@ function OtpStep() {
       }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Verification failed");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleResend = async () => {
+    if (resendCooldown > 0) return;
+    setIsLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/auth/send-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setResendCooldown(60);
+      setOtp(["", "", "", ""]);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to resend OTP");
     } finally {
       setIsLoading(false);
     }
@@ -380,11 +448,24 @@ function OtpStep() {
         size="lg"
         className="w-full h-12 gap-2"
         onClick={() => handleVerify()}
-        disabled={otp.some((d) => !d) || useAuthStore.getState().isLoading}
+        disabled={otp.some((d) => !d) || isLoading}
       >
-        {useAuthStore.getState().isLoading ? "Verifying..." : "Verify"}
-        <CheckCircle2 className="h-4 w-4" />
+        {isLoading ? "Verifying..." : "Verify"}
+        {!isLoading && <CheckCircle2 className="h-4 w-4" />}
       </Button>
+
+      {/* Resend OTP */}
+      <div className="text-center">
+        {resendCooldown > 0 ? (
+          <p className="text-sm text-muted-foreground">
+            Resend code in <span className="font-semibold">{resendCooldown}s</span>
+          </p>
+        ) : (
+          <Button variant="ghost" size="sm" className="gap-1.5" onClick={handleResend} disabled={isLoading}>
+            <RefreshCw className="h-3.5 w-3.5" /> Resend Code
+          </Button>
+        )}
+      </div>
 
       <Button variant="ghost" className="w-full gap-2" onClick={() => setStep("phone")}>
         <ArrowLeft className="h-4 w-4" /> Change phone number
@@ -395,7 +476,7 @@ function OtpStep() {
 
 // ── Discovery Step (existing businesses) ──
 function DiscoveryStep() {
-  const { businesses, setStep, setSelectedBusiness, phone, setPhone } = useAuthStore();
+  const { businesses, setStep, setSelectedBusiness, phone } = useAuthStore();
 
   return (
     <motion.div {...slideIn} className="space-y-6">
@@ -435,6 +516,13 @@ function DiscoveryStep() {
                 <p className="font-semibold truncate">{biz.name}</p>
                 <p className="text-xs text-muted-foreground">{biz.businessType.name}</p>
               </div>
+              <div className="text-right">
+                {biz.hasCredentials ? (
+                  <Badge variant="outline" className="text-[10px]">Login</Badge>
+                ) : (
+                  <Badge className="text-[10px] text-white bg-orange-500">Set Up</Badge>
+                )}
+              </div>
               <ChevronRight className="h-5 w-5 text-muted-foreground shrink-0" />
             </CardContent>
           </Card>
@@ -443,7 +531,7 @@ function DiscoveryStep() {
 
       <Separator />
 
-      {/* Add Another Business */}
+      {/* Add Business button — labeled exactly per spec */}
       <Button
         variant="outline"
         size="lg"
@@ -453,11 +541,11 @@ function DiscoveryStep() {
           setStep("add-business");
         }}
       >
-        <Plus className="h-4 w-4" /> Add Another Business
+        <Plus className="h-4 w-4" /> Add Business
       </Button>
 
-      <Button variant="ghost" className="w-full gap-2" onClick={() => { setPhone(""); setStep("landing"); }}>
-        <ArrowLeft className="h-4 w-4" /> Start over with different number
+      <Button variant="ghost" className="w-full gap-2" onClick={() => { useAuthStore.getState().reset(); }}>
+        <ArrowLeft className="h-4 w-4" /> Use different phone number
       </Button>
     </motion.div>
   );
@@ -465,8 +553,9 @@ function DiscoveryStep() {
 
 // ── Add Business Step ──
 function AddBusinessStep() {
-  const { setStep, selectedBusinessTypeSlug, setSelectedBusinessTypeSlug } = useAuthStore();
+  const { setStep, selectedBusinessTypeSlug, setSelectedBusinessTypeSlug, businesses } = useAuthStore();
   const modules = getAllModules();
+  const hasExistingBusinesses = businesses.length > 0;
 
   return (
     <motion.div {...slideIn} className="space-y-6">
@@ -478,6 +567,11 @@ function AddBusinessStep() {
         <p className="text-muted-foreground text-sm">
           Select the type that matches your business
         </p>
+        {!hasExistingBusinesses && (
+          <p className="text-xs text-muted-foreground bg-muted/50 rounded-lg px-3 py-2">
+            No businesses registered yet. Let&apos;s set up your first one!
+          </p>
+        )}
       </div>
 
       <div className="space-y-2">
@@ -485,9 +579,9 @@ function AddBusinessStep() {
           <Card
             key={mod.slug}
             className={cn(
-              "cursor-pointer transition-all",
+              "transition-all",
               mod.isActive
-                ? "hover:shadow-md active:scale-[0.98]"
+                ? "cursor-pointer hover:shadow-md active:scale-[0.98]"
                 : "opacity-50 cursor-not-allowed",
               selectedBusinessTypeSlug === mod.slug && mod.isActive && "ring-2 ring-primary"
             )}
@@ -525,20 +619,26 @@ function AddBusinessStep() {
         <ArrowRight className="h-4 w-4" />
       </Button>
 
-      <Button variant="ghost" className="w-full gap-2" onClick={() => setStep("discovery")}>
+      <Button variant="ghost" className="w-full gap-2" onClick={() => {
+        if (hasExistingBusinesses) {
+          setStep("discovery");
+        } else {
+          setStep("otp");
+        }
+      }}>
         <ArrowLeft className="h-4 w-4" /> Back
       </Button>
     </motion.div>
   );
 }
 
-// ── Create Login Step (new business + credentials) ──
+// ── Create Login Step ──
 function CreateLoginStep() {
   const {
     userId, selectedBusinessTypeSlug, newBusinessName, setNewBusinessName,
     newBusinessAddress, setNewBusinessAddress, username, setUsername,
     password, setPassword, setStep, setBusinesses, setSelectedBusiness,
-    setIsLoading, setError, error, businesses, setSession,
+    setIsLoading, setError, error, businesses, setSession, isLoading,
   } = useAuthStore();
 
   const modules = getAllModules();
@@ -583,7 +683,7 @@ function CreateLoginStep() {
       setBusinesses(updatedBusinesses);
       setSelectedBusiness(data.business);
 
-      // Auto-login: call login API to get a session token
+      // Auto-login to get session token
       const loginRes = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -674,17 +774,12 @@ function CreateLoginStep() {
         </div>
         <div className="space-y-2">
           <Label htmlFor="password" className="text-xs font-medium">Password *</Label>
-          <div className="relative">
-            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              id="password"
-              type="password"
-              placeholder="Min 4 characters"
-              value={password}
-              onChange={(e) => { setPassword(e.target.value); setError(null); }}
-              className="h-11 pl-9"
-            />
-          </div>
+          <PasswordInput
+            id="regPassword"
+            value={password}
+            onChange={(val) => { setPassword(val); setError(null); }}
+            placeholder="Min 4 characters"
+          />
         </div>
       </div>
 
@@ -696,19 +791,13 @@ function CreateLoginStep() {
         size="lg"
         className="w-full h-12 gap-2"
         onClick={handleRegister}
-        disabled={useAuthStore.getState().isLoading}
+        disabled={isLoading}
       >
-        {useAuthStore.getState().isLoading ? "Creating..." : "Create Business & Login"}
-        <CheckCircle2 className="h-4 w-4" />
+        {isLoading ? "Creating..." : "Create Business & Login"}
+        {!isLoading && <CheckCircle2 className="h-4 w-4" />}
       </Button>
 
-      <Button variant="ghost" className="w-full gap-2" onClick={() => {
-        if (businesses.length > 0) {
-          setStep("discovery");
-        } else {
-          setStep("otp");
-        }
-      }}>
+      <Button variant="ghost" className="w-full gap-2" onClick={() => setStep("add-business")}>
         <ArrowLeft className="h-4 w-4" /> Back
       </Button>
     </motion.div>
@@ -719,7 +808,7 @@ function CreateLoginStep() {
 function LoginStep() {
   const {
     selectedBusiness, username, setUsername, password, setPassword,
-    setStep, setSession, setIsLoading, setError, error,
+    setStep, setSession, setIsLoading, setError, error, isLoading,
   } = useAuthStore();
 
   const handleLogin = async () => {
@@ -788,18 +877,12 @@ function LoginStep() {
         </div>
         <div className="space-y-2">
           <Label htmlFor="loginPass" className="text-sm font-medium">Password</Label>
-          <div className="relative">
-            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              id="loginPass"
-              type="password"
-              placeholder="Enter your password"
-              value={password}
-              onChange={(e) => { setPassword(e.target.value); setError(null); }}
-              className="h-11 pl-9"
-              onKeyDown={(e) => e.key === "Enter" && handleLogin()}
-            />
-          </div>
+          <PasswordInput
+            id="loginPass"
+            value={password}
+            onChange={(val) => { setPassword(val); setError(null); }}
+            placeholder="Enter your password"
+          />
         </div>
       </div>
 
@@ -811,10 +894,10 @@ function LoginStep() {
         size="lg"
         className="w-full h-12 gap-2"
         onClick={handleLogin}
-        disabled={useAuthStore.getState().isLoading}
+        disabled={isLoading}
       >
-        {useAuthStore.getState().isLoading ? "Logging in..." : "Log In"}
-        <ArrowRight className="h-4 w-4" />
+        {isLoading ? "Logging in..." : "Log In"}
+        {!isLoading && <ArrowRight className="h-4 w-4" />}
       </Button>
 
       <Button variant="ghost" className="w-full gap-2" onClick={() => setStep("discovery")}>
@@ -826,7 +909,7 @@ function LoginStep() {
 
 // ── Dashboard Step ──
 function DashboardStep() {
-  const { session, reset } = useAuthStore();
+  const { session, reset, businesses } = useAuthStore();
 
   if (!session) return null;
 
@@ -900,6 +983,23 @@ function DashboardStep() {
         </CardContent>
       </Card>
 
+      {/* Switch business (if multiple) */}
+      {businesses.length > 1 && (
+        <Button
+          variant="outline"
+          className="w-full gap-2"
+          onClick={() => {
+            useAuthStore.getState().setSelectedBusiness(null);
+            useAuthStore.getState().setUsername("");
+            useAuthStore.getState().setPassword("");
+            useAuthStore.getState().setSession(null);
+            useAuthStore.getState().setStep("discovery");
+          }}
+        >
+          <Building2 className="h-4 w-4" /> Switch Business ({businesses.length} registered)
+        </Button>
+      )}
+
       {/* Coming soon notice */}
       <Card className="border-primary/20 bg-primary/5">
         <CardContent className="p-4 text-center space-y-2">
@@ -918,16 +1018,46 @@ function DashboardStep() {
   );
 }
 
+// ── Dynamic step indicator steps ──
+function getStepPath(step: string, businesses: number): string[] {
+  if (step === "landing") return [];
+  if (businesses > 0) {
+    // Has businesses path: phone → otp → discovery → (login or add-business → create-login) → dashboard
+    return ["phone", "otp", "discovery", "login", "dashboard"];
+  }
+  // No businesses path: phone → otp → add-business → create-login → dashboard
+  return ["phone", "otp", "add-business", "create-login", "dashboard"];
+}
+
 // ── Main Page ──
-const AUTH_STEPS = ["phone", "otp", "discovery", "add-business", "create-login", "login", "dashboard"];
-
 export default function HomePage() {
-  const { step, businesses, reset } = useAuthStore();
+  const { step, businesses, session, reset, setStep } = useAuthStore();
+  const [hydrated, setHydrated] = useState(false);
+  const stepPath = getStepPath(step, businesses.length);
 
-  // Handle case where user has businesses (skip add-business in step indicator)
-  const visibleSteps = businesses.length > 0
-    ? AUTH_STEPS
-    : ["phone", "otp", "add-business", "create-login", "dashboard"];
+  // Wait for Zustand persist to hydrate from localStorage
+  const hasMounted = useRef<boolean | null>(null);
+  if (hasMounted.current === null) {
+    hasMounted.current = true;
+    // Schedule hydration for next tick after persist loads
+    requestAnimationFrame(() => setHydrated(true));
+  }
+
+  // If session exists but step is not dashboard, redirect to dashboard
+  if (hydrated && session && step !== "dashboard") {
+    setStep("dashboard");
+  }
+
+  // Show nothing until hydration is complete to avoid flash
+  if (!hydrated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center animate-pulse">
+          <Box className="h-5 w-5 text-primary-foreground" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-background via-background to-muted/20">
@@ -947,9 +1077,9 @@ export default function HomePage() {
       </header>
 
       {/* Step indicator */}
-      {step !== "landing" && (
+      {stepPath.length > 1 && (
         <div className="py-3 bg-card/50">
-          <StepIndicator current={step} steps={visibleSteps} />
+          <StepIndicator current={step} steps={stepPath} />
         </div>
       )}
 

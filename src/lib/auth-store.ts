@@ -1,7 +1,8 @@
 // ── InventoryOS: Auth Store ──
-// Manages the multi-step authentication flow state
+// Manages the multi-step authentication flow state with session persistence
 
 import { create } from "zustand";
+import { persist } from "zustand/middleware";
 
 export type AppStep =
   | "landing"        // Hero page with explanation
@@ -81,7 +82,7 @@ interface AuthState {
   session: LoggedInSession | null;
   setSession: (session: LoggedInSession | null) => void;
 
-  // Loading states
+  // Loading states (NOT persisted)
   isLoading: boolean;
   setIsLoading: (loading: boolean) => void;
   error: string | null;
@@ -96,35 +97,58 @@ const initialState = {
   phone: "",
   userId: null,
   userName: null,
-  businesses: [],
-  selectedBusiness: null,
+  businesses: [] as BusinessInfo[],
+  selectedBusiness: null as BusinessInfo | null,
   selectedBusinessTypeSlug: "pharmacy",
   newBusinessName: "",
   newBusinessAddress: "",
   username: "",
   password: "",
-  session: null,
+  session: null as LoggedInSession | null,
   isLoading: false,
-  error: null,
+  error: null as string | null,
 };
 
-export const useAuthStore = create<AuthState>((set) => ({
-  ...initialState,
+export const useAuthStore = create<AuthState>()(
+  persist(
+    (set) => ({
+      ...initialState,
 
-  setStep: (step) => set({ step, error: null }),
-  setPhone: (phone) => set({ phone }),
-  setUserId: (id) => set({ userId: id }),
-  setUserName: (name) => set({ userName: name }),
-  setBusinesses: (businesses) => set({ businesses }),
-  setSelectedBusiness: (business) => set({ selectedBusiness: business }),
-  setSelectedBusinessTypeSlug: (slug) => set({ selectedBusinessTypeSlug: slug }),
-  setNewBusinessName: (name) => set({ newBusinessName: name }),
-  setNewBusinessAddress: (address) => set({ newBusinessAddress: address }),
-  setUsername: (username) => set({ username }),
-  setPassword: (password) => set({ password }),
-  setSession: (session) => set({ session }),
-  setIsLoading: (loading) => set({ isLoading: loading }),
-  setError: (error) => set({ error }),
+      setStep: (step) => set({ step, error: null }),
+      setPhone: (phone) => set({ phone }),
+      setUserId: (id) => set({ userId: id }),
+      setUserName: (name) => set({ userName: name }),
+      setBusinesses: (businesses) => set({ businesses }),
+      setSelectedBusiness: (business) => set({ selectedBusiness: business }),
+      setSelectedBusinessTypeSlug: (slug) => set({ selectedBusinessTypeSlug: slug }),
+      setNewBusinessName: (name) => set({ newBusinessName: name }),
+      setNewBusinessAddress: (address) => set({ newBusinessAddress: address }),
+      setUsername: (username) => set({ username }),
+      setPassword: (password) => set({ password }),
+      setSession: (session) => set({ session }),
+      setIsLoading: (loading) => set({ isLoading: loading }),
+      setError: (error) => set({ error }),
 
-  reset: () => set(initialState),
-}));
+      reset: () =>
+        set({
+          ...initialState,
+          isLoading: false,
+          error: null,
+        }),
+    }),
+    {
+      name: "inventoryos-auth",
+      // Only persist these fields — never persist loading/error/sensitive
+      partialize: (state) => ({
+        step: state.step,
+        phone: state.phone,
+        userId: state.userId,
+        userName: state.userName,
+        businesses: state.businesses,
+        selectedBusiness: state.selectedBusiness,
+        selectedBusinessTypeSlug: state.selectedBusinessTypeSlug,
+        session: state.session,
+      }),
+    }
+  )
+);
