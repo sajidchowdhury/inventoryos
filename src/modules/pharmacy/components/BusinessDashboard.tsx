@@ -6,7 +6,7 @@ import {
   ArrowLeft, RefreshCw, TrendingUp, TrendingDown, DollarSign,
   Package, ShoppingBag, ShoppingCart, AlertTriangle, Clock,
   Users, Truck, Receipt, Banknote, BarChart3, Percent,
-  CalendarClock, Boxes,
+  CalendarClock, Boxes, FileText, History, Database,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -328,8 +328,14 @@ export function BusinessDashboard() {
           <Button variant="outline" className="gap-2 h-12" onClick={() => setActiveView("business-report")}>
             <Receipt className="h-4 w-4" /> Business Report
           </Button>
-          <Button variant="outline" className="gap-2 h-12" onClick={() => setActiveView("analytics")}>
-            <BarChart3 className="h-4 w-4" /> Sales Analytics
+          <Button variant="outline" className="gap-2 h-12" onClick={() => setActiveView("tax-report")}>
+            <FileText className="h-4 w-4" /> VAT / Tax
+          </Button>
+          <Button variant="outline" className="gap-2 h-12" onClick={() => setActiveView("audit-trail")}>
+            <History className="h-4 w-4" /> Audit Trail
+          </Button>
+          <Button variant="outline" className="gap-2 h-12" onClick={() => setActiveView("data-export")}>
+            <Database className="h-4 w-4" /> Data Export
           </Button>
         </div>
       </div>

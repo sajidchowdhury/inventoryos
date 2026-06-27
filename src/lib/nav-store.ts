@@ -37,6 +37,9 @@ export type PharmacyView =
   | "profit-loss"     // Profit & Loss report
   | "inventory-value" // Inventory valuation report
   | "business-report" // Comprehensive business report
+  | "tax-report"      // VAT/Tax compliance report
+  | "audit-trail"     // Comprehensive audit trail
+  | "data-export"     // Data backup/export
   | "transactions"    // Activity / audit log
   | "categories"      // Category management
   | "import"          // CSV bulk import

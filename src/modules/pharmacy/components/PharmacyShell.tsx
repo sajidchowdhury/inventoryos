@@ -29,6 +29,9 @@ import { BusinessDashboard } from "./BusinessDashboard";
 import { ProfitLossReport } from "./ProfitLossReport";
 import { InventoryValuationReport } from "./InventoryValuationReport";
 import { BusinessReportCenter } from "./BusinessReportCenter";
+import { TaxReport } from "./TaxReport";
+import { AuditTrail } from "./AuditTrail";
+import { DataExport } from "./DataExport";
 import { TransactionLog } from "./TransactionLog";
 import { CategoryManager } from "./CategoryManager";
 import { CsvImport } from "./CsvImport";
@@ -106,6 +109,12 @@ export function PharmacyShell() {
         return <InventoryValuationReport />;
       case "business-report":
         return <BusinessReportCenter />;
+      case "tax-report":
+        return <TaxReport />;
+      case "audit-trail":
+        return <AuditTrail />;
+      case "data-export":
+        return <DataExport />;
       case "transactions":
         return <TransactionLog />;
       case "categories":
