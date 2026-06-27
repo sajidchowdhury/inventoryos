@@ -25,6 +25,7 @@ export type PharmacyView =
   | "returns"         // Returns list + process
   | "discount-rules"  // Discount rules management
   | "suppliers"       // Supplier management
+  | "supplier-detail" // Single supplier view with balance + history
   | "purchases"       // Purchase list
   | "purchase-detail" // Single purchase view
   | "add-purchase"    // Create new purchase
@@ -60,6 +61,9 @@ interface NavState {
   // Purchase navigation
   activePurchaseId: string | null;
   setActivePurchaseId: (id: string | null) => void;
+  // Supplier navigation
+  activeSupplierId: string | null;
+  setActiveSupplierId: (id: string | null) => void;
 }
 
 export const useNavStore = create<NavState>((set) => ({
@@ -81,4 +85,6 @@ export const useNavStore = create<NavState>((set) => ({
   setSaleCustomerId: (id) => set({ saleCustomerId: id }),
   activePurchaseId: null,
   setActivePurchaseId: (id) => set({ activePurchaseId: id }),
+  activeSupplierId: null,
+  setActiveSupplierId: (id) => set({ activeSupplierId: id }),
 }));

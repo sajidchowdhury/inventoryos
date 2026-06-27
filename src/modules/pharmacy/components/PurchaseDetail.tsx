@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
   ArrowLeft, Printer, X, AlertCircle, Check, Loader2,
-  Truck, Calendar, Package, Receipt,
+  Truck, Calendar, Package, Receipt, RotateCcw,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dialog";
 import { useAuthStore } from "@/lib/auth-store";
 import { useNavStore } from "@/lib/nav-store";
+import { PurchaseReturnDialog } from "./PurchaseReturnDialog";
 import { cn } from "@/lib/utils";
 
 interface PurchaseItem {
@@ -81,6 +82,7 @@ export function PurchaseDetail() {
   const [purchase, setPurchase] = useState<Purchase | null>(null);
   const [loading, setLoading] = useState(true);
   const [cancelOpen, setCancelOpen] = useState(false);
+  const [returnOpen, setReturnOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
   const [cancelling, setCancelling] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -165,9 +167,19 @@ export function PurchaseDetail() {
           <Printer className="h-4 w-4" />
         </Button>
         {!isCancelled && (
-          <Button variant="outline" size="sm" className="gap-1.5 text-destructive" onClick={() => setCancelOpen(true)}>
-            <X className="h-3.5 w-3.5" /> Cancel
-          </Button>
+          <>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5 text-orange-600 border-orange-300"
+              onClick={() => setReturnOpen(true)}
+            >
+              <RotateCcw className="h-3.5 w-3.5" /> Return
+            </Button>
+            <Button variant="outline" size="sm" className="gap-1.5 text-destructive" onClick={() => setCancelOpen(true)}>
+              <X className="h-3.5 w-3.5" /> Cancel
+            </Button>
+          </>
         )}
       </div>
 
@@ -348,6 +360,19 @@ export function PurchaseDetail() {
               </Button>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Return to Supplier Dialog */}
+      <Dialog open={returnOpen} onOpenChange={setReturnOpen}>
+        <DialogContent className="max-w-sm max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Return to Supplier — {purchase.purchaseNo}</DialogTitle></DialogHeader>
+          <PurchaseReturnDialog
+            purchaseId={purchase.id}
+            purchaseNo={purchase.purchaseNo}
+            onComplete={() => { setReturnOpen(false); fetchPurchase(); }}
+            onCancel={() => setReturnOpen(false)}
+          />
         </DialogContent>
       </Dialog>
     </motion.div>

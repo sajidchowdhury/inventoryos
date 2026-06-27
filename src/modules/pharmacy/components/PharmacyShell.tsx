@@ -17,6 +17,7 @@ import { PaymentManager } from "./PaymentManager";
 import { ReturnsManager } from "./ReturnsManager";
 import { DiscountRulesManager } from "./DiscountRulesManager";
 import { SupplierManager } from "./SupplierManager";
+import { SupplierDetailView } from "./SupplierDetailView";
 import { PurchaseList } from "./PurchaseList";
 import { PurchaseForm } from "./PurchaseForm";
 import { PurchaseDetail } from "./PurchaseDetail";
@@ -77,6 +78,8 @@ export function PharmacyShell() {
         return <DiscountRulesManager />;
       case "suppliers":
         return <SupplierManager />;
+      case "supplier-detail":
+        return <SupplierDetailView />;
       case "purchases":
         return <PurchaseList />;
       case "purchase-detail":

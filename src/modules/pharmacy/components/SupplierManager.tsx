@@ -54,7 +54,7 @@ const emptyForm = {
 
 export function SupplierManager() {
   const session = useAuthStore((s) => s.session);
-  const { setActiveView, editingCustomerId } = useNavStore();
+  const { setActiveView, setActiveSupplierId } = useNavStore();
   const businessId = session?.business?.id;
 
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
@@ -224,7 +224,7 @@ export function SupplierManager() {
         <div className="space-y-2">
           {suppliers.map((supplier) => (
             <Card key={supplier.id} className="overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
-              onClick={() => { /* Could open detail */ }}>
+              onClick={() => { setActiveSupplierId(supplier.id); setActiveView("supplier-detail"); }}>
               <CardContent className="p-3 flex items-start gap-3">
                 <div className="h-10 w-10 rounded-full bg-orange-50 flex items-center justify-center shrink-0">
                   <Truck className="h-5 w-5 text-orange-600" />
