@@ -5,8 +5,10 @@ import { db } from "@/lib/db";
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id: businessId } = await params;
+
+    // Top-level categories (no parent)
     const categories = await db.category.findMany({
-      where: { businessId, isActive: true },
+      where: { businessId, isActive: true, parentId: null },
       include: {
         _count: { select: { products: true } },
         children: {
@@ -14,11 +16,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
           include: { _count: { select: { products: true } } },
         },
       },
-      where: { businessId, isActive: true, parentId: null },
       orderBy: { sortOrder: "asc" },
     });
 
-    // Also get all flat categories for simpler queries
+    // All categories flat
     const allCategories = await db.category.findMany({
       where: { businessId, isActive: true },
       include: { _count: { select: { products: true } } },
