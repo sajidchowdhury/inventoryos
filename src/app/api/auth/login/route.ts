@@ -3,6 +3,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { verifyPassword, generateSessionToken } from "@/lib/auth";
+import { getPermissionsForRole } from "@/lib/rbac";
 
 export async function POST(req: NextRequest) {
   try {
@@ -62,6 +63,17 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    // Update lastLoginAt
+    await db.businessUser.update({
+      where: { id: businessUser.id },
+      data: { lastLoginAt: new Date() },
+    });
+
+    // Get effective permissions
+    const permissions = businessUser.permissions
+      ? JSON.parse(businessUser.permissions)
+      : getPermissionsForRole(businessUser.role);
+
     return NextResponse.json({
       success: true,
       session: {
@@ -72,7 +84,9 @@ export async function POST(req: NextRequest) {
         id: businessUser.id,
         username: businessUser.username,
         role: businessUser.role,
+        fullName: businessUser.fullName,
       },
+      permissions,
       business: {
         id: businessUser.business.id,
         name: businessUser.business.name,

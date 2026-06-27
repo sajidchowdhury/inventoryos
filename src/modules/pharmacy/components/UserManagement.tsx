@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import {
   ArrowLeft, Plus, User, Search, X, Edit2, Trash2,
   Shield, Check, AlertCircle, Loader2, UserCog, Lock,
-  Phone, Mail, Eye, EyeOff,
+  Phone, Mail, Eye, EyeOff, Monitor, History,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/dialog";
 import { useAuthStore } from "@/lib/auth-store";
 import { useNavStore } from "@/lib/nav-store";
+import { ChangePasswordDialog } from "./ChangePasswordDialog";
 import { cn } from "@/lib/utils";
 
 interface User {
@@ -83,6 +84,7 @@ export function UserManagement() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<User | null>(null);
+  const [passwordUser, setPasswordUser] = useState<User | null>(null);
 
   const fetchUsers = useCallback(async () => {
     if (!businessId) return;
@@ -271,6 +273,9 @@ export function UserManagement() {
                   <button className="p-1.5 rounded hover:bg-muted" onClick={() => openEditDialog(user)}>
                     <Edit2 className="h-3.5 w-3.5 text-muted-foreground" />
                   </button>
+                  <button className="p-1.5 rounded hover:bg-muted" onClick={() => setPasswordUser(user)}>
+                    <Lock className="h-3.5 w-3.5 text-muted-foreground" />
+                  </button>
                   {user.id !== currentUserId && (
                     <button className="p-1.5 rounded hover:bg-red-50" onClick={() => setDeleteConfirm(user)}>
                       <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive" />
@@ -399,6 +404,31 @@ export function UserManagement() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Change Password Dialog */}
+      <Dialog open={!!passwordUser} onOpenChange={(open) => !open && setPasswordUser(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>Change Password</DialogTitle></DialogHeader>
+          {passwordUser && (
+            <ChangePasswordDialog
+              userId={passwordUser.id}
+              username={passwordUser.fullName || passwordUser.username}
+              onComplete={() => { setPasswordUser(null); fetchUsers(); }}
+              onCancel={() => setPasswordUser(null)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Security Links */}
+      <div className="grid grid-cols-2 gap-2 pt-2">
+        <Button variant="outline" className="gap-2 h-11" onClick={() => setActiveView("sessions")}>
+          <Monitor className="h-4 w-4" /> Active Sessions
+        </Button>
+        <Button variant="outline" className="gap-2 h-11" onClick={() => setActiveView("login-activity")}>
+          <History className="h-4 w-4" /> Login Activity
+        </Button>
+      </div>
     </motion.div>
   );
 }

@@ -33,6 +33,8 @@ import { TaxReport } from "./TaxReport";
 import { AuditTrail } from "./AuditTrail";
 import { DataExport } from "./DataExport";
 import { UserManagement } from "./UserManagement";
+import { SessionManager } from "./SessionManager";
+import { LoginActivity } from "./LoginActivity";
 import { TransactionLog } from "./TransactionLog";
 import { CategoryManager } from "./CategoryManager";
 import { CsvImport } from "./CsvImport";
@@ -120,6 +122,10 @@ export function PharmacyShell() {
         return <TransactionLog />;
       case "users":
         return <UserManagement />;
+      case "sessions":
+        return <SessionManager />;
+      case "login-activity":
+        return <LoginActivity />;
       case "categories":
         return <CategoryManager />;
       case "import":

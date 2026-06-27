@@ -42,6 +42,8 @@ export type PharmacyView =
   | "data-export"     // Data backup/export
   | "transactions"    // Activity / audit log
   | "users"           // User management (RBAC)
+  | "sessions"        // Active session management
+  | "login-activity"  // Login history
   | "categories"      // Category management
   | "import"          // CSV bulk import
   | "profile";        // Business profile / settings
