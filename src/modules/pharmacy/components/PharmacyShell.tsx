@@ -8,6 +8,7 @@ import { ProductForm } from "./ProductForm";
 import { BatchList } from "./BatchList";
 import { BatchForm } from "./BatchForm";
 import { QuickDispense } from "./QuickDispense";
+import { TransactionLog } from "./TransactionLog";
 import { CategoryManager } from "./CategoryManager";
 import { CsvImport } from "./CsvImport";
 import { ProfileView } from "./ProfileView";
@@ -36,6 +37,8 @@ export function PharmacyShell() {
         return <BatchForm mode="edit" />;
       case "dispense":
         return <QuickDispense />;
+      case "transactions":
+        return <TransactionLog />;
       case "categories":
         return <CategoryManager />;
       case "import":
@@ -49,11 +52,9 @@ export function PharmacyShell() {
 
   return (
     <div className="flex flex-col min-h-0 flex-1">
-      {/* Main content area with bottom padding for nav */}
       <div className="flex-1 pb-16">
         {renderView()}
       </div>
-      {/* Fixed bottom navigation */}
       <BottomNav />
     </div>
   );

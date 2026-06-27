@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import {
   ArrowLeft, Pill, Edit2, Plus, Clock, AlertTriangle,
   Package, TrendingUp, TrendingDown, Trash2, Calendar,
-  Boxes, ChevronRight, RefreshCw,
+  Boxes, ChevronRight, RefreshCw, ShieldAlert,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,8 @@ import {
 import { useAuthStore } from "@/lib/auth-store";
 import { useNavStore } from "@/lib/nav-store";
 import { StockAdjust } from "./StockAdjust";
+import { QuarantineDialog } from "./QuarantineDialog";
+import { DisposeDialog } from "./DisposeDialog";
 import { cn } from "@/lib/utils";
 
 interface Batch {
@@ -100,6 +102,8 @@ export function ProductDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [adjustBatch, setAdjustBatch] = useState<Batch | null>(null);
+  const [quarantineBatch, setQuarantineBatch] = useState<Batch | null>(null);
+  const [disposeBatch, setDisposeBatch] = useState<Batch | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
   const fetchProduct = useCallback(async () => {
@@ -359,19 +363,38 @@ export function ProductDetail() {
           <div className="space-y-2">
             {product.batches.map((batch) => {
               const expiry = formatExpiry(batch.expiryDate);
+              const isQuarantined = batch.status === "quarantined";
+              const isDestroyed = batch.status === "destroyed";
+              const isActive = !isQuarantined && !isDestroyed;
               return (
-                <Card key={batch.id} className="overflow-hidden">
+                <Card key={batch.id} className={cn(
+                  "overflow-hidden",
+                  isQuarantined && "border-orange-300 bg-orange-50/30",
+                  isDestroyed && "border-red-300 bg-red-50/30 opacity-75"
+                )}>
                   <CardContent className="p-3 space-y-2">
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <p className="text-sm font-semibold">Batch #{batch.batchNo}</p>
-                          <Badge
-                            variant="outline"
-                            className={cn("text-[9px] px-1.5 py-0", severityColors[expiry.severity])}
-                          >
-                            {expiry.label}
-                          </Badge>
+                          {isActive && (
+                            <Badge
+                              variant="outline"
+                              className={cn("text-[9px] px-1.5 py-0", severityColors[expiry.severity])}
+                            >
+                              {expiry.label}
+                            </Badge>
+                          )}
+                          {isQuarantined && (
+                            <Badge className="text-[9px] px-1.5 py-0 bg-orange-100 text-orange-700">
+                              <ShieldAlert className="h-2.5 w-2.5 mr-0.5" /> QUARANTINED
+                            </Badge>
+                          )}
+                          {isDestroyed && (
+                            <Badge className="text-[9px] px-1.5 py-0 bg-red-100 text-red-700">
+                              <Trash2 className="h-2.5 w-2.5 mr-0.5" /> DESTROYED
+                            </Badge>
+                          )}
                         </div>
                         <p className="text-[11px] text-muted-foreground mt-0.5">
                           Qty: <span className="font-medium text-foreground">{batch.quantity} {product.unit}</span>
@@ -389,33 +412,47 @@ export function ProductDetail() {
                       </div>
                     </div>
 
-                    {/* Action Buttons */}
-                    <div className="grid grid-cols-4 gap-1 pt-1 border-t">
-                      <button
-                        className="py-1.5 text-[11px] font-medium text-green-700 hover:bg-green-50 rounded flex items-center justify-center gap-1"
-                        onClick={() => setAdjustBatch({ ...batch, status: "STOCK_IN" } as Batch)}
-                      >
-                        <TrendingUp className="h-3 w-3" /> In
-                      </button>
-                      <button
-                        className="py-1.5 text-[11px] font-medium text-orange-700 hover:bg-orange-50 rounded flex items-center justify-center gap-1"
-                        onClick={() => setAdjustBatch({ ...batch, status: "STOCK_OUT" } as Batch)}
-                      >
-                        <TrendingDown className="h-3 w-3" /> Out
-                      </button>
-                      <button
-                        className="py-1.5 text-[11px] font-medium text-muted-foreground hover:bg-muted rounded flex items-center justify-center gap-1"
-                        onClick={() => handleEditBatch(batch.id)}
-                      >
-                        <Edit2 className="h-3 w-3" /> Edit
-                      </button>
-                      <button
-                        className="py-1.5 text-[11px] font-medium text-destructive hover:bg-red-50 rounded flex items-center justify-center gap-1"
-                        onClick={() => handleDeleteBatch(batch.id, batch.batchNo)}
-                      >
-                        <Trash2 className="h-3 w-3" /> Del
-                      </button>
-                    </div>
+                    {/* Action Buttons — only show for active batches */}
+                    {isActive && (
+                      <div className="grid grid-cols-3 gap-1 pt-1 border-t">
+                        <button
+                          className="py-1.5 text-[11px] font-medium text-green-700 hover:bg-green-50 rounded flex items-center justify-center gap-1"
+                          onClick={() => setAdjustBatch({ ...batch, status: "STOCK_IN" } as Batch)}
+                        >
+                          <TrendingUp className="h-3 w-3" /> In
+                        </button>
+                        <button
+                          className="py-1.5 text-[11px] font-medium text-orange-700 hover:bg-orange-50 rounded flex items-center justify-center gap-1"
+                          onClick={() => setAdjustBatch({ ...batch, status: "STOCK_OUT" } as Batch)}
+                        >
+                          <TrendingDown className="h-3 w-3" /> Out
+                        </button>
+                        <button
+                          className="py-1.5 text-[11px] font-medium text-orange-700 hover:bg-orange-50 rounded flex items-center justify-center gap-1"
+                          onClick={() => setQuarantineBatch(batch)}
+                        >
+                          <ShieldAlert className="h-3 w-3" /> Quarantine
+                        </button>
+                        <button
+                          className="py-1.5 text-[11px] font-medium text-red-700 hover:bg-red-50 rounded flex items-center justify-center gap-1"
+                          onClick={() => setDisposeBatch(batch)}
+                        >
+                          <Trash2 className="h-3 w-3" /> Dispose
+                        </button>
+                        <button
+                          className="py-1.5 text-[11px] font-medium text-muted-foreground hover:bg-muted rounded flex items-center justify-center gap-1"
+                          onClick={() => handleEditBatch(batch.id)}
+                        >
+                          <Edit2 className="h-3 w-3" /> Edit
+                        </button>
+                        <button
+                          className="py-1.5 text-[11px] font-medium text-destructive hover:bg-red-50 rounded flex items-center justify-center gap-1"
+                          onClick={() => handleDeleteBatch(batch.id, batch.batchNo)}
+                        >
+                          <Trash2 className="h-3 w-3" /> Del
+                        </button>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               );
@@ -439,6 +476,48 @@ export function ProductDetail() {
               unit={product.unit}
               onComplete={handleAdjustComplete}
               onCancel={() => setAdjustBatch(null)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Quarantine Dialog */}
+      <Dialog open={!!quarantineBatch} onOpenChange={(open) => !open && setQuarantineBatch(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Quarantine — Batch #{quarantineBatch?.batchNo}</DialogTitle>
+          </DialogHeader>
+          {quarantineBatch && (
+            <QuarantineDialog
+              batch={quarantineBatch}
+              productName={product.name}
+              unit={product.unit}
+              onComplete={() => {
+                setQuarantineBatch(null);
+                setRefreshKey((k) => k + 1);
+              }}
+              onCancel={() => setQuarantineBatch(null)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Dispose Dialog */}
+      <Dialog open={!!disposeBatch} onOpenChange={(open) => !open && setDisposeBatch(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Dispose Stock — Batch #{disposeBatch?.batchNo}</DialogTitle>
+          </DialogHeader>
+          {disposeBatch && (
+            <DisposeDialog
+              batch={disposeBatch}
+              productName={product.name}
+              unit={product.unit}
+              onComplete={() => {
+                setDisposeBatch(null);
+                setRefreshKey((k) => k + 1);
+              }}
+              onCancel={() => setDisposeBatch(null)}
             />
           )}
         </DialogContent>

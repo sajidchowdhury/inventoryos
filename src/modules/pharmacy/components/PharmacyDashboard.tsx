@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
   Package, AlertTriangle, TrendingUp, Clock, Plus,
-  ChevronRight, Pill, ShoppingBag, BarChart3, Boxes, ShoppingCart,
+  ChevronRight, Pill, ShoppingBag, BarChart3, Boxes, ShoppingCart, History,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -286,6 +286,16 @@ export function PharmacyDashboard() {
 
       {/* Expiry Alerts Widget */}
       <ExpiryAlertsWidget />
+
+      {/* Activity Log Link */}
+      <Button
+        variant="outline"
+        className="w-full gap-2 h-11"
+        onClick={() => setActiveView("transactions")}
+      >
+        <History className="h-4 w-4" /> View Activity Log
+        <ChevronRight className="h-4 w-4 ml-auto" />
+      </Button>
     </motion.div>
   );
 }

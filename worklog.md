@@ -264,3 +264,94 @@ Stage Summary:
   * Inventory syncs correctly across all operations ✅
 - Production build clean, lint passes with zero errors
 - FEFO guarantees: oldest-expiring stock is always sold first, preventing waste
+---
+Task ID: 2c-completion
+Agent: Main Agent
+Task: Complete Phase 2c — Quarantine, Disposal, Auto-Sync, Audit Log
+
+Work Log:
+- Created POST/DELETE /api/businesses/[id]/batches/[batchId]/quarantine:
+  - POST: Marks batch as quarantined (removes from FEFO rotation)
+  - 5 reasons: damaged, suspected, recall, quality_issue, other
+  - Prevents double-quarantine (400 error)
+  - Prevents quarantine of zero-quantity batches
+  - Creates QUARANTINE audit transaction
+  - DELETE: Releases batch from quarantine, recalculates status based on expiry
+  - Creates RELEASE audit transaction
+- Created POST /api/businesses/[id]/batches/[batchId]/dispose:
+  - Records disposal/destruction of stock (partial or full)
+  - 5 reasons: expired, damaged, recall, quality_issue, other
+  - 5 disposal methods: landfill, incineration, return_to_supplier, sewer, other
+  - Optional witness field (regulatory requirement)
+  - Calculates value lost (quantity × MRP/purchasePrice)
+  - Full disposal → status changes to "destroyed"
+  - Partial disposal → status recalculated based on expiry
+  - Blocks over-disposal (400 error)
+  - Decrements Inventory.quantity
+  - Creates WASTE audit transaction with full disposal details in note
+- Created GET/POST /api/businesses/[id]/batches/auto-sync:
+  - GET: Check sync status without performing sync (returns batchesNeedingUpdate count)
+  - POST: Recalculate all batch statuses based on current expiry dates
+  - Skips quarantined and destroyed batches (preserves manual states)
+  - Returns summary with status counts and list of changes
+  - Supports X-Cron-Secret header for production cron security
+  - Designed for daily cron job invocation
+- Created GET /api/businesses/[id]/transactions:
+  - Full audit log with filters: productId, batchId, type, date range
+  - Pagination support (default 50 per page)
+  - Summary by type with count and total quantity
+  - Workaround for Transaction model not having Batch relation:
+    fetches batch info separately and enriches transactions
+- Built QuarantineDialog.tsx:
+  - Reason selection with descriptions
+  - Optional notes field
+  - Warning banner showing batch details
+  - Success state with confirmation
+- Built DisposeDialog.tsx:
+  - Quantity input with quick buttons (All, Half)
+  - Reason selection
+  - Disposal method dropdown
+  - Witness name field
+  - Live value-lost preview
+  - Over-disposal validation
+  - Success state showing value lost and remaining quantity
+- Built TransactionLog.tsx:
+  - Summary cards (Stock In, Sales, Disposals)
+  - Search by product, batch, type, note
+  - Filter chips: All, Stock In, Sales, Adjustments, Disposals, Quarantine
+  - Color-coded transaction type icons
+  - Each transaction shows: product, type badge, quantity change (+/-), batch, note, timestamp
+  - Tap transaction → navigate to product detail
+  - Pagination
+- Updated ProductDetail.tsx:
+  - Added 6-button action grid per batch: In, Out, Quarantine, Dispose, Edit, Delete
+  - Quarantined batches show orange border + QUARANTINED badge, action buttons hidden
+  - Destroyed batches show red border + DESTROYED badge, dimmed, action buttons hidden
+  - Integrated QuarantineDialog and DisposeDialog
+- Updated PharmacyDashboard.tsx:
+  - Added "View Activity Log" button at bottom
+- Updated nav-store, PharmacyShell, barrel exports with "transactions" view
+
+Stage Summary:
+- Phase 2c is now COMPLETE — Phase 2 (Batch & Stock Management) fully done
+- 4 new API routes: quarantine (POST+DELETE), dispose, auto-sync (GET+POST), transactions
+- 3 new UI components: QuarantineDialog, DisposeDialog, TransactionLog
+- 2 modified components: ProductDetail (6-action grid + state badges), PharmacyDashboard (activity log link)
+- All 13 API test scenarios pass:
+  * Quarantine changes status to "quarantined" ✅
+  * FEFO excludes quarantined batches (409 with correct shortfall) ✅
+  * FEFO picks only active batches ✅
+  * Double-quarantine blocked (400) ✅
+  * Release recalculates status correctly ✅
+  * Auto-sync GET shows sync status ✅
+  * Auto-sync POST updates statuses ✅
+  * Partial disposal: reduces qty, keeps status, calculates value lost ✅
+  * Full disposal: sets status to "destroyed" ✅
+  * Over-disposal blocked (400) ✅
+  * Transactions audit log returns 39 records with summary ✅
+  * Filter by type=WASTE returns 5 disposal records ✅
+  * Filter by productId returns 27 records ✅
+- Production build clean, lint passes with zero errors
+- Full audit trail: every stock movement creates a Transaction record with type, quantity, note, timestamp
+- Regulatory compliance: witness field for disposals, full disposal method tracking
+- Cron-ready: auto-sync endpoint can be called daily to update batch statuses
