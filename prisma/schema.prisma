@@ -1,6 +1,6 @@
 // ── InventoryOS Database Schema ──
 // Multi-tenant inventory management platform
-// Phase 0: Core tables for authentication and business management
+// Phase 1a: Pharmacy product master with batch tracking
 
 generator client {
   provider = "prisma-client-js"
@@ -12,15 +12,14 @@ datasource db {
 }
 
 // ── Business Types ──
-// Registry of supported business types (pharmacy, grocery, etc.)
 model BusinessType {
   id        String   @id @default(cuid())
-  slug      String   @unique  // "pharmacy", "grocery", "restaurant", etc.
-  name      String              // "Pharmacy", "Grocery Shop", etc.
-  icon      String              // Icon name from lucide-react
-  color     String              // Brand color hex (e.g., "#16A34A")
-  isActive  Boolean  @default(false)  // Only active types are selectable
-  sortOrder Int     @default(0)       // Display order on landing page
+  slug      String   @unique
+  name      String
+  icon      String
+  color     String
+  isActive  Boolean  @default(false)
+  sortOrder Int     @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -28,10 +27,9 @@ model BusinessType {
 }
 
 // ── Users ──
-// Platform-level users identified by phone number
 model User {
   id        String   @id @default(cuid())
-  phone     String   @unique  // Primary identifier (BD phone: +8801XXXXXXXXX)
+  phone     String   @unique
   name      String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -40,14 +38,13 @@ model User {
 }
 
 // ── Businesses ──
-// A specific business registered under a user
 model Business {
   id             String   @id @default(cuid())
   userId         String
   businessTypeId String
-  name           String              // Business display name
+  name           String
   address        String?
-  phone          String?             // Business contact (may differ from user phone)
+  phone          String?
   isActive       Boolean  @default(true)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
@@ -59,19 +56,19 @@ model Business {
   products      Product[]
   transactions  Transaction[]
   inventories   Inventory[]
+  batches       Batch[]
 
   @@index([userId])
   @@index([businessTypeId])
 }
 
 // ── Business Users ──
-// Per-business login credentials with roles
 model BusinessUser {
   id           String   @id @default(cuid())
   businessId   String
-  username     String              // Login username (unique per business)
-  passwordHash String              // bcrypt hashed password
-  role         String   @default("admin")  // "admin", "manager", "staff"
+  username     String
+  passwordHash String
+  role         String   @default("admin")
   isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -84,14 +81,18 @@ model BusinessUser {
 }
 
 // ── Categories ──
-// Product categories scoped per business, supports hierarchy
+// Product categories with color, icon, and hierarchy support
 model Category {
   id         String   @id @default(cuid())
   businessId String
-  parentId   String?             // Self-referencing for hierarchy
+  parentId   String?
   name       String
-  type       String?             // "product", "service", etc.
-  sortOrder  Int     @default(0)
+  slug       String              // URL-friendly: "antibiotics", "pain-relief"
+  icon       String   @default("Tag")   // Lucide icon name
+  color      String   @default("#6B7280") // Category brand color
+  type       String   @default("medicine") // "medicine", "surgical", "cosmetic", "supplement", "baby-care", "other"
+  sortOrder  Int      @default(0)
+  isActive   Boolean  @default(true)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
@@ -100,41 +101,97 @@ model Category {
   children Category[] @relation("CategoryHierarchy")
   products Product[]
 
+  @@unique([businessId, slug])
   @@index([businessId])
   @@index([parentId])
 }
 
-// ── Products (Base) ──
-// Base product table extended by business-type-specific tables
+// ── Products (Base + Pharmacy Extension) ──
+// Unified product model with pharmacy-specific optional fields
 model Product {
-  id         String   @id @default(cuid())
-  businessId String
-  categoryId String?
-  name       String
-  sku        String?             // Stock keeping unit code
-  unit       String   @default("piece")  // "piece", "box", "kg", "liter", etc.
-  isActive   Boolean  @default(true)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id           String   @id @default(cuid())
+  businessId   String
+  categoryId   String?
+  name         String              // Brand name (e.g., "Napa Extra")
+  genericName  String?             // Generic name (e.g., "Paracetamol + Caffeine")
+  sku          String?             // Internal SKU code
+  barcode      String?             // Barcode / QR code
+  productType  String   @default("medicine") // "medicine", "surgical", "cosmetic", "supplement", "baby-care", "other"
+
+  // Unit & Conversion
+  unit         String   @default("piece")  // Base unit: "piece", "tablet", "ml", "g"
+  stripSize    Int?              // e.g., 10 tablets per strip
+  boxSize      Int?              // e.g., 10 strips per box
+
+  // Pharmacy-specific
+  strength     String?            // "500mg", "250mg/5ml"
+  dosageForm   String?            // "Tablet", "Capsule", "Syrup", "Injection", "Cream"
+  manufacturer String?            // "Square", "Beximco", "Renata"
+  scheduleType String?            // "OTC", "Schedule_H", "Schedule_H1", "Schedule_X", "Narcotic"
+  hsnCode      String?            // For VAT: "30049099"
+  vatRate      Float   @default(0)    // VAT percentage (medicines have reduced rate)
+  mrp          Float?             // Maximum Retail Price
+  isPrescription Boolean @default(false) // Prescription required?
+  storageCondition String?        // "Room Temp", "Fridge (2-8C)", "Cool & Dry"
+  rackNo       String?            // Shelf location: "A3", "Rack-5"
+
+  // Stock thresholds
+  minStock     Float   @default(0)     // Low stock alert threshold
+  maxStock     Float   @default(0)     // Overstock warning threshold
+  reorderLevel Float   @default(0)     // When to reorder
+
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   business     Business     @relation(fields: [businessId], references: [id], onDelete: Cascade)
   category     Category?    @relation(fields: [categoryId], references: [id])
   inventory    Inventory?
   transactions Transaction[]
+  batches      Batch[]
 
   @@index([businessId])
   @@index([categoryId])
+  @@index([genericName])
+  @@index([manufacturer])
+}
+
+// ── Batch ──
+// Multi-batch tracking per product with expiry management
+model Batch {
+  id            String   @id @default(cuid())
+  businessId    String
+  productId     String
+  batchNo       String              // Batch number from manufacturer
+  mfgDate       DateTime?           // Manufacturing date
+  expiryDate    DateTime            // Expiry date (CRITICAL)
+  quantity      Float    @default(0)  // Current quantity in this batch
+  purchasePrice Float?              // Cost price per unit for this batch
+  mrp           Float?              // Selling price per unit
+  supplierId    String?             // Supplier reference (Phase 5)
+  status        String   @default("active") // "active", "near_expiry", "expired", "quarantined", "returned", "destroyed"
+  notes         String?             // Optional notes
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  product  Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@index([productId])
+  @@index([expiryDate])
+  @@index([status])
 }
 
 // ── Inventory ──
-// Current stock levels per product
+// Aggregated stock levels per product (sum of all batches)
 model Inventory {
   id         String   @id @default(cuid())
   businessId String
-  productId  String   @unique  // One inventory record per product
+  productId  String   @unique
   quantity   Float    @default(0)
-  minStock   Float    @default(0)    // Low stock threshold
-  unitCost   Float?                   // Cost per unit
+  minStock   Float    @default(0)
+  unitCost   Float?
   updatedAt  DateTime @updatedAt
 
   business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
@@ -144,14 +201,16 @@ model Inventory {
 }
 
 // ── Transactions ──
-// Stock movement log (purchases, sales, adjustments, etc.)
 model Transaction {
   id         String   @id @default(cuid())
   businessId String
   productId  String
+  batchId    String?             // Link to specific batch
   type       String              // "PURCHASE", "SALE", "ADJUSTMENT", "WASTE", "RETURN"
-  quantity   Float               // Positive for in, negative for out
-  note       String?             // Optional reason/note
+  quantity   Float
+  unitPrice  Float?              // Price per unit at transaction time
+  note       String?
+  createdBy  String?             // BusinessUser ID who performed the action
   createdAt  DateTime @default(now())
 
   business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
@@ -163,13 +222,12 @@ model Transaction {
 }
 
 // ── OTP Verification ──
-// One-time passwords for phone verification and password reset
 model OtpVerification {
   id        String   @id @default(cuid())
   phone     String
-  otp       String              // The OTP code
-  purpose   String              // "LOGIN", "REGISTER", "RESET_PASSWORD"
-  expiresAt DateTime            // OTP expiration time
+  otp       String
+  purpose   String
+  expiresAt DateTime
   isUsed    Boolean  @default(false)
   createdAt DateTime @default(now())
 
@@ -178,12 +236,11 @@ model OtpVerification {
 }
 
 // ── Sessions ──
-// Active user sessions for "remember me" functionality
 model Session {
   id           String   @id @default(cuid())
   businessUserId String
-  token        String   @unique  // Session token
-  deviceInfo   String?            // Browser/device info
+  token        String   @unique
+  deviceInfo   String?
   expiresAt    DateTime
   createdAt    DateTime @default(now())
 
