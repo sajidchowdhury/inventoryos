@@ -68,3 +68,53 @@ Stage Summary:
 - PharmacyShell integrates all views via nav-store with bottom navigation
 - Full CRUD for products (create, read, update, delete) and categories (create, read)
 - 18 seeded pharmacy categories, 5 demo products in database
+---
+Task ID: 1b-completion
+Agent: Main Agent
+Task: Complete Phase 1b — Category Management & CSV Import
+
+Work Log:
+- Created GET/PUT/DELETE /api/businesses/[id]/categories/[categoryId] route for individual category operations
+  - PUT supports editing name, color, icon, type, parent, sort order
+  - DELETE has safety checks: blocks deletion if category has products or subcategories
+  - Prevents self-parenting (circular hierarchy)
+- Updated CategoryManager with:
+  - Edit category dialog (pre-populates form with existing values)
+  - Delete confirmation dialog showing product/subcategory counts
+  - Parent category dropdown excludes self when editing (prevents circular hierarchy)
+  - "Import" button in header linking to CSV import view
+- Created POST /api/businesses/[id]/products/import endpoint:
+  - Accepts JSON { products: [] } OR { csv: "..." } OR raw CSV text
+  - Robust CSV parser handling quoted values with embedded commas
+  - Flexible header matching (name, productName, brand all map to "name")
+  - Category name resolution (matches by name or slug)
+  - Returns detailed per-row results (success/error with messages)
+  - Auto-creates Inventory record for each imported product
+- Created GET /api/businesses/[id]/products/template endpoint:
+  - Returns CSV template with 21 column headers
+  - Includes 3 sample rows (Napa Extra, Amodis, Seclo)
+  - Includes field guide comments explaining each column
+  - Sets Content-Disposition for file download
+- Built CsvImport component with 4-phase UX:
+  - Phase 1 (Upload): Drag-drop or tap to browse, template download, quick guide
+  - Phase 2 (Preview): Shows file info + first 5 rows in table format
+  - Phase 3 (Importing): Loading state with spinner
+  - Phase 4 (Complete): Summary card with success/error counts, error details, success list
+- Added "import" view to PharmacyView type and PharmacyShell
+- Added Import buttons to ProductList and CategoryManager headers
+- Updated barrel exports to include CsvImport
+
+Stage Summary:
+- Phase 1b is now COMPLETE
+- 4 new files: category detail API, CSV import API, CSV template API, CsvImport component
+- 3 modified files: nav-store.ts (added "import" view), PharmacyShell.tsx, CategoryManager.tsx (edit/delete)
+- All 7 API test scenarios pass:
+  * CSV template download (200, 27 lines)
+  * Category PUT (200, renamed successfully)
+  * Category DELETE with products (400, safety block works)
+  * Category DELETE empty (200, succeeds)
+  * CSV import via JSON (3/3 success)
+  * CSV import via raw CSV (3/3 success)
+  * Product list shows all 11 products (5 from 1a + 6 imported in 1b)
+- Production build clean, lint passes with zero errors
+- 6 new products added to demo data via CSV import test

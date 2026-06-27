@@ -9,6 +9,7 @@ export type PharmacyView =
   | "add-product"   // Add new product form
   | "edit-product"  // Edit existing product
   | "categories"    // Category management
+  | "import"        // CSV bulk import
   | "profile";      // Business profile / settings
 
 interface NavState {

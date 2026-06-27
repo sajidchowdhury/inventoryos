@@ -5,6 +5,7 @@ import { PharmacyDashboard } from "./PharmacyDashboard";
 import { ProductList } from "./ProductList";
 import { ProductForm } from "./ProductForm";
 import { CategoryManager } from "./CategoryManager";
+import { CsvImport } from "./CsvImport";
 import { ProfileView } from "./ProfileView";
 import { BottomNav } from "./BottomNav";
 
@@ -23,6 +24,8 @@ export function PharmacyShell() {
         return <ProductForm mode="edit" />;
       case "categories":
         return <CategoryManager />;
+      case "import":
+        return <CsvImport />;
       case "profile":
         return <ProfileView />;
       default:

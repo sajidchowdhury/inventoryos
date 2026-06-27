@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
   Search, Plus, Pill, Filter, X, ChevronDown,
-  Package, Edit2, Trash2, ArrowLeft, AlertCircle,
+  Package, Edit2, Trash2, ArrowLeft, AlertCircle, Upload,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -146,6 +146,9 @@ export function ProductList() {
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <h1 className="text-lg font-bold flex-1">Products</h1>
+        <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setActiveView("import")}>
+          <Upload className="h-4 w-4" /> Import
+        </Button>
         <Button size="sm" className="gap-1.5" onClick={() => setActiveView("add-product")}>
           <Plus className="h-4 w-4" /> Add
         </Button>
