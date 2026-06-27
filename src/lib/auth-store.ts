@@ -30,7 +30,8 @@ export interface BusinessInfo {
 
 export interface LoggedInSession {
   token: string;
-  user: { id: string; username: string; role: string };
+  user: { id: string; username: string; role: string; fullName?: string };
+  permissions: string[];
   business: {
     id: string;
     name: string;

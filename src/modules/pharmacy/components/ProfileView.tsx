@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import {
   LogOut, Building2, MapPin, User, Shield, ChevronRight,
-  Bell, Palette, HelpCircle,
+  Bell, Palette, HelpCircle, UserCog,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -72,6 +72,17 @@ export function ProfileView() {
       {/* Settings List */}
       <Card>
         <CardContent className="p-0 divide-y">
+          <button
+            className="w-full p-4 flex items-center gap-3 hover:bg-muted/50 transition-colors text-left"
+            onClick={() => setActiveView("users")}
+          >
+            <UserCog className="h-5 w-5 text-muted-foreground shrink-0" />
+            <div className="flex-1">
+              <p className="text-sm font-medium">User Management</p>
+              <p className="text-xs text-muted-foreground">Roles, permissions, team members</p>
+            </div>
+            <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+          </button>
           {[
             { icon: Bell, label: "Notifications", desc: "Alerts & reminders" },
             { icon: Shield, label: "Security", desc: "Password & access" },

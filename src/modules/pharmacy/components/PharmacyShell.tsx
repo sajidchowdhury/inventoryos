@@ -32,6 +32,7 @@ import { BusinessReportCenter } from "./BusinessReportCenter";
 import { TaxReport } from "./TaxReport";
 import { AuditTrail } from "./AuditTrail";
 import { DataExport } from "./DataExport";
+import { UserManagement } from "./UserManagement";
 import { TransactionLog } from "./TransactionLog";
 import { CategoryManager } from "./CategoryManager";
 import { CsvImport } from "./CsvImport";
@@ -117,6 +118,8 @@ export function PharmacyShell() {
         return <DataExport />;
       case "transactions":
         return <TransactionLog />;
+      case "users":
+        return <UserManagement />;
       case "categories":
         return <CategoryManager />;
       case "import":

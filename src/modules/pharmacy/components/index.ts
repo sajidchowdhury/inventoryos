@@ -36,6 +36,7 @@ export { BusinessReportCenter } from "./BusinessReportCenter";
 export { TaxReport } from "./TaxReport";
 export { AuditTrail } from "./AuditTrail";
 export { DataExport } from "./DataExport";
+export { UserManagement } from "./UserManagement";
 export { NotificationCenter } from "./NotificationCenter";
 export { QuarantineDialog } from "./QuarantineDialog";
 export { DisposeDialog } from "./DisposeDialog";

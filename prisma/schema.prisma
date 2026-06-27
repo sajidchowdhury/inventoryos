@@ -80,8 +80,13 @@ model BusinessUser {
   businessId   String
   username     String
   passwordHash String
-  role         String   @default("admin")
+  role         String   @default("admin") // "owner", "admin", "manager", "pharmacist", "cashier", "stock_clerk"
+  fullName     String?
+  phone        String?
+  email        String?
+  permissions  String?  // JSON array of permission strings, null = use role defaults
   isActive     Boolean  @default(true)
+  lastLoginAt  DateTime?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -90,6 +95,7 @@ model BusinessUser {
 
   @@unique([businessId, username])
   @@index([businessId])
+  @@index([role])
 }
 
 // ── Categories ──

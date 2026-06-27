@@ -41,6 +41,7 @@ export type PharmacyView =
   | "audit-trail"     // Comprehensive audit trail
   | "data-export"     // Data backup/export
   | "transactions"    // Activity / audit log
+  | "users"           // User management (RBAC)
   | "categories"      // Category management
   | "import"          // CSV bulk import
   | "profile";        // Business profile / settings
