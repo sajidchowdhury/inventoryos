@@ -435,3 +435,104 @@ Stage Summary:
 - Production build clean, lint passes with zero errors
 - Bulk operations support: quarantine, dispose, return to supplier, release, delete
 - Full audit trail maintained for all bulk operations
+---
+Task ID: 3b-completion
+Agent: Main Agent
+Task: Complete Phase 3b — Alerts, Notifications, Reports System
+
+Work Log:
+- Added 2 new Prisma models:
+  - AlertPreference: per-business notification settings (thresholds, channels, digest freq, quiet hours)
+  - NotificationLog: persistent log of generated alerts (type, severity, read state, dedup)
+  - Added reverse relations on Business model
+  - Applied schema to database via prisma db push
+- Created GET/PUT /api/businesses/[id]/alert-preferences:
+  - GET auto-creates default preferences on first access (lazy initialization)
+  - PUT validates thresholds (critical < warning < notice), validates digest frequency, quiet hours
+  - Supports email/SMS channel configuration for future integration
+- Created GET /api/businesses/[id]/combined-alerts:
+  - Single endpoint returns all active alerts using business's custom thresholds
+  - Combines: low stock alerts + expiry alerts (3 severities) + quarantine alerts
+  - Each alert includes: type, severity, title, message, entity reference, value at risk
+  - Summary with counts by severity + by type + total value at risk
+  - Sorted by severity (critical first) then recency
+- Created GET /api/businesses/[id]/reports/expiry:
+  - Generates printable expiry report (daily/weekly/monthly)
+  - Returns JSON by default, CSV when ?format=csv
+  - CSV includes Content-Disposition header for file download
+  - 6 sections: expired, critical, warning, notice, safe, quarantined
+  - Each batch row includes: product, batch no, expiry, qty, MRP, value, manufacturer, category
+  - Full summary with totals + value at risk
+- Created POST /api/businesses/[id]/alerts/digest:
+  - Cron-ready endpoint for generating alert digests
+  - Respects digest frequency (skips if mismatched)
+  - Creates NotificationLog entries with 24h deduplication (prevents spam)
+  - Returns full digest with sections + delivery targets
+  - Supports X-Cron-Secret header for production security
+- Created GET/PUT/DELETE /api/businesses/[id]/notifications:
+  - GET: list notification logs with filters (unreadOnly, type, limit)
+  - PUT: mark notifications as read (by IDs or all at once)
+  - DELETE: cleanup old read notifications (configurable age threshold)
+- Updated nav-store.ts: added 'alerts', 'alert-settings', 'report' views
+- Built NotificationCenter.tsx:
+  - Bell icon with unread badge count
+  - Popover dropdown showing recent notifications
+  - Auto-polls every 60 seconds for new notifications
+  - Mark all as read button
+  - Click notification → navigate to relevant view (expiry/products)
+  - Time-ago formatting (just now, 5m ago, 2h ago, etc.)
+- Built AlertsCenter.tsx:
+  - Full-page alerts dashboard
+  - Hero summary card with total alerts + value at risk
+  - 3 type breakdown cards (Expiry Critical, Expiry Soon, Low Stock)
+  - Filter tabs (All/Critical/Warning/Info)
+  - Color-coded alert cards with severity borders
+  - Quick links to expiry page, settings, report
+- Built AlertPreferences.tsx:
+  - Settings page with 5 cards:
+    1. Expiry thresholds (3 inputs with validation)
+    2. Low stock alerts (toggle + threshold)
+    3. Quarantine alerts (toggle)
+    4. Notification channels (email + SMS with toggles)
+    5. Digest frequency (daily/weekly/monthly/none)
+    6. Quiet hours (start/end hour selectors)
+  - Live explanation of how thresholds work
+  - Save button with success/error feedback
+- Built ExpiryReport.tsx:
+  - Printable report view with period selector (daily/weekly/monthly)
+  - Download as CSV button
+  - Print button (uses window.print)
+  - Business header with name/address/phone
+  - Summary card with 4 KPIs + section badges
+  - 6 color-coded section tables with all batch details
+  - Print-optimized CSS (hides UI chrome when printing)
+- Updated PharmacyDashboard:
+  - Added NotificationCenter bell icon in header (next to Add button)
+  - Expanded quick actions to 4×2 = 8 grid (added Alerts + Report)
+  - Each action has distinct color and icon
+- Updated PharmacyShell + barrel exports
+
+Stage Summary:
+- Phase 3b is now COMPLETE — Phase 3 (Expiry Management) fully done
+- 2 new Prisma models (AlertPreference, NotificationLog)
+- 5 new API routes: alert-preferences, combined-alerts, reports/expiry, alerts/digest, notifications
+- 4 new UI components: NotificationCenter, AlertsCenter, AlertPreferences, ExpiryReport
+- 1 modified component: PharmacyDashboard (bell icon + expanded quick actions)
+- All 13 API test scenarios pass:
+  * Default preferences auto-created ✅
+  * Custom preferences saved (14/45/120 thresholds, email, weekly digest) ✅
+  * Invalid threshold order rejected (400) ✅
+  * Combined alerts using custom thresholds (13 alerts, ৳7000 value at risk) ✅
+  * Expiry report JSON (4 batches, 6 sections) ✅
+  * Expiry report CSV download ✅
+  * Alert digest creates 11 notifications ✅
+  * Digest frequency mismatch → skipped ✅
+  * Notifications list with unread count ✅
+  * Mark all as read (11 notifications) ✅
+  * Verify unread = 0 ✅
+  * Digest deduplication (0 new on re-run) ✅
+  * Delete old notifications cleanup ✅
+- Production build clean, lint passes with zero errors
+- Cron-ready: digest endpoint can be called daily/weekly/monthly
+- Deduplication prevents notification spam (24h window)
+- Foundation for future email/SMS integration (channels configured but not yet sending)

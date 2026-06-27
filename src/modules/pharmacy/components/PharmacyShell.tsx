@@ -9,6 +9,9 @@ import { BatchList } from "./BatchList";
 import { BatchForm } from "./BatchForm";
 import { QuickDispense } from "./QuickDispense";
 import { ExpiryDashboard } from "./ExpiryDashboard";
+import { AlertsCenter } from "./AlertsCenter";
+import { AlertPreferences } from "./AlertPreferences";
+import { ExpiryReport } from "./ExpiryReport";
 import { TransactionLog } from "./TransactionLog";
 import { CategoryManager } from "./CategoryManager";
 import { CsvImport } from "./CsvImport";
@@ -40,6 +43,12 @@ export function PharmacyShell() {
         return <QuickDispense />;
       case "expiry":
         return <ExpiryDashboard />;
+      case "alerts":
+        return <AlertsCenter />;
+      case "alert-settings":
+        return <AlertPreferences />;
+      case "report":
+        return <ExpiryReport />;
       case "transactions":
         return <TransactionLog />;
       case "categories":

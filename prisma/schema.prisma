@@ -57,6 +57,8 @@ model Business {
   transactions  Transaction[]
   inventories   Inventory[]
   batches       Batch[]
+  alertPreference AlertPreference?
+  notificationLogs NotificationLog[]
 
   @@index([userId])
   @@index([businessTypeId])
@@ -249,4 +251,67 @@ model Session {
   @@index([businessUserId])
   @@index([token])
   @@index([expiresAt])
+}
+
+// ── Alert Preferences ──
+// Per-business notification settings (one record per business)
+model AlertPreference {
+  id              String   @id @default(cuid())
+  businessId      String   @unique
+
+  // Expiry alert thresholds (in days before expiry)
+  expiryCriticalDays  Int @default(7)    // Red alert threshold
+  expiryWarningDays   Int @default(30)   // Orange alert threshold
+  expiryNoticeDays    Int @default(90)   // Yellow alert threshold
+
+  // Low stock alert
+  lowStockEnabled   Boolean @default(true)
+  lowStockThreshold Int     @default(10) // Absolute quantity threshold
+
+  // Quarantine alerts
+  quarantineAlerts  Boolean @default(true)
+
+  // Notification channels (for future email/SMS integration)
+  emailEnabled      Boolean @default(false)
+  email             String?
+  smsEnabled        Boolean @default(false)
+  phone             String?
+
+  // Digest frequency
+  digestFrequency   String  @default("daily") // "daily", "weekly", "monthly", "none"
+
+  // Quiet hours (alerts still recorded, just not pushed)
+  quietHoursStart   Int?    // Hour 0-23
+  quietHoursEnd     Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+}
+
+// ── Notification Log ──
+// Records each alert generated (for audit + dedup)
+model NotificationLog {
+  id          String   @id @default(cuid())
+  businessId  String
+  type        String   // "expiry_critical", "expiry_warning", "low_stock", "quarantine", "disposed"
+  severity    String   // "critical", "warning", "info"
+  title       String
+  message     String
+  entityType  String   // "batch", "product", "category"
+  entityId    String?  // ID of related batch/product
+  isRead      Boolean  @default(false)
+  isResolved  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  readAt      DateTime?
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@index([type])
+  @@index([isRead])
+  @@index([createdAt])
 }

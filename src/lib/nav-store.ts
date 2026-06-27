@@ -14,6 +14,9 @@ export type PharmacyView =
   | "edit-batch"      // Edit existing batch
   | "dispense"        // Quick dispense with FEFO
   | "expiry"          // Full expiry management dashboard
+  | "alerts"          // Combined alerts center
+  | "alert-settings"  // Alert preferences configuration
+  | "report"          // Printable expiry report
   | "transactions"    // Activity / audit log
   | "categories"      // Category management
   | "import"          // CSV bulk import

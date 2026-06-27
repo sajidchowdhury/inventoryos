@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
   Package, AlertTriangle, TrendingUp, Clock, Plus,
-  ChevronRight, Pill, ShoppingBag, BarChart3, Boxes, ShoppingCart, History, CalendarClock,
+  ChevronRight, Pill, ShoppingBag, BarChart3, Boxes, ShoppingCart, History, CalendarClock, Bell,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { useAuthStore } from "@/lib/auth-store";
 import { useNavStore } from "@/lib/nav-store";
 import { ExpiryAlertsWidget } from "./ExpiryAlertsWidget";
+import { NotificationCenter } from "./NotificationCenter";
 import { cn } from "@/lib/utils";
 
 interface DashboardStats {
@@ -137,13 +138,16 @@ export function PharmacyDashboard() {
           <h1 className="text-xl font-bold">{session?.business?.name || "Pharmacy"}</h1>
           <p className="text-sm text-muted-foreground">Welcome back! Here is your inventory overview.</p>
         </div>
-        <Button
-          size="sm"
-          className="gap-1.5"
-          onClick={() => setActiveView("add-product")}
-        >
-          <Plus className="h-4 w-4" /> Add
-        </Button>
+        <div className="flex items-center gap-1">
+          <NotificationCenter />
+          <Button
+            size="sm"
+            className="gap-1.5"
+            onClick={() => setActiveView("add-product")}
+          >
+            <Plus className="h-4 w-4" /> Add
+          </Button>
+        </div>
       </div>
 
       {/* Primary Dispense CTA */}
@@ -183,71 +187,93 @@ export function PharmacyDashboard() {
       {/* Quick Actions */}
       <div>
         <h2 className="text-sm font-semibold mb-2 text-muted-foreground">Quick Actions</h2>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-4 gap-2">
           <Card
             className="cursor-pointer hover:shadow-md transition-shadow active:scale-[0.97]"
             onClick={() => setActiveView("add-product")}
           >
-            <CardContent className="p-3 flex flex-col items-center gap-1.5 text-center">
+            <CardContent className="p-2.5 flex flex-col items-center gap-1.5 text-center">
               <div className="h-9 w-9 rounded-full bg-green-50 flex items-center justify-center">
                 <Plus className="h-4 w-4 text-green-600" />
               </div>
-              <span className="text-[11px] font-medium leading-tight">Add Product</span>
+              <span className="text-[10px] font-medium leading-tight">Add Product</span>
             </CardContent>
           </Card>
           <Card
             className="cursor-pointer hover:shadow-md transition-shadow active:scale-[0.97]"
             onClick={() => setActiveView("products")}
           >
-            <CardContent className="p-3 flex flex-col items-center gap-1.5 text-center">
+            <CardContent className="p-2.5 flex flex-col items-center gap-1.5 text-center">
               <div className="h-9 w-9 rounded-full bg-blue-50 flex items-center justify-center">
                 <Pill className="h-4 w-4 text-blue-600" />
               </div>
-              <span className="text-[11px] font-medium leading-tight">Products</span>
+              <span className="text-[10px] font-medium leading-tight">Products</span>
             </CardContent>
           </Card>
           <Card
             className="cursor-pointer hover:shadow-md transition-shadow active:scale-[0.97]"
             onClick={() => setActiveView("batches")}
           >
-            <CardContent className="p-3 flex flex-col items-center gap-1.5 text-center">
+            <CardContent className="p-2.5 flex flex-col items-center gap-1.5 text-center">
               <div className="h-9 w-9 rounded-full bg-orange-50 flex items-center justify-center">
                 <Boxes className="h-4 w-4 text-orange-600" />
               </div>
-              <span className="text-[11px] font-medium leading-tight">Stock</span>
+              <span className="text-[10px] font-medium leading-tight">Stock</span>
             </CardContent>
           </Card>
           <Card
             className="cursor-pointer hover:shadow-md transition-shadow active:scale-[0.97]"
             onClick={() => setActiveView("expiry")}
           >
-            <CardContent className="p-3 flex flex-col items-center gap-1.5 text-center">
+            <CardContent className="p-2.5 flex flex-col items-center gap-1.5 text-center">
               <div className="h-9 w-9 rounded-full bg-red-50 flex items-center justify-center">
                 <CalendarClock className="h-4 w-4 text-red-600" />
               </div>
-              <span className="text-[11px] font-medium leading-tight">Expiry</span>
+              <span className="text-[10px] font-medium leading-tight">Expiry</span>
+            </CardContent>
+          </Card>
+          <Card
+            className="cursor-pointer hover:shadow-md transition-shadow active:scale-[0.97]"
+            onClick={() => setActiveView("alerts")}
+          >
+            <CardContent className="p-2.5 flex flex-col items-center gap-1.5 text-center">
+              <div className="h-9 w-9 rounded-full bg-yellow-50 flex items-center justify-center">
+                <Bell className="h-4 w-4 text-yellow-600" />
+              </div>
+              <span className="text-[10px] font-medium leading-tight">Alerts</span>
+            </CardContent>
+          </Card>
+          <Card
+            className="cursor-pointer hover:shadow-md transition-shadow active:scale-[0.97]"
+            onClick={() => setActiveView("report")}
+          >
+            <CardContent className="p-2.5 flex flex-col items-center gap-1.5 text-center">
+              <div className="h-9 w-9 rounded-full bg-indigo-50 flex items-center justify-center">
+                <History className="h-4 w-4 text-indigo-600" />
+              </div>
+              <span className="text-[10px] font-medium leading-tight">Report</span>
             </CardContent>
           </Card>
           <Card
             className="cursor-pointer hover:shadow-md transition-shadow active:scale-[0.97]"
             onClick={() => setActiveView("categories")}
           >
-            <CardContent className="p-3 flex flex-col items-center gap-1.5 text-center">
+            <CardContent className="p-2.5 flex flex-col items-center gap-1.5 text-center">
               <div className="h-9 w-9 rounded-full bg-purple-50 flex items-center justify-center">
                 <ShoppingBag className="h-4 w-4 text-purple-600" />
               </div>
-              <span className="text-[11px] font-medium leading-tight">Categories</span>
+              <span className="text-[10px] font-medium leading-tight">Categories</span>
             </CardContent>
           </Card>
           <Card
             className="cursor-pointer hover:shadow-md transition-shadow active:scale-[0.97]"
             onClick={() => setActiveView("transactions")}
           >
-            <CardContent className="p-3 flex flex-col items-center gap-1.5 text-center">
+            <CardContent className="p-2.5 flex flex-col items-center gap-1.5 text-center">
               <div className="h-9 w-9 rounded-full bg-cyan-50 flex items-center justify-center">
                 <History className="h-4 w-4 text-cyan-600" />
               </div>
-              <span className="text-[11px] font-medium leading-tight">Activity</span>
+              <span className="text-[10px] font-medium leading-tight">Activity</span>
             </CardContent>
           </Card>
         </div>
