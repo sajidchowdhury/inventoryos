@@ -1,3 +1,7 @@
-// Pharmacy Module - Components placeholder
-// Will contain pharmacy-specific React components
-export {};
+export { PharmacyShell } from "./PharmacyShell";
+export { PharmacyDashboard } from "./PharmacyDashboard";
+export { ProductList } from "./ProductList";
+export { ProductForm } from "./ProductForm";
+export { CategoryManager } from "./CategoryManager";
+export { ProfileView } from "./ProfileView";
+export { BottomNav } from "./BottomNav";

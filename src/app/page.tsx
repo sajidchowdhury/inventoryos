@@ -36,6 +36,8 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { getAllModules } from "@/lib/modules";
 import { useAuthStore } from "@/lib/auth-store";
+import { useNavStore } from "@/lib/nav-store";
+import { PharmacyShell } from "@/modules/pharmacy/components";
 import { cn } from "@/lib/utils";
 
 // ── Icon maps ──
@@ -908,114 +910,13 @@ function LoginStep() {
 }
 
 // ── Dashboard Step ──
+// Now renders the full PharmacyShell with dashboard, products, categories, etc.
 function DashboardStep() {
-  const { session, reset, businesses } = useAuthStore();
+  const session = useAuthStore((s) => s.session);
 
   if (!session) return null;
 
-  const { business, user } = session;
-
-  return (
-    <motion.div {...fadeIn} className="space-y-6">
-      {/* Welcome card */}
-      <Card
-        className="border-l-4 overflow-hidden"
-        style={{ borderLeftColor: business.businessType.color }}
-      >
-        <CardContent className="p-6 space-y-4">
-          <div className="flex items-center gap-3">
-            <div
-              className="w-14 h-14 rounded-2xl flex items-center justify-center text-white"
-              style={{ backgroundColor: business.businessType.color }}
-            >
-              {smallIconMap[business.businessType.icon] || <Building2 className="h-7 w-7" />}
-            </div>
-            <div>
-              <h2 className="text-xl font-bold">{business.name}</h2>
-              <p className="text-sm text-muted-foreground">{business.businessType.name}</p>
-            </div>
-          </div>
-          <Badge className="text-white" style={{ backgroundColor: business.businessType.color }}>
-            <CheckCircle2 className="h-3 w-3 mr-1" /> You are logged in
-          </Badge>
-        </CardContent>
-      </Card>
-
-      {/* Quick stats placeholder */}
-      <div className="grid grid-cols-2 gap-3">
-        <Card>
-          <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold text-primary">0</p>
-            <p className="text-xs text-muted-foreground">Products</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold text-primary">0</p>
-            <p className="text-xs text-muted-foreground">Low Stock</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold text-primary">0</p>
-            <p className="text-xs text-muted-foreground">Today&apos;s Sales</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold text-primary">0</p>
-            <p className="text-xs text-muted-foreground">Expiring Soon</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* User info */}
-      <Card className="bg-muted/50">
-        <CardContent className="p-4 space-y-1">
-          <p className="text-xs text-muted-foreground">Logged in as</p>
-          <p className="font-semibold">{user.username}</p>
-          <p className="text-xs text-muted-foreground capitalize">{user.role} access</p>
-          {business.address && (
-            <p className="text-xs text-muted-foreground flex items-center gap-1">
-              <MapPin className="h-3 w-3" /> {business.address}
-            </p>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Switch business (if multiple) */}
-      {businesses.length > 1 && (
-        <Button
-          variant="outline"
-          className="w-full gap-2"
-          onClick={() => {
-            useAuthStore.getState().setSelectedBusiness(null);
-            useAuthStore.getState().setUsername("");
-            useAuthStore.getState().setPassword("");
-            useAuthStore.getState().setSession(null);
-            useAuthStore.getState().setStep("discovery");
-          }}
-        >
-          <Building2 className="h-4 w-4" /> Switch Business ({businesses.length} registered)
-        </Button>
-      )}
-
-      {/* Coming soon notice */}
-      <Card className="border-primary/20 bg-primary/5">
-        <CardContent className="p-4 text-center space-y-2">
-          <Sparkles className="h-6 w-6 text-primary mx-auto" />
-          <p className="font-semibold text-sm">Inventory features coming in Phase 2!</p>
-          <p className="text-xs text-muted-foreground">
-            Product management, stock tracking, expiry alerts, and more are being built right now.
-          </p>
-        </CardContent>
-      </Card>
-
-      <Button variant="outline" className="w-full gap-2" onClick={reset}>
-        <LogOut className="h-4 w-4" /> Log Out
-      </Button>
-    </motion.div>
-  );
+  return <PharmacyShell />;
 }
 
 // ── Dynamic step indicator steps ──
@@ -1060,32 +961,43 @@ export default function HomePage() {
     );
   }
 
+  // Dashboard has its own bottom nav and full-screen layout
+  const isDashboard = step === "dashboard";
+
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-background via-background to-muted/20">
-      {/* Header */}
-      <header className="border-b bg-card/80 backdrop-blur-sm sticky top-0 z-10">
-        <div className="max-w-md mx-auto px-4 py-3 flex items-center gap-2.5">
-          <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
-            <Box className="h-5 w-5 text-primary-foreground" />
-          </div>
-          <span className="font-bold text-lg">Inventory<span className="text-primary">OS</span></span>
-          {step !== "landing" && (
-            <Button variant="ghost" size="sm" className="ml-auto text-xs" onClick={reset}>
-              Start Over
-            </Button>
-          )}
-        </div>
-      </header>
+      {!isDashboard && (
+        <>
+          {/* Header */}
+          <header className="border-b bg-card/80 backdrop-blur-sm sticky top-0 z-10">
+            <div className="max-w-md mx-auto px-4 py-3 flex items-center gap-2.5">
+              <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
+                <Box className="h-5 w-5 text-primary-foreground" />
+              </div>
+              <span className="font-bold text-lg">Inventory<span className="text-primary">OS</span></span>
+              {step !== "landing" && (
+                <Button variant="ghost" size="sm" className="ml-auto text-xs" onClick={reset}>
+                  Start Over
+                </Button>
+              )}
+            </div>
+          </header>
 
-      {/* Step indicator */}
-      {stepPath.length > 1 && (
-        <div className="py-3 bg-card/50">
-          <StepIndicator current={step} steps={stepPath} />
-        </div>
+          {/* Step indicator */}
+          {stepPath.length > 1 && (
+            <div className="py-3 bg-card/50">
+              <StepIndicator current={step} steps={stepPath} />
+            </div>
+          )}
+        </>
       )}
 
       {/* Main content */}
-      <main className="flex-1 max-w-md mx-auto w-full px-4 py-6">
+      <main className={cn(
+        "flex-1 max-w-md mx-auto w-full",
+        isDashboard ? "px-4 py-4" : "px-4 py-6",
+        isDashboard && "flex flex-col"
+      )}>
         <AnimatePresence mode="wait">
           {step === "landing" && <LandingStep key="landing" />}
           {step === "phone" && <PhoneStep key="phone" />}
@@ -1098,12 +1010,14 @@ export default function HomePage() {
         </AnimatePresence>
       </main>
 
-      {/* Footer */}
-      <footer className="border-t bg-card/50 mt-auto">
-        <div className="max-w-md mx-auto px-4 py-3 text-center text-[11px] text-muted-foreground">
-          InventoryOS — Simple inventory for every business
-        </div>
-      </footer>
+      {!isDashboard && (
+        /* Footer */
+        <footer className="border-t bg-card/50 mt-auto">
+          <div className="max-w-md mx-auto px-4 py-3 text-center text-[11px] text-muted-foreground">
+            InventoryOS — Simple inventory for every business
+          </div>
+        </footer>
+      )}
     </div>
   );
 }
