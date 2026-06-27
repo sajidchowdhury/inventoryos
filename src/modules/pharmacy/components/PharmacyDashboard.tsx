@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
   Package, AlertTriangle, TrendingUp, Clock, Plus,
-  ChevronRight, Pill, ShoppingBag, BarChart3, Boxes, ShoppingCart, History, CalendarClock, Bell, Users, Receipt, DollarSign, RotateCcw, Percent, BarChart, Truck, PackagePlus, LayoutDashboard, Sparkles, MessageSquare, Brain,
+  ChevronRight, Pill, ShoppingBag, BarChart3, Boxes, ShoppingCart, History, CalendarClock, Bell, Users, Receipt, DollarSign, RotateCcw, Percent, BarChart, Truck, PackagePlus, LayoutDashboard, Sparkles, MessageSquare, Brain, LineChart, Zap,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -162,34 +162,52 @@ export function PharmacyDashboard() {
       </Button>
 
       {/* AI Features Section */}
-      <div className="grid grid-cols-3 gap-2">
-        <Card className="cursor-pointer hover:shadow-md transition-shadow active:scale-[0.97] border-2 border-primary/20 bg-gradient-to-br from-primary/5 to-transparent" onClick={() => setActiveView("ai-insights")}>
-          <CardContent className="p-3 flex flex-col items-center gap-1.5 text-center">
-            <div className="h-9 w-9 rounded-full bg-primary flex items-center justify-center">
-              <Sparkles className="h-4 w-4 text-primary-foreground" />
-            </div>
-            <span className="text-[10px] font-bold text-primary">AI Insights</span>
-            <span className="text-[8px] text-muted-foreground">Smart analysis</span>
-          </CardContent>
-        </Card>
-        <Card className="cursor-pointer hover:shadow-md transition-shadow active:scale-[0.97] border-2 border-purple-200 bg-gradient-to-br from-purple/5 to-transparent" onClick={() => setActiveView("ai-chat")}>
-          <CardContent className="p-3 flex flex-col items-center gap-1.5 text-center">
-            <div className="h-9 w-9 rounded-full bg-purple-500 flex items-center justify-center">
-              <MessageSquare className="h-4 w-4 text-white" />
-            </div>
-            <span className="text-[10px] font-bold text-purple-600">AI Assistant</span>
-            <span className="text-[8px] text-muted-foreground">Ask anything</span>
-          </CardContent>
-        </Card>
-        <Card className="cursor-pointer hover:shadow-md transition-shadow active:scale-[0.97] border-2 border-teal-200 bg-gradient-to-br from-teal/5 to-transparent" onClick={() => setActiveView("ai-reorder")}>
-          <CardContent className="p-3 flex flex-col items-center gap-1.5 text-center">
-            <div className="h-9 w-9 rounded-full bg-teal-500 flex items-center justify-center">
-              <Brain className="h-4 w-4 text-white" />
-            </div>
-            <span className="text-[10px] font-bold text-teal-600">Smart Reorder</span>
-            <span className="text-[8px] text-muted-foreground">AI predictions</span>
-          </CardContent>
-        </Card>
+      <div>
+        <h2 className="text-xs font-bold mb-2 flex items-center gap-1 text-primary">
+          <Sparkles className="h-3.5 w-3.5" /> AI Features
+        </h2>
+        <div className="grid grid-cols-3 gap-2">
+          <Card className="cursor-pointer hover:shadow-md transition-shadow active:scale-[0.97] border-2 border-primary/20 bg-gradient-to-br from-primary/5 to-transparent" onClick={() => setActiveView("ai-insights")}>
+            <CardContent className="p-2.5 flex flex-col items-center gap-1 text-center">
+              <div className="h-9 w-9 rounded-full bg-primary flex items-center justify-center">
+                <Sparkles className="h-4 w-4 text-primary-foreground" />
+              </div>
+              <span className="text-[9px] font-bold text-primary">Insights</span>
+            </CardContent>
+          </Card>
+          <Card className="cursor-pointer hover:shadow-md transition-shadow active:scale-[0.97] border-2 border-purple-200" onClick={() => setActiveView("ai-chat")}>
+            <CardContent className="p-2.5 flex flex-col items-center gap-1 text-center">
+              <div className="h-9 w-9 rounded-full bg-purple-500 flex items-center justify-center">
+                <MessageSquare className="h-4 w-4 text-white" />
+              </div>
+              <span className="text-[9px] font-bold text-purple-600">Assistant</span>
+            </CardContent>
+          </Card>
+          <Card className="cursor-pointer hover:shadow-md transition-shadow active:scale-[0.97] border-2 border-teal-200" onClick={() => setActiveView("ai-reorder")}>
+            <CardContent className="p-2.5 flex flex-col items-center gap-1 text-center">
+              <div className="h-9 w-9 rounded-full bg-teal-500 flex items-center justify-center">
+                <Brain className="h-4 w-4 text-white" />
+              </div>
+              <span className="text-[9px] font-bold text-teal-600">Reorder</span>
+            </CardContent>
+          </Card>
+          <Card className="cursor-pointer hover:shadow-md transition-shadow active:scale-[0.97] border-2 border-indigo-200" onClick={() => setActiveView("ai-forecast")}>
+            <CardContent className="p-2.5 flex flex-col items-center gap-1 text-center">
+              <div className="h-9 w-9 rounded-full bg-indigo-500 flex items-center justify-center">
+                <LineChart className="h-4 w-4 text-white" />
+              </div>
+              <span className="text-[9px] font-bold text-indigo-600">Forecast</span>
+            </CardContent>
+          </Card>
+          <Card className="cursor-pointer hover:shadow-md transition-shadow active:scale-[0.97] border-2 border-amber-200" onClick={() => setActiveView("ai-expiry-opt")}>
+            <CardContent className="p-2.5 flex flex-col items-center gap-1 text-center">
+              <div className="h-9 w-9 rounded-full bg-amber-500 flex items-center justify-center">
+                <Zap className="h-4 w-4 text-white" />
+              </div>
+              <span className="text-[9px] font-bold text-amber-600">Expiry Opt</span>
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
       {/* Stat Cards */}

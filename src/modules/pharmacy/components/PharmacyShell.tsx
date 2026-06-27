@@ -41,6 +41,8 @@ import { CsvImport } from "./CsvImport";
 import { AIInsights } from "./AIInsights";
 import { AIChat } from "./AIChat";
 import { ReorderSuggestions } from "./ReorderSuggestions";
+import { DemandForecast } from "./DemandForecast";
+import { ExpiryOptimizer } from "./ExpiryOptimizer";
 import { ProfileView } from "./ProfileView";
 import { BottomNav } from "./BottomNav";
 
@@ -139,6 +141,10 @@ export function PharmacyShell() {
         return <AIChat />;
       case "ai-reorder":
         return <ReorderSuggestions />;
+      case "ai-forecast":
+        return <DemandForecast />;
+      case "ai-expiry-opt":
+        return <ExpiryOptimizer />;
       case "profile":
         return <ProfileView />;
       default:

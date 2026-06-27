@@ -50,5 +50,7 @@ export { CsvImport } from "./CsvImport";
 export { AIInsights } from "./AIInsights";
 export { AIChat } from "./AIChat";
 export { ReorderSuggestions } from "./ReorderSuggestions";
+export { DemandForecast } from "./DemandForecast";
+export { ExpiryOptimizer } from "./ExpiryOptimizer";
 export { ProfileView } from "./ProfileView";
 export { BottomNav } from "./BottomNav";

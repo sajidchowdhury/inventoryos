@@ -49,6 +49,8 @@ export type PharmacyView =
   | "ai-insights"     // AI-powered business insights
   | "ai-chat"         // AI chat assistant
   | "ai-reorder"      // Smart reorder suggestions
+  | "ai-forecast"     // Demand forecasting
+  | "ai-expiry-opt"   // Expiry optimization recommendations
   | "profile";        // Business profile / settings
 
 interface NavState {
