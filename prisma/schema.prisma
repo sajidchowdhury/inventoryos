@@ -1,0 +1,195 @@
+// ── InventoryOS Database Schema ──
+// Multi-tenant inventory management platform
+// Phase 0: Core tables for authentication and business management
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ── Business Types ──
+// Registry of supported business types (pharmacy, grocery, etc.)
+model BusinessType {
+  id        String   @id @default(cuid())
+  slug      String   @unique  // "pharmacy", "grocery", "restaurant", etc.
+  name      String              // "Pharmacy", "Grocery Shop", etc.
+  icon      String              // Icon name from lucide-react
+  color     String              // Brand color hex (e.g., "#16A34A")
+  isActive  Boolean  @default(false)  // Only active types are selectable
+  sortOrder Int     @default(0)       // Display order on landing page
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  businesses Business[]
+}
+
+// ── Users ──
+// Platform-level users identified by phone number
+model User {
+  id        String   @id @default(cuid())
+  phone     String   @unique  // Primary identifier (BD phone: +8801XXXXXXXXX)
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  businesses Business[]
+}
+
+// ── Businesses ──
+// A specific business registered under a user
+model Business {
+  id             String   @id @default(cuid())
+  userId         String
+  businessTypeId String
+  name           String              // Business display name
+  address        String?
+  phone          String?             // Business contact (may differ from user phone)
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  businessType BusinessType @relation(fields: [businessTypeId], references: [id])
+  businessUsers BusinessUser[]
+  categories    Category[]
+  products      Product[]
+  transactions  Transaction[]
+  inventories   Inventory[]
+
+  @@index([userId])
+  @@index([businessTypeId])
+}
+
+// ── Business Users ──
+// Per-business login credentials with roles
+model BusinessUser {
+  id           String   @id @default(cuid())
+  businessId   String
+  username     String              // Login username (unique per business)
+  passwordHash String              // bcrypt hashed password
+  role         String   @default("admin")  // "admin", "manager", "staff"
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  sessions Session[]
+
+  @@unique([businessId, username])
+  @@index([businessId])
+}
+
+// ── Categories ──
+// Product categories scoped per business, supports hierarchy
+model Category {
+  id         String   @id @default(cuid())
+  businessId String
+  parentId   String?             // Self-referencing for hierarchy
+  name       String
+  type       String?             // "product", "service", etc.
+  sortOrder  Int     @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  business Business   @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  parent   Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children Category[] @relation("CategoryHierarchy")
+  products Product[]
+
+  @@index([businessId])
+  @@index([parentId])
+}
+
+// ── Products (Base) ──
+// Base product table extended by business-type-specific tables
+model Product {
+  id         String   @id @default(cuid())
+  businessId String
+  categoryId String?
+  name       String
+  sku        String?             // Stock keeping unit code
+  unit       String   @default("piece")  // "piece", "box", "kg", "liter", etc.
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  business     Business     @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  category     Category?    @relation(fields: [categoryId], references: [id])
+  inventory    Inventory?
+  transactions Transaction[]
+
+  @@index([businessId])
+  @@index([categoryId])
+}
+
+// ── Inventory ──
+// Current stock levels per product
+model Inventory {
+  id         String   @id @default(cuid())
+  businessId String
+  productId  String   @unique  // One inventory record per product
+  quantity   Float    @default(0)
+  minStock   Float    @default(0)    // Low stock threshold
+  unitCost   Float?                   // Cost per unit
+  updatedAt  DateTime @updatedAt
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  product  Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+}
+
+// ── Transactions ──
+// Stock movement log (purchases, sales, adjustments, etc.)
+model Transaction {
+  id         String   @id @default(cuid())
+  businessId String
+  productId  String
+  type       String              // "PURCHASE", "SALE", "ADJUSTMENT", "WASTE", "RETURN"
+  quantity   Float               // Positive for in, negative for out
+  note       String?             // Optional reason/note
+  createdAt  DateTime @default(now())
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  product  Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@index([productId])
+  @@index([createdAt])
+}
+
+// ── OTP Verification ──
+// One-time passwords for phone verification and password reset
+model OtpVerification {
+  id        String   @id @default(cuid())
+  phone     String
+  otp       String              // The OTP code
+  purpose   String              // "LOGIN", "REGISTER", "RESET_PASSWORD"
+  expiresAt DateTime            // OTP expiration time
+  isUsed    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([phone, purpose])
+  @@index([expiresAt])
+}
+
+// ── Sessions ──
+// Active user sessions for "remember me" functionality
+model Session {
+  id           String   @id @default(cuid())
+  businessUserId String
+  token        String   @unique  // Session token
+  deviceInfo   String?            // Browser/device info
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+
+  businessUser BusinessUser @relation(fields: [businessUserId], references: [id], onDelete: Cascade)
+
+  @@index([businessUserId])
+  @@index([token])
+  @@index([expiresAt])
+}
