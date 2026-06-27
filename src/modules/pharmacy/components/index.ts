@@ -6,6 +6,8 @@ export { ProductForm } from "./ProductForm";
 export { BatchList } from "./BatchList";
 export { BatchForm } from "./BatchForm";
 export { StockAdjust } from "./StockAdjust";
+export { QuickDispense } from "./QuickDispense";
+export { ExpiryAlertsWidget } from "./ExpiryAlertsWidget";
 export { CategoryManager } from "./CategoryManager";
 export { CsvImport } from "./CsvImport";
 export { ProfileView } from "./ProfileView";

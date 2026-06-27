@@ -4,13 +4,14 @@ import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
   Package, AlertTriangle, TrendingUp, Clock, Plus,
-  ChevronRight, Pill, ShoppingBag, BarChart3, Boxes,
+  ChevronRight, Pill, ShoppingBag, BarChart3, Boxes, ShoppingCart,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuthStore } from "@/lib/auth-store";
 import { useNavStore } from "@/lib/nav-store";
+import { ExpiryAlertsWidget } from "./ExpiryAlertsWidget";
 import { cn } from "@/lib/utils";
 
 interface DashboardStats {
@@ -145,6 +146,17 @@ export function PharmacyDashboard() {
         </Button>
       </div>
 
+      {/* Primary Dispense CTA */}
+      <Button
+        size="lg"
+        className="w-full h-14 gap-2 text-base shadow-md"
+        onClick={() => setActiveView("dispense")}
+      >
+        <ShoppingCart className="h-5 w-5" />
+        Quick Dispense
+        <span className="ml-1 text-xs opacity-80">FEFO</span>
+      </Button>
+
       {/* Stat Cards */}
       <div className="grid grid-cols-2 gap-3">
         {statCards.map((card) => (
@@ -271,6 +283,9 @@ export function PharmacyDashboard() {
           </div>
         )}
       </div>
+
+      {/* Expiry Alerts Widget */}
+      <ExpiryAlertsWidget />
     </motion.div>
   );
 }

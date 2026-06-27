@@ -7,6 +7,7 @@ import { ProductDetail } from "./ProductDetail";
 import { ProductForm } from "./ProductForm";
 import { BatchList } from "./BatchList";
 import { BatchForm } from "./BatchForm";
+import { QuickDispense } from "./QuickDispense";
 import { CategoryManager } from "./CategoryManager";
 import { CsvImport } from "./CsvImport";
 import { ProfileView } from "./ProfileView";
@@ -33,6 +34,8 @@ export function PharmacyShell() {
         return <BatchForm mode="add" />;
       case "edit-batch":
         return <BatchForm mode="edit" />;
+      case "dispense":
+        return <QuickDispense />;
       case "categories":
         return <CategoryManager />;
       case "import":

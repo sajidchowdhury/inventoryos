@@ -196,3 +196,71 @@ Stage Summary:
   * Cleanup restores inventory to 0
 - Production build clean, lint passes with zero errors
 - Audit trail via Transaction records (PURCHASE, ADJUSTMENT, STOCK_IN/OUT/WASTE/RETURN)
+---
+Task ID: 2b-completion
+Agent: Main Agent
+Task: Complete Phase 2b — FEFO Engine, Batch Sync, Expiry Alerts, Quick Dispense
+
+Work Log:
+- Created POST /api/businesses/[id]/products/[productId]/allocate (FEFO engine):
+  - Accepts { quantity, execute?, type?, note? }
+  - Dry-run mode (default) returns allocation plan without modifying stock
+  - Execute mode (execute=true) performs the allocation in DB
+  - Sorts batches by expiry ASC (FEFO order), skips expired/quarantined
+  - Returns 409 Conflict with shortfall if insufficient stock
+  - Creates SALE/DISPENSE Transaction per batch on execute
+  - Auto-recalculates batch status after quantity change
+  - Syncs Inventory.quantity (decrements by allocated amount)
+- Created POST /api/businesses/[id]/batches/sync-status:
+  - Recalculates status for all batches (or specific batchIds)
+  - Returns summary with count of changes + breakdown by status
+  - Used to automate near_expiry→expired transitions
+- Created GET /api/businesses/[id]/expiry-alerts:
+  - Returns batches with stock > 0 expiring within 90 days
+  - Groups by severity: expired, critical (<30d), warning (30-90d)
+  - Each alert includes suggestedAction ("Dispose", "Sell first", "FEFO priority")
+  - Calculates totalValueAtRisk (sum of quantity × MRP)
+- Created POST /api/businesses/[id]/dispense (multi-item FEFO dispense):
+  - Accepts { items: [{ productId, quantity }], note? }
+  - Processes each item via FEFO allocation
+  - Validates all items first, then executes atomically per-item
+  - Returns per-item results with allocation breakdown
+  - Creates SALE transactions for audit trail
+  - Updates both Batch.quantity and Inventory.quantity
+- Updated nav-store.ts: added "dispense" to PharmacyView type
+- Built QuickDispense.tsx component (3-tap flow):
+  - Tap 1: Search & add products to cart (debounced search)
+  - Tap 2: Enter quantities per item (with stock-exceeds warning)
+  - Tap 3: Preview FEFO allocation → Confirm dispense
+  - Shows per-batch allocation breakdown (which batch contributes how much)
+  - Success screen with total value dispensed
+  - Handles partial failures (some items succeed, others fail with shortfall)
+- Built ExpiryAlertsWidget.tsx for dashboard:
+  - Summary cards (expired / critical / warning counts)
+  - Value-at-risk display
+  - Top 3 most urgent alerts (expired first, then critical)
+  - Tap alert → navigate to product detail
+  - "All clear" state when no alerts
+  - Refresh button
+- Updated BottomNav: replaced "Add" with prominent "Dispense" button (raised, primary color)
+- Updated PharmacyDashboard:
+  - Added prominent "Quick Dispense" CTA button at top (h-14, shadow)
+  - Embedded ExpiryAlertsWidget at bottom of dashboard
+- Updated PharmacyShell and barrel exports to include new views/components
+
+Stage Summary:
+- Phase 2b is now COMPLETE — FEFO engine is fully functional
+- 4 new API routes: allocate, sync-status, expiry-alerts, dispense
+- 2 new UI components: QuickDispense, ExpiryAlertsWidget
+- 3 modified components: BottomNav (Dispense primary CTA), PharmacyDashboard (CTA + alerts widget), PharmacyShell
+- All 8 FEFO test scenarios pass:
+  * Dry-run allocation picks batches in expiry order (C→B→A) ✅
+  * Insufficient stock returns 409 with shortfall ✅
+  * Execute mode reduces stock correctly (180→110 after 70 dispensed) ✅
+  * Batch status sync recalculates correctly ✅
+  * Expiry alerts filtered to batches with stock > 0 ✅
+  * Multi-item dispense processes all items via FEFO ✅
+  * Per-batch allocation breakdown returned ✅
+  * Inventory syncs correctly across all operations ✅
+- Production build clean, lint passes with zero errors
+- FEFO guarantees: oldest-expiring stock is always sold first, preventing waste

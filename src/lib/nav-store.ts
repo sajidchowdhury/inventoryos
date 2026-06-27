@@ -12,6 +12,7 @@ export type PharmacyView =
   | "batches"         // All batches list with filters
   | "add-batch"       // Add batch to a product
   | "edit-batch"      // Edit existing batch
+  | "dispense"        // Quick dispense with FEFO
   | "categories"      // Category management
   | "import"          // CSV bulk import
   | "profile";        // Business profile / settings
