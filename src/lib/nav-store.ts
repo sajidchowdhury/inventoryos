@@ -4,7 +4,10 @@
 import { create } from "zustand";
 
 export type PharmacyView =
-  | "dashboard"       // Main dashboard with stats
+  | "dashboard"       // Main dashboard (Home tab)
+  | "inventory-hub"   // Inventory hub (Stock tab)
+  | "reports-hub"     // Reports hub (Reports tab)
+  | "more-hub"        // More hub (More tab)
   | "products"        // Product list with search
   | "product-detail"  // Single product with batches & stock info
   | "add-product"     // Add new product form

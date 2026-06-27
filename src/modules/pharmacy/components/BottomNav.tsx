@@ -1,18 +1,25 @@
 "use client";
 
 import {
-  LayoutDashboard, Package, ShoppingCart, Boxes, User,
+  LayoutDashboard, Package, ShoppingCart, FileBarChart, MoreHorizontal,
 } from "lucide-react";
 import { useNavStore, type PharmacyView } from "@/lib/nav-store";
 import { cn } from "@/lib/utils";
 
-const navItems: { view: PharmacyView; label: string; icon: typeof LayoutDashboard; primary?: boolean }[] = [
+const navItems: { view: PharmacyView; label: string; icon: typeof LayoutDashboard; primary?: boolean; hub?: boolean }[] = [
   { view: "dashboard", label: "Home", icon: LayoutDashboard },
-  { view: "products", label: "Products", icon: Package },
-  { view: "dispense", label: "Dispense", icon: ShoppingCart, primary: true },
-  { view: "batches", label: "Stock", icon: Boxes },
-  { view: "profile", label: "Profile", icon: User },
+  { view: "inventory-hub", label: "Stock", icon: Package, hub: true },
+  { view: "dispense", label: "Sell", icon: ShoppingCart, primary: true },
+  { view: "reports-hub", label: "Reports", icon: FileBarChart, hub: true },
+  { view: "more-hub", label: "More", icon: MoreHorizontal, hub: true },
 ];
+
+// Views that belong to each hub tab
+const hubGroups: Record<string, PharmacyView[]> = {
+  "inventory-hub": ["products", "product-detail", "add-product", "edit-product", "batches", "add-batch", "edit-batch", "expiry", "categories", "import"],
+  "reports-hub": ["analytics", "business-dashboard", "profit-loss", "inventory-value", "business-report", "tax-report", "audit-trail", "data-export", "transactions"],
+  "more-hub": ["customers", "customer-detail", "add-customer", "edit-customer", "customer-credit", "suppliers", "supplier-detail", "purchases", "purchase-detail", "add-purchase", "payments", "returns", "discount-rules", "users", "sessions", "login-activity", "alerts", "alert-settings", "ai-insights", "ai-chat", "ai-reorder", "ai-forecast", "ai-expiry-opt", "report", "profile"],
+};
 
 export function BottomNav() {
   const { activeView, setActiveView } = useNavStore();
@@ -21,12 +28,11 @@ export function BottomNav() {
     <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-card/95 backdrop-blur-md">
       <div className="max-w-md mx-auto flex items-center justify-around h-14">
         {navItems.map((item) => {
-          // Treat product-related views as "Products" active state
-          const isActive =
-            activeView === item.view ||
-            (item.view === "products" && (activeView === "product-detail" || activeView === "edit-product" || activeView === "add-product" || activeView === "add-batch" || activeView === "edit-batch")) ||
-            (item.view === "batches" && activeView === "edit-batch") ||
-            (item.view === "dispense" && activeView === "dispense");
+          // Check if current view belongs to this hub
+          let isActive = activeView === item.view;
+          if (item.hub && hubGroups[item.view]) {
+            isActive = isActive || hubGroups[item.view].includes(activeView);
+          }
 
           if (item.primary) {
             return (
@@ -54,9 +60,7 @@ export function BottomNav() {
               key={item.view}
               className={cn(
                 "flex flex-col items-center justify-center gap-0.5 flex-1 h-full transition-colors",
-                isActive
-                  ? "text-primary"
-                  : "text-muted-foreground hover:text-foreground"
+                isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
               )}
               onClick={() => setActiveView(item.view)}
             >
@@ -66,7 +70,6 @@ export function BottomNav() {
           );
         })}
       </div>
-      {/* Safe area for phones with home indicator */}
       <div className="h-[env(safe-area-inset-bottom)]" />
     </nav>
   );

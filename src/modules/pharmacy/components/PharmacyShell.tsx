@@ -2,6 +2,9 @@
 
 import { useNavStore } from "@/lib/nav-store";
 import { PharmacyDashboard } from "./PharmacyDashboard";
+import { InventoryHub } from "./InventoryHub";
+import { ReportsHub } from "./ReportsHub";
+import { MoreHub } from "./MoreHub";
 import { ProductList } from "./ProductList";
 import { ProductDetail } from "./ProductDetail";
 import { ProductForm } from "./ProductForm";
@@ -35,9 +38,6 @@ import { DataExport } from "./DataExport";
 import { UserManagement } from "./UserManagement";
 import { SessionManager } from "./SessionManager";
 import { LoginActivity } from "./LoginActivity";
-import { TransactionLog } from "./TransactionLog";
-import { CategoryManager } from "./CategoryManager";
-import { CsvImport } from "./CsvImport";
 import { AIInsights } from "./AIInsights";
 import { AIChat } from "./AIChat";
 import { ReorderSuggestions } from "./ReorderSuggestions";
@@ -51,8 +51,17 @@ export function PharmacyShell() {
 
   const renderView = () => {
     switch (activeView) {
+      // ── HUBS ──
       case "dashboard":
         return <PharmacyDashboard />;
+      case "inventory-hub":
+        return <InventoryHub />;
+      case "reports-hub":
+        return <ReportsHub />;
+      case "more-hub":
+        return <MoreHub />;
+
+      // ── PRODUCTS ──
       case "products":
         return <ProductList />;
       case "product-detail":
@@ -61,36 +70,45 @@ export function PharmacyShell() {
         return <ProductForm mode="add" />;
       case "edit-product":
         return <ProductForm mode="edit" />;
+
+      // ── BATCHES ──
       case "batches":
         return <BatchList />;
       case "add-batch":
         return <BatchForm mode="add" />;
       case "edit-batch":
         return <BatchForm mode="edit" />;
+
+      // ── SALES ──
       case "dispense":
         return <QuickDispense />;
       case "sales":
         return <SalesList />;
       case "sale-detail":
         return <SaleDetail />;
+
+      // ── ANALYTICS ──
       case "analytics":
         return <SalesAnalytics />;
+
+      // ── CUSTOMERS ──
       case "customers":
-        return <CustomerManager />;
-      case "customer-detail":
-        return <CustomerCreditView />;
       case "add-customer":
-        return <CustomerManager />;
       case "edit-customer":
         return <CustomerManager />;
+      case "customer-detail":
       case "customer-credit":
         return <CustomerCreditView />;
+
+      // ── PAYMENTS & RETURNS ──
       case "payments":
         return <PaymentManager />;
       case "returns":
         return <ReturnsManager />;
       case "discount-rules":
         return <DiscountRulesManager />;
+
+      // ── SUPPLIERS & PURCHASES ──
       case "suppliers":
         return <SupplierManager />;
       case "supplier-detail":
@@ -101,12 +119,18 @@ export function PharmacyShell() {
         return <PurchaseDetail />;
       case "add-purchase":
         return <PurchaseForm />;
+
+      // ── EXPIRY ──
       case "expiry":
         return <ExpiryDashboard />;
+
+      // ── ALERTS ──
       case "alerts":
         return <AlertsCenter />;
       case "alert-settings":
         return <AlertPreferences />;
+
+      // ── REPORTS ──
       case "report":
         return <ExpiryReport />;
       case "business-dashboard":
@@ -123,18 +147,22 @@ export function PharmacyShell() {
         return <AuditTrail />;
       case "data-export":
         return <DataExport />;
-      case "transactions":
-        return <TransactionLog />;
+
+      // ── USERS ──
       case "users":
         return <UserManagement />;
       case "sessions":
         return <SessionManager />;
       case "login-activity":
         return <LoginActivity />;
+
+      // ── CATEGORIES & IMPORT ──
       case "categories":
-        return <CategoryManager />;
+        return <CategoryManagerLazy />;
       case "import":
-        return <CsvImport />;
+        return <CsvImportLazy />;
+
+      // ── AI ──
       case "ai-insights":
         return <AIInsights />;
       case "ai-chat":
@@ -145,8 +173,11 @@ export function PharmacyShell() {
         return <DemandForecast />;
       case "ai-expiry-opt":
         return <ExpiryOptimizer />;
+
+      // ── PROFILE ──
       case "profile":
         return <ProfileView />;
+
       default:
         return <PharmacyDashboard />;
     }
@@ -161,3 +192,11 @@ export function PharmacyShell() {
     </div>
   );
 }
+
+// Lazy imports to avoid circular dependencies
+import { CategoryManager } from "./CategoryManager";
+import { CsvImport } from "./CsvImport";
+import { TransactionLog } from "./TransactionLog";
+
+function CategoryManagerLazy() { return <CategoryManager />; }
+function CsvImportLazy() { return <CsvImport />; }

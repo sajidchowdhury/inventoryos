@@ -3,8 +3,9 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
-  Package, AlertTriangle, TrendingUp, Clock, Plus,
-  ChevronRight, Pill, ShoppingBag, BarChart3, Boxes, ShoppingCart, History, CalendarClock, Bell, Users, Receipt, DollarSign, RotateCcw, Percent, BarChart, Truck, PackagePlus, LayoutDashboard, Sparkles, MessageSquare, Brain, LineChart, Zap,
+  ShoppingCart, Package, AlertTriangle, TrendingUp,
+  Sparkles, ChevronRight, Clock, DollarSign,
+  Boxes, Receipt,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -22,16 +23,6 @@ interface DashboardStats {
   totalCategories: number;
 }
 
-interface RecentProduct {
-  id: string;
-  name: string;
-  genericName: string | null;
-  manufacturer: string | null;
-  category: { name: string; color: string } | null;
-  inventory: { quantity: number } | null;
-  batches: { id: string; expiryDate: string }[];
-}
-
 const fadeIn = {
   initial: { opacity: 0, y: 12 },
   animate: { opacity: 1, y: 0 },
@@ -40,14 +31,15 @@ const fadeIn = {
 
 export function PharmacyDashboard() {
   const session = useAuthStore((s) => s.session);
-  const setActiveView = useNavStore((s) => s.setActiveView);
+  const { setActiveView } = useNavStore();
+  const businessId = session?.business?.id;
+
   const [stats, setStats] = useState<DashboardStats>({
     totalProducts: 0, lowStockCount: 0, expiringSoonCount: 0, totalCategories: 0,
   });
-  const [recentProducts, setRecentProducts] = useState<RecentProduct[]>([]);
+  const [todaySales, setTodaySales] = useState({ total: 0, count: 0 });
+  const [recentProducts, setRecentProducts] = useState<Array<{ id: string; name: string; genericName: string | null; manufacturer: string | null; inventory: { quantity: number } | null; category: { name: string; color: string } | null }>>([]);
   const [loading, setLoading] = useState(true);
-
-  const businessId = session?.business?.id;
 
   const fetchDashboard = useCallback(async () => {
     if (!businessId) return;
@@ -60,28 +52,14 @@ export function PharmacyDashboard() {
       const catData = await catRes.json();
 
       if (prodData.success) {
-        const products = prodData.products;
+        const products = prodData.products || [];
         const totalProducts = prodData.pagination?.total ?? products.length;
-
-        // Count low stock items
-        const lowStock = products.filter(
-          (p: RecentProduct) => (p.inventory?.quantity ?? 0) <= 5
-        ).length;
-
-        // Count items expiring in 90 days
-        const now = new Date();
-        const ninetyDays = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
-        let expiringSoon = 0;
-        products.forEach((p: RecentProduct) => {
-          p.batches?.forEach((b: { expiryDate: string }) => {
-            if (new Date(b.expiryDate) <= ninetyDays) expiringSoon++;
-          });
-        });
+        const lowStock = products.filter((p: { inventory: { quantity: number } | null }) => (p.inventory?.quantity ?? 0) <= 5).length;
 
         setStats({
           totalProducts,
           lowStockCount: lowStock,
-          expiringSoonCount: expiringSoon,
+          expiringSoonCount: 0,
           totalCategories: catData.allCategories?.length ?? 0,
         });
         setRecentProducts(products);
@@ -95,62 +73,20 @@ export function PharmacyDashboard() {
 
   useEffect(() => { fetchDashboard(); }, [fetchDashboard]);
 
-  const statCards = [
-    {
-      label: "Products",
-      value: stats.totalProducts,
-      icon: Package,
-      color: "text-blue-600",
-      bg: "bg-blue-50",
-      onClick: () => setActiveView("products"),
-    },
-    {
-      label: "Low Stock",
-      value: stats.lowStockCount,
-      icon: AlertTriangle,
-      color: "text-orange-600",
-      bg: "bg-orange-50",
-      onClick: () => setActiveView("products"),
-    },
-    {
-      label: "Expiring Soon",
-      value: stats.expiringSoonCount,
-      icon: Clock,
-      color: "text-red-600",
-      bg: "bg-red-50",
-      onClick: () => setActiveView("batches"),
-    },
-    {
-      label: "Categories",
-      value: stats.totalCategories,
-      icon: ShoppingBag,
-      color: "text-purple-600",
-      bg: "bg-purple-50",
-      onClick: () => setActiveView("categories"),
-    },
-  ];
-
   return (
-    <motion.div {...fadeIn} className="space-y-5 pb-4">
-      {/* Greeting */}
+    <motion.div {...fadeIn} className="space-y-4 pb-4">
+      {/* ── HEADER ── */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold">{session?.business?.name || "Pharmacy"}</h1>
-          <p className="text-sm text-muted-foreground">Welcome back! Here is your inventory overview.</p>
+          <p className="text-xs text-muted-foreground">
+            {new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}
+          </p>
         </div>
-        <div className="flex items-center gap-1">
-          <NotificationCenter />
-          <Button
-            size="sm"
-            className="gap-1.5"
-            onClick={() => setActiveView("add-product")}
-          >
-            <Plus className="h-4 w-4" /> Add
-          </Button>
-        </div>
+        <NotificationCenter />
       </div>
 
-      {/* Primary New Sale CTA */}
+      {/* ── PRIMARY CTA ── */}
       <Button
         size="lg"
         className="w-full h-14 gap-2 text-base shadow-md"
@@ -158,233 +94,76 @@ export function PharmacyDashboard() {
       >
         <ShoppingCart className="h-5 w-5" />
         New Sale
-        <span className="ml-1 text-xs opacity-80">FEFO</span>
       </Button>
 
-      {/* AI Features Section */}
-      <div>
-        <h2 className="text-xs font-bold mb-2 flex items-center gap-1 text-primary">
-          <Sparkles className="h-3.5 w-3.5" /> AI Features
-        </h2>
-        <div className="grid grid-cols-3 gap-2">
-          <Card className="cursor-pointer hover:shadow-md transition-shadow active:scale-[0.97] border-2 border-primary/20 bg-gradient-to-br from-primary/5 to-transparent" onClick={() => setActiveView("ai-insights")}>
-            <CardContent className="p-2.5 flex flex-col items-center gap-1 text-center">
-              <div className="h-9 w-9 rounded-full bg-primary flex items-center justify-center">
-                <Sparkles className="h-4 w-4 text-primary-foreground" />
-              </div>
-              <span className="text-[9px] font-bold text-primary">Insights</span>
-            </CardContent>
-          </Card>
-          <Card className="cursor-pointer hover:shadow-md transition-shadow active:scale-[0.97] border-2 border-purple-200" onClick={() => setActiveView("ai-chat")}>
-            <CardContent className="p-2.5 flex flex-col items-center gap-1 text-center">
-              <div className="h-9 w-9 rounded-full bg-purple-500 flex items-center justify-center">
-                <MessageSquare className="h-4 w-4 text-white" />
-              </div>
-              <span className="text-[9px] font-bold text-purple-600">Assistant</span>
-            </CardContent>
-          </Card>
-          <Card className="cursor-pointer hover:shadow-md transition-shadow active:scale-[0.97] border-2 border-teal-200" onClick={() => setActiveView("ai-reorder")}>
-            <CardContent className="p-2.5 flex flex-col items-center gap-1 text-center">
-              <div className="h-9 w-9 rounded-full bg-teal-500 flex items-center justify-center">
-                <Brain className="h-4 w-4 text-white" />
-              </div>
-              <span className="text-[9px] font-bold text-teal-600">Reorder</span>
-            </CardContent>
-          </Card>
-          <Card className="cursor-pointer hover:shadow-md transition-shadow active:scale-[0.97] border-2 border-indigo-200" onClick={() => setActiveView("ai-forecast")}>
-            <CardContent className="p-2.5 flex flex-col items-center gap-1 text-center">
-              <div className="h-9 w-9 rounded-full bg-indigo-500 flex items-center justify-center">
-                <LineChart className="h-4 w-4 text-white" />
-              </div>
-              <span className="text-[9px] font-bold text-indigo-600">Forecast</span>
-            </CardContent>
-          </Card>
-          <Card className="cursor-pointer hover:shadow-md transition-shadow active:scale-[0.97] border-2 border-amber-200" onClick={() => setActiveView("ai-expiry-opt")}>
-            <CardContent className="p-2.5 flex flex-col items-center gap-1 text-center">
-              <div className="h-9 w-9 rounded-full bg-amber-500 flex items-center justify-center">
-                <Zap className="h-4 w-4 text-white" />
-              </div>
-              <span className="text-[9px] font-bold text-amber-600">Expiry Opt</span>
-            </CardContent>
-          </Card>
-        </div>
+      {/* ── TODAY'S SNAPSHOT ── */}
+      <div className="grid grid-cols-3 gap-2">
+        <Card className="border-l-4 border-l-green-500">
+          <CardContent className="p-2.5">
+            <p className="text-[9px] text-muted-foreground">Products</p>
+            <p className="text-lg font-bold text-green-600">
+              {loading ? "—" : stats.totalProducts}
+            </p>
+          </CardContent>
+        </Card>
+        <Card className={cn("border-l-4", stats.lowStockCount > 0 ? "border-l-orange-500" : "border-l-blue-500")}>
+          <CardContent className="p-2.5">
+            <p className="text-[9px] text-muted-foreground">Low Stock</p>
+            <p className={cn("text-lg font-bold", stats.lowStockCount > 0 ? "text-orange-600" : "text-blue-600")}>
+              {loading ? "—" : stats.lowStockCount}
+            </p>
+          </CardContent>
+        </Card>
+        <Card className="border-l-4 border-l-purple-500">
+          <CardContent className="p-2.5">
+            <p className="text-[9px] text-muted-foreground">Categories</p>
+            <p className="text-lg font-bold text-purple-600">
+              {loading ? "—" : stats.totalCategories}
+            </p>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Stat Cards */}
-      <div className="grid grid-cols-2 gap-3">
-        {statCards.map((card) => (
-          <Card
-            key={card.label}
-            className="cursor-pointer hover:shadow-md transition-shadow active:scale-[0.98]"
-            onClick={card.onClick}
-          >
-            <CardContent className="p-4 flex items-center gap-3">
-              <div className={cn("h-10 w-10 rounded-xl flex items-center justify-center", card.bg)}>
-                <card.icon className={cn("h-5 w-5", card.color)} />
-              </div>
-              <div>
-                <p className={cn("text-2xl font-bold", card.color)}>
-                  {loading ? "—" : card.value}
-                </p>
-                <p className="text-xs text-muted-foreground">{card.label}</p>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+      {/* ── QUICK ACTIONS (max 4) ── */}
+      <div className="grid grid-cols-4 gap-2">
+        <Card className="cursor-pointer hover:shadow-md transition-shadow active:scale-[0.97]" onClick={() => setActiveView("products")}>
+          <CardContent className="p-2.5 flex flex-col items-center gap-1 text-center">
+            <div className="h-9 w-9 rounded-full bg-blue-50 flex items-center justify-center">
+              <Package className="h-4 w-4 text-blue-600" />
+            </div>
+            <span className="text-[9px] font-medium">Products</span>
+          </CardContent>
+        </Card>
+        <Card className="cursor-pointer hover:shadow-md transition-shadow active:scale-[0.97]" onClick={() => setActiveView("add-purchase")}>
+          <CardContent className="p-2.5 flex flex-col items-center gap-1 text-center">
+            <div className="h-9 w-9 rounded-full bg-green-50 flex items-center justify-center">
+              <Boxes className="h-4 w-4 text-green-600" />
+            </div>
+            <span className="text-[9px] font-medium">Restock</span>
+          </CardContent>
+        </Card>
+        <Card className="cursor-pointer hover:shadow-md transition-shadow active:scale-[0.97]" onClick={() => setActiveView("sales")}>
+          <CardContent className="p-2.5 flex flex-col items-center gap-1 text-center">
+            <div className="h-9 w-9 rounded-full bg-purple-50 flex items-center justify-center">
+              <Receipt className="h-4 w-4 text-purple-600" />
+            </div>
+            <span className="text-[9px] font-medium">Invoices</span>
+          </CardContent>
+        </Card>
+        <Card className="cursor-pointer hover:shadow-md transition-shadow active:scale-[0.97] border-2 border-primary/20" onClick={() => setActiveView("ai-insights")}>
+          <CardContent className="p-2.5 flex flex-col items-center gap-1 text-center">
+            <div className="h-9 w-9 rounded-full bg-primary flex items-center justify-center">
+              <Sparkles className="h-4 w-4 text-primary-foreground" />
+            </div>
+            <span className="text-[9px] font-bold text-primary">AI</span>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Quick Actions */}
-      <div>
-        <h2 className="text-sm font-semibold mb-2 text-muted-foreground">Quick Actions</h2>
-        <div className="grid grid-cols-4 gap-2">
-          <Card className="cursor-pointer hover:shadow-md transition-shadow active:scale-[0.97] border-2 border-primary/30" onClick={() => setActiveView("business-dashboard")}>
-            <CardContent className="p-2 flex flex-col items-center gap-1 text-center">
-              <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center">
-                <LayoutDashboard className="h-4 w-4 text-primary-foreground" />
-              </div>
-              <span className="text-[9px] font-bold leading-tight text-primary">Overview</span>
-            </CardContent>
-          </Card>
-          <Card className="cursor-pointer hover:shadow-md transition-shadow active:scale-[0.97]" onClick={() => setActiveView("dispense")}>
-            <CardContent className="p-2 flex flex-col items-center gap-1 text-center">
-              <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                <ShoppingCart className="h-4 w-4 text-primary" />
-              </div>
-              <span className="text-[9px] font-medium leading-tight">New Sale</span>
-            </CardContent>
-          </Card>
-          <Card className="cursor-pointer hover:shadow-md transition-shadow active:scale-[0.97]" onClick={() => setActiveView("sales")}>
-            <CardContent className="p-2 flex flex-col items-center gap-1 text-center">
-              <div className="h-8 w-8 rounded-full bg-green-50 flex items-center justify-center">
-                <Receipt className="h-4 w-4 text-green-600" />
-              </div>
-              <span className="text-[9px] font-medium leading-tight">Sales</span>
-            </CardContent>
-          </Card>
-          <Card className="cursor-pointer hover:shadow-md transition-shadow active:scale-[0.97]" onClick={() => setActiveView("payments")}>
-            <CardContent className="p-2 flex flex-col items-center gap-1 text-center">
-              <div className="h-8 w-8 rounded-full bg-emerald-50 flex items-center justify-center">
-                <DollarSign className="h-4 w-4 text-emerald-600" />
-              </div>
-              <span className="text-[9px] font-medium leading-tight">Payments</span>
-            </CardContent>
-          </Card>
-          <Card className="cursor-pointer hover:shadow-md transition-shadow active:scale-[0.97]" onClick={() => setActiveView("returns")}>
-            <CardContent className="p-2 flex flex-col items-center gap-1 text-center">
-              <div className="h-8 w-8 rounded-full bg-orange-50 flex items-center justify-center">
-                <RotateCcw className="h-4 w-4 text-orange-600" />
-              </div>
-              <span className="text-[9px] font-medium leading-tight">Returns</span>
-            </CardContent>
-          </Card>
-          <Card className="cursor-pointer hover:shadow-md transition-shadow active:scale-[0.97]" onClick={() => setActiveView("customers")}>
-            <CardContent className="p-2 flex flex-col items-center gap-1 text-center">
-              <div className="h-8 w-8 rounded-full bg-blue-50 flex items-center justify-center">
-                <Users className="h-4 w-4 text-blue-600" />
-              </div>
-              <span className="text-[9px] font-medium leading-tight">Customers</span>
-            </CardContent>
-          </Card>
-          <Card className="cursor-pointer hover:shadow-md transition-shadow active:scale-[0.97]" onClick={() => setActiveView("add-product")}>
-            <CardContent className="p-2 flex flex-col items-center gap-1 text-center">
-              <div className="h-8 w-8 rounded-full bg-violet-50 flex items-center justify-center">
-                <Plus className="h-4 w-4 text-violet-600" />
-              </div>
-              <span className="text-[9px] font-medium leading-tight">Add Product</span>
-            </CardContent>
-          </Card>
-          <Card className="cursor-pointer hover:shadow-md transition-shadow active:scale-[0.97]" onClick={() => setActiveView("products")}>
-            <CardContent className="p-2 flex flex-col items-center gap-1 text-center">
-              <div className="h-8 w-8 rounded-full bg-indigo-50 flex items-center justify-center">
-                <Pill className="h-4 w-4 text-indigo-600" />
-              </div>
-              <span className="text-[9px] font-medium leading-tight">Products</span>
-            </CardContent>
-          </Card>
-          <Card className="cursor-pointer hover:shadow-md transition-shadow active:scale-[0.97]" onClick={() => setActiveView("batches")}>
-            <CardContent className="p-2 flex flex-col items-center gap-1 text-center">
-              <div className="h-8 w-8 rounded-full bg-amber-50 flex items-center justify-center">
-                <Boxes className="h-4 w-4 text-amber-600" />
-              </div>
-              <span className="text-[9px] font-medium leading-tight">Stock</span>
-            </CardContent>
-          </Card>
-          <Card className="cursor-pointer hover:shadow-md transition-shadow active:scale-[0.97]" onClick={() => setActiveView("expiry")}>
-            <CardContent className="p-2 flex flex-col items-center gap-1 text-center">
-              <div className="h-8 w-8 rounded-full bg-red-50 flex items-center justify-center">
-                <CalendarClock className="h-4 w-4 text-red-600" />
-              </div>
-              <span className="text-[9px] font-medium leading-tight">Expiry</span>
-            </CardContent>
-          </Card>
-          <Card className="cursor-pointer hover:shadow-md transition-shadow active:scale-[0.97]" onClick={() => setActiveView("alerts")}>
-            <CardContent className="p-2 flex flex-col items-center gap-1 text-center">
-              <div className="h-8 w-8 rounded-full bg-yellow-50 flex items-center justify-center">
-                <Bell className="h-4 w-4 text-yellow-600" />
-              </div>
-              <span className="text-[9px] font-medium leading-tight">Alerts</span>
-            </CardContent>
-          </Card>
-          <Card className="cursor-pointer hover:shadow-md transition-shadow active:scale-[0.97]" onClick={() => setActiveView("report")}>
-            <CardContent className="p-2 flex flex-col items-center gap-1 text-center">
-              <div className="h-8 w-8 rounded-full bg-purple-50 flex items-center justify-center">
-                <History className="h-4 w-4 text-purple-600" />
-              </div>
-              <span className="text-[9px] font-medium leading-tight">Report</span>
-            </CardContent>
-          </Card>
-          <Card className="cursor-pointer hover:shadow-md transition-shadow active:scale-[0.97]" onClick={() => setActiveView("analytics")}>
-            <CardContent className="p-2 flex flex-col items-center gap-1 text-center">
-              <div className="h-8 w-8 rounded-full bg-pink-50 flex items-center justify-center">
-                <BarChart className="h-4 w-4 text-pink-600" />
-              </div>
-              <span className="text-[9px] font-medium leading-tight">Analytics</span>
-            </CardContent>
-          </Card>
-          <Card className="cursor-pointer hover:shadow-md transition-shadow active:scale-[0.97]" onClick={() => setActiveView("discount-rules")}>
-            <CardContent className="p-2 flex flex-col items-center gap-1 text-center">
-              <div className="h-8 w-8 rounded-full bg-teal-50 flex items-center justify-center">
-                <Percent className="h-4 w-4 text-teal-600" />
-              </div>
-              <span className="text-[9px] font-medium leading-tight">Discounts</span>
-            </CardContent>
-          </Card>
-          <Card className="cursor-pointer hover:shadow-md transition-shadow active:scale-[0.97]" onClick={() => setActiveView("suppliers")}>
-            <CardContent className="p-2 flex flex-col items-center gap-1 text-center">
-              <div className="h-8 w-8 rounded-full bg-stone-50 flex items-center justify-center">
-                <Truck className="h-4 w-4 text-stone-600" />
-              </div>
-              <span className="text-[9px] font-medium leading-tight">Suppliers</span>
-            </CardContent>
-          </Card>
-          <Card className="cursor-pointer hover:shadow-md transition-shadow active:scale-[0.97]" onClick={() => setActiveView("add-purchase")}>
-            <CardContent className="p-2 flex flex-col items-center gap-1 text-center">
-              <div className="h-8 w-8 rounded-full bg-lime-50 flex items-center justify-center">
-                <PackagePlus className="h-4 w-4 text-lime-600" />
-              </div>
-              <span className="text-[9px] font-medium leading-tight">Purchase</span>
-            </CardContent>
-          </Card>
-          <Card className="cursor-pointer hover:shadow-md transition-shadow active:scale-[0.97]" onClick={() => setActiveView("purchases")}>
-            <CardContent className="p-2 flex flex-col items-center gap-1 text-center">
-              <div className="h-8 w-8 rounded-full bg-fuchsia-50 flex items-center justify-center">
-                <Package className="h-4 w-4 text-fuchsia-600" />
-              </div>
-              <span className="text-[9px] font-medium leading-tight">Purchases</span>
-            </CardContent>
-          </Card>
-          <Card className="cursor-pointer hover:shadow-md transition-shadow active:scale-[0.97]" onClick={() => setActiveView("transactions")}>
-            <CardContent className="p-2 flex flex-col items-center gap-1 text-center">
-              <div className="h-8 w-8 rounded-full bg-cyan-50 flex items-center justify-center">
-                <History className="h-4 w-4 text-cyan-600" />
-              </div>
-              <span className="text-[9px] font-medium leading-tight">Activity</span>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+      {/* ── ALERTS ── */}
+      <ExpiryAlertsWidget />
 
-      {/* Recent Products */}
+      {/* ── RECENT PRODUCTS ── */}
       <div>
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-sm font-semibold text-muted-foreground">Recent Products</h2>
@@ -400,23 +179,19 @@ export function PharmacyDashboard() {
               <Package className="h-10 w-10 mx-auto text-muted-foreground/40" />
               <p className="text-sm text-muted-foreground">No products yet</p>
               <Button size="sm" className="gap-1.5" onClick={() => setActiveView("add-product")}>
-                <Plus className="h-3.5 w-3.5" /> Add your first product
+                Add your first product
               </Button>
             </CardContent>
           </Card>
         ) : (
           <div className="space-y-2">
             {recentProducts.map((product) => (
-              <Card key={product.id} className="overflow-hidden">
+              <Card key={product.id} className="cursor-pointer hover:shadow-md transition-shadow"
+                onClick={() => { useNavStore.getState().setActiveProductId(product.id); setActiveView("product-detail"); }}>
                 <CardContent className="p-3 flex items-center gap-3">
-                  <div
-                    className="h-9 w-9 rounded-lg flex items-center justify-center shrink-0"
-                    style={{ backgroundColor: product.category?.color ? `${product.category.color}20` : "#f3f4f6" }}
-                  >
-                    <Pill
-                      className="h-4 w-4"
-                      style={{ color: product.category?.color || "#6b7280" }}
-                    />
+                  <div className="h-9 w-9 rounded-lg flex items-center justify-center shrink-0"
+                    style={{ backgroundColor: product.category?.color ? `${product.category.color}20` : "#f3f4f6" }}>
+                    <Package className="h-4 w-4" style={{ color: product.category?.color || "#6b7280" }} />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold truncate">{product.name}</p>
@@ -425,7 +200,11 @@ export function PharmacyDashboard() {
                     </p>
                   </div>
                   <div className="text-right shrink-0">
-                    <p className="text-sm font-semibold">
+                    <p className={cn(
+                      "text-sm font-semibold",
+                      (product.inventory?.quantity ?? 0) <= 0 ? "text-red-600" :
+                      (product.inventory?.quantity ?? 0) <= 5 ? "text-orange-600" : "text-green-600"
+                    )}>
                       {product.inventory?.quantity ?? 0}
                     </p>
                     <p className="text-[10px] text-muted-foreground">in stock</p>
@@ -436,9 +215,6 @@ export function PharmacyDashboard() {
           </div>
         )}
       </div>
-
-      {/* Expiry Alerts Widget */}
-      <ExpiryAlertsWidget />
     </motion.div>
   );
 }
