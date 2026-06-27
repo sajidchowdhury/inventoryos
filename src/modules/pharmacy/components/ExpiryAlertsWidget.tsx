@@ -227,18 +227,18 @@ export function ExpiryAlertsWidget() {
         })}
       </div>
 
-      {/* View All Link */}
-      {summary.totalAlerts > topAlerts.length && (
-        <Button
-          variant="ghost"
-          size="sm"
-          className="w-full text-xs gap-1"
-          onClick={() => setActiveView("batches")}
-        >
-          View all {summary.totalAlerts} alerts
-          <ChevronRight className="h-3 w-3" />
-        </Button>
-      )}
+      {/* View All Link — always show, navigate to expiry dashboard */}
+      <Button
+        variant="ghost"
+        size="sm"
+        className="w-full text-xs gap-1"
+        onClick={() => setActiveView("expiry")}
+      >
+        {summary.totalAlerts > topAlerts.length
+          ? `View all ${summary.totalAlerts} alerts`
+          : "Open expiry dashboard"}
+        <ChevronRight className="h-3 w-3" />
+      </Button>
     </div>
   );
 }

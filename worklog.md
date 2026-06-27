@@ -355,3 +355,83 @@ Stage Summary:
 - Full audit trail: every stock movement creates a Transaction record with type, quantity, note, timestamp
 - Regulatory compliance: witness field for disposals, full disposal method tracking
 - Cron-ready: auto-sync endpoint can be called daily to update batch statuses
+---
+Task ID: 3a-completion
+Agent: Main Agent
+Task: Complete Phase 3a — Full Expiry Management Dashboard with Bulk Actions
+
+Work Log:
+- Created GET /api/businesses/[id]/expiry-stats:
+  - Returns rich aggregations for full-page expiry dashboard
+  - 6 severity buckets: expired, critical_7d, critical_30d, warning_90d, safe, quarantined
+  - Each bucket has count, quantity, and value
+  - 13-week timeline showing upcoming expiries by week
+  - Top 10 manufacturers by value at risk
+  - Category breakdown with colors
+  - Total value at risk + total units at risk summary
+  - Configurable time window (?days=90 default)
+- Created POST /api/businesses/[id]/batches/bulk:
+  - Apply action to up to 50 batches at once
+  - 5 actions: quarantine, dispose, return_to_supplier, release, delete
+  - Per-batch results with success/failure status
+  - Each action creates appropriate audit Transaction
+  - Bulk dispose calculates value lost per batch
+  - Bulk return_to_supplier stores supplier name
+  - Validates action and batchIds
+- Created POST /api/businesses/[id]/batches/[batchId]/return:
+  - Single-batch supplier return with full details
+  - Required: supplierName, reason (5 options)
+  - Optional: quantity (partial returns), creditExpected, notes
+  - Sets batch status to "returned" for full returns
+  - Calculates value returned (purchase price × qty)
+  - Stores supplier name in batch.supplierId field
+  - Creates RETURN audit transaction with full details
+- Updated nav-store.ts: added "expiry" view
+- Built ExpiryDashboard.tsx (full page):
+  - Hero summary card with value-at-risk + units-at-risk
+  - 6 clickable severity bucket cards (filter by tapping)
+  - 13-week expiry timeline chart (gradient bars with hover tooltips)
+  - Top manufacturers bar chart (by value at risk)
+  - Category breakdown chips
+  - Search by product/batch/manufacturer
+  - 7 severity filter tabs with counts
+  - Bulk mode: tap "Bulk" button → select multiple batches → apply action
+  - Color-coded batch cards with severity borders
+- Built ExpiryTimelineChart.tsx:
+  - 13-week visual timeline of upcoming expiries
+  - Gradient bars (orange→red) showing value at risk per week
+  - Blue dots showing units
+  - Hover tooltips with full details
+  - Legend at bottom
+- Built BulkActionBar.tsx:
+  - Fixed bottom bar when batches are selected
+  - 5 action options: Quarantine, Dispose, Return to Supplier, Release, Delete
+  - Dynamic form fields based on action (reason, method, witness, supplier name, notes)
+  - Execution summary with success/failure counts
+  - Communicates with parent via localStorage (selectedBatches)
+- Updated PharmacyDashboard:
+  - Quick actions grid expanded to 3×2 = 6 actions (added Expiry + Activity)
+  - Each action has distinct color and icon
+  - ExpiryAlertsWidget "View all" now links to expiry dashboard
+- Updated PharmacyShell + barrel exports
+
+Stage Summary:
+- Phase 3a is now COMPLETE
+- 3 new API routes: expiry-stats, batches/bulk, batches/[id]/return
+- 3 new UI components: ExpiryDashboard, ExpiryTimelineChart, BulkActionBar
+- 2 modified components: PharmacyDashboard (expanded quick actions), ExpiryAlertsWidget (link to expiry page)
+- All 9 API test scenarios pass:
+  * Expiry stats aggregation (5 batches, 6 buckets, ৳5250 value at risk) ✅
+  * 13-week timeline populated correctly ✅
+  * Manufacturer + category breakdowns ✅
+  * Bulk quarantine (2/2 success) ✅
+  * Buckets update correctly after bulk actions ✅
+  * Bulk release recalculates statuses ✅
+  * Supplier return sets status to "returned" + stores supplier ✅
+  * Bulk dispose with value-lost tracking (৳2250 lost) ✅
+  * Final state verification (correct counts) ✅
+  * Invalid action rejected (400) ✅
+  * Empty batchIds rejected (400) ✅
+- Production build clean, lint passes with zero errors
+- Bulk operations support: quarantine, dispose, return to supplier, release, delete
+- Full audit trail maintained for all bulk operations

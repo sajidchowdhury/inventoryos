@@ -8,6 +8,7 @@ import { ProductForm } from "./ProductForm";
 import { BatchList } from "./BatchList";
 import { BatchForm } from "./BatchForm";
 import { QuickDispense } from "./QuickDispense";
+import { ExpiryDashboard } from "./ExpiryDashboard";
 import { TransactionLog } from "./TransactionLog";
 import { CategoryManager } from "./CategoryManager";
 import { CsvImport } from "./CsvImport";
@@ -37,6 +38,8 @@ export function PharmacyShell() {
         return <BatchForm mode="edit" />;
       case "dispense":
         return <QuickDispense />;
+      case "expiry":
+        return <ExpiryDashboard />;
       case "transactions":
         return <TransactionLog />;
       case "categories":

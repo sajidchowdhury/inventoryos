@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
   Package, AlertTriangle, TrendingUp, Clock, Plus,
-  ChevronRight, Pill, ShoppingBag, BarChart3, Boxes, ShoppingCart, History,
+  ChevronRight, Pill, ShoppingBag, BarChart3, Boxes, ShoppingCart, History, CalendarClock,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -183,7 +183,7 @@ export function PharmacyDashboard() {
       {/* Quick Actions */}
       <div>
         <h2 className="text-sm font-semibold mb-2 text-muted-foreground">Quick Actions</h2>
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-3 gap-2">
           <Card
             className="cursor-pointer hover:shadow-md transition-shadow active:scale-[0.97]"
             onClick={() => setActiveView("add-product")}
@@ -219,6 +219,17 @@ export function PharmacyDashboard() {
           </Card>
           <Card
             className="cursor-pointer hover:shadow-md transition-shadow active:scale-[0.97]"
+            onClick={() => setActiveView("expiry")}
+          >
+            <CardContent className="p-3 flex flex-col items-center gap-1.5 text-center">
+              <div className="h-9 w-9 rounded-full bg-red-50 flex items-center justify-center">
+                <CalendarClock className="h-4 w-4 text-red-600" />
+              </div>
+              <span className="text-[11px] font-medium leading-tight">Expiry</span>
+            </CardContent>
+          </Card>
+          <Card
+            className="cursor-pointer hover:shadow-md transition-shadow active:scale-[0.97]"
             onClick={() => setActiveView("categories")}
           >
             <CardContent className="p-3 flex flex-col items-center gap-1.5 text-center">
@@ -226,6 +237,17 @@ export function PharmacyDashboard() {
                 <ShoppingBag className="h-4 w-4 text-purple-600" />
               </div>
               <span className="text-[11px] font-medium leading-tight">Categories</span>
+            </CardContent>
+          </Card>
+          <Card
+            className="cursor-pointer hover:shadow-md transition-shadow active:scale-[0.97]"
+            onClick={() => setActiveView("transactions")}
+          >
+            <CardContent className="p-3 flex flex-col items-center gap-1.5 text-center">
+              <div className="h-9 w-9 rounded-full bg-cyan-50 flex items-center justify-center">
+                <History className="h-4 w-4 text-cyan-600" />
+              </div>
+              <span className="text-[11px] font-medium leading-tight">Activity</span>
             </CardContent>
           </Card>
         </div>
@@ -286,16 +308,6 @@ export function PharmacyDashboard() {
 
       {/* Expiry Alerts Widget */}
       <ExpiryAlertsWidget />
-
-      {/* Activity Log Link */}
-      <Button
-        variant="outline"
-        className="w-full gap-2 h-11"
-        onClick={() => setActiveView("transactions")}
-      >
-        <History className="h-4 w-4" /> View Activity Log
-        <ChevronRight className="h-4 w-4 ml-auto" />
-      </Button>
     </motion.div>
   );
 }
