@@ -915,3 +915,99 @@ Stage Summary:
 - Full audit trail: every purchase creates PURCHASE transactions per batch
 - Cancellation creates ADJUSTMENT transactions for traceability
 - Supplier financial tracking: balance, totalPurchased, totalPaid auto-maintained
+---
+Task ID: 6a-completion
+Agent: Main Agent
+Task: Complete Phase 6a — Unified Business Dashboard & Reports Center
+
+Work Log:
+- Created GET /api/businesses/[id]/dashboard:
+  - Unified KPIs across ALL modules in one API call
+  - Sales: today/week/month (total, count, quantity)
+  - Purchases: today/month (total, count)
+  - Payments: today/month (total, count)
+  - Returns: month (refund, count)
+  - Inventory: totalProducts, lowStock, outOfStock, totalBatches, costValue, mrpValue, potentialProfit
+  - Expiry: expiredBatches, nearExpiry, quarantined, valueAtRisk
+  - Contacts: totalCustomers, totalSuppliers
+  - Financials: receivables (amount+count), payables (amount+count), cashFlow (inflow+outflow)
+  - Profit: monthRevenue, monthCOGS, monthGrossProfit, monthProfitMargin
+  - 7-day trend: daily sales vs purchases
+  - Fixed: SaleItem has no batch relation — fetch batch prices separately for COGS
+- Created GET /api/businesses/[id]/reports/profit-loss:
+  - Full P&L statement: revenue, COGS, gross profit, expenses, cash flow, net profit
+  - Period selector: today/week/month/quarter/year
+  - Top 10 profitable products with per-product revenue/cost/profit
+  - Loss-making products (negative profit)
+  - CSV export with all sections
+  - Fixed: Same SaleItem batch relation issue — fetch batch prices separately
+- Created GET /api/businesses/[id]/reports/inventory-valuation:
+  - Full inventory valuation by product, category, and batch
+  - Cost value (purchase price × quantity) and MRP value (selling price × quantity)
+  - Potential profit (MRP - cost) and average margin
+  - Category breakdown with product counts
+  - Product list with expandable batch details
+  - CSV export with per-batch line items
+- Created GET /api/businesses/[id]/reports/business:
+  - Comprehensive business report combining all modules
+  - Executive summary: sales, returns, net revenue, COGS, gross profit, purchases, cash flow
+  - Inventory snapshot: cost/MRP values, expired/near-expiry counts
+  - Financial position: receivables, payables
+  - Contacts: customers, suppliers
+  - Top products by revenue
+  - Daily trend data (sales vs purchases)
+  - Fixed: Same SaleItem batch relation issue
+- Updated nav-store.ts: added 4 new views (business-dashboard, profit-loss, inventory-value, business-report)
+- Built BusinessDashboard.tsx (unified overview):
+  - Profit hero card with monthly gross profit + margin
+  - 4 today's KPI cards (sales, purchases, cash in, returns)
+  - 7-day sales vs purchases bar chart
+  - Inventory valuation summary (cost/MRP/profit)
+  - Expiry status grid (active/near-expired/expired/quarantined)
+  - Financial position (receivables vs payables + net position)
+  - Contacts (customers + suppliers)
+  - Quick links to all reports
+- Built ProfitLossReport.tsx:
+  - Period selector (today/week/month/quarter/year)
+  - Net profit hero card with margin
+  - Revenue breakdown (gross sales, returns, net revenue)
+  - COGS section with percentage
+  - Gross profit card
+  - Operating expenses
+  - Cash flow (received, paid, net)
+  - Top profitable products list
+  - Loss-making products warning
+  - CSV download + print support
+- Built InventoryValuationReport.tsx:
+  - Summary cards (cost value, MRP value, potential profit, avg margin)
+  - Category breakdown with progress bars
+  - Product list with expandable batch details (batch no, expiry, status, cost, MRP)
+  - CSV download + print support
+- Built BusinessReportCenter.tsx (comprehensive printable):
+  - Business header with name/address/phone
+  - 4 KPI cards (sales, purchases, gross profit, net cash flow)
+  - Detailed breakdown (revenue, COGS, discounts, tax)
+  - Inventory snapshot
+  - Financial position (receivables vs payables)
+  - Contacts summary
+  - Sales vs purchases trend chart
+  - Top products by revenue
+  - Print-optimized layout
+- Updated PharmacyDashboard: added "Overview" quick action (first card, highlighted with border)
+- Updated PharmacyShell + barrel exports
+
+Stage Summary:
+- Phase 6a is now COMPLETE
+- 4 new API routes: dashboard, reports/profit-loss, reports/inventory-valuation, reports/business
+- 4 new UI components: BusinessDashboard, ProfitLossReport, InventoryValuationReport, BusinessReportCenter
+- All 6 API test scenarios pass:
+  * Business dashboard returns unified KPIs (sales, purchases, inventory, expiry, financials, profit) ✅
+  * P&L report with revenue/COGS/profit breakdown + CSV ✅
+  * Inventory valuation with category/product breakdown + CSV ✅
+  * Business report with executive summary + daily trends ✅
+  * All APIs handle empty data gracefully ✅
+  * CSV exports work for P&L and inventory valuation ✅
+- Production build clean, lint passes with zero errors
+- Fixed Prisma relation issue: SaleItem has batchId as plain field, not a relation — fetch batch prices separately for COGS calculations
+- Cross-module analytics: single dashboard shows sales + purchases + inventory + expiry + financials + profit in one view
+- All reports support CSV download and print

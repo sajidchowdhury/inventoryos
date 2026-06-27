@@ -25,6 +25,10 @@ import { ExpiryDashboard } from "./ExpiryDashboard";
 import { AlertsCenter } from "./AlertsCenter";
 import { AlertPreferences } from "./AlertPreferences";
 import { ExpiryReport } from "./ExpiryReport";
+import { BusinessDashboard } from "./BusinessDashboard";
+import { ProfitLossReport } from "./ProfitLossReport";
+import { InventoryValuationReport } from "./InventoryValuationReport";
+import { BusinessReportCenter } from "./BusinessReportCenter";
 import { TransactionLog } from "./TransactionLog";
 import { CategoryManager } from "./CategoryManager";
 import { CsvImport } from "./CsvImport";
@@ -94,6 +98,14 @@ export function PharmacyShell() {
         return <AlertPreferences />;
       case "report":
         return <ExpiryReport />;
+      case "business-dashboard":
+        return <BusinessDashboard />;
+      case "profit-loss":
+        return <ProfitLossReport />;
+      case "inventory-value":
+        return <InventoryValuationReport />;
+      case "business-report":
+        return <BusinessReportCenter />;
       case "transactions":
         return <TransactionLog />;
       case "categories":

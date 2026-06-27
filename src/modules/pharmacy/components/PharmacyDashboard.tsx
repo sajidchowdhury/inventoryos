@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
   Package, AlertTriangle, TrendingUp, Clock, Plus,
-  ChevronRight, Pill, ShoppingBag, BarChart3, Boxes, ShoppingCart, History, CalendarClock, Bell, Users, Receipt, DollarSign, RotateCcw, Percent, BarChart, Truck, PackagePlus,
+  ChevronRight, Pill, ShoppingBag, BarChart3, Boxes, ShoppingCart, History, CalendarClock, Bell, Users, Receipt, DollarSign, RotateCcw, Percent, BarChart, Truck, PackagePlus, LayoutDashboard,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -188,6 +188,14 @@ export function PharmacyDashboard() {
       <div>
         <h2 className="text-sm font-semibold mb-2 text-muted-foreground">Quick Actions</h2>
         <div className="grid grid-cols-4 gap-2">
+          <Card className="cursor-pointer hover:shadow-md transition-shadow active:scale-[0.97] border-2 border-primary/30" onClick={() => setActiveView("business-dashboard")}>
+            <CardContent className="p-2 flex flex-col items-center gap-1 text-center">
+              <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center">
+                <LayoutDashboard className="h-4 w-4 text-primary-foreground" />
+              </div>
+              <span className="text-[9px] font-bold leading-tight text-primary">Overview</span>
+            </CardContent>
+          </Card>
           <Card className="cursor-pointer hover:shadow-md transition-shadow active:scale-[0.97]" onClick={() => setActiveView("dispense")}>
             <CardContent className="p-2 flex flex-col items-center gap-1 text-center">
               <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">

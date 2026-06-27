@@ -33,6 +33,10 @@ export type PharmacyView =
   | "alerts"          // Combined alerts center
   | "alert-settings"  // Alert preferences configuration
   | "report"          // Printable expiry report
+  | "business-dashboard" // Unified business KPI dashboard
+  | "profit-loss"     // Profit & Loss report
+  | "inventory-value" // Inventory valuation report
+  | "business-report" // Comprehensive business report
   | "transactions"    // Activity / audit log
   | "categories"      // Category management
   | "import"          // CSV bulk import
