@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
   Package, AlertTriangle, TrendingUp, Clock, Plus,
-  ChevronRight, Pill, ShoppingBag, BarChart3, Boxes, ShoppingCart, History, CalendarClock, Bell, Users, Receipt, DollarSign, RotateCcw, Percent, BarChart, Truck, PackagePlus, LayoutDashboard,
+  ChevronRight, Pill, ShoppingBag, BarChart3, Boxes, ShoppingCart, History, CalendarClock, Bell, Users, Receipt, DollarSign, RotateCcw, Percent, BarChart, Truck, PackagePlus, LayoutDashboard, Sparkles, MessageSquare, Brain,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -160,6 +160,37 @@ export function PharmacyDashboard() {
         New Sale
         <span className="ml-1 text-xs opacity-80">FEFO</span>
       </Button>
+
+      {/* AI Features Section */}
+      <div className="grid grid-cols-3 gap-2">
+        <Card className="cursor-pointer hover:shadow-md transition-shadow active:scale-[0.97] border-2 border-primary/20 bg-gradient-to-br from-primary/5 to-transparent" onClick={() => setActiveView("ai-insights")}>
+          <CardContent className="p-3 flex flex-col items-center gap-1.5 text-center">
+            <div className="h-9 w-9 rounded-full bg-primary flex items-center justify-center">
+              <Sparkles className="h-4 w-4 text-primary-foreground" />
+            </div>
+            <span className="text-[10px] font-bold text-primary">AI Insights</span>
+            <span className="text-[8px] text-muted-foreground">Smart analysis</span>
+          </CardContent>
+        </Card>
+        <Card className="cursor-pointer hover:shadow-md transition-shadow active:scale-[0.97] border-2 border-purple-200 bg-gradient-to-br from-purple/5 to-transparent" onClick={() => setActiveView("ai-chat")}>
+          <CardContent className="p-3 flex flex-col items-center gap-1.5 text-center">
+            <div className="h-9 w-9 rounded-full bg-purple-500 flex items-center justify-center">
+              <MessageSquare className="h-4 w-4 text-white" />
+            </div>
+            <span className="text-[10px] font-bold text-purple-600">AI Assistant</span>
+            <span className="text-[8px] text-muted-foreground">Ask anything</span>
+          </CardContent>
+        </Card>
+        <Card className="cursor-pointer hover:shadow-md transition-shadow active:scale-[0.97] border-2 border-teal-200 bg-gradient-to-br from-teal/5 to-transparent" onClick={() => setActiveView("ai-reorder")}>
+          <CardContent className="p-3 flex flex-col items-center gap-1.5 text-center">
+            <div className="h-9 w-9 rounded-full bg-teal-500 flex items-center justify-center">
+              <Brain className="h-4 w-4 text-white" />
+            </div>
+            <span className="text-[10px] font-bold text-teal-600">Smart Reorder</span>
+            <span className="text-[8px] text-muted-foreground">AI predictions</span>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Stat Cards */}
       <div className="grid grid-cols-2 gap-3">

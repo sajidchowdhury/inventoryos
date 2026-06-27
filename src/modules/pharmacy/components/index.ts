@@ -47,5 +47,8 @@ export { DisposeDialog } from "./DisposeDialog";
 export { TransactionLog } from "./TransactionLog";
 export { CategoryManager } from "./CategoryManager";
 export { CsvImport } from "./CsvImport";
+export { AIInsights } from "./AIInsights";
+export { AIChat } from "./AIChat";
+export { ReorderSuggestions } from "./ReorderSuggestions";
 export { ProfileView } from "./ProfileView";
 export { BottomNav } from "./BottomNav";

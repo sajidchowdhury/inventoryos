@@ -46,6 +46,9 @@ export type PharmacyView =
   | "login-activity"  // Login history
   | "categories"      // Category management
   | "import"          // CSV bulk import
+  | "ai-insights"     // AI-powered business insights
+  | "ai-chat"         // AI chat assistant
+  | "ai-reorder"      // Smart reorder suggestions
   | "profile";        // Business profile / settings
 
 interface NavState {

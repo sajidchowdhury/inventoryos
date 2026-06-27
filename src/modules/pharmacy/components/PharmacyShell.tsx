@@ -38,6 +38,9 @@ import { LoginActivity } from "./LoginActivity";
 import { TransactionLog } from "./TransactionLog";
 import { CategoryManager } from "./CategoryManager";
 import { CsvImport } from "./CsvImport";
+import { AIInsights } from "./AIInsights";
+import { AIChat } from "./AIChat";
+import { ReorderSuggestions } from "./ReorderSuggestions";
 import { ProfileView } from "./ProfileView";
 import { BottomNav } from "./BottomNav";
 
@@ -130,6 +133,12 @@ export function PharmacyShell() {
         return <CategoryManager />;
       case "import":
         return <CsvImport />;
+      case "ai-insights":
+        return <AIInsights />;
+      case "ai-chat":
+        return <AIChat />;
+      case "ai-reorder":
+        return <ReorderSuggestions />;
       case "profile":
         return <ProfileView />;
       default:
