@@ -3,7 +3,10 @@
 import { useNavStore } from "@/lib/nav-store";
 import { PharmacyDashboard } from "./PharmacyDashboard";
 import { ProductList } from "./ProductList";
+import { ProductDetail } from "./ProductDetail";
 import { ProductForm } from "./ProductForm";
+import { BatchList } from "./BatchList";
+import { BatchForm } from "./BatchForm";
 import { CategoryManager } from "./CategoryManager";
 import { CsvImport } from "./CsvImport";
 import { ProfileView } from "./ProfileView";
@@ -18,10 +21,18 @@ export function PharmacyShell() {
         return <PharmacyDashboard />;
       case "products":
         return <ProductList />;
+      case "product-detail":
+        return <ProductDetail />;
       case "add-product":
         return <ProductForm mode="add" />;
       case "edit-product":
         return <ProductForm mode="edit" />;
+      case "batches":
+        return <BatchList />;
+      case "add-batch":
+        return <BatchForm mode="add" />;
+      case "edit-batch":
+        return <BatchForm mode="edit" />;
       case "categories":
         return <CategoryManager />;
       case "import":

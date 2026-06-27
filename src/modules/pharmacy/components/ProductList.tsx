@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
   Search, Plus, Pill, Filter, X, ChevronDown,
-  Package, Edit2, Trash2, ArrowLeft, AlertCircle, Upload,
+  Package, Edit2, Trash2, ArrowLeft, AlertCircle, Upload, Eye,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -57,7 +57,7 @@ const scheduleColors: Record<string, string> = {
 
 export function ProductList() {
   const session = useAuthStore((s) => s.session);
-  const { setActiveView, setEditingProductId } = useNavStore();
+  const { setActiveView, setEditingProductId, setActiveProductId } = useNavStore();
   const businessId = session?.business?.id;
 
   const [products, setProducts] = useState<Product[]>([]);
@@ -125,6 +125,11 @@ export function ProductList() {
     } finally {
       setDeleting(null);
     }
+  };
+
+  const handleView = (productId: string) => {
+    setActiveProductId(productId);
+    setActiveView("product-detail");
   };
 
   const handleEdit = (productId: string) => {
@@ -251,7 +256,7 @@ export function ProductList() {
                 <CardContent className="p-0">
                   <div
                     className="p-3 flex items-start gap-3 cursor-pointer"
-                    onClick={() => handleEdit(product.id)}
+                    onClick={() => handleView(product.id)}
                   >
                     {/* Category Color Indicator */}
                     <div
@@ -321,6 +326,12 @@ export function ProductList() {
 
                   {/* Action Buttons */}
                   <div className="border-t flex divide-x">
+                    <button
+                      className="flex-1 py-2 text-xs font-medium text-muted-foreground hover:text-primary hover:bg-muted/50 transition-colors flex items-center justify-center gap-1"
+                      onClick={() => handleView(product.id)}
+                    >
+                      <Eye className="h-3 w-3" /> View
+                    </button>
                     <button
                       className="flex-1 py-2 text-xs font-medium text-muted-foreground hover:text-primary hover:bg-muted/50 transition-colors flex items-center justify-center gap-1"
                       onClick={() => handleEdit(product.id)}

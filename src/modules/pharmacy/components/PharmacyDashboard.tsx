@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
   Package, AlertTriangle, TrendingUp, Clock, Plus,
-  ChevronRight, Pill, ShoppingBag, BarChart3,
+  ChevronRight, Pill, ShoppingBag, BarChart3, Boxes,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -116,7 +116,7 @@ export function PharmacyDashboard() {
       icon: Clock,
       color: "text-red-600",
       bg: "bg-red-50",
-      onClick: () => setActiveView("products"),
+      onClick: () => setActiveView("batches"),
     },
     {
       label: "Categories",
@@ -171,7 +171,7 @@ export function PharmacyDashboard() {
       {/* Quick Actions */}
       <div>
         <h2 className="text-sm font-semibold mb-2 text-muted-foreground">Quick Actions</h2>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-4 gap-2">
           <Card
             className="cursor-pointer hover:shadow-md transition-shadow active:scale-[0.97]"
             onClick={() => setActiveView("add-product")}
@@ -180,7 +180,7 @@ export function PharmacyDashboard() {
               <div className="h-9 w-9 rounded-full bg-green-50 flex items-center justify-center">
                 <Plus className="h-4 w-4 text-green-600" />
               </div>
-              <span className="text-xs font-medium">Add Product</span>
+              <span className="text-[11px] font-medium leading-tight">Add Product</span>
             </CardContent>
           </Card>
           <Card
@@ -191,7 +191,18 @@ export function PharmacyDashboard() {
               <div className="h-9 w-9 rounded-full bg-blue-50 flex items-center justify-center">
                 <Pill className="h-4 w-4 text-blue-600" />
               </div>
-              <span className="text-xs font-medium">All Products</span>
+              <span className="text-[11px] font-medium leading-tight">Products</span>
+            </CardContent>
+          </Card>
+          <Card
+            className="cursor-pointer hover:shadow-md transition-shadow active:scale-[0.97]"
+            onClick={() => setActiveView("batches")}
+          >
+            <CardContent className="p-3 flex flex-col items-center gap-1.5 text-center">
+              <div className="h-9 w-9 rounded-full bg-orange-50 flex items-center justify-center">
+                <Boxes className="h-4 w-4 text-orange-600" />
+              </div>
+              <span className="text-[11px] font-medium leading-tight">Stock</span>
             </CardContent>
           </Card>
           <Card
@@ -202,7 +213,7 @@ export function PharmacyDashboard() {
               <div className="h-9 w-9 rounded-full bg-purple-50 flex items-center justify-center">
                 <ShoppingBag className="h-4 w-4 text-purple-600" />
               </div>
-              <span className="text-xs font-medium">Categories</span>
+              <span className="text-[11px] font-medium leading-tight">Categories</span>
             </CardContent>
           </Card>
         </div>

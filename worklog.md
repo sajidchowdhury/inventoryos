@@ -118,3 +118,81 @@ Stage Summary:
   * Product list shows all 11 products (5 from 1a + 6 imported in 1b)
 - Production build clean, lint passes with zero errors
 - 6 new products added to demo data via CSV import test
+---
+Task ID: 2a-completion
+Agent: Main Agent
+Task: Complete Phase 2a — Batch & Stock Management
+
+Work Log:
+- Created GET/POST /api/businesses/[id]/batches route:
+  - GET supports filtering by productId, status, expiringDays (next N days)
+  - GET returns summary with count & quantity grouped by status (active/near_expiry/expired)
+  - GET auto-updates stale "active" batches to "near_expiry"/"expired" on read
+  - POST creates batch with auto-status calculation based on expiry date
+  - POST prevents duplicate batch numbers per product
+  - POST syncs Inventory.quantity (adds batch quantity to total)
+  - POST creates PURCHASE Transaction for audit trail
+- Created GET/PUT/DELETE /api/businesses/[id]/batches/[batchId]:
+  - PUT updates batch fields, recalculates status if expiry changes
+  - PUT computes quantity delta and syncs Inventory
+  - DELETE decrements Inventory by batch quantity
+  - DELETE creates ADJUSTMENT Transaction for audit
+- Created POST /api/businesses/[id]/batches/[batchId]/adjust:
+  - Supports 4 types: STOCK_IN, STOCK_OUT, WASTE, RETURN
+  - Validates positive quantity
+  - Blocks STOCK_OUT/WASTE if insufficient stock
+  - Updates both Batch.quantity and Inventory.quantity
+  - Creates audit Transaction with type, quantity, note
+- Updated nav-store.ts with new views: product-detail, batches, add-batch, edit-batch
+  - Added activeProductId and editingBatchId state
+- Built ProductDetail.tsx component:
+  - Shows full product info (name, generic, strength, schedule, Rx, manufacturer, rack)
+  - Stock summary cards (total stock, batch count, expired count)
+  - Low-stock / out-of-stock warning banners
+  - Storage, MRP, SKU, strip/box, reorder info card
+  - Batch list with expiry severity badges (ok/warning/critical/expired)
+  - Per-batch actions: Stock In, Stock Out, Edit, Delete
+  - StockAdjust dialog integration
+- Built StockAdjust.tsx component (inside ProductDetail dialog):
+  - Reason chips (New purchase, Sold, Damaged, Returned, etc.)
+  - Quick amount buttons (10, 50, 100, All)
+  - Live preview of resulting stock
+  - Insufficient stock validation
+- Built BatchForm.tsx (add/edit):
+  - Batch number, mfg date, expiry date inputs
+  - Live expiry feedback badge (X days left / expired X days ago)
+  - Quantity, purchase price, MRP fields
+  - Edit-mode warning about quantity adjustments
+- Built BatchList.tsx (all batches view):
+  - Summary cards (total, active, expiring, expired)
+  - Filter tabs (All / Active / Expiring / Expired)
+  - Search by batch no, product, manufacturer
+  - Sorted by expiry date ascending (soonest first)
+  - Tap batch → navigate to product detail
+- Updated BottomNav: replaced "Categories" tab with "Stock" (batches)
+- Updated PharmacyDashboard: added "Stock" quick action, expiring-soon stat now links to batches
+- Updated ProductList: added "View" button (navigates to ProductDetail), kept "Edit" button
+- Updated PharmacyShell and barrel exports
+
+Stage Summary:
+- Phase 2a is now COMPLETE
+- 3 new API routes (batches list/create, batch detail, stock adjust)
+- 4 new UI components (ProductDetail, BatchForm, BatchList, StockAdjust)
+- 4 modified components (PharmacyShell, BottomNav, ProductList, PharmacyDashboard)
+- All 16 API test scenarios pass:
+  * Batch creation with auto-status (active/near_expiry/expired)
+  * Duplicate batch prevention (400)
+  * Inventory auto-sync on create (170 = 100+50+20)
+  * Summary grouping by status
+  * Status filter (?status=expired → 1 batch)
+  * Expiring-days filter (?expiringDays=90 → 1 batch)
+  * Stock IN (+30 → 130)
+  * Stock OUT (-50 → 80)
+  * Insufficient stock block (400)
+  * WASTE (-10 → 70)
+  * Inventory reflects all adjustments (170 → 140)
+  * PUT auto-recalculates status on expiry change
+  * DELETE decrements inventory correctly
+  * Cleanup restores inventory to 0
+- Production build clean, lint passes with zero errors
+- Audit trail via Transaction records (PURCHASE, ADJUSTMENT, STOCK_IN/OUT/WASTE/RETURN)

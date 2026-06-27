@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  LayoutDashboard, Package, PlusCircle, Tag, User,
+  LayoutDashboard, Package, PlusCircle, Boxes, User,
 } from "lucide-react";
 import { useNavStore, type PharmacyView } from "@/lib/nav-store";
 import { cn } from "@/lib/utils";
@@ -10,7 +10,7 @@ const navItems: { view: PharmacyView; label: string; icon: typeof LayoutDashboar
   { view: "dashboard", label: "Home", icon: LayoutDashboard },
   { view: "products", label: "Products", icon: Package },
   { view: "add-product", label: "Add", icon: PlusCircle },
-  { view: "categories", label: "Categories", icon: Tag },
+  { view: "batches", label: "Stock", icon: Boxes },
   { view: "profile", label: "Profile", icon: User },
 ];
 
@@ -21,8 +21,12 @@ export function BottomNav() {
     <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-card/95 backdrop-blur-md">
       <div className="max-w-md mx-auto flex items-center justify-around h-14">
         {navItems.map((item) => {
-          const isActive = activeView === item.view ||
-            (item.view === "products" && activeView === "edit-product");
+          // Treat product-related views as "Products" active state
+          const isActive =
+            activeView === item.view ||
+            (item.view === "products" && (activeView === "product-detail" || activeView === "edit-product")) ||
+            (item.view === "add-product" && (activeView === "add-batch" || activeView === "edit-batch")) ||
+            (item.view === "batches" && activeView === "edit-batch");
 
           return (
             <button
