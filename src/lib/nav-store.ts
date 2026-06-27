@@ -15,6 +15,7 @@ export type PharmacyView =
   | "dispense"        // Quick dispense / POS with FEFO
   | "sales"           // Sales/invoices list
   | "sale-detail"     // Single sale invoice view
+  | "analytics"       // Sales analytics dashboard with charts
   | "customers"       // Customer management
   | "customer-detail" // Single customer view with purchase history
   | "add-customer"    // Add new customer
@@ -22,6 +23,7 @@ export type PharmacyView =
   | "customer-credit" // Customer outstanding balance view
   | "payments"        // Payments list + record
   | "returns"         // Returns list + process
+  | "discount-rules"  // Discount rules management
   | "expiry"          // Full expiry management dashboard
   | "alerts"          // Combined alerts center
   | "alert-settings"  // Alert preferences configuration

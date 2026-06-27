@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
   Package, AlertTriangle, TrendingUp, Clock, Plus,
-  ChevronRight, Pill, ShoppingBag, BarChart3, Boxes, ShoppingCart, History, CalendarClock, Bell, Users, Receipt, DollarSign, RotateCcw,
+  ChevronRight, Pill, ShoppingBag, BarChart3, Boxes, ShoppingCart, History, CalendarClock, Bell, Users, Receipt, DollarSign, RotateCcw, Percent, BarChart,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -274,6 +274,22 @@ export function PharmacyDashboard() {
                 <History className="h-4 w-4 text-purple-600" />
               </div>
               <span className="text-[9px] font-medium leading-tight">Report</span>
+            </CardContent>
+          </Card>
+          <Card className="cursor-pointer hover:shadow-md transition-shadow active:scale-[0.97]" onClick={() => setActiveView("analytics")}>
+            <CardContent className="p-2 flex flex-col items-center gap-1 text-center">
+              <div className="h-8 w-8 rounded-full bg-pink-50 flex items-center justify-center">
+                <BarChart className="h-4 w-4 text-pink-600" />
+              </div>
+              <span className="text-[9px] font-medium leading-tight">Analytics</span>
+            </CardContent>
+          </Card>
+          <Card className="cursor-pointer hover:shadow-md transition-shadow active:scale-[0.97]" onClick={() => setActiveView("discount-rules")}>
+            <CardContent className="p-2 flex flex-col items-center gap-1 text-center">
+              <div className="h-8 w-8 rounded-full bg-teal-50 flex items-center justify-center">
+                <Percent className="h-4 w-4 text-teal-600" />
+              </div>
+              <span className="text-[9px] font-medium leading-tight">Discounts</span>
             </CardContent>
           </Card>
           <Card className="cursor-pointer hover:shadow-md transition-shadow active:scale-[0.97]" onClick={() => setActiveView("transactions")}>

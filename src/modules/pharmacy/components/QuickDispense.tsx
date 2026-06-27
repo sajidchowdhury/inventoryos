@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { motion } from "framer-motion";
 import {
   ArrowLeft, Search, Plus, X, Check, AlertCircle, Loader2,
-  ShoppingCart, Pill, Calendar, TrendingDown, Receipt,
+  ShoppingCart, Pill, Calendar, TrendingDown, Receipt, Percent,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -72,6 +72,8 @@ export function QuickDispense() {
   const [error, setError] = useState<string | null>(null);
   const [lastInvoiceNo, setLastInvoiceNo] = useState<string | null>(null);
   const [lastSaleId, setLastSaleId] = useState<string | null>(null);
+  const [discountPercent, setDiscountPercent] = useState("0");
+  const [discountAmount, setDiscountAmount] = useState("0");
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Search products with debounce
@@ -169,9 +171,11 @@ export function QuickDispense() {
             quantity: parseFloat(item.quantity),
             unitPrice: item.product.mrp,
           })),
+          discountPercent: discPercent,
+          discountAmount: discAmount,
           paymentMethod: "cash",
           paymentStatus: "paid",
-          paidAmount: totalValue, // pay full by default
+          paidAmount: totalValue,
           notes: "Quick dispense (POS)",
         }),
       });
@@ -213,11 +217,17 @@ export function QuickDispense() {
     setError(null);
     setLastInvoiceNo(null);
     setLastSaleId(null);
+    setDiscountPercent("0");
+    setDiscountAmount("0");
   };
 
   const totalItems = cart.length;
   const totalQty = cart.reduce((sum, item) => sum + (parseFloat(item.quantity) || 0), 0);
-  const totalValue = cart.reduce((sum, item) => sum + (parseFloat(item.quantity) || 0) * (item.product.mrp || 0), 0);
+  const subtotal = cart.reduce((sum, item) => sum + (parseFloat(item.quantity) || 0) * (item.product.mrp || 0), 0);
+  const discPercent = parseFloat(discountPercent) || 0;
+  const discAmount = parseFloat(discountAmount) || 0;
+  const afterPercent = subtotal * (1 - discPercent / 100);
+  const totalValue = Math.max(0, afterPercent - discAmount);
 
   // Success screen
   if (dispenseResult) {
@@ -500,6 +510,66 @@ export function QuickDispense() {
               </CardContent>
             </Card>
           )}
+
+          {/* Discount Section */}
+          <Card className="bg-muted/30">
+            <CardContent className="p-3 space-y-2">
+              <p className="text-xs font-semibold flex items-center gap-1.5">
+                <Percent className="h-3.5 w-3.5" /> Discount
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <label className="text-[10px] text-muted-foreground">Percent (%)</label>
+                  <Input
+                    type="number"
+                    step="0.5"
+                    min="0"
+                    max="100"
+                    value={discountPercent}
+                    onChange={(e) => setDiscountPercent(e.target.value)}
+                    className="h-9 text-sm"
+                    placeholder="0"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] text-muted-foreground">Flat (৳)</label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={discountAmount}
+                    onChange={(e) => setDiscountAmount(e.target.value)}
+                    className="h-9 text-sm"
+                    placeholder="0"
+                  />
+                </div>
+              </div>
+              {subtotal > 0 && (discPercent > 0 || discAmount > 0) && (
+                <div className="space-y-1 pt-1 border-t text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Subtotal</span>
+                    <span>৳{subtotal.toFixed(2)}</span>
+                  </div>
+                  {discPercent > 0 && (
+                    <div className="flex items-center justify-between text-orange-600">
+                      <span>−{discPercent}%</span>
+                      <span>−৳{(subtotal * discPercent / 100).toFixed(2)}</span>
+                    </div>
+                  )}
+                  {discAmount > 0 && (
+                    <div className="flex items-center justify-between text-orange-600">
+                      <span>Flat discount</span>
+                      <span>−৳{discAmount}</span>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between font-bold pt-1 border-t">
+                    <span>Total</span>
+                    <span className="text-primary">৳{totalValue.toFixed(2)}</span>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
           {/* Dispense Button */}
           <Button

@@ -10,10 +10,12 @@ import { BatchForm } from "./BatchForm";
 import { QuickDispense } from "./QuickDispense";
 import { SalesList } from "./SalesList";
 import { SaleDetail } from "./SaleDetail";
+import { SalesAnalytics } from "./SalesAnalytics";
 import { CustomerManager } from "./CustomerManager";
 import { CustomerCreditView } from "./CustomerCreditView";
 import { PaymentManager } from "./PaymentManager";
 import { ReturnsManager } from "./ReturnsManager";
+import { DiscountRulesManager } from "./DiscountRulesManager";
 import { ExpiryDashboard } from "./ExpiryDashboard";
 import { AlertsCenter } from "./AlertsCenter";
 import { AlertPreferences } from "./AlertPreferences";
@@ -51,6 +53,8 @@ export function PharmacyShell() {
         return <SalesList />;
       case "sale-detail":
         return <SaleDetail />;
+      case "analytics":
+        return <SalesAnalytics />;
       case "customers":
         return <CustomerManager />;
       case "customer-detail":
@@ -65,6 +69,8 @@ export function PharmacyShell() {
         return <PaymentManager />;
       case "returns":
         return <ReturnsManager />;
+      case "discount-rules":
+        return <DiscountRulesManager />;
       case "expiry":
         return <ExpiryDashboard />;
       case "alerts":

@@ -724,3 +724,93 @@ Stage Summary:
 - Full financial audit trail: every payment + return creates audit transactions
 - Sale cancellation reverses payments + returns impact
 - Foundation for Phase 5: Purchases & Suppliers, Dashboard analytics
+---
+Task ID: 4c-completion
+Agent: Main Agent
+Task: Complete Phase 4c — Sales Analytics Dashboard, Discount Rules, Receipt Printing
+
+Work Log:
+- Added DiscountRule model to Prisma schema:
+  - Fields: name, type (percent/flat), value, conditionType, conditionValue, scope, scopeValue
+  - Validity: startDate, endDate, isActive, priority
+  - Tracking: timesUsed, totalDiscountGiven
+  - 6 condition types: none, min_quantity, min_amount, customer_tag, schedule_type, time_based
+  - 4 scopes: all, category, product, schedule_type
+  - Applied schema to database
+- Created GET /api/businesses/[id]/sales/analytics:
+  - Comprehensive analytics for 7d/30d/90d/365d periods
+  - KPIs: totalSales, salesCount, avgSaleValue, totalCollected, totalRefunds, netRevenue, totalDiscounts, totalTax
+  - Growth percent vs previous period
+  - Daily trend with weekly buckets for >90d periods
+  - Top 10 products by revenue
+  - Top 5 customers by spending
+  - Payment method breakdown with percentages
+  - Peak hours (top 5 by revenue)
+  - Sales by day of week
+  - Discount rules usage tracking
+- Created GET/POST /api/businesses/[id]/discount-rules:
+  - GET with optional active filter
+  - POST with full validation (type, value, conditionType, scope)
+  - Prevents percent > 100
+  - Supports start/end dates for time-limited promotions
+- Created GET/PUT/DELETE /api/businesses/[id]/discount-rules/[ruleId]:
+  - Full CRUD on individual rules
+  - Toggle isActive without full update
+  - Delete preserves historical usage data in message
+- Updated nav-store.ts: added 'analytics' and 'discount-rules' views
+- Built SalesTrendChart.tsx:
+  - Gradient bar chart (green for sales, red overlay for refunds)
+  - Hover tooltips with date, sales, count, refunds, net
+  - Smart label spacing (shows every Nth label for long periods)
+  - Peak indicator at bottom
+- Built SalesAnalytics.tsx (full-page dashboard):
+  - Period selector (7d/30d/90d/365d)
+  - 4 KPI cards with growth indicators (Total Sales, Net Revenue, Avg Sale, Collected)
+  - 3 summary cards (Discounts, Tax, Refunds)
+  - Sales trend chart
+  - Payment methods with progress bars
+  - Top products ranked list
+  - Top customers ranked list
+  - Peak hours grid
+  - Day of week bar chart
+  - Discount rules used summary
+- Built DiscountRulesManager.tsx:
+  - List with active/inactive toggle, stats (total/active/given)
+  - Create/Edit dialog with all fields
+  - Per-rule: name, description, type, value, condition, scope, dates, priority, active
+  - Delete confirmation with usage warning
+  - Visual badges for type, scope, condition
+- Updated QuickDispense.tsx:
+  - Added discount section with percent + flat inputs
+  - Live subtotal → discount → total breakdown
+  - Passes discountPercent + discountAmount to sale creation
+  - Resets discounts on new sale
+- Updated SaleDetail.tsx:
+  - Cancelled banner hidden when printing (print:hidden)
+  - Print-optimized layout preserved
+- Updated PharmacyDashboard:
+  - Quick actions expanded to 14 buttons (added Analytics + Discounts)
+  - Each action has distinct color
+- Updated PharmacyShell + barrel exports
+
+Stage Summary:
+- Phase 4c is now COMPLETE
+- 1 new Prisma model (DiscountRule)
+- 3 new API routes: sales/analytics, discount-rules, discount-rules/[ruleId]
+- 3 new UI components: SalesAnalytics, SalesTrendChart, DiscountRulesManager
+- 2 modified components: QuickDispense (discount inputs), SaleDetail (print improvements)
+- All 11 API test scenarios pass:
+  * Create percent discount rule (10% bulk) ✅
+  * Create flat discount rule (৳50 senior) ✅
+  * 150% percent blocked (400) ✅
+  * List rules with count ✅
+  * Update rule value (10% → 15%) ✅
+  * Toggle active status ✅
+  * Sales analytics 7d (KPIs, trends, top products, payment methods, peak hours) ✅
+  * Sales analytics 30d (30 data points) ✅
+  * Discount calculations verified ✅
+  * Delete rule ✅
+  * Verify deletion ✅
+- Production build clean, lint passes with zero errors
+- Analytics dashboard provides actionable insights: peak hours, top products, payment method mix
+- Discount rules foundation for auto-applied promotions (UI for manual application in POS)

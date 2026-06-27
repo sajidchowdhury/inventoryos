@@ -202,7 +202,7 @@ export function SaleDetail() {
       )}
 
       {isCancelled && (
-        <Card className="border-red-500/50 bg-red-50">
+        <Card className="border-red-500/50 bg-red-50 print:hidden">
           <CardContent className="p-3 space-y-1">
             <p className="text-sm font-semibold text-red-700 flex items-center gap-1.5">
               <X className="h-4 w-4" /> Sale Cancelled

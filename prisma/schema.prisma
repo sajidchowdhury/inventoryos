@@ -65,6 +65,7 @@ model Business {
   payments      Payment[]
   returns       Return[]
   returnItems   ReturnItem[]
+  discountRules DiscountRule[]
 
   @@index([userId])
   @@index([businessTypeId])
@@ -502,4 +503,37 @@ model ReturnItem {
 
   @@index([returnId])
   @@index([saleItemId])
+}
+
+// ── Discount Rules ──
+// Auto-applied discounts based on conditions (e.g., bulk, customer loyalty, time-based)
+model DiscountRule {
+  id              String   @id @default(cuid())
+  businessId      String
+  name            String   // "Bulk 10% off", "Senior Citizen 5%"
+  description     String?
+  type            String   // "percent" or "flat"
+  value           Float    // percentage (0-100) or flat amount in BDT
+  // Condition
+  conditionType   String   // "none", "min_quantity", "min_amount", "customer_tag", "schedule_type", "time_based"
+  conditionValue  String?  // e.g., "10" for min_quantity, "schedule_h" for schedule_type
+  // Scope
+  scope           String   // "all", "category", "product", "schedule_type"
+  scopeValue      String?  // categoryId, productId, or schedule type
+  // Validity
+  startDate       DateTime?
+  endDate         DateTime?
+  isActive        Boolean  @default(true)
+  priority        Int      @default(0)  // higher = applied first
+  // Tracking
+  timesUsed       Int      @default(0)
+  totalDiscountGiven Float @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@index([isActive])
+  @@index([scope])
 }
