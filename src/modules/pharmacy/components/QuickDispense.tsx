@@ -58,7 +58,7 @@ const fadeIn = {
 
 export function QuickDispense() {
   const session = useAuthStore((s) => s.session);
-  const setActiveView = useNavStore((s) => s.setActiveView);
+  const { setActiveView, setActiveSaleId, saleCustomerId, setSaleCustomerId } = useNavStore();
   const businessId = session?.business?.id;
 
   const [products, setProducts] = useState<Product[]>([]);
@@ -70,6 +70,8 @@ export function QuickDispense() {
   const [dispensing, setDispensing] = useState(false);
   const [dispenseResult, setDispenseResult] = useState<{ success: number; failures: number; totalValue: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [lastInvoiceNo, setLastInvoiceNo] = useState<string | null>(null);
+  const [lastSaleId, setLastSaleId] = useState<string | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Search products with debounce
@@ -156,39 +158,45 @@ export function QuickDispense() {
     setError(null);
 
     try {
-      const res = await fetch(`/api/businesses/${businessId}/dispense`, {
+      // Create a Sale (invoice) instead of just dispensing
+      const res = await fetch(`/api/businesses/${businessId}/sales`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          customerId: saleCustomerId || null,
           items: cart.map((item) => ({
             productId: item.product.id,
             quantity: parseFloat(item.quantity),
+            unitPrice: item.product.mrp,
           })),
-          note: "Quick dispense",
+          paymentMethod: "cash",
+          paymentStatus: "paid",
+          paidAmount: totalValue, // pay full by default
+          notes: "Quick dispense (POS)",
         }),
       });
       const data = await res.json();
 
       if (data.success) {
         setDispenseResult({
-          success: data.summary.success,
-          failures: data.summary.failures,
-          totalValue: data.summary.totalValue,
+          success: 1,
+          failures: 0,
+          totalValue: data.sale?.totalAmount || totalValue,
         });
+        setLastInvoiceNo(data.sale?.invoiceNo);
+        setLastSaleId(data.sale?.id);
         setCart([]);
         setPreview(null);
+        setSaleCustomerId(null);
       } else {
-        setError(data.error || "Some items failed to dispense");
-        if (data.results) {
-          setPreview(data.results.map((r: AllocationResult) => ({
-            ...r,
-            success: r.success,
-            product: r.product || { id: r.productId, name: r.productName, unit: r.unit },
-            allocations: r.allocations || [],
-            requestedQuantity: r.requested,
-            allocatedQuantity: r.allocated,
-            shortFall: r.shortFall,
-          })));
+        setError(data.error || "Failed to create sale");
+        // If we have error details about a specific item, show in preview
+        if (data.productId) {
+          setPreview((prev) => prev ? prev.map((p) =>
+            p.product.id === data.productId
+              ? { ...p, success: false, error: data.error }
+              : p
+          ) : prev);
         }
       }
     } catch (err: unknown) {
@@ -203,6 +211,8 @@ export function QuickDispense() {
     setPreview(null);
     setDispenseResult(null);
     setError(null);
+    setLastInvoiceNo(null);
+    setLastSaleId(null);
   };
 
   const totalItems = cart.length;
@@ -218,9 +228,12 @@ export function QuickDispense() {
             <div className="h-16 w-16 rounded-full bg-green-50 flex items-center justify-center mx-auto">
               <Check className="h-8 w-8 text-green-600" />
             </div>
-            <h2 className="text-lg font-bold">Dispensed Successfully!</h2>
+            <h2 className="text-lg font-bold">Sale Completed!</h2>
+            {lastInvoiceNo && (
+              <p className="text-sm font-mono font-semibold text-primary">{lastInvoiceNo}</p>
+            )}
             <p className="text-sm text-muted-foreground">
-              {dispenseResult.success} item(s) dispensed via FEFO
+              {dispenseResult.success} invoice created via FEFO
             </p>
             <div className="flex items-center justify-center gap-1 pt-1">
               <Receipt className="h-4 w-4 text-muted-foreground" />
@@ -228,9 +241,23 @@ export function QuickDispense() {
             </div>
           </CardContent>
         </Card>
-        <Button className="w-full h-11 gap-2" onClick={handleReset}>
-          <Plus className="h-4 w-4" /> New Dispense
-        </Button>
+        <div className="grid grid-cols-2 gap-2">
+          {lastSaleId && (
+            <Button
+              variant="outline"
+              className="gap-2"
+              onClick={() => {
+                setActiveSaleId(lastSaleId);
+                setActiveView("sale-detail");
+              }}
+            >
+              <Receipt className="h-4 w-4" /> View Invoice
+            </Button>
+          )}
+          <Button className="gap-2" onClick={handleReset}>
+            <Plus className="h-4 w-4" /> New Sale
+          </Button>
+        </div>
       </motion.div>
     );
   }
@@ -242,7 +269,7 @@ export function QuickDispense() {
         <Button variant="ghost" size="icon" className="shrink-0" onClick={() => setActiveView("dashboard")}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
-        <h1 className="text-lg font-bold flex-1">Quick Dispense</h1>
+        <h1 className="text-lg font-bold flex-1">New Sale</h1>
         {cart.length > 0 && (
           <Button size="sm" variant="ghost" onClick={handleReset}>
             Clear

@@ -59,6 +59,9 @@ model Business {
   batches       Batch[]
   alertPreference AlertPreference?
   notificationLogs NotificationLog[]
+  customers     Customer[]
+  sales         Sale[]
+  saleItems     SaleItem[]
 
   @@index([userId])
   @@index([businessTypeId])
@@ -151,6 +154,7 @@ model Product {
   inventory    Inventory?
   transactions Transaction[]
   batches      Batch[]
+  saleItems    SaleItem[]
 
   @@index([businessId])
   @@index([categoryId])
@@ -314,4 +318,104 @@ model NotificationLog {
   @@index([type])
   @@index([isRead])
   @@index([createdAt])
+}
+
+// ── Customers ──
+// Pharmacy customers (optional — walk-in sales use null customerId)
+model Customer {
+  id          String   @id @default(cuid())
+  businessId  String
+  name        String
+  phone       String?
+  email       String?
+  address     String?
+  dateOfBirth DateTime?
+  gender      String?  // "male", "female", "other"
+  // Chronic condition flags (for pharmacy context)
+  chronicConditions String? // comma-separated: "diabetes,hypertension"
+  allergies         String? // comma-separated: "penicillin,sulfa"
+  notes             String?
+  // Loyalty / credit
+  totalSpent  Float    @default(0)
+  visitCount  Int      @default(0)
+  lastVisitAt DateTime?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  sales    Sale[]
+
+  @@index([businessId])
+  @@index([phone])
+  @@index([name])
+}
+
+// ── Sales (Invoices) ──
+// Each sale is an invoice with multiple line items
+model Sale {
+  id              String   @id @default(cuid())
+  businessId      String
+  customerId      String?  // null for walk-in customers
+  invoiceNo       String   // human-readable: INV-2026-0001
+  status          String   @default("completed") // "completed", "cancelled", "refunded", "pending"
+  paymentMethod   String   @default("cash") // "cash", "card", "mobile_banking", "credit", "mixed"
+  paymentStatus   String   @default("paid") // "paid", "partial", "unpaid", "refunded"
+
+  // Pricing breakdown
+  subtotal        Float    @default(0)  // sum of (item.price * item.quantity)
+  discountAmount  Float    @default(0)  // flat discount
+  discountPercent Float    @default(0)  // percentage discount (0-100)
+  taxAmount       Float    @default(0)  // VAT/tax
+  totalAmount     Float    @default(0)  // final amount customer pays
+  paidAmount      Float    @default(0)  // amount actually paid (for partial payments)
+
+  // Metadata
+  itemCount       Int      @default(0)
+  totalQuantity   Float    @default(0)
+  notes           String?
+
+  // Audit
+  createdBy       String?  // BusinessUser ID
+  cancelledAt     DateTime?
+  cancelledBy     String?
+  cancelReason    String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  business Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  customer Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  items    SaleItem[]
+
+  @@unique([businessId, invoiceNo])
+  @@index([businessId])
+  @@index([customerId])
+  @@index([status])
+  @@index([paymentStatus])
+  @@index([createdAt])
+}
+
+// ── Sale Items (Invoice Line Items) ──
+model SaleItem {
+  id          String   @id @default(cuid())
+  saleId      String
+  businessId  String
+  productId   String
+  batchId     String?  // specific batch that fulfilled this item (FEFO)
+  productName String   // snapshot at time of sale
+  genericName String?  // snapshot
+  batchNo     String?  // snapshot
+  quantity    Float
+  unit        String   // snapshot
+  unitPrice   Float    // price per unit (MRP at time of sale)
+  discountPercent Float @default(0)  // per-line discount
+  totalPrice  Float    // quantity * unitPrice * (1 - discountPercent/100)
+
+  sale    Sale    @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
+
+  @@index([saleId])
+  @@index([productId])
+  @@index([batchId])
 }

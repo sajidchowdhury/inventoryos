@@ -12,7 +12,13 @@ export type PharmacyView =
   | "batches"         // All batches list with filters
   | "add-batch"       // Add batch to a product
   | "edit-batch"      // Edit existing batch
-  | "dispense"        // Quick dispense with FEFO
+  | "dispense"        // Quick dispense / POS with FEFO
+  | "sales"           // Sales/invoices list
+  | "sale-detail"     // Single sale invoice view
+  | "customers"       // Customer management
+  | "customer-detail" // Single customer view with purchase history
+  | "add-customer"    // Add new customer
+  | "edit-customer"   // Edit existing customer
   | "expiry"          // Full expiry management dashboard
   | "alerts"          // Combined alerts center
   | "alert-settings"  // Alert preferences configuration
@@ -32,6 +38,16 @@ interface NavState {
   setActiveProductId: (id: string | null) => void;
   editingBatchId: string | null;
   setEditingBatchId: (id: string | null) => void;
+  // Sale/Customer navigation
+  activeSaleId: string | null;
+  setActiveSaleId: (id: string | null) => void;
+  activeCustomerId: string | null;
+  setActiveCustomerId: (id: string | null) => void;
+  editingCustomerId: string | null;
+  setEditingCustomerId: (id: string | null) => void;
+  // Optional: pre-selected customer for new sale
+  saleCustomerId: string | null;
+  setSaleCustomerId: (id: string | null) => void;
 }
 
 export const useNavStore = create<NavState>((set) => ({
@@ -43,4 +59,12 @@ export const useNavStore = create<NavState>((set) => ({
   setActiveProductId: (id) => set({ activeProductId: id }),
   editingBatchId: null,
   setEditingBatchId: (id) => set({ editingBatchId: id }),
+  activeSaleId: null,
+  setActiveSaleId: (id) => set({ activeSaleId: id }),
+  activeCustomerId: null,
+  setActiveCustomerId: (id) => set({ activeCustomerId: id }),
+  editingCustomerId: null,
+  setEditingCustomerId: (id) => set({ editingCustomerId: id }),
+  saleCustomerId: null,
+  setSaleCustomerId: (id) => set({ saleCustomerId: id }),
 }));

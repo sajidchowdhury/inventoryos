@@ -8,6 +8,9 @@ import { ProductForm } from "./ProductForm";
 import { BatchList } from "./BatchList";
 import { BatchForm } from "./BatchForm";
 import { QuickDispense } from "./QuickDispense";
+import { SalesList } from "./SalesList";
+import { SaleDetail } from "./SaleDetail";
+import { CustomerManager } from "./CustomerManager";
 import { ExpiryDashboard } from "./ExpiryDashboard";
 import { AlertsCenter } from "./AlertsCenter";
 import { AlertPreferences } from "./AlertPreferences";
@@ -41,6 +44,18 @@ export function PharmacyShell() {
         return <BatchForm mode="edit" />;
       case "dispense":
         return <QuickDispense />;
+      case "sales":
+        return <SalesList />;
+      case "sale-detail":
+        return <SaleDetail />;
+      case "customers":
+        return <CustomerManager />;
+      case "customer-detail":
+        return <CustomerManager />; // For now, reuse list (could add detail view later)
+      case "add-customer":
+        return <CustomerManager />;
+      case "edit-customer":
+        return <CustomerManager />;
       case "expiry":
         return <ExpiryDashboard />;
       case "alerts":

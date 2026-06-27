@@ -536,3 +536,97 @@ Stage Summary:
 - Cron-ready: digest endpoint can be called daily/weekly/monthly
 - Deduplication prevents notification spam (24h window)
 - Foundation for future email/SMS integration (channels configured but not yet sending)
+---
+Task ID: 4a-completion
+Agent: Main Agent
+Task: Complete Phase 4a — Sales & Invoicing Foundation (POS with FEFO)
+
+Work Log:
+- Added 3 new Prisma models:
+  - Customer: name, phone, email, address, DOB, gender, chronicConditions, allergies, notes, totalSpent, visitCount, lastVisitAt
+  - Sale: invoiceNo (sequential), status, paymentMethod, paymentStatus, subtotal, discountAmount/Percent, taxAmount, totalAmount, paidAmount, itemCount, cancel fields
+  - SaleItem: snapshot of product/batch at sale time (productName, genericName, batchNo, unit, unitPrice), quantity, discountPercent, totalPrice
+  - Added reverse relations on Business and Product models
+  - Applied schema to database via prisma db push
+- Created GET/POST /api/businesses/[id]/customers:
+  - GET with search (name/phone/email), pagination
+  - POST with duplicate phone check (409 conflict)
+  - Includes chronicConditions and allergies (pharmacy-specific fields)
+- Created GET/PUT/DELETE /api/businesses/[id]/customers/[customerId]:
+  - GET includes sales history (last 20) + counts
+  - PUT with duplicate phone check (excluding self)
+  - DELETE is soft-delete (preserves sales history)
+- Created GET/POST /api/businesses/[id]/sales:
+  - GET with filters (customerId, status, paymentStatus, date range), pagination
+  - GET includes summary (today + all-time totals)
+  - POST creates invoice with FEFO allocation per line item
+  - Auto-generates sequential invoice number (INV-YYYY-NNNN)
+  - Atomic transaction: creates Sale + SaleItems + reduces batch/inventory + audit transactions
+  - Supports discount (percent + flat), tax, partial payments
+  - Updates customer stats (totalSpent, visitCount, lastVisitAt)
+  - Returns 409 with clear error if insufficient stock
+- Created GET/PUT /api/businesses/[id]/sales/[saleId]:
+  - GET returns full invoice with items + customer info
+  - PUT action=cancel: reverses all stock movements (restores batches + inventory), creates RETURN audit transactions, reverses customer stats
+  - PUT action=update_payment: updates paidAmount + paymentStatus
+  - Prevents double-cancellation (400 error)
+- Created GET /api/businesses/[id]/sales/stats:
+  - Period aggregations: today, week, month, year (count + total + quantity)
+  - Last 7 days breakdown (for charts)
+  - Top 5 products by revenue (last 30 days)
+  - Payment method breakdown
+  - Outstanding payments (partial + unpaid) with due amount
+  - Cancelled sales count
+- Updated nav-store.ts: added 6 new views (sales, sale-detail, customers, customer-detail, add-customer, edit-customer) + 4 new state fields (activeSaleId, activeCustomerId, editingCustomerId, saleCustomerId)
+- Built CustomerManager.tsx:
+  - List with search, stats (total/active/total spent)
+  - Create/Edit dialog with all fields including chronic conditions + allergies
+  - Delete confirmation (preserves sales history)
+  - Tap customer → navigate to detail
+- Built SalesList.tsx:
+  - Today's + all-time summary cards
+  - Search by invoice/customer/product
+  - Filter tabs: All, Completed, Partial Pay, Unpaid, Cancelled
+  - Each sale shows: invoice no, status badge, payment status, customer, items count, total
+  - Pagination
+  - "New Sale" button → dispense view
+- Built SaleDetail.tsx:
+  - Printable invoice view (window.print support)
+  - Business header + customer info
+  - Items table with batch numbers + discounts
+  - Totals breakdown (subtotal, discounts, tax, total, paid, due)
+  - Cancel sale dialog with reason (restores stock)
+  - Cancelled sale banner with reason + timestamp
+  - Tap customer name → navigate to customer detail
+- Updated QuickDispense.tsx:
+  - Now creates Sale invoices via /sales API (instead of /dispense)
+  - Success screen shows invoice number + "View Invoice" button
+  - Pre-select customer via saleCustomerId (from nav store)
+  - Title changed to "New Sale"
+- Updated PharmacyDashboard:
+  - Primary CTA renamed to "New Sale"
+  - Quick actions expanded to 5×2 = 10 grid (added Sales, Customers)
+  - Each action has distinct color and icon
+- Updated PharmacyShell + barrel exports
+
+Stage Summary:
+- Phase 4a is now COMPLETE — full POS system with invoicing
+- 3 new Prisma models (Customer, Sale, SaleItem)
+- 5 new API routes: customers, customers/[id], sales, sales/[id], sales/stats
+- 3 new UI components: CustomerManager, SalesList, SaleDetail
+- 2 modified components: QuickDispense (creates invoices), PharmacyDashboard (expanded actions)
+- All 18 API test scenarios pass:
+  * Customer CRUD with duplicate phone prevention ✅
+  * Multi-item sale with FEFO allocation (70 units: 50 from NEAR + 20 from FAR) ✅
+  * Sequential invoice numbering (INV-2026-0001) ✅
+  * Inventory correctly reduced (150→80, 80→65) ✅
+  * Customer stats updated (totalSpent, visitCount, lastVisitAt) ✅
+  * Insufficient stock returns 409 with clear error ✅
+  * Sales stats with 7-day breakdown + top products ✅
+  * Sale cancellation restores stock (80→150, batches restored) ✅
+  * Customer stats reversed on cancel (totalSpent→0, visitCount→0) ✅
+  * Double-cancellation blocked (400) ✅
+- Production build clean, lint passes with zero errors
+- Full audit trail: every sale creates SALE transactions per batch
+- Cancellation creates RETURN transactions for traceability
+- Foundation for Phase 4b: payment tracking, customer credit, returns/refunds
