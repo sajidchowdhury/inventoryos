@@ -62,6 +62,9 @@ model Business {
   customers     Customer[]
   sales         Sale[]
   saleItems     SaleItem[]
+  payments      Payment[]
+  returns       Return[]
+  returnItems   ReturnItem[]
 
   @@index([userId])
   @@index([businessTypeId])
@@ -155,6 +158,7 @@ model Product {
   transactions Transaction[]
   batches      Batch[]
   saleItems    SaleItem[]
+  returnItems  ReturnItem[]
 
   @@index([businessId])
   @@index([categoryId])
@@ -345,6 +349,8 @@ model Customer {
 
   business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
   sales    Sale[]
+  payments Payment[]
+  returns  Return[]
 
   @@index([businessId])
   @@index([phone])
@@ -386,6 +392,8 @@ model Sale {
   business Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
   customer Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
   items    SaleItem[]
+  payments Payment[]
+  returns  Return[]
 
   @@unique([businessId, invoiceNo])
   @@index([businessId])
@@ -414,8 +422,84 @@ model SaleItem {
   sale    Sale    @relation(fields: [saleId], references: [id], onDelete: Cascade)
   business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
   product Product @relation(fields: [productId], references: [id])
+  returnItems ReturnItem[]
 
   @@index([saleId])
   @@index([productId])
   @@index([batchId])
+}
+
+// ── Payments ──
+// Records each payment made against a sale (supports partial payments + multiple methods)
+model Payment {
+  id            String   @id @default(cuid())
+  businessId    String
+  saleId        String
+  customerId    String?  // snapshot for quick lookup
+  amount        Float    // amount paid
+  paymentMethod String   // "cash", "card", "mobile_banking", "credit", "cheque"
+  reference     String?  // transaction ref (card last 4, mobile tx ID, cheque no)
+  notes         String?
+  receivedBy    String?  // BusinessUser ID
+  createdAt     DateTime @default(now())
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  sale     Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  customer Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  @@index([businessId])
+  @@index([saleId])
+  @@index([customerId])
+  @@index([createdAt])
+}
+
+// ── Returns / Refunds ──
+// Records product returns from customers (post-sale)
+model Return {
+  id            String   @id @default(cuid())
+  businessId    String
+  saleId        String
+  customerId    String?
+  returnNo      String   // human-readable: RET-2026-0001
+  status        String   @default("completed") // "completed", "pending", "rejected"
+  refundAmount  Float    @default(0)
+  refundMethod  String   @default("cash") // "cash", "credit", "store_credit"
+  restockItems  Boolean  @default(true) // whether to add items back to inventory
+  reason        String   // "defective", "wrong_item", "expired", "customer_changed_mind", "other"
+  notes         String?
+  processedBy   String?
+  createdAt     DateTime @default(now())
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  sale     Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  customer Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  items    ReturnItem[]
+
+  @@unique([businessId, returnNo])
+  @@index([businessId])
+  @@index([saleId])
+  @@index([customerId])
+  @@index([createdAt])
+}
+
+// ── Return Items ──
+model ReturnItem {
+  id            String   @id @default(cuid())
+  returnId      String
+  saleItemId    String
+  businessId    String
+  productId     String
+  batchId       String?
+  productName   String
+  quantity      Float    // quantity returned
+  unitPrice     Float    // refund per unit
+  refundAmount  Float    // quantity * unitPrice
+
+  return      Return   @relation(fields: [returnId], references: [id], onDelete: Cascade)
+  business    Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  saleItem    SaleItem @relation(fields: [saleItemId], references: [id])
+  product     Product  @relation(fields: [productId], references: [id])
+
+  @@index([returnId])
+  @@index([saleItemId])
 }

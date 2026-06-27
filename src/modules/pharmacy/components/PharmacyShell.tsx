@@ -11,6 +11,9 @@ import { QuickDispense } from "./QuickDispense";
 import { SalesList } from "./SalesList";
 import { SaleDetail } from "./SaleDetail";
 import { CustomerManager } from "./CustomerManager";
+import { CustomerCreditView } from "./CustomerCreditView";
+import { PaymentManager } from "./PaymentManager";
+import { ReturnsManager } from "./ReturnsManager";
 import { ExpiryDashboard } from "./ExpiryDashboard";
 import { AlertsCenter } from "./AlertsCenter";
 import { AlertPreferences } from "./AlertPreferences";
@@ -51,11 +54,17 @@ export function PharmacyShell() {
       case "customers":
         return <CustomerManager />;
       case "customer-detail":
-        return <CustomerManager />; // For now, reuse list (could add detail view later)
+        return <CustomerCreditView />;
       case "add-customer":
         return <CustomerManager />;
       case "edit-customer":
         return <CustomerManager />;
+      case "customer-credit":
+        return <CustomerCreditView />;
+      case "payments":
+        return <PaymentManager />;
+      case "returns":
+        return <ReturnsManager />;
       case "expiry":
         return <ExpiryDashboard />;
       case "alerts":

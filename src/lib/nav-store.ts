@@ -19,6 +19,9 @@ export type PharmacyView =
   | "customer-detail" // Single customer view with purchase history
   | "add-customer"    // Add new customer
   | "edit-customer"   // Edit existing customer
+  | "customer-credit" // Customer outstanding balance view
+  | "payments"        // Payments list + record
+  | "returns"         // Returns list + process
   | "expiry"          // Full expiry management dashboard
   | "alerts"          // Combined alerts center
   | "alert-settings"  // Alert preferences configuration

@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
   ArrowLeft, Printer, X, AlertCircle, Check, Loader2,
-  User, Calendar, Receipt, ShoppingBag, TrendingUp,
+  User, Calendar, Receipt, ShoppingBag, TrendingUp, DollarSign, RotateCcw,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -74,7 +74,7 @@ const paymentColors: Record<string, string> = {
 
 export function SaleDetail() {
   const session = useAuthStore((s) => s.session);
-  const { activeSaleId, setActiveView, setActiveCustomerId } = useNavStore();
+  const { activeSaleId, setActiveView, setActiveCustomerId, saleCustomerId, setSaleCustomerId } = useNavStore();
   const businessId = session?.business?.id;
 
   const [sale, setSale] = useState<Sale | null>(null);
@@ -164,9 +164,32 @@ export function SaleDetail() {
           <Printer className="h-4 w-4" />
         </Button>
         {!isCancelled && (
-          <Button variant="outline" size="sm" className="gap-1.5 text-destructive" onClick={() => setCancelOpen(true)}>
-            <X className="h-3.5 w-3.5" /> Cancel
-          </Button>
+          <>
+            {sale.paymentStatus !== "paid" && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5 text-green-600 border-green-300"
+                onClick={() => {
+                  setSaleCustomerId(sale.customer?.id || null);
+                  setActiveView("payments");
+                }}
+              >
+                <DollarSign className="h-3.5 w-3.5" /> Pay
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5 text-orange-600 border-orange-300"
+              onClick={() => setActiveView("returns")}
+            >
+              <RotateCcw className="h-3.5 w-3.5" /> Return
+            </Button>
+            <Button variant="outline" size="sm" className="gap-1.5 text-destructive" onClick={() => setCancelOpen(true)}>
+              <X className="h-3.5 w-3.5" /> Cancel
+            </Button>
+          </>
         )}
       </div>
 

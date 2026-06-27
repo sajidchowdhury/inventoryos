@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
   Package, AlertTriangle, TrendingUp, Clock, Plus,
-  ChevronRight, Pill, ShoppingBag, BarChart3, Boxes, ShoppingCart, History, CalendarClock, Bell, Users, Receipt,
+  ChevronRight, Pill, ShoppingBag, BarChart3, Boxes, ShoppingCart, History, CalendarClock, Bell, Users, Receipt, DollarSign, RotateCcw,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -187,7 +187,7 @@ export function PharmacyDashboard() {
       {/* Quick Actions */}
       <div>
         <h2 className="text-sm font-semibold mb-2 text-muted-foreground">Quick Actions</h2>
-        <div className="grid grid-cols-5 gap-2">
+        <div className="grid grid-cols-4 gap-2">
           <Card className="cursor-pointer hover:shadow-md transition-shadow active:scale-[0.97]" onClick={() => setActiveView("dispense")}>
             <CardContent className="p-2 flex flex-col items-center gap-1 text-center">
               <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
@@ -204,6 +204,22 @@ export function PharmacyDashboard() {
               <span className="text-[9px] font-medium leading-tight">Sales</span>
             </CardContent>
           </Card>
+          <Card className="cursor-pointer hover:shadow-md transition-shadow active:scale-[0.97]" onClick={() => setActiveView("payments")}>
+            <CardContent className="p-2 flex flex-col items-center gap-1 text-center">
+              <div className="h-8 w-8 rounded-full bg-emerald-50 flex items-center justify-center">
+                <DollarSign className="h-4 w-4 text-emerald-600" />
+              </div>
+              <span className="text-[9px] font-medium leading-tight">Payments</span>
+            </CardContent>
+          </Card>
+          <Card className="cursor-pointer hover:shadow-md transition-shadow active:scale-[0.97]" onClick={() => setActiveView("returns")}>
+            <CardContent className="p-2 flex flex-col items-center gap-1 text-center">
+              <div className="h-8 w-8 rounded-full bg-orange-50 flex items-center justify-center">
+                <RotateCcw className="h-4 w-4 text-orange-600" />
+              </div>
+              <span className="text-[9px] font-medium leading-tight">Returns</span>
+            </CardContent>
+          </Card>
           <Card className="cursor-pointer hover:shadow-md transition-shadow active:scale-[0.97]" onClick={() => setActiveView("customers")}>
             <CardContent className="p-2 flex flex-col items-center gap-1 text-center">
               <div className="h-8 w-8 rounded-full bg-blue-50 flex items-center justify-center">
@@ -214,8 +230,8 @@ export function PharmacyDashboard() {
           </Card>
           <Card className="cursor-pointer hover:shadow-md transition-shadow active:scale-[0.97]" onClick={() => setActiveView("add-product")}>
             <CardContent className="p-2 flex flex-col items-center gap-1 text-center">
-              <div className="h-8 w-8 rounded-full bg-emerald-50 flex items-center justify-center">
-                <Plus className="h-4 w-4 text-emerald-600" />
+              <div className="h-8 w-8 rounded-full bg-violet-50 flex items-center justify-center">
+                <Plus className="h-4 w-4 text-violet-600" />
               </div>
               <span className="text-[9px] font-medium leading-tight">Add Product</span>
             </CardContent>
@@ -230,8 +246,8 @@ export function PharmacyDashboard() {
           </Card>
           <Card className="cursor-pointer hover:shadow-md transition-shadow active:scale-[0.97]" onClick={() => setActiveView("batches")}>
             <CardContent className="p-2 flex flex-col items-center gap-1 text-center">
-              <div className="h-8 w-8 rounded-full bg-orange-50 flex items-center justify-center">
-                <Boxes className="h-4 w-4 text-orange-600" />
+              <div className="h-8 w-8 rounded-full bg-amber-50 flex items-center justify-center">
+                <Boxes className="h-4 w-4 text-amber-600" />
               </div>
               <span className="text-[9px] font-medium leading-tight">Stock</span>
             </CardContent>

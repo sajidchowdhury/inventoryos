@@ -630,3 +630,97 @@ Stage Summary:
 - Full audit trail: every sale creates SALE transactions per batch
 - Cancellation creates RETURN transactions for traceability
 - Foundation for Phase 4b: payment tracking, customer credit, returns/refunds
+---
+Task ID: 4b-completion
+Agent: Main Agent
+Task: Complete Phase 4b — Payments, Customer Credit, Returns & Refunds
+
+Work Log:
+- Added 2 new Prisma models:
+  - Payment: amount, paymentMethod (cash/card/mobile_banking/credit/cheque), reference, notes, receivedBy
+  - Return: returnNo (sequential), refundAmount, refundMethod, restockItems flag, reason
+  - ReturnItem: links to SaleItem, tracks returned quantity + refund per unit
+  - Added reverse relations on Business, Sale, SaleItem, Customer, Product models
+- Created GET/POST /api/businesses/[id]/payments:
+  - GET with filters (saleId, customerId, method, date range) + summary (today + byMethod breakdown)
+  - POST creates payment + updates sale.paidAmount + paymentStatus atomically
+  - Validates: positive amount, valid method, sale not cancelled
+  - Prevents overpayment (400 error with max allowed amount)
+  - Supports reference field (txn ID, card last 4, cheque no)
+- Created GET /api/businesses/[id]/payments/stats:
+  - Period aggregations (today/week/month) with totals + counts
+  - Last 7 days breakdown (for charts)
+  - By payment method breakdown (sorted by total)
+  - Outstanding receivables (partial + unpaid sales)
+  - Top 5 paying customers (last 30 days)
+- Created GET /api/businesses/[id]/customers/[customerId]/credit:
+  - Returns customer's full credit profile
+  - totalDue, totalInvoiced, totalPaid, outstandingSaleCount
+  - oldestDueDays (age of oldest unpaid invoice)
+  - Outstanding sales list (sorted oldest first — FIFO for credit)
+  - Payment history (last 10)
+  - Returns history (last 5)
+- Created GET/POST /api/businesses/[id]/returns:
+  - GET with filters + summary (today + month refund totals)
+  - POST processes return atomically:
+    * Validates sale not cancelled
+    * Validates return quantity ≤ sold quantity
+    * Checks previously returned quantities (prevents over-return)
+    * Auto-generates sequential return number (RET-YYYY-NNNN)
+    * If restockItems=true: restores batch + inventory quantities
+    * Creates RETURN audit transactions
+    * Updates sale.paidAmount (reduces by refund for cash/store_credit)
+    * Recalculates payment status
+  - 5 refund reasons: defective, wrong_item, expired, customer_changed_mind, other
+  - 3 refund methods: cash, credit (store credit), mobile_banking
+- Updated nav-store.ts: added 3 new views (payments, returns, customer-credit) + customer-detail now shows credit view
+- Built PaymentManager.tsx:
+  - List with search + method icons + summary cards (today + byMethod)
+  - Record payment dialog with sale lookup (auto-fills due amount)
+  - Sale info preview showing total/paid/due
+  - 5 payment methods with distinct icons
+- Built ReturnsManager.tsx:
+  - List with search + reason badges + summary cards
+  - Process return dialog with sale items selection
+  - Per-item quantity input with running refund total
+  - Refund method + restock toggle
+  - 5 return reasons
+- Built CustomerCreditView.tsx:
+  - Customer card with lifetime stats
+  - Outstanding balance hero card with oldest-due-days badge
+  - Outstanding invoices list (tap to view sale)
+  - Payment history (last 10)
+  - Returns history (last 5)
+  - "Record Payment" CTA when balance > 0
+- Updated SaleDetail.tsx:
+  - Added "Pay" button (green) when paymentStatus ≠ paid → navigates to payments
+  - Added "Return" button (orange) → navigates to returns
+  - Both buttons hidden for cancelled sales
+- Updated PharmacyDashboard:
+  - Quick actions expanded to 4×3 = 12 grid (added Payments, Returns)
+  - Each action has distinct color
+- Updated PharmacyShell + barrel exports
+
+Stage Summary:
+- Phase 4b is now COMPLETE — Phase 4 (Sales & Quick Dispensing) fully done
+- 2 new Prisma models (Payment, Return + ReturnItem)
+- 4 new API routes: payments, payments/stats, customers/[id]/credit, returns
+- 3 new UI components: PaymentManager, ReturnsManager, CustomerCreditView
+- 2 modified components: SaleDetail (Pay/Return buttons), PharmacyDashboard (expanded actions)
+- All 12 API test scenarios pass:
+  * Partial payment recording (500→900→1300) ✅
+  * Payment status transitions (partial→paid) ✅
+  * Overpayment prevention (400) ✅
+  * Payment list with method breakdown ✅
+  * Payment stats with top payers ✅
+  * Customer credit summary (totalDue, outstanding sales) ✅
+  * Return processing with sequential RET- numbers ✅
+  * Stock restocking (batch quantity restored) ✅
+  * Refund amount calculation (5×50=250) ✅
+  * Over-return prevention (400) ✅
+  * Returns list with summary ✅
+  * Return on cancelled sale blocked (400) ✅
+- Production build clean, lint passes with zero errors
+- Full financial audit trail: every payment + return creates audit transactions
+- Sale cancellation reverses payments + returns impact
+- Foundation for Phase 5: Purchases & Suppliers, Dashboard analytics
