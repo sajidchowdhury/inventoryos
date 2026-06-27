@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
   Package, AlertTriangle, TrendingUp, Clock, Plus,
-  ChevronRight, Pill, ShoppingBag, BarChart3, Boxes, ShoppingCart, History, CalendarClock, Bell, Users, Receipt, DollarSign, RotateCcw, Percent, BarChart,
+  ChevronRight, Pill, ShoppingBag, BarChart3, Boxes, ShoppingCart, History, CalendarClock, Bell, Users, Receipt, DollarSign, RotateCcw, Percent, BarChart, Truck, PackagePlus,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -290,6 +290,30 @@ export function PharmacyDashboard() {
                 <Percent className="h-4 w-4 text-teal-600" />
               </div>
               <span className="text-[9px] font-medium leading-tight">Discounts</span>
+            </CardContent>
+          </Card>
+          <Card className="cursor-pointer hover:shadow-md transition-shadow active:scale-[0.97]" onClick={() => setActiveView("suppliers")}>
+            <CardContent className="p-2 flex flex-col items-center gap-1 text-center">
+              <div className="h-8 w-8 rounded-full bg-stone-50 flex items-center justify-center">
+                <Truck className="h-4 w-4 text-stone-600" />
+              </div>
+              <span className="text-[9px] font-medium leading-tight">Suppliers</span>
+            </CardContent>
+          </Card>
+          <Card className="cursor-pointer hover:shadow-md transition-shadow active:scale-[0.97]" onClick={() => setActiveView("add-purchase")}>
+            <CardContent className="p-2 flex flex-col items-center gap-1 text-center">
+              <div className="h-8 w-8 rounded-full bg-lime-50 flex items-center justify-center">
+                <PackagePlus className="h-4 w-4 text-lime-600" />
+              </div>
+              <span className="text-[9px] font-medium leading-tight">Purchase</span>
+            </CardContent>
+          </Card>
+          <Card className="cursor-pointer hover:shadow-md transition-shadow active:scale-[0.97]" onClick={() => setActiveView("purchases")}>
+            <CardContent className="p-2 flex flex-col items-center gap-1 text-center">
+              <div className="h-8 w-8 rounded-full bg-fuchsia-50 flex items-center justify-center">
+                <Package className="h-4 w-4 text-fuchsia-600" />
+              </div>
+              <span className="text-[9px] font-medium leading-tight">Purchases</span>
             </CardContent>
           </Card>
           <Card className="cursor-pointer hover:shadow-md transition-shadow active:scale-[0.97]" onClick={() => setActiveView("transactions")}>

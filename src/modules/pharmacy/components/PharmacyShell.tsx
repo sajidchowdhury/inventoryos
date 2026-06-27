@@ -16,6 +16,10 @@ import { CustomerCreditView } from "./CustomerCreditView";
 import { PaymentManager } from "./PaymentManager";
 import { ReturnsManager } from "./ReturnsManager";
 import { DiscountRulesManager } from "./DiscountRulesManager";
+import { SupplierManager } from "./SupplierManager";
+import { PurchaseList } from "./PurchaseList";
+import { PurchaseForm } from "./PurchaseForm";
+import { PurchaseDetail } from "./PurchaseDetail";
 import { ExpiryDashboard } from "./ExpiryDashboard";
 import { AlertsCenter } from "./AlertsCenter";
 import { AlertPreferences } from "./AlertPreferences";
@@ -71,6 +75,14 @@ export function PharmacyShell() {
         return <ReturnsManager />;
       case "discount-rules":
         return <DiscountRulesManager />;
+      case "suppliers":
+        return <SupplierManager />;
+      case "purchases":
+        return <PurchaseList />;
+      case "purchase-detail":
+        return <PurchaseDetail />;
+      case "add-purchase":
+        return <PurchaseForm />;
       case "expiry":
         return <ExpiryDashboard />;
       case "alerts":

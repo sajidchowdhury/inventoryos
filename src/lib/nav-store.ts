@@ -24,6 +24,10 @@ export type PharmacyView =
   | "payments"        // Payments list + record
   | "returns"         // Returns list + process
   | "discount-rules"  // Discount rules management
+  | "suppliers"       // Supplier management
+  | "purchases"       // Purchase list
+  | "purchase-detail" // Single purchase view
+  | "add-purchase"    // Create new purchase
   | "expiry"          // Full expiry management dashboard
   | "alerts"          // Combined alerts center
   | "alert-settings"  // Alert preferences configuration
@@ -53,6 +57,9 @@ interface NavState {
   // Optional: pre-selected customer for new sale
   saleCustomerId: string | null;
   setSaleCustomerId: (id: string | null) => void;
+  // Purchase navigation
+  activePurchaseId: string | null;
+  setActivePurchaseId: (id: string | null) => void;
 }
 
 export const useNavStore = create<NavState>((set) => ({
@@ -72,4 +79,6 @@ export const useNavStore = create<NavState>((set) => ({
   setEditingCustomerId: (id) => set({ editingCustomerId: id }),
   saleCustomerId: null,
   setSaleCustomerId: (id) => set({ saleCustomerId: id }),
+  activePurchaseId: null,
+  setActivePurchaseId: (id) => set({ activePurchaseId: id }),
 }));

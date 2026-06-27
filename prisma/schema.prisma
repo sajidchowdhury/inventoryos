@@ -66,6 +66,9 @@ model Business {
   returns       Return[]
   returnItems   ReturnItem[]
   discountRules DiscountRule[]
+  suppliers     Supplier[]
+  purchases     Purchase[]
+  purchaseItems PurchaseItem[]
 
   @@index([userId])
   @@index([businessTypeId])
@@ -160,6 +163,7 @@ model Product {
   batches      Batch[]
   saleItems    SaleItem[]
   returnItems  ReturnItem[]
+  purchaseItems PurchaseItem[]
 
   @@index([businessId])
   @@index([categoryId])
@@ -187,11 +191,14 @@ model Batch {
 
   business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
   product  Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  supplier Supplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  purchaseItems PurchaseItem[]
 
   @@index([businessId])
   @@index([productId])
   @@index([expiryDate])
   @@index([status])
+  @@index([supplierId])
 }
 
 // ── Inventory ──
@@ -536,4 +543,98 @@ model DiscountRule {
   @@index([businessId])
   @@index([isActive])
   @@index([scope])
+}
+
+// ── Suppliers ──
+// Vendors/manufacturers/distributors that supply products
+model Supplier {
+  id            String   @id @default(cuid())
+  businessId    String
+  name          String
+  code          String?  // internal supplier code: SUP-001
+  contactPerson String?
+  phone         String?
+  email         String?
+  address       String?
+  // Financial
+  balance       Float    @default(0)  // outstanding payable (positive = we owe them)
+  totalPurchased Float   @default(0)  // lifetime purchase value
+  totalPaid     Float    @default(0)  // lifetime payments to supplier
+  // Metadata
+  notes         String?
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  business  Business   @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  purchases Purchase[]
+  batches   Batch[]
+
+  @@index([businessId])
+  @@index([name])
+  @@index([phone])
+}
+
+// ── Purchases (Goods Receipt / Purchase Invoices) ──
+// Records incoming stock from suppliers with batch creation
+model Purchase {
+  id              String   @id @default(cuid())
+  businessId      String
+  supplierId      String?
+  purchaseNo      String   // human-readable: PO-2026-0001
+  status          String   @default("received") // "draft", "ordered", "received", "cancelled"
+  // Pricing
+  subtotal        Float    @default(0)
+  discountAmount  Float    @default(0)
+  taxAmount       Float    @default(0)
+  totalAmount     Float    @default(0)
+  paidAmount      Float    @default(0)
+  paymentStatus   String   @default("unpaid") // "paid", "partial", "unpaid"
+  // Metadata
+  invoiceNo       String?  // supplier's invoice number
+  invoiceDate     DateTime?
+  receivedDate    DateTime?
+  notes           String?
+  // Audit
+  createdBy       String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  business  Business   @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  supplier  Supplier?  @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  items     PurchaseItem[]
+
+  @@unique([businessId, purchaseNo])
+  @@index([businessId])
+  @@index([supplierId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+// ── Purchase Items ──
+model PurchaseItem {
+  id              String   @id @default(cuid())
+  purchaseId      String
+  businessId      String
+  productId       String
+  batchId         String?  // batch created on receipt
+  productName     String   // snapshot
+  quantity        Float    // ordered quantity
+  receivedQuantity Float   @default(0) // actually received
+  unit            String   // snapshot
+  unitCost        Float    // purchase price per unit
+  totalPrice      Float    // quantity * unitCost
+  // Batch details (used when creating batch on receipt)
+  batchNo         String?
+  expiryDate      DateTime?
+  mfgDate         DateTime?
+  mrp             Float?   // selling price (MRP) for the batch
+
+  purchase Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  product  Product  @relation(fields: [productId], references: [id])
+  batch    Batch?   @relation(fields: [batchId], references: [id])
+
+  @@index([purchaseId])
+  @@index([productId])
 }

@@ -814,3 +814,104 @@ Stage Summary:
 - Production build clean, lint passes with zero errors
 - Analytics dashboard provides actionable insights: peak hours, top products, payment method mix
 - Discount rules foundation for auto-applied promotions (UI for manual application in POS)
+---
+Task ID: 5a-completion
+Agent: Main Agent
+Task: Complete Phase 5a — Purchases & Suppliers
+
+Work Log:
+- Added 3 new Prisma models:
+  - Supplier: name, code (auto-generated), contactPerson, phone, email, address, balance, totalPurchased, totalPaid, notes
+  - Purchase: purchaseNo (sequential PO-YYYY-NNNN), supplierId, status, subtotal, discount, tax, total, paidAmount, paymentStatus, invoiceNo/Date, receivedDate
+  - PurchaseItem: productId, batchId (auto-created), quantity, receivedQuantity, unitCost, totalPrice, batchNo, expiryDate, mfgDate, mrp
+  - Added reverse relations on Business, Batch (supplier + purchaseItems), Product
+  - Applied schema to database
+- Created GET/POST /api/businesses/[id]/suppliers:
+  - GET with search (name/phone/email/code), pagination
+  - POST with auto-generated code (SUP-001, SUP-002...) if not provided
+  - Duplicate code prevention (409)
+- Created GET/PUT/DELETE /api/businesses/[id]/suppliers/[supplierId]:
+  - GET includes purchase history (last 20) + counts
+  - PUT with duplicate code check (excluding self)
+  - DELETE is soft-delete (preserves purchase history)
+- Created GET/POST /api/businesses/[id]/purchases:
+  - GET with filters (supplierId, status), pagination, summary (today/month/outstanding)
+  - POST creates purchase with AUTO-BATCH CREATION:
+    * Validates each item has expiry date (pharmacy requirement)
+    * Auto-generates sequential purchase number (PO-2026-0001)
+    * Creates Batch for each item with auto-status calculation
+    * Links batch to supplier
+    * Updates Inventory (increments quantity, sets unitCost)
+    * Creates PURCHASE audit Transaction per item
+    * Updates supplier balance + totalPurchased + totalPaid
+    * Supports discount, tax, partial payments
+    * All operations atomic (db.$transaction)
+- Created GET/PUT /api/businesses/[id]/purchases/[purchaseId]:
+  - GET returns full purchase with supplier + items + batch details
+  - PUT action=cancel: reverses ALL stock movements
+    * Deletes batches created by this purchase
+    * Reduces inventory quantities
+    * Creates ADJUSTMENT audit transactions
+    * Reverses supplier balance + totals
+    * Prevents double-cancellation
+  - PUT action=update_payment: updates paidAmount + paymentStatus + supplier balance
+- Created GET /api/businesses/[id]/purchases/stats:
+  - Period aggregations (today/week/month) with totals + paid amounts
+  - Last 7 days trend
+  - Top 5 suppliers by purchase value
+  - Top 5 purchased products
+  - Outstanding payables (count + due amount)
+- Updated nav-store.ts: added 4 new views (suppliers, purchases, purchase-detail, add-purchase) + activePurchaseId state
+- Built SupplierManager.tsx:
+  - List with search, stats (total/outstanding/purchased)
+  - Create/Edit dialog with all fields
+  - Delete confirmation (preserves purchase history)
+  - Shows balance due badge per supplier
+- Built PurchaseList.tsx:
+  - Summary cards (today/month/outstanding)
+  - Search by PO no/supplier/invoice
+  - Each purchase shows: PO number, status, supplier, items count, total, payment status
+  - Pagination
+- Built PurchaseForm.tsx:
+  - Supplier selection dropdown
+  - Supplier invoice number + date
+  - Product search & add to cart
+  - Per-item: quantity, unit cost, batch number, expiry date, mfg date, MRP
+  - Live line total + subtotal + discount + tax + total calculation
+  - Paid amount input (for partial payments)
+  - Validates expiry date + batch number per item
+  - Success screen on save
+- Built PurchaseDetail.tsx:
+  - Printable purchase view
+  - Supplier info card
+  - Items with batch details (batch no, expiry, status, remaining qty)
+  - Totals breakdown (subtotal, discount, tax, total, paid, due)
+  - Cancel purchase dialog with reason (reverses stock)
+  - Cancelled banner
+- Updated PharmacyDashboard:
+  - Quick actions expanded to 17 buttons (added Suppliers, Purchase, Purchases)
+- Updated PharmacyShell + barrel exports
+
+Stage Summary:
+- Phase 5a is now COMPLETE
+- 3 new Prisma models (Supplier, Purchase, PurchaseItem)
+- 5 new API routes: suppliers, suppliers/[id], purchases, purchases/[id], purchases/stats
+- 4 new UI components: SupplierManager, PurchaseList, PurchaseForm, PurchaseDetail
+- All 16 API test scenarios pass:
+  * Supplier CRUD with auto-code generation ✅
+  * Duplicate code prevention ✅
+  * Purchase with auto-batch creation (2 items → 2 batches) ✅
+  * Inventory auto-updated (0→100) ✅
+  * Batch linked to supplier ✅
+  * Supplier balance tracking (৳45 due on partial payment) ✅
+  * Purchase detail with batch info ✅
+  * Purchase list with summary (today/month/outstanding) ✅
+  * Purchase stats with top suppliers + products ✅
+  * Missing expiry date blocked (pharmacy requirement) ✅
+  * Cancel reverses stock (100→0) + deletes batches ✅
+  * Cancel reverses supplier balance (৳45→৳0) ✅
+  * Double-cancel blocked ✅
+- Production build clean, lint passes with zero errors
+- Full audit trail: every purchase creates PURCHASE transactions per batch
+- Cancellation creates ADJUSTMENT transactions for traceability
+- Supplier financial tracking: balance, totalPurchased, totalPaid auto-maintained
