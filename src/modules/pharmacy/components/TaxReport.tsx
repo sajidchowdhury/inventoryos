@@ -4,14 +4,12 @@ import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
   ArrowLeft, Download, Printer, Receipt, TrendingUp, TrendingDown,
-  Percent, FileText,
+  Percent, FileText, ArrowUpRight, ArrowDownRight, Coins,
+  Wallet, Calculator,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
 import { useAuthStore } from "@/lib/auth-store";
 import { useNavStore } from "@/lib/nav-store";
 import { cn } from "@/lib/utils";
@@ -43,6 +41,18 @@ const fadeIn = {
   animate: { opacity: 1, y: 0 },
   transition: { duration: 0.3 },
 };
+
+const periods = [
+  { value: "today", label: "Today" },
+  { value: "week", label: "7 Days" },
+  { value: "month", label: "30 Days" },
+  { value: "quarter", label: "Quarter" },
+  { value: "year", label: "Year" },
+];
+
+function SkeletonCard({ className }: { className?: string }) {
+  return <div className={cn("skeleton rounded-xl", className)} />;
+}
 
 export function TaxReport() {
   const session = useAuthStore((s) => s.session);
@@ -77,12 +87,20 @@ export function TaxReport() {
 
   if (loading || !report) {
     return (
-      <motion.div {...fadeIn} className="space-y-4">
+      <motion.div {...fadeIn} className="pharmacy-bg min-h-screen -mx-4 -my-4 px-4 py-4 space-y-4">
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" onClick={() => setActiveView("business-dashboard")}><ArrowLeft className="h-5 w-5" /></Button>
-          <h1 className="text-lg font-bold flex-1">Loading...</h1>
+          <Button variant="ghost" size="icon" onClick={() => setActiveView("business-dashboard")}>
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <SkeletonCard className="h-7 w-44" />
         </div>
-        <Card className="animate-pulse"><CardContent className="p-6 h-32" /></Card>
+        <div className="flex gap-1.5">
+          {[1, 2, 3, 4, 5].map((i) => <SkeletonCard key={i} className="h-9 flex-1" />)}
+        </div>
+        <SkeletonCard className="h-40" />
+        <div className="grid grid-cols-2 gap-3">
+          {[1, 2, 3, 4].map((i) => <SkeletonCard key={i} className="h-28" />)}
+        </div>
       </motion.div>
     );
   }
@@ -90,80 +108,177 @@ export function TaxReport() {
   const { summary } = report;
 
   return (
-    <motion.div {...fadeIn} className="space-y-4 pb-4">
+    <motion.div {...fadeIn} className="pharmacy-bg min-h-screen -mx-4 -my-4 px-4 py-4 space-y-4 pb-6">
       {/* Header */}
       <div className="flex items-center gap-2 print:hidden">
-        <Button variant="ghost" size="icon" className="shrink-0" onClick={() => setActiveView("business-dashboard")}>
+        <Button variant="ghost" size="icon" className="shrink-0 shadow-pharmacy" onClick={() => setActiveView("business-dashboard")}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
-        <h1 className="text-lg font-bold flex-1">VAT / Tax Report</h1>
-        <Select value={period} onValueChange={setPeriod}>
-          <SelectTrigger className="h-9 w-28"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="today">Today</SelectItem>
-            <SelectItem value="week">7 Days</SelectItem>
-            <SelectItem value="month">30 Days</SelectItem>
-            <SelectItem value="quarter">Quarter</SelectItem>
-            <SelectItem value="year">Year</SelectItem>
-          </SelectContent>
-        </Select>
-        <Button variant="outline" size="icon" onClick={handleDownload}><Download className="h-4 w-4" /></Button>
-        <Button variant="outline" size="icon" onClick={() => window.print()}><Printer className="h-4 w-4" /></Button>
+        <div className="flex-1">
+          <h1 className="text-xl font-bold tracking-tight">VAT / Tax Report</h1>
+          <p className="text-[11px] text-muted-foreground">Bangladesh VAT compliance</p>
+        </div>
+        <Button variant="outline" size="icon" className="shadow-pharmacy" onClick={handleDownload}>
+          <Download className="h-4 w-4" />
+        </Button>
+        <Button variant="outline" size="icon" className="shadow-pharmacy" onClick={() => window.print()}>
+          <Printer className="h-4 w-4" />
+        </Button>
+      </div>
+
+      {/* Period selector pills */}
+      <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide print:hidden">
+        {periods.map((p) => (
+          <button
+            key={p.value}
+            className={cn(
+              "px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all shrink-0",
+              period === p.value
+                ? "bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-pharmacy"
+                : "bg-card text-muted-foreground hover:bg-muted shadow-sm"
+            )}
+            onClick={() => setPeriod(p.value)}
+          >
+            {p.label}
+          </button>
+        ))}
       </div>
 
       <p className="text-xs text-muted-foreground text-center">
         {report.periodLabel}: {new Date(report.startDate).toLocaleDateString("en-GB")} — {new Date(report.endDate).toLocaleDateString("en-GB")}
       </p>
 
+      {/* Summary cards - 4 grid */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <Card className="card-hover shadow-pharmacy border-l-4 border-l-emerald-500 stagger-in">
+          <CardContent className="p-4">
+            <div className="flex items-start justify-between">
+              <div className="min-w-0">
+                <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Total Sales</p>
+                <p className="text-xl font-bold text-emerald-600 mt-1">৳{summary.totalSales.toFixed(0)}</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">{summary.salesCount} invoices</p>
+              </div>
+              <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shrink-0 shadow-sm">
+                <Receipt className="h-4 w-4 text-white" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="card-hover shadow-pharmacy border-l-4 border-l-blue-500 stagger-in">
+          <CardContent className="p-4">
+            <div className="flex items-start justify-between">
+              <div className="min-w-0">
+                <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">VAT Collected</p>
+                <p className="text-xl font-bold text-blue-600 mt-1">৳{summary.outputTax.toFixed(0)}</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">Output tax (sales)</p>
+              </div>
+              <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shrink-0 shadow-sm">
+                <Coins className="h-4 w-4 text-white" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="card-hover shadow-pharmacy border-l-4 border-l-amber-500 stagger-in">
+          <CardContent className="p-4">
+            <div className="flex items-start justify-between">
+              <div className="min-w-0">
+                <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">VAT Payable</p>
+                <p className="text-xl font-bold text-amber-600 mt-1">৳{Math.abs(summary.netVatPayable).toFixed(0)}</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">{summary.isRefund ? "Refund due" : "Net payable"}</p>
+              </div>
+              <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center shrink-0 shadow-sm">
+                <Calculator className="h-4 w-4 text-white" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="card-hover shadow-pharmacy border-l-4 border-l-purple-500 stagger-in">
+          <CardContent className="p-4">
+            <div className="flex items-start justify-between">
+              <div className="min-w-0">
+                <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Net Sales</p>
+                <p className="text-xl font-bold text-purple-600 mt-1">৳{summary.taxableSales.toFixed(0)}</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">Taxable amount</p>
+              </div>
+              <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-purple-500 to-fuchsia-500 flex items-center justify-center shrink-0 shadow-sm">
+                <Wallet className="h-4 w-4 text-white" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
       {/* Net VAT Payable Hero */}
-      <Card className={cn("border-l-4 print:border-l-4", summary.netVatPayable >= 0 ? "border-l-orange-500" : "border-l-green-500")}>
-        <CardContent className="p-5 text-center">
-          <p className="text-xs text-muted-foreground">{summary.isRefund ? "VAT Refund Due" : "Net VAT Payable"}</p>
-          <p className={cn("text-3xl font-bold", summary.netVatPayable >= 0 ? "text-orange-600" : "text-green-600")}>
-            ৳{Math.abs(summary.netVatPayable).toFixed(2)}
-          </p>
-          <p className="text-[10px] text-muted-foreground mt-1">
-            Output: ৳{summary.outputTax.toFixed(2)} − Input: ৳{summary.inputTax.toFixed(2)}
-          </p>
+      <Card className={cn(
+        "shadow-pharmacy-xl border-0 overflow-hidden stagger-in",
+        summary.netVatPayable >= 0
+          ? "bg-gradient-to-br from-amber-500 via-orange-500 to-orange-600"
+          : "bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700"
+      )}>
+        <CardContent className="p-6 text-white text-center relative">
+          <div className="absolute top-0 right-0 h-32 w-32 bg-white/10 rounded-full -translate-y-12 translate-x-12 blur-2xl" />
+          <div className="relative">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 backdrop-blur text-[10px] font-bold uppercase tracking-wider">
+              <Percent className="h-3 w-3" />
+              {summary.isRefund ? "VAT Refund Due" : "Net VAT Payable"}
+            </div>
+            <p className="text-4xl font-bold mt-3 tracking-tight">৳{Math.abs(summary.netVatPayable).toFixed(2)}</p>
+            <div className="flex items-center justify-center gap-3 mt-3 text-xs">
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/20 backdrop-blur">
+                <ArrowUpRight className="h-3 w-3" /> Output: ৳{summary.outputTax.toFixed(2)}
+              </span>
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/20 backdrop-blur">
+                <ArrowDownRight className="h-3 w-3" /> Input: ৳{summary.inputTax.toFixed(2)}
+              </span>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
-      {/* Output Tax (Sales) */}
-      <Card>
-        <CardContent className="p-0 divide-y">
-          <div className="p-3 bg-green-50 font-semibold text-sm flex items-center justify-between">
-            <span className="flex items-center gap-1.5"><TrendingUp className="h-4 w-4 text-green-600" /> Output Tax (Sales)</span>
-            <Button variant="ghost" size="sm" className="text-xs" onClick={() => setShowOutputDetails(!showOutputDetails)}>
+      {/* Output Tax */}
+      <Card className="card-hover shadow-pharmacy stagger-in overflow-hidden">
+        <CardContent className="p-0">
+          <div className="p-3.5 bg-gradient-to-r from-emerald-50 to-teal-50 border-b flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
+                <TrendingUp className="h-4 w-4 text-white" />
+              </div>
+              <p className="text-sm font-bold text-emerald-700">Output Tax (Sales)</p>
+            </div>
+            <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => setShowOutputDetails(!showOutputDetails)}>
               {showOutputDetails ? "Hide" : "Show"} Details
             </Button>
           </div>
-          <div className="p-3 grid grid-cols-2 gap-3 text-sm">
-            <div>
+          <div className="p-4 grid grid-cols-2 gap-3">
+            <div className="p-2.5 bg-muted/30 rounded-lg">
               <p className="text-[10px] text-muted-foreground">Total Sales</p>
-              <p className="font-bold">৳{summary.totalSales.toFixed(2)}</p>
+              <p className="font-bold text-sm mt-0.5">৳{summary.totalSales.toFixed(2)}</p>
             </div>
-            <div>
+            <div className="p-2.5 bg-emerald-50 rounded-lg">
               <p className="text-[10px] text-muted-foreground">Taxable Sales</p>
-              <p className="font-bold text-green-600">৳{summary.taxableSales.toFixed(2)}</p>
+              <p className="font-bold text-sm text-emerald-600 mt-0.5">৳{summary.taxableSales.toFixed(2)}</p>
             </div>
-            <div>
+            <div className="p-2.5 bg-muted/30 rounded-lg">
               <p className="text-[10px] text-muted-foreground">Exempt/Zero-rated</p>
-              <p className="font-bold">৳{summary.exemptSales.toFixed(2)}</p>
+              <p className="font-bold text-sm mt-0.5">৳{summary.exemptSales.toFixed(2)}</p>
             </div>
-            <div>
+            <div className="p-2.5 bg-amber-50 rounded-lg">
               <p className="text-[10px] text-muted-foreground">Output VAT Collected</p>
-              <p className="font-bold text-orange-600">৳{summary.outputTax.toFixed(2)}</p>
+              <p className="font-bold text-sm text-amber-600 mt-0.5">৳{summary.outputTax.toFixed(2)}</p>
             </div>
           </div>
           {showOutputDetails && report.outputTaxDetails.length > 0 && (
-            <div className="p-3 space-y-2 max-h-60 overflow-y-auto">
+            <div className="p-3 space-y-2 max-h-60 overflow-y-auto scrollbar-thin border-t bg-muted/20">
               {report.outputTaxDetails.map((sale, idx) => (
-                <div key={idx} className="text-xs p-2 bg-muted/30 rounded-lg">
+                <div key={idx} className="text-xs p-2.5 bg-background rounded-lg border">
                   <div className="flex items-center justify-between">
-                    <span className="font-medium">{sale.invoiceNo}</span>
-                    <span className="font-bold text-orange-600">VAT: ৳{sale.taxAmount.toFixed(2)}</span>
+                    <span className="font-bold">{sale.invoiceNo}</span>
+                    <span className="font-bold text-amber-600">VAT: ৳{sale.taxAmount.toFixed(2)}</span>
                   </div>
-                  <p className="text-[10px] text-muted-foreground">
+                  <p className="text-[10px] text-muted-foreground mt-1">
                     {sale.customerName} · {new Date(sale.date).toLocaleDateString("en-GB")} · Total: ৳{sale.totalAmount.toFixed(2)}
                   </p>
                 </div>
@@ -173,38 +288,43 @@ export function TaxReport() {
         </CardContent>
       </Card>
 
-      {/* Input Tax (Purchases) */}
-      <Card>
-        <CardContent className="p-0 divide-y">
-          <div className="p-3 bg-blue-50 font-semibold text-sm flex items-center justify-between">
-            <span className="flex items-center gap-1.5"><TrendingDown className="h-4 w-4 text-blue-600" /> Input Tax (Purchases)</span>
-            <Button variant="ghost" size="sm" className="text-xs" onClick={() => setShowInputDetails(!showInputDetails)}>
+      {/* Input Tax */}
+      <Card className="card-hover shadow-pharmacy stagger-in overflow-hidden">
+        <CardContent className="p-0">
+          <div className="p-3.5 bg-gradient-to-r from-blue-50 to-sky-50 border-b flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
+                <TrendingDown className="h-4 w-4 text-white" />
+              </div>
+              <p className="text-sm font-bold text-blue-700">Input Tax (Purchases)</p>
+            </div>
+            <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => setShowInputDetails(!showInputDetails)}>
               {showInputDetails ? "Hide" : "Show"} Details
             </Button>
           </div>
-          <div className="p-3 grid grid-cols-2 gap-3 text-sm">
-            <div>
+          <div className="p-4 grid grid-cols-2 gap-3">
+            <div className="p-2.5 bg-muted/30 rounded-lg">
               <p className="text-[10px] text-muted-foreground">Total Purchases</p>
-              <p className="font-bold">৳{summary.totalPurchases.toFixed(2)}</p>
+              <p className="font-bold text-sm mt-0.5">৳{summary.totalPurchases.toFixed(2)}</p>
             </div>
-            <div>
+            <div className="p-2.5 bg-blue-50 rounded-lg">
               <p className="text-[10px] text-muted-foreground">Taxable Purchases</p>
-              <p className="font-bold text-blue-600">৳{summary.taxablePurchases.toFixed(2)}</p>
+              <p className="font-bold text-sm text-blue-600 mt-0.5">৳{summary.taxablePurchases.toFixed(2)}</p>
             </div>
-            <div>
+            <div className="p-2.5 bg-blue-50 rounded-lg col-span-2">
               <p className="text-[10px] text-muted-foreground">Input VAT Paid</p>
-              <p className="font-bold text-blue-600">৳{summary.inputTax.toFixed(2)}</p>
+              <p className="font-bold text-sm text-blue-600 mt-0.5">৳{summary.inputTax.toFixed(2)}</p>
             </div>
           </div>
           {showInputDetails && report.inputTaxDetails.length > 0 && (
-            <div className="p-3 space-y-2 max-h-60 overflow-y-auto">
+            <div className="p-3 space-y-2 max-h-60 overflow-y-auto scrollbar-thin border-t bg-muted/20">
               {report.inputTaxDetails.map((purchase, idx) => (
-                <div key={idx} className="text-xs p-2 bg-muted/30 rounded-lg">
+                <div key={idx} className="text-xs p-2.5 bg-background rounded-lg border">
                   <div className="flex items-center justify-between">
-                    <span className="font-medium">{purchase.purchaseNo}</span>
+                    <span className="font-bold">{purchase.purchaseNo}</span>
                     <span className="font-bold text-blue-600">VAT: ৳{purchase.taxAmount.toFixed(2)}</span>
                   </div>
-                  <p className="text-[10px] text-muted-foreground">
+                  <p className="text-[10px] text-muted-foreground mt-1">
                     {purchase.supplierName} · {new Date(purchase.date).toLocaleDateString("en-GB")} · Total: ৳{purchase.totalAmount.toFixed(2)}
                   </p>
                 </div>
@@ -214,23 +334,29 @@ export function TaxReport() {
         </CardContent>
       </Card>
 
-      {/* VAT by Rate */}
+      {/* VAT by Rate - alternating rows */}
       {report.vatByRate.length > 0 && (
-        <Card>
-          <CardContent className="p-4">
-            <h2 className="text-sm font-semibold mb-3 flex items-center gap-1.5">
-              <Percent className="h-4 w-4" /> VAT by Rate
-            </h2>
-            <div className="space-y-2">
-              {report.vatByRate.map((v) => (
-                <div key={v.rate} className="flex items-center justify-between text-xs p-2 bg-muted/30 rounded-lg">
-                  <div>
-                    <span className="font-bold">{v.rate}%</span>
-                    <span className="text-muted-foreground ml-2">({v.itemCount} items)</span>
+        <Card className="card-hover shadow-pharmacy stagger-in overflow-hidden">
+          <CardContent className="p-0">
+            <div className="p-3.5 bg-gradient-to-r from-purple-50 to-fuchsia-50 border-b flex items-center gap-2">
+              <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-purple-500 to-fuchsia-500 flex items-center justify-center">
+                <Percent className="h-4 w-4 text-white" />
+              </div>
+              <p className="text-sm font-bold text-purple-700">VAT by Rate</p>
+            </div>
+            <div className="divide-y">
+              {report.vatByRate.map((v, idx) => (
+                <div key={v.rate} className={cn(
+                  "flex items-center justify-between text-xs p-3.5",
+                  idx % 2 === 0 ? "bg-muted/20" : "bg-background"
+                )}>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="font-bold text-purple-700 border-purple-200 bg-purple-50">{v.rate}%</Badge>
+                    <span className="text-muted-foreground">({v.itemCount} items)</span>
                   </div>
                   <div className="text-right">
-                    <span className="text-muted-foreground">Taxable: ৳{v.taxableAmount.toFixed(0)}</span>
-                    <span className="font-bold text-orange-600 ml-2">VAT: ৳{v.vatAmount.toFixed(0)}</span>
+                    <span className="text-muted-foreground text-[10px]">Taxable: ৳{v.taxableAmount.toFixed(0)}</span>
+                    <span className="font-bold text-amber-600 ml-2">VAT: ৳{v.vatAmount.toFixed(0)}</span>
                   </div>
                 </div>
               ))}
@@ -238,6 +364,22 @@ export function TaxReport() {
           </CardContent>
         </Card>
       )}
+
+      {/* Action buttons - gradient emerald */}
+      <div className="grid grid-cols-2 gap-3 print:hidden">
+        <Button
+          className="h-12 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 shadow-pharmacy font-semibold gap-2"
+          onClick={handleDownload}
+        >
+          <Download className="h-4 w-4" /> Download CSV
+        </Button>
+        <Button
+          className="h-12 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 shadow-pharmacy font-semibold gap-2"
+          onClick={() => window.print()}
+        >
+          <Printer className="h-4 w-4" /> Print Report
+        </Button>
+      </div>
     </motion.div>
   );
 }

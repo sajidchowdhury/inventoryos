@@ -3,16 +3,14 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
-  ArrowLeft, RefreshCw, Search, X, Filter, History,
-  ShoppingCart, Package, DollarSign, RotateCcw, TrendingUp,
+  ArrowLeft, RefreshCw, Search, X, History,
+  ShoppingCart, Package, DollarSign, RotateCcw,
+  Boxes, TrendingUp, User,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
 import { useAuthStore } from "@/lib/auth-store";
 import { useNavStore } from "@/lib/nav-store";
 import { cn } from "@/lib/utils";
@@ -44,22 +42,25 @@ const moduleIcons: Record<string, typeof History> = {
   Returns: RotateCcw,
 };
 
-const moduleColors: Record<string, string> = {
-  Sales: "text-green-600 bg-green-50",
-  Purchases: "text-blue-600 bg-blue-50",
-  Inventory: "text-orange-600 bg-orange-50",
-  Payments: "text-emerald-600 bg-emerald-50",
-  Returns: "text-red-600 bg-red-50",
+const moduleStyles: Record<string, { gradient: string; soft: string; text: string; ring: string }> = {
+  Sales: { gradient: "from-blue-500 to-blue-600", soft: "bg-blue-50", text: "text-blue-600", ring: "ring-blue-200" },
+  Purchases: { gradient: "from-amber-500 to-orange-500", soft: "bg-amber-50", text: "text-amber-600", ring: "ring-amber-200" },
+  Inventory: { gradient: "from-purple-500 to-fuchsia-500", soft: "bg-purple-50", text: "text-purple-600", ring: "ring-purple-200" },
+  Payments: { gradient: "from-rose-500 to-red-500", soft: "bg-rose-50", text: "text-rose-600", ring: "ring-rose-200" },
+  Returns: { gradient: "from-rose-500 to-pink-500", soft: "bg-rose-50", text: "text-rose-600", ring: "ring-rose-200" },
 };
 
 const moduleFilters = [
-  { value: "all", label: "All Modules" },
-  { value: "sales", label: "Sales" },
-  { value: "purchases", label: "Purchases" },
-  { value: "inventory", label: "Inventory" },
-  { value: "payments", label: "Payments" },
-  { value: "returns", label: "Returns" },
+  { value: "all", label: "All", color: "from-emerald-500 to-teal-600" },
+  { value: "sales", label: "Sales", color: "from-blue-500 to-blue-600" },
+  { value: "purchases", label: "Purchases", color: "from-amber-500 to-orange-500" },
+  { value: "inventory", label: "Stock", color: "from-purple-500 to-fuchsia-500" },
+  { value: "payments", label: "Payments", color: "from-rose-500 to-red-500" },
 ];
+
+function SkeletonCard({ className }: { className?: string }) {
+  return <div className={cn("skeleton rounded-xl", className)} />;
+}
 
 export function AuditTrail() {
   const session = useAuthStore((s) => s.session);
@@ -111,14 +112,17 @@ export function AuditTrail() {
   });
 
   return (
-    <motion.div {...fadeIn} className="space-y-4 pb-4">
+    <motion.div {...fadeIn} className="pharmacy-bg min-h-screen -mx-4 -my-4 px-4 py-4 space-y-4 pb-6">
       {/* Header */}
       <div className="flex items-center gap-2">
-        <Button variant="ghost" size="icon" className="shrink-0" onClick={() => setActiveView("business-dashboard")}>
+        <Button variant="ghost" size="icon" className="shrink-0 shadow-pharmacy" onClick={() => setActiveView("business-dashboard")}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
-        <h1 className="text-lg font-bold flex-1">Audit Trail</h1>
-        <Button variant="ghost" size="icon" onClick={fetchEvents} disabled={loading}>
+        <div className="flex-1">
+          <h1 className="text-xl font-bold tracking-tight">Audit Trail</h1>
+          <p className="text-[11px] text-muted-foreground">Complete transaction history</p>
+        </div>
+        <Button variant="outline" size="icon" className="shadow-pharmacy" onClick={fetchEvents} disabled={loading}>
           <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
         </Button>
       </div>
@@ -128,13 +132,22 @@ export function AuditTrail() {
         <div className="grid grid-cols-5 gap-2">
           {Object.entries(summary.byModule).map(([mod, count]) => {
             const Icon = moduleIcons[mod] || History;
-            const color = moduleColors[mod] || "bg-muted text-muted-foreground";
+            const style = moduleStyles[mod] || { gradient: "from-slate-400 to-slate-500", soft: "bg-muted", text: "text-muted-foreground", ring: "ring-muted" };
             return (
-              <Card key={mod} className="cursor-pointer" onClick={() => { setModuleFilter(mod.toLowerCase()); setPage(1); }}>
+              <Card
+                key={mod}
+                className={cn(
+                  "card-hover shadow-pharmacy cursor-pointer ring-1 transition-all",
+                  moduleFilter === mod.toLowerCase() ? style.ring : "ring-transparent"
+                )}
+                onClick={() => { setModuleFilter(mod.toLowerCase()); setPage(1); }}
+              >
                 <CardContent className="p-2 text-center">
-                  <Icon className={cn("h-4 w-4 mx-auto mb-0.5", color.split(" ")[0])} />
-                  <p className={cn("text-base font-bold", color.split(" ")[0])}>{count}</p>
-                  <p className="text-[8px] text-muted-foreground">{mod}</p>
+                  <div className={cn("h-8 w-8 rounded-lg bg-gradient-to-br mx-auto mb-1 flex items-center justify-center shadow-sm", style.gradient)}>
+                    <Icon className="h-4 w-4 text-white" />
+                  </div>
+                  <p className={cn("text-base font-bold", style.text)}>{count}</p>
+                  <p className="text-[8px] text-muted-foreground font-medium">{mod}</p>
                 </CardContent>
               </Card>
             );
@@ -142,14 +155,14 @@ export function AuditTrail() {
         </div>
       )}
 
-      {/* Search */}
+      {/* Search bar with shadow-pharmacy */}
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
         <Input
           placeholder="Search by description, type, reference..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="pl-9 pr-9 h-10"
+          className="pl-9 pr-9 h-11 shadow-pharmacy bg-card"
         />
         {search && (
           <Button variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7" onClick={() => setSearch("")}>
@@ -158,16 +171,16 @@ export function AuditTrail() {
         )}
       </div>
 
-      {/* Module Filter */}
-      <div className="flex gap-1 overflow-x-auto pb-1 scrollbar-hide">
+      {/* Type filter pills */}
+      <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
         {moduleFilters.map((f) => (
           <button
             key={f.value}
             className={cn(
-              "px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors shrink-0",
+              "px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all shrink-0 shadow-sm",
               moduleFilter === f.value
-                ? "bg-primary text-primary-foreground"
-                : "bg-muted text-muted-foreground hover:bg-muted/80"
+                ? `bg-gradient-to-r ${f.color} text-white shadow-pharmacy`
+                : "bg-card text-muted-foreground hover:bg-muted"
             )}
             onClick={() => { setModuleFilter(f.value); setPage(1); }}
           >
@@ -178,43 +191,62 @@ export function AuditTrail() {
 
       {/* Events List */}
       {loading ? (
-        <div className="space-y-2">{[1, 2, 3].map((i) => <Card key={i} className="animate-pulse"><CardContent className="p-4 h-16" /></Card>)}</div>
+        <div className="space-y-2">{[1, 2, 3].map((i) => <SkeletonCard key={i} className="h-20" />)}</div>
       ) : filtered.length === 0 ? (
-        <Card>
-          <CardContent className="p-8 text-center space-y-2">
-            <History className="h-12 w-12 mx-auto text-muted-foreground/30" />
-            <p className="font-medium">No audit events found</p>
-            <p className="text-sm text-muted-foreground">Try adjusting filters</p>
+        <Card className="card-hover shadow-pharmacy">
+          <CardContent className="p-10 text-center space-y-3">
+            <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-muted to-muted/50 flex items-center justify-center mx-auto">
+              <History className="h-8 w-8 text-muted-foreground/40" />
+            </div>
+            <div>
+              <p className="font-bold">No audit events found</p>
+              <p className="text-sm text-muted-foreground mt-0.5">Try adjusting your search or filters</p>
+            </div>
           </CardContent>
         </Card>
       ) : (
         <div className="space-y-2">
-          {filtered.map((event) => {
+          {filtered.map((event, idx) => {
             const Icon = moduleIcons[event.module] || History;
-            const color = moduleColors[event.module] || "bg-muted text-muted-foreground";
+            const style = moduleStyles[event.module] || { gradient: "from-slate-400 to-slate-500", soft: "bg-muted", text: "text-muted-foreground" };
             const date = new Date(event.timestamp);
             return (
-              <Card key={event.id}>
-                <CardContent className="p-3 flex items-start gap-3">
-                  <div className={cn("h-8 w-8 rounded-lg flex items-center justify-center shrink-0", color.split(" ")[1])}>
-                    <Icon className={cn("h-4 w-4", color.split(" ")[0])} />
+              <Card
+                key={event.id}
+                className="card-hover shadow-pharmacy stagger-in overflow-hidden"
+                style={{ animationDelay: `${Math.min(idx * 0.03, 0.3)}s` }}
+              >
+                <CardContent className="p-3.5 flex items-start gap-3">
+                  {/* Icon avatar */}
+                  <div className="flex flex-col items-center gap-1 shrink-0">
+                    <div className={cn("h-10 w-10 rounded-xl bg-gradient-to-br flex items-center justify-center shadow-sm", style.gradient)}>
+                      <Icon className="h-5 w-5 text-white" />
+                    </div>
                   </div>
+
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2">
-                      <p className="text-sm font-medium truncate">{event.eventType}</p>
+                      <p className="text-sm font-semibold truncate">{event.eventType}</p>
                       {event.amount !== undefined && (
-                        <span className={cn("text-xs font-bold shrink-0", event.amount >= 0 ? "text-green-600" : "text-red-600")}>
+                        <span className={cn(
+                          "text-xs font-bold shrink-0 px-2 py-0.5 rounded-full",
+                          event.amount >= 0 ? "text-emerald-600 bg-emerald-50" : "text-rose-600 bg-rose-50"
+                        )}>
                           {event.amount >= 0 ? "+" : ""}৳{event.amount.toFixed(2)}
                         </span>
                       )}
                     </div>
-                    <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">{event.description}</p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <Badge variant="outline" className="text-[9px]">{event.module}</Badge>
+                    <p className="text-[11px] text-muted-foreground mt-1 line-clamp-2">{event.description}</p>
+
+                    <div className="flex items-center flex-wrap gap-1.5 mt-2">
+                      <Badge variant="outline" className={cn("text-[9px] font-semibold", style.text, `border-current/20`)}>
+                        {event.module}
+                      </Badge>
                       {event.reference && (
-                        <span className="text-[9px] text-muted-foreground">Ref: {event.reference}</span>
+                        <span className="text-[9px] text-muted-foreground font-medium">Ref: {event.reference}</span>
                       )}
-                      <span className="text-[9px] text-muted-foreground ml-auto">
+                      <span className="text-[9px] text-muted-foreground ml-auto flex items-center gap-1">
+                        <User className="h-2.5 w-2.5" />
                         {date.toLocaleDateString("en-GB", { day: "2-digit", month: "short" })} · {date.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
                       </span>
                     </div>
@@ -228,7 +260,7 @@ export function AuditTrail() {
           {totalPages > 1 && (
             <div className="flex items-center justify-center gap-2 pt-2">
               <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>Previous</Button>
-              <span className="text-xs text-muted-foreground">{page} / {totalPages}</span>
+              <span className="text-xs text-muted-foreground font-medium">{page} / {totalPages}</span>
               <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>Next</Button>
             </div>
           )}
