@@ -40,6 +40,7 @@ import { SessionManager } from "./SessionManager";
 import { LoginActivity } from "./LoginActivity";
 import { AIInsights } from "./AIInsights";
 import { AIChat } from "./AIChat";
+import { AIHub } from "./AIHub";
 import { ReorderSuggestions } from "./ReorderSuggestions";
 import { DemandForecast } from "./DemandForecast";
 import { ExpiryOptimizer } from "./ExpiryOptimizer";
@@ -56,6 +57,8 @@ export function PharmacyShell() {
         return <PharmacyDashboard />;
       case "inventory-hub":
         return <InventoryHub />;
+      case "ai-hub":
+        return <AIHub />;
       case "reports-hub":
         return <ReportsHub />;
       case "more-hub":

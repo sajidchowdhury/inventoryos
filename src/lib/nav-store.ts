@@ -6,7 +6,8 @@ import { create } from "zustand";
 export type PharmacyView =
   | "dashboard"       // Main dashboard (Home tab)
   | "inventory-hub"   // Inventory hub (Stock tab)
-  | "reports-hub"     // Reports hub (Reports tab)
+  | "dispense"        // Quick dispense / POS (Sell tab)
+  | "ai-hub"          // AI features hub (AI tab — NEW)
   | "more-hub"        // More hub (More tab)
   | "products"        // Product list with search
   | "product-detail"  // Single product with batches & stock info
@@ -15,7 +16,6 @@ export type PharmacyView =
   | "batches"         // All batches list with filters
   | "add-batch"       // Add batch to a product
   | "edit-batch"      // Edit existing batch
-  | "dispense"        // Quick dispense / POS with FEFO
   | "sales"           // Sales/invoices list
   | "sale-detail"     // Single sale invoice view
   | "analytics"       // Sales analytics dashboard with charts
@@ -36,6 +36,7 @@ export type PharmacyView =
   | "alerts"          // Combined alerts center
   | "alert-settings"  // Alert preferences configuration
   | "report"          // Printable expiry report
+  | "reports-hub"     // Reports hub (accessible from More)
   | "business-dashboard" // Unified business KPI dashboard
   | "profit-loss"     // Profit & Loss report
   | "inventory-value" // Inventory valuation report
