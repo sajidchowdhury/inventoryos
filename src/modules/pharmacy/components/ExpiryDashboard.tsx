@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import {
   ArrowLeft, RefreshCw, Search, X, Clock, AlertTriangle,
   XCircle, CheckCircle2, ShieldAlert, ChevronRight, Calendar,
-  Pill, DollarSign, Filter, Trash2,
+  Pill, DollarSign, Filter, Trash2, Package, ShieldCheck, Layers,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -87,6 +87,59 @@ function getBatchSeverity(batch: BatchListItem): SeverityFilter {
   if (batch.daysUntilExpiry <= 90) return "warning_90d";
   return "safe";
 }
+
+// 4-card status grid config (premium pharmacy look)
+const statusCards: {
+  key: "active" | "near" | "expired" | "quarantined";
+  label: string;
+  icon: typeof Clock;
+  iconBg: string;       // gradient icon background
+  iconColor: string;    // icon color
+  accentBorder: string; // left colored border
+  numberColor: string;  // big number color
+  filter: SeverityFilter;
+}[] = [
+  {
+    key: "active",
+    label: "Active Stock",
+    icon: ShieldCheck,
+    iconBg: "bg-gradient-to-br from-emerald-400 to-emerald-600",
+    iconColor: "text-white",
+    accentBorder: "border-l-emerald-500",
+    numberColor: "text-emerald-700",
+    filter: "safe",
+  },
+  {
+    key: "near",
+    label: "Near Expiry",
+    icon: Clock,
+    iconBg: "bg-gradient-to-br from-amber-400 to-amber-600",
+    iconColor: "text-white",
+    accentBorder: "border-l-amber-500",
+    numberColor: "text-amber-700",
+    filter: "critical_30d",
+  },
+  {
+    key: "expired",
+    label: "Expired",
+    icon: XCircle,
+    iconBg: "bg-gradient-to-br from-rose-400 to-rose-600",
+    iconColor: "text-white",
+    accentBorder: "border-l-rose-500",
+    numberColor: "text-rose-700",
+    filter: "expired",
+  },
+  {
+    key: "quarantined",
+    label: "Quarantined",
+    icon: ShieldAlert,
+    iconBg: "bg-gradient-to-br from-purple-400 to-purple-600",
+    iconColor: "text-white",
+    accentBorder: "border-l-purple-500",
+    numberColor: "text-purple-700",
+    filter: "quarantined",
+  },
+];
 
 export function ExpiryDashboard() {
   const session = useAuthStore((s) => s.session);
@@ -177,49 +230,117 @@ export function ExpiryDashboard() {
 
   if (loading) {
     return (
-      <motion.div {...fadeIn} className="space-y-4">
+      <motion.div {...fadeIn} className="pharmacy-bg min-h-[80vh] space-y-4 p-4 rounded-xl">
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="icon" onClick={() => setActiveView("dashboard")}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <h1 className="text-lg font-bold flex-1">Expiry Management</h1>
         </div>
-        <Card className="animate-pulse"><CardContent className="p-4 h-32" /></Card>
-        <Card className="animate-pulse"><CardContent className="p-4 h-48" /></Card>
+        {/* Skeleton status grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {[...Array(4)].map((_, i) => (
+            <Card key={i} className="shadow-pharmacy">
+              <CardContent className="p-4 space-y-3">
+                <div className="skeleton h-10 w-10 rounded-lg" />
+                <div className="skeleton h-7 w-16 rounded" />
+                <div className="skeleton h-3 w-20 rounded" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+        {/* Skeleton chart */}
+        <Card className="shadow-pharmacy">
+          <CardContent className="p-4 space-y-3">
+            <div className="skeleton h-4 w-40 rounded" />
+            <div className="flex items-end gap-1 h-32">
+              {[...Array(13)].map((_, i) => (
+                <div key={i} className="skeleton flex-1 rounded-t-sm" style={{ height: `${20 + Math.random() * 70}%` }} />
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+        {/* Skeleton list */}
+        <div className="space-y-2">
+          {[...Array(4)].map((_, i) => (
+            <Card key={i} className="shadow-pharmacy">
+              <CardContent className="p-3 flex items-center gap-3">
+                <div className="skeleton h-9 w-9 rounded-lg" />
+                <div className="flex-1 space-y-2">
+                  <div className="skeleton h-4 w-2/3 rounded" />
+                  <div className="skeleton h-3 w-1/2 rounded" />
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       </motion.div>
     );
   }
 
   if (!stats) {
     return (
-      <motion.div {...fadeIn} className="space-y-4">
+      <motion.div {...fadeIn} className="pharmacy-bg min-h-[80vh] space-y-4 p-4 rounded-xl">
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="icon" onClick={() => setActiveView("dashboard")}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <h1 className="text-lg font-bold flex-1">Expiry Management</h1>
         </div>
-        <Card><CardContent className="p-6 text-center text-sm text-muted-foreground">Failed to load data</CardContent></Card>
+        <Card className="shadow-pharmacy">
+          <CardContent className="p-6 text-center text-sm text-muted-foreground">Failed to load data</CardContent>
+        </Card>
       </motion.div>
     );
   }
 
   const { summary, buckets, timeline, manufacturerBreakdown, categoryBreakdown } = stats;
 
+  // Compute 4-card aggregates
+  const cardData = {
+    active: {
+      count: buckets.safe.count,
+      value: buckets.safe.value,
+      units: buckets.safe.quantity,
+    },
+    near: {
+      count: buckets.critical_7d.count + buckets.critical_30d.count + buckets.warning_90d.count,
+      value: buckets.critical_7d.value + buckets.critical_30d.value + buckets.warning_90d.value,
+      units: buckets.critical_7d.quantity + buckets.critical_30d.quantity + buckets.warning_90d.quantity,
+    },
+    expired: {
+      count: buckets.expired.count,
+      value: buckets.expired.value,
+      units: buckets.expired.quantity,
+    },
+    quarantined: {
+      count: buckets.quarantined.count,
+      value: buckets.quarantined.value,
+      units: buckets.quarantined.quantity,
+    },
+  } as const;
+
   return (
-    <motion.div {...fadeIn} className={cn("space-y-4 pb-4", bulkMode && selectedBatches.size > 0 && "pb-56")}>
+    <motion.div {...fadeIn} className={cn(
+      "pharmacy-bg min-h-[80vh] space-y-4 p-4 rounded-xl",
+      bulkMode && selectedBatches.size > 0 && "pb-56"
+    )}>
       {/* Header */}
       <div className="flex items-center gap-2">
-        <Button variant="ghost" size="icon" className="shrink-0" onClick={() => setActiveView("dashboard")}>
+        <Button variant="ghost" size="icon" className="shrink-0 hover:bg-emerald-50" onClick={() => setActiveView("dashboard")}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
-        <h1 className="text-lg font-bold flex-1">Expiry Management</h1>
-        <Button variant="ghost" size="icon" onClick={fetchStats} disabled={loading}>
+        <div className="flex-1 min-w-0">
+          <h1 className="text-lg font-bold tracking-tight">Expiry Management</h1>
+          <p className="text-[11px] text-muted-foreground hidden sm:block">Track and act on batches nearing expiry</p>
+        </div>
+        <Button variant="ghost" size="icon" className="hover:bg-emerald-50" onClick={fetchStats} disabled={loading}>
           <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
         </Button>
         <Button
           size="sm"
           variant={bulkMode ? "default" : "outline"}
+          className={cn(bulkMode && "bg-gradient-to-r from-emerald-600 to-emerald-700 text-white border-0")}
           onClick={() => {
             setBulkMode(!bulkMode);
             if (bulkMode) clearSelection();
@@ -229,62 +350,79 @@ export function ExpiryDashboard() {
         </Button>
       </div>
 
-      {/* Summary Hero Card */}
+      {/* Value at Risk Hero Banner */}
       <Card className={cn(
-        "border-l-4",
-        summary.totalValueAtRisk > 0 ? "border-l-red-500 bg-red-50/30" : "border-l-green-500 bg-green-50/30"
+        "shadow-pharmacy border-l-4 overflow-hidden",
+        summary.totalValueAtRisk > 0 ? "border-l-rose-500" : "border-l-emerald-500"
       )}>
-        <CardContent className="p-4 space-y-3">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-xs text-muted-foreground">Value at Risk</p>
-              <p className={cn(
-                "text-2xl font-bold",
-                summary.totalValueAtRisk > 0 ? "text-red-600" : "text-green-600"
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className={cn(
+                "h-11 w-11 rounded-xl flex items-center justify-center shrink-0",
+                summary.totalValueAtRisk > 0
+                  ? "bg-gradient-to-br from-rose-400 to-rose-600"
+                  : "bg-gradient-to-br from-emerald-400 to-emerald-600"
               )}>
-                ৳{summary.totalValueAtRisk.toFixed(2)}
-              </p>
+                <DollarSign className="h-5 w-5 text-white" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs text-muted-foreground">Value at Risk</p>
+                <p className={cn(
+                  "text-2xl font-bold leading-tight",
+                  summary.totalValueAtRisk > 0 ? "text-rose-600" : "text-emerald-600"
+                )}>
+                  ৳{summary.totalValueAtRisk.toFixed(2)}
+                </p>
+              </div>
             </div>
-            <div className="text-right">
+            <div className="text-right shrink-0">
               <p className="text-xs text-muted-foreground">Units at Risk</p>
-              <p className="text-2xl font-bold text-foreground">
+              <p className="text-2xl font-bold text-foreground leading-tight">
                 {summary.totalUnitsAtRisk}
                 <span className="text-xs text-muted-foreground font-normal"> / {summary.totalUnits}</span>
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2 text-xs">
-            <Calendar className="h-3 w-3 text-muted-foreground" />
-            <span className="text-muted-foreground">Next {stats.windowDays} days · {summary.totalBatches} batches tracked</span>
+          <div className="flex items-center gap-2 text-[11px] mt-3 pt-3 border-t text-muted-foreground">
+            <Calendar className="h-3 w-3" />
+            <span>Next {stats.windowDays} days · {summary.totalBatches} batches tracked</span>
           </div>
         </CardContent>
       </Card>
 
-      {/* Severity Buckets Grid */}
-      <div className="grid grid-cols-3 gap-2">
-        {[
-          { key: "expired" as const, label: "Expired", icon: XCircle, color: "text-red-700", bg: "bg-red-100" },
-          { key: "critical_7d" as const, label: "< 7 Days", icon: AlertTriangle, color: "text-red-600", bg: "bg-red-50" },
-          { key: "critical_30d" as const, label: "< 30 Days", icon: AlertTriangle, color: "text-orange-600", bg: "bg-orange-50" },
-          { key: "warning_90d" as const, label: "< 90 Days", icon: Clock, color: "text-yellow-600", bg: "bg-yellow-50" },
-          { key: "quarantined" as const, label: "Quarantined", icon: ShieldAlert, color: "text-purple-600", bg: "bg-purple-50" },
-          { key: "safe" as const, label: "Safe (>90d)", icon: CheckCircle2, color: "text-green-600", bg: "bg-green-50" },
-        ].map((bucket) => {
-          const data = buckets[bucket.key];
+      {/* 4-Card Status Grid */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {statusCards.map((card) => {
+          const data = cardData[card.key];
+          const isActive = activeFilter === card.filter;
+          const Icon = card.icon;
           return (
             <Card
-              key={bucket.key}
-              className="cursor-pointer hover:shadow-md transition-shadow active:scale-[0.97]"
-              onClick={() => setActiveFilter(activeFilter === bucket.key ? "all" : bucket.key)}
+              key={card.key}
+              className={cn(
+                "stagger-in card-hover shadow-pharmacy border-l-4 cursor-pointer overflow-hidden",
+                card.accentBorder,
+                isActive && "ring-2 ring-offset-1 ring-emerald-400"
+              )}
+              onClick={() => setActiveFilter(isActive ? "all" : card.filter)}
             >
-              <CardContent className="p-2.5 text-center">
-                <div className={cn("h-8 w-8 rounded-lg flex items-center justify-center mx-auto mb-1", bucket.bg)}>
-                  <bucket.icon className={cn("h-4 w-4", bucket.color)} />
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <div className={cn("h-10 w-10 rounded-xl flex items-center justify-center shadow-sm", card.iconBg)}>
+                    <Icon className={cn("h-5 w-5", card.iconColor)} />
+                  </div>
+                  {data.count > 0 && (card.key === "expired" || card.key === "near") && (
+                    <span className={cn(
+                      "h-2 w-2 rounded-full animate-pulse-soft",
+                      card.key === "expired" ? "bg-rose-500" : "bg-amber-500"
+                    )} />
+                  )}
                 </div>
-                <p className={cn("text-lg font-bold", bucket.color)}>{data.count}</p>
-                <p className="text-[9px] text-muted-foreground leading-tight">{bucket.label}</p>
+                <p className={cn("text-2xl font-bold leading-tight", card.numberColor)}>{data.count}</p>
+                <p className="text-[11px] font-medium text-foreground/80 mt-0.5">{card.label}</p>
                 {data.value > 0 && (
-                  <p className="text-[9px] text-muted-foreground mt-0.5">৳{data.value.toFixed(0)}</p>
+                  <p className="text-[10px] text-muted-foreground mt-1">৳{data.value.toFixed(0)} · {data.units} units</p>
                 )}
               </CardContent>
             </Card>
@@ -293,11 +431,11 @@ export function ExpiryDashboard() {
       </div>
 
       {/* Timeline Chart */}
-      <Card>
+      <Card className="shadow-pharmacy">
         <CardContent className="p-4">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-sm font-semibold flex items-center gap-1.5">
-              <Calendar className="h-4 w-4" /> Expiry Timeline
+              <Calendar className="h-4 w-4 text-emerald-600" /> Expiry Timeline
             </h2>
             <span className="text-[10px] text-muted-foreground">Next 13 weeks</span>
           </div>
@@ -307,10 +445,10 @@ export function ExpiryDashboard() {
 
       {/* Top Manufacturers at Risk */}
       {manufacturerBreakdown.length > 0 && (
-        <Card>
+        <Card className="shadow-pharmacy stagger-in">
           <CardContent className="p-4">
             <h2 className="text-sm font-semibold mb-3 flex items-center gap-1.5">
-              <DollarSign className="h-4 w-4" /> Top Manufacturers (by value)
+              <Layers className="h-4 w-4 text-emerald-600" /> Top Manufacturers (by value)
             </h2>
             <div className="space-y-2">
               {manufacturerBreakdown.slice(0, 5).map((mfr) => {
@@ -324,7 +462,7 @@ export function ExpiryDashboard() {
                     </div>
                     <div className="h-1.5 bg-muted rounded-full overflow-hidden">
                       <div
-                        className="h-full bg-gradient-to-r from-orange-500 to-red-500 rounded-full"
+                        className="h-full bg-gradient-to-r from-amber-400 via-orange-500 to-rose-500 rounded-full transition-all duration-500"
                         style={{ width: `${pct}%` }}
                       />
                     </div>
@@ -338,14 +476,16 @@ export function ExpiryDashboard() {
 
       {/* Category Breakdown */}
       {categoryBreakdown.length > 0 && (
-        <Card>
+        <Card className="shadow-pharmacy stagger-in">
           <CardContent className="p-4">
-            <h2 className="text-sm font-semibold mb-3">By Category</h2>
+            <h2 className="text-sm font-semibold mb-3 flex items-center gap-1.5">
+              <Package className="h-4 w-4 text-emerald-600" /> By Category
+            </h2>
             <div className="flex flex-wrap gap-1.5">
               {categoryBreakdown.slice(0, 8).map((cat) => (
                 <button
                   key={cat.name}
-                  className="px-2 py-1 rounded-full text-[10px] font-medium flex items-center gap-1"
+                  className="px-2 py-1 rounded-full text-[10px] font-medium flex items-center gap-1 transition-transform hover:scale-105"
                   style={{ backgroundColor: `${cat.color}20`, color: cat.color }}
                 >
                   <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: cat.color }} />
@@ -365,7 +505,7 @@ export function ExpiryDashboard() {
             placeholder="Search by product, batch, manufacturer..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 pr-9 h-10"
+            className="pl-9 pr-9 h-10 bg-background shadow-sm"
           />
           {search && (
             <Button
@@ -387,7 +527,7 @@ export function ExpiryDashboard() {
               className={cn(
                 "px-2.5 py-1 rounded-full text-[11px] font-medium whitespace-nowrap transition-colors shrink-0 flex items-center gap-1",
                 activeFilter === tab.value
-                  ? "bg-primary text-primary-foreground"
+                  ? "bg-gradient-to-r from-emerald-600 to-emerald-700 text-white shadow-sm"
                   : "bg-muted text-muted-foreground hover:bg-muted/80"
               )}
               onClick={() => setActiveFilter(tab.value)}
@@ -400,27 +540,32 @@ export function ExpiryDashboard() {
         </div>
       </div>
 
-      {/* Bulk Selection Bar */}
+      {/* Bulk Selection Bar (sticky inline status) */}
       {bulkMode && selectedBatches.size > 0 && (
-        <Card className="bg-primary/5 border-primary/30 sticky top-2 z-10">
-          <CardContent className="p-2 flex items-center justify-between">
-            <span className="text-xs font-medium">{selectedBatches.size} selected</span>
-            <Button variant="ghost" size="sm" onClick={clearSelection}>Clear</Button>
+        <Card className="bg-emerald-50/60 border-emerald-200 shadow-pharmacy sticky top-2 z-10 stagger-in">
+          <CardContent className="p-2.5 flex items-center justify-between">
+            <span className="text-xs font-medium flex items-center gap-1.5">
+              <Filter className="h-3.5 w-3.5 text-emerald-600" />
+              {selectedBatches.size} selected
+            </span>
+            <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={clearSelection}>Clear</Button>
           </CardContent>
         </Card>
       )}
 
       {/* Batch List */}
       {filteredBatches.length === 0 ? (
-        <Card>
-          <CardContent className="p-8 text-center space-y-2">
-            <CheckCircle2 className="h-12 w-12 mx-auto text-muted-foreground/30" />
-            <p className="font-medium">
+        <Card className="shadow-pharmacy stagger-in">
+          <CardContent className="p-8 text-center space-y-3">
+            <div className="h-14 w-14 rounded-full bg-emerald-100 flex items-center justify-center mx-auto">
+              <CheckCircle2 className="h-7 w-7 text-emerald-600" />
+            </div>
+            <p className="font-semibold">
               {search ? "No batches match your search" : "No batches in this category"}
             </p>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-muted-foreground max-w-xs mx-auto">
               {activeFilter === "safe" || activeFilter === "all"
-                ? "Your inventory is in good shape!"
+                ? "Your inventory is in good shape — no urgent action needed."
                 : "Great! Nothing to worry about here."}
             </p>
           </CardContent>
@@ -430,32 +575,33 @@ export function ExpiryDashboard() {
           {filteredBatches.map((batch) => {
             const severity = getBatchSeverity(batch);
             const isSelected = selectedBatches.has(batch.id);
-            const sevColors: Record<SeverityFilter, string> = {
-              expired: "border-l-red-700 bg-red-50/40",
-              critical_7d: "border-l-red-500 bg-red-50/20",
-              critical_30d: "border-l-orange-500",
-              warning_90d: "border-l-yellow-500",
-              quarantined: "border-l-purple-500 bg-purple-50/30",
-              safe: "border-l-green-500",
-              all: "",
+            const sevConfig: Record<SeverityFilter, { border: string; dot: string; badge: string; pulse: boolean }> = {
+              expired:      { border: "border-l-rose-700 bg-rose-50/40",    dot: "bg-rose-600",     badge: "bg-rose-100 text-rose-700",       pulse: true },
+              critical_7d:  { border: "border-l-rose-500 bg-rose-50/20",    dot: "bg-rose-500",     badge: "bg-rose-50 text-rose-600",        pulse: true },
+              critical_30d: { border: "border-l-amber-500 bg-amber-50/20",  dot: "bg-amber-500",    badge: "bg-amber-50 text-amber-700",      pulse: false },
+              warning_90d:  { border: "border-l-yellow-500 bg-yellow-50/20",dot: "bg-yellow-500",   badge: "bg-yellow-50 text-yellow-700",    pulse: false },
+              quarantined:  { border: "border-l-purple-500 bg-purple-50/30",dot: "bg-purple-500",   badge: "bg-purple-50 text-purple-700",    pulse: false },
+              safe:         { border: "border-l-emerald-500 bg-emerald-50/20", dot: "bg-emerald-500", badge: "bg-emerald-50 text-emerald-700", pulse: false },
+              all:          { border: "", dot: "", badge: "", pulse: false },
             };
+            const cfg = sevConfig[severity];
             return (
               <Card
                 key={batch.id}
                 className={cn(
-                  "border-l-4 overflow-hidden cursor-pointer hover:shadow-md transition-shadow",
-                  sevColors[severity],
-                  isSelected && "ring-2 ring-primary"
+                  "card-hover shadow-pharmacy border-l-4 overflow-hidden cursor-pointer",
+                  cfg.border,
+                  isSelected && "ring-2 ring-emerald-400"
                 )}
                 onClick={() => handleBatchClick(batch)}
               >
-                <CardContent className="p-3 flex items-start gap-2">
+                <CardContent className="p-3 flex items-start gap-2.5">
                   {bulkMode && (
                     <div className={cn(
-                      "h-4 w-4 rounded border-2 mt-1 shrink-0 flex items-center justify-center",
-                      isSelected ? "bg-primary border-primary" : "border-muted-foreground/40"
+                      "h-4 w-4 rounded border-2 mt-1 shrink-0 flex items-center justify-center transition-colors",
+                      isSelected ? "bg-emerald-600 border-emerald-600" : "border-muted-foreground/40"
                     )}>
-                      {isSelected && <CheckCircle2 className="h-3 w-3 text-primary-foreground" />}
+                      {isSelected && <CheckCircle2 className="h-3 w-3 text-white" />}
                     </div>
                   )}
                   <div
@@ -466,31 +612,36 @@ export function ExpiryDashboard() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2">
-                      <p className="text-sm font-semibold truncate">{batch.product.name}</p>
-                      <span className="text-xs font-bold shrink-0">
+                      <p className="text-sm font-semibold truncate flex items-center gap-1.5">
+                        {cfg.pulse && (
+                          <span className={cn("h-1.5 w-1.5 rounded-full animate-pulse-soft shrink-0", cfg.dot)} />
+                        )}
+                        {batch.product.name}
+                      </p>
+                      <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-semibold shrink-0 bg-background">
                         {batch.quantity} {batch.product.unit}
-                      </span>
+                      </Badge>
                     </div>
-                    <p className="text-[11px] text-muted-foreground truncate">
-                      Batch #{batch.batchNo}
+                    <p className="text-[11px] text-muted-foreground truncate mt-0.5">
+                      <span className="font-mono">#{batch.batchNo}</span>
                       {batch.product.manufacturer && ` · ${batch.product.manufacturer}`}
                     </p>
-                    <div className="flex items-center justify-between mt-1">
-                      <Badge
-                        variant="outline"
-                        className={cn("text-[9px] px-1.5 py-0", sevColors[severity] ? "" : "")}
-                      >
+                    <div className="flex items-center justify-between mt-1.5">
+                      <Badge variant="secondary" className={cn("text-[9px] px-1.5 py-0 font-medium", cfg.badge)}>
                         {batch.daysUntilExpiry < 0
                           ? `Expired ${Math.abs(batch.daysUntilExpiry)}d ago`
                           : `${batch.daysUntilExpiry}d left`}
                       </Badge>
                       {(batch.mrp || batch.purchasePrice) && (
-                        <span className="text-[10px] text-muted-foreground">
+                        <span className="text-[10px] text-muted-foreground font-medium">
                           ৳{((batch.mrp || batch.purchasePrice || 0) * batch.quantity).toFixed(0)}
                         </span>
                       )}
                     </div>
                   </div>
+                  {!bulkMode && (
+                    <ChevronRight className="h-4 w-4 text-muted-foreground/50 shrink-0 mt-1" />
+                  )}
                 </CardContent>
               </Card>
             );
