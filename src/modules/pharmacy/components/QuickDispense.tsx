@@ -232,30 +232,50 @@ export function QuickDispense() {
   // Success screen
   if (dispenseResult) {
     return (
-      <motion.div {...fadeIn} className="space-y-4 pb-4">
-        <Card className="border-l-4 border-l-green-500">
-          <CardContent className="p-6 text-center space-y-3">
-            <div className="h-16 w-16 rounded-full bg-green-50 flex items-center justify-center mx-auto">
-              <Check className="h-8 w-8 text-green-600" />
+      <motion.div {...fadeIn} className="space-y-4 pb-4 pharmacy-bg min-h-screen">
+        <Card className="stagger-in overflow-hidden border-0 shadow-pharmacy-lg">
+          {/* Gradient hero header */}
+          <div className="bg-gradient-to-br from-emerald-600 via-emerald-500 to-emerald-600 px-6 py-10 text-center text-white">
+            <div className="animate-pulse-soft h-20 w-20 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center mx-auto ring-8 ring-white/10">
+              <Check className="h-10 w-10 text-white" strokeWidth={3} />
             </div>
-            <h2 className="text-lg font-bold">Sale Completed!</h2>
-            {lastInvoiceNo && (
-              <p className="text-sm font-mono font-semibold text-primary">{lastInvoiceNo}</p>
-            )}
-            <p className="text-sm text-muted-foreground">
+            <h2 className="text-2xl font-bold mt-4">Sale Completed!</h2>
+            <p className="text-emerald-50 text-sm mt-1">
               {dispenseResult.success} invoice created via FEFO
             </p>
-            <div className="flex items-center justify-center gap-1 pt-1">
-              <Receipt className="h-4 w-4 text-muted-foreground" />
-              <span className="text-lg font-bold">৳{dispenseResult.totalValue.toFixed(2)}</span>
+            {lastInvoiceNo && (
+              <p className="inline-block mt-3 px-4 py-1.5 rounded-full bg-white/15 backdrop-blur-sm text-xs font-mono font-semibold tracking-wide">
+                {lastInvoiceNo}
+              </p>
+            )}
+          </div>
+          {/* Total amount card */}
+          <CardContent className="p-6 space-y-4">
+            <div className="text-center space-y-1">
+              <p className="text-xs text-muted-foreground uppercase tracking-wider">Total Amount</p>
+              <div className="flex items-center justify-center gap-1">
+                <Receipt className="h-6 w-6 text-emerald-600" />
+                <span className="text-4xl font-bold text-emerald-600">৳{dispenseResult.totalValue.toFixed(2)}</span>
+              </div>
+            </div>
+            <Separator />
+            <div className="grid grid-cols-2 gap-3 text-center">
+              <div className="rounded-xl bg-emerald-50 p-3">
+                <p className="text-[10px] text-muted-foreground uppercase">Items Sold</p>
+                <p className="text-lg font-bold text-emerald-700">{dispenseResult.success}</p>
+              </div>
+              <div className="rounded-xl bg-emerald-50 p-3">
+                <p className="text-[10px] text-muted-foreground uppercase">Failures</p>
+                <p className="text-lg font-bold text-emerald-700">{dispenseResult.failures}</p>
+              </div>
             </div>
           </CardContent>
         </Card>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="stagger-in grid grid-cols-2 gap-3">
           {lastSaleId && (
             <Button
               variant="outline"
-              className="gap-2"
+              className="h-12 gap-2 border-emerald-200 text-emerald-700 hover:bg-emerald-50 shadow-pharmacy"
               onClick={() => {
                 setActiveSaleId(lastSaleId);
                 setActiveView("sale-detail");
@@ -264,7 +284,10 @@ export function QuickDispense() {
               <Receipt className="h-4 w-4" /> View Invoice
             </Button>
           )}
-          <Button className="gap-2" onClick={handleReset}>
+          <Button
+            className="h-12 gap-2 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 text-white shadow-lg shadow-emerald-500/20 rounded-xl"
+            onClick={handleReset}
+          >
             <Plus className="h-4 w-4" /> New Sale
           </Button>
         </div>
@@ -273,46 +296,50 @@ export function QuickDispense() {
   }
 
   return (
-    <motion.div {...fadeIn} className="space-y-4 pb-4">
+    <motion.div {...fadeIn} className="space-y-4 pb-4 pharmacy-bg min-h-screen">
       {/* Header */}
-      <div className="flex items-center gap-2">
-        <Button variant="ghost" size="icon" className="shrink-0" onClick={() => setActiveView("dashboard")}>
+      <div className="flex items-center gap-2 stagger-in">
+        <Button variant="ghost" size="icon" className="shrink-0 rounded-xl" onClick={() => setActiveView("dashboard")}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <h1 className="text-lg font-bold flex-1">New Sale</h1>
         {cart.length > 0 && (
-          <Button size="sm" variant="ghost" onClick={handleReset}>
+          <Button size="sm" variant="ghost" onClick={handleReset} className="text-muted-foreground">
             Clear
           </Button>
         )}
       </div>
 
-      {/* Info Banner */}
-      <Card className="bg-blue-50 border-blue-200">
-        <CardContent className="p-3 flex items-center gap-2 text-xs text-blue-700">
-          <TrendingDown className="h-4 w-4 shrink-0" />
-          <span>Stock is automatically dispensed from batches expiring <strong>soonest first</strong> (FEFO)</span>
+      {/* Info Banner — Emerald gradient */}
+      <Card className="stagger-in overflow-hidden border-0 shadow-pharmacy">
+        <CardContent className="p-0">
+          <div className="bg-gradient-to-r from-emerald-500 to-emerald-600 px-4 py-3 flex items-center gap-2.5 text-xs text-white">
+            <div className="h-7 w-7 rounded-lg bg-white/20 backdrop-blur-sm flex items-center justify-center shrink-0">
+              <TrendingDown className="h-4 w-4" />
+            </div>
+            <span>Stock is automatically dispensed from batches expiring <strong className="font-semibold">soonest first</strong> (FEFO)</span>
+          </div>
         </CardContent>
       </Card>
 
       {/* Add Product Search */}
       {showSearch ? (
-        <Card>
-          <CardContent className="p-3 space-y-2">
+        <Card className="stagger-in shadow-pharmacy border-0">
+          <CardContent className="p-4 space-y-3">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-emerald-600" />
               <Input
                 ref={searchInputRef}
                 placeholder="Search product by name, generic, manufacturer..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="pl-9 pr-9 h-10"
+                className="pl-10 pr-10 h-11 rounded-2xl border-emerald-200 focus-visible:ring-emerald-500 focus-visible:border-emerald-500 bg-emerald-50/30"
                 autoFocus
               />
               <Button
                 variant="ghost"
                 size="icon"
-                className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+                className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 rounded-lg"
                 onClick={() => { setShowSearch(false); setSearch(""); }}
               >
                 <X className="h-4 w-4" />
@@ -321,32 +348,33 @@ export function QuickDispense() {
 
             {/* Search Results */}
             {search.trim() && (
-              <div className="space-y-1 max-h-72 overflow-y-auto">
+              <div className="space-y-1.5 max-h-80 overflow-y-auto pr-1">
                 {products.length === 0 ? (
-                  <p className="text-xs text-muted-foreground text-center py-3">No products found</p>
+                  <p className="text-xs text-muted-foreground text-center py-6">No products found</p>
                 ) : (
                   products.map((product) => {
                     const inCart = cart.some((item) => item.product.id === product.id);
                     const stock = product.inventory?.quantity ?? 0;
+                    const catColor = product.category?.color || "#10b981";
                     return (
                       <button
                         key={product.id}
                         className={cn(
-                          "w-full text-left p-2 rounded-lg flex items-center gap-2 transition-colors",
-                          inCart ? "opacity-50 bg-muted/50" : "hover:bg-muted",
-                          stock <= 0 && "opacity-40"
+                          "card-hover w-full text-left p-2.5 rounded-xl flex items-center gap-3 bg-white border border-emerald-100",
+                          inCart ? "opacity-60 bg-muted/40" : "hover:border-emerald-300",
+                          stock <= 0 && "opacity-50"
                         )}
                         onClick={() => !inCart && stock > 0 && addToCart(product)}
                         disabled={inCart || stock <= 0}
                       >
                         <div
-                          className="h-8 w-8 rounded-lg flex items-center justify-center shrink-0"
-                          style={{ backgroundColor: product.category?.color ? `${product.category.color}20` : "#f3f4f6" }}
+                          className="h-10 w-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm"
+                          style={{ background: `linear-gradient(135deg, ${catColor}, ${catColor}dd)` }}
                         >
-                          <Pill className="h-4 w-4" style={{ color: product.category?.color || "#6b7280" }} />
+                          <Pill className="h-5 w-5 text-white" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{product.name}</p>
+                          <p className="text-sm font-semibold truncate">{product.name}</p>
                           <p className="text-[10px] text-muted-foreground truncate">
                             {product.genericName || product.manufacturer || "—"}
                             {product.strength && ` · ${product.strength}`}
@@ -354,12 +382,12 @@ export function QuickDispense() {
                         </div>
                         <div className="text-right shrink-0">
                           {inCart ? (
-                            <Badge variant="secondary" className="text-[9px]">Added</Badge>
+                            <Badge className="text-[9px] bg-emerald-100 text-emerald-700 hover:bg-emerald-100">Added</Badge>
                           ) : stock <= 0 ? (
-                            <Badge variant="outline" className="text-[9px] text-red-600">Out</Badge>
+                            <Badge variant="outline" className="text-[9px] text-rose-600 border-rose-300">Out</Badge>
                           ) : (
                             <>
-                              <p className="text-xs font-semibold">{stock}</p>
+                              <p className="text-xs font-bold text-emerald-700">{stock}</p>
                               <p className="text-[9px] text-muted-foreground">{product.unit}</p>
                             </>
                           )}
@@ -375,35 +403,39 @@ export function QuickDispense() {
       ) : (
         <Button
           variant="outline"
-          className="w-full h-12 gap-2 border-dashed"
+          className="stagger-in w-full h-14 gap-2 border-2 border-dashed border-emerald-300 text-emerald-700 hover:bg-emerald-50 hover:border-emerald-400 rounded-2xl shadow-pharmacy"
           onClick={() => setShowSearch(true)}
         >
-          <Plus className="h-4 w-4" /> Add Product to Dispense
+          <Plus className="h-5 w-5" /> Add Product to Dispense
         </Button>
       )}
 
       {/* Cart */}
       {cart.length > 0 && (
         <>
-          <div>
-            <h2 className="text-sm font-semibold mb-2 text-muted-foreground flex items-center justify-between">
-              <span>Cart ({totalItems})</span>
+          <div className="stagger-in">
+            <h2 className="text-sm font-semibold mb-2.5 text-muted-foreground flex items-center justify-between">
+              <span className="flex items-center gap-1.5">
+                <ShoppingCart className="h-4 w-4 text-emerald-600" />
+                Cart ({totalItems})
+              </span>
               <span className="text-xs">{totalQty} units · ৳{totalValue.toFixed(2)}</span>
             </h2>
-            <div className="space-y-2">
+            <div className="space-y-2.5">
               {cart.map((item) => {
                 const stock = item.product.inventory?.quantity ?? 0;
                 const qty = parseFloat(item.quantity) || 0;
                 const exceeds = qty > stock;
+                const catColor = item.product.category?.color || "#10b981";
                 return (
-                  <Card key={item.product.id}>
-                    <CardContent className="p-3 space-y-2">
-                      <div className="flex items-start gap-2">
+                  <Card key={item.product.id} className="card-hover shadow-pharmacy border-0 overflow-hidden">
+                    <CardContent className="p-3.5 space-y-2.5">
+                      <div className="flex items-start gap-3">
                         <div
-                          className="h-9 w-9 rounded-lg flex items-center justify-center shrink-0"
-                          style={{ backgroundColor: item.product.category?.color ? `${item.product.category.color}20` : "#f3f4f6" }}
+                          className="h-10 w-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm"
+                          style={{ background: `linear-gradient(135deg, ${catColor}, ${catColor}dd)` }}
                         >
-                          <Pill className="h-4 w-4" style={{ color: item.product.category?.color || "#6b7280" }} />
+                          <Pill className="h-5 w-5 text-white" />
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-semibold truncate">{item.product.name}</p>
@@ -411,16 +443,29 @@ export function QuickDispense() {
                             {item.product.genericName || item.product.manufacturer}
                             {item.product.strength && ` · ${item.product.strength}`}
                           </p>
-                          <p className="text-[10px] text-muted-foreground">
-                            Stock: {stock} {item.product.unit}
-                            {item.product.mrp && <> · MRP: ৳{item.product.mrp}</>}
-                          </p>
+                          <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                            <Badge variant="outline" className={cn(
+                              "text-[9px] px-1.5 py-0",
+                              stock <= 0
+                                ? "text-rose-600 border-rose-300 bg-rose-50"
+                                : stock <= 10
+                                  ? "text-amber-600 border-amber-300 bg-amber-50"
+                                  : "text-emerald-600 border-emerald-300 bg-emerald-50"
+                            )}>
+                              Stock: {stock} {item.product.unit}
+                            </Badge>
+                            {item.product.mrp && (
+                              <Badge variant="outline" className="text-[9px] px-1.5 py-0 text-emerald-700 border-emerald-200">
+                                MRP ৳{item.product.mrp}
+                              </Badge>
+                            )}
+                          </div>
                         </div>
                         <button
-                          className="p-1 rounded hover:bg-muted"
+                          className="p-1.5 rounded-lg hover:bg-rose-50 text-muted-foreground hover:text-rose-600 transition-colors"
                           onClick={() => removeFromCart(item.product.id)}
                         >
-                          <X className="h-3.5 w-3.5 text-muted-foreground" />
+                          <X className="h-3.5 w-3.5" />
                         </button>
                       </div>
                       <div className="flex items-center gap-2">
@@ -429,11 +474,11 @@ export function QuickDispense() {
                           step="0.01"
                           value={item.quantity}
                           onChange={(e) => updateQty(item.product.id, e.target.value)}
-                          className="h-9"
+                          className="h-9 rounded-xl border-emerald-200 focus-visible:ring-emerald-500"
                         />
                         <span className="text-xs text-muted-foreground shrink-0">{item.product.unit}</span>
                         {exceeds && (
-                          <Badge variant="outline" className="text-[9px] text-red-600 shrink-0">Exceeds stock</Badge>
+                          <Badge variant="outline" className="text-[9px] text-rose-600 border-rose-300 bg-rose-50 shrink-0">Exceeds stock</Badge>
                         )}
                       </div>
                     </CardContent>
@@ -446,7 +491,7 @@ export function QuickDispense() {
           {/* Preview Button */}
           <Button
             variant="outline"
-            className="w-full h-11 gap-2"
+            className="stagger-in w-full h-12 gap-2 border-2 border-emerald-500 text-emerald-700 hover:bg-emerald-500 hover:text-white rounded-2xl shadow-pharmacy transition-colors"
             onClick={handlePreview}
             disabled={previewing || cart.length === 0}
           >
@@ -456,46 +501,52 @@ export function QuickDispense() {
 
           {/* Preview Results */}
           {preview && (
-            <div className="space-y-2">
-              <h3 className="text-sm font-semibold text-muted-foreground">Allocation Plan</h3>
+            <div className="stagger-in space-y-2.5">
+              <h3 className="text-sm font-semibold text-muted-foreground flex items-center gap-1.5">
+                <Calendar className="h-4 w-4 text-emerald-600" />
+                Allocation Plan
+              </h3>
               {preview.map((result, idx) => (
-                <Card key={idx} className={cn(
-                  "border-l-4",
-                  result.success ? "border-l-green-500" : "border-l-red-500"
-                )}>
-                  <CardContent className="p-3 space-y-2">
-                    <div className="flex items-center justify-between">
+                <Card
+                  key={idx}
+                  className={cn(
+                    "card-hover shadow-pharmacy border-0 overflow-hidden border-l-4",
+                    result.success ? "border-l-emerald-500" : "border-l-rose-500"
+                  )}
+                >
+                  <CardContent className="p-3.5 space-y-2.5">
+                    <div className="flex items-center justify-between gap-2">
                       <p className="text-sm font-semibold truncate flex-1">{result.product.name}</p>
                       {result.success ? (
-                        <Badge variant="outline" className="text-[9px] text-green-600">OK</Badge>
+                        <Badge className="text-[9px] bg-emerald-100 text-emerald-700 hover:bg-emerald-100 shrink-0">OK</Badge>
                       ) : (
-                        <Badge variant="outline" className="text-[9px] text-red-600">Short</Badge>
+                        <Badge variant="outline" className="text-[9px] text-rose-600 border-rose-300 bg-rose-50 shrink-0">Short</Badge>
                       )}
                     </div>
                     <p className="text-[11px] text-muted-foreground">
                       Requested: <span className="font-medium text-foreground">{result.requestedQuantity} {result.product.unit}</span>
                       {result.shortFall > 0 && (
-                        <> · Short by: <span className="font-medium text-red-600">{result.shortFall} {result.product.unit}</span></>
+                        <> · Short by: <span className="font-medium text-rose-600">{result.shortFall} {result.product.unit}</span></>
                       )}
                     </p>
                     {result.success && result.allocations.filter(a => a.allocated > 0).length > 0 && (
-                      <div className="space-y-1 pt-1 border-t">
+                      <div className="space-y-1.5 pt-2 border-t border-dashed">
                         {result.allocations.filter(a => a.allocated > 0).map((alloc, i) => (
-                          <div key={i} className="flex items-center justify-between text-[10px]">
-                            <span className="flex items-center gap-1 text-muted-foreground">
-                              <Calendar className="h-3 w-3" />
+                          <div key={i} className="flex items-center justify-between text-[10px] bg-emerald-50/50 rounded-lg px-2 py-1.5">
+                            <span className="flex items-center gap-1.5 text-muted-foreground">
+                              <Calendar className="h-3 w-3 text-emerald-600" />
                               Batch #{alloc.batchNo}
-                              <span className="text-foreground">
+                              <span className="text-foreground font-medium">
                                 {new Date(alloc.expiryDate).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "2-digit" })}
                               </span>
                             </span>
-                            <span className="font-medium">−{alloc.allocated} {result.product.unit}</span>
+                            <span className="font-semibold text-emerald-700">−{alloc.allocated} {result.product.unit}</span>
                           </div>
                         ))}
                       </div>
                     )}
                     {!result.success && result.error && (
-                      <p className="text-[10px] text-red-600">{result.error}</p>
+                      <p className="text-[10px] text-rose-600 bg-rose-50 rounded-lg px-2 py-1.5">{result.error}</p>
                     )}
                   </CardContent>
                 </Card>
@@ -504,7 +555,7 @@ export function QuickDispense() {
           )}
 
           {error && (
-            <Card className="border-destructive/50 bg-destructive/5">
+            <Card className="border-destructive/30 bg-rose-50">
               <CardContent className="p-3 flex items-center gap-2 text-sm text-destructive">
                 <AlertCircle className="h-4 w-4 shrink-0" /> {error}
               </CardContent>
@@ -512,14 +563,17 @@ export function QuickDispense() {
           )}
 
           {/* Discount Section */}
-          <Card className="bg-muted/30">
-            <CardContent className="p-3 space-y-2">
-              <p className="text-xs font-semibold flex items-center gap-1.5">
-                <Percent className="h-3.5 w-3.5" /> Discount
-              </p>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-1">
-                  <label className="text-[10px] text-muted-foreground">Percent (%)</label>
+          <Card className="stagger-in shadow-pharmacy border-0 overflow-hidden">
+            <CardContent className="p-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center">
+                  <Percent className="h-3.5 w-3.5 text-white" />
+                </div>
+                <p className="text-sm font-semibold text-emerald-700">Discount</p>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">Percent (%)</label>
                   <Input
                     type="number"
                     step="0.5"
@@ -527,44 +581,44 @@ export function QuickDispense() {
                     max="100"
                     value={discountPercent}
                     onChange={(e) => setDiscountPercent(e.target.value)}
-                    className="h-9 text-sm"
+                    className="h-9 text-sm rounded-xl border-emerald-200 focus-visible:ring-emerald-500"
                     placeholder="0"
                   />
                 </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] text-muted-foreground">Flat (৳)</label>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">Flat (৳)</label>
                   <Input
                     type="number"
                     step="0.01"
                     min="0"
                     value={discountAmount}
                     onChange={(e) => setDiscountAmount(e.target.value)}
-                    className="h-9 text-sm"
+                    className="h-9 text-sm rounded-xl border-emerald-200 focus-visible:ring-emerald-500"
                     placeholder="0"
                   />
                 </div>
               </div>
               {subtotal > 0 && (discPercent > 0 || discAmount > 0) && (
-                <div className="space-y-1 pt-1 border-t text-xs">
+                <div className="space-y-1.5 pt-2 border-t border-dashed text-xs bg-emerald-50/40 -mx-4 -mb-4 px-4 pb-4 pt-3 rounded-b-xl">
                   <div className="flex items-center justify-between">
                     <span className="text-muted-foreground">Subtotal</span>
-                    <span>৳{subtotal.toFixed(2)}</span>
+                    <span className="font-medium">৳{subtotal.toFixed(2)}</span>
                   </div>
                   {discPercent > 0 && (
-                    <div className="flex items-center justify-between text-orange-600">
+                    <div className="flex items-center justify-between text-amber-600">
                       <span>−{discPercent}%</span>
-                      <span>−৳{(subtotal * discPercent / 100).toFixed(2)}</span>
+                      <span className="font-medium">−৳{(subtotal * discPercent / 100).toFixed(2)}</span>
                     </div>
                   )}
                   {discAmount > 0 && (
-                    <div className="flex items-center justify-between text-orange-600">
+                    <div className="flex items-center justify-between text-amber-600">
                       <span>Flat discount</span>
-                      <span>−৳{discAmount}</span>
+                      <span className="font-medium">−৳{discAmount}</span>
                     </div>
                   )}
-                  <div className="flex items-center justify-between font-bold pt-1 border-t">
+                  <div className="flex items-center justify-between font-bold pt-2 border-t border-emerald-200">
                     <span>Total</span>
-                    <span className="text-primary">৳{totalValue.toFixed(2)}</span>
+                    <span className="text-emerald-600 text-base">৳{totalValue.toFixed(2)}</span>
                   </div>
                 </div>
               )}
@@ -574,11 +628,11 @@ export function QuickDispense() {
           {/* Dispense Button */}
           <Button
             size="lg"
-            className="w-full h-12 gap-2"
+            className="stagger-in w-full h-14 gap-2 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 text-white shadow-lg shadow-emerald-500/20 rounded-2xl text-base font-semibold"
             onClick={handleDispense}
             disabled={dispensing || cart.length === 0}
           >
-            {dispensing ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShoppingCart className="h-4 w-4" />}
+            {dispensing ? <Loader2 className="h-5 w-5 animate-spin" /> : <ShoppingCart className="h-5 w-5" />}
             {dispensing ? "Dispensing..." : `Dispense ${totalItems} Item${totalItems !== 1 ? "s" : ""}`}
           </Button>
         </>
@@ -586,13 +640,17 @@ export function QuickDispense() {
 
       {/* Empty State */}
       {cart.length === 0 && !showSearch && (
-        <Card>
-          <CardContent className="p-8 text-center space-y-2">
-            <ShoppingCart className="h-12 w-12 mx-auto text-muted-foreground/30" />
-            <p className="font-medium">No items in cart</p>
-            <p className="text-sm text-muted-foreground">
-              Tap &ldquo;Add Product&rdquo; above to start a dispense
-            </p>
+        <Card className="stagger-in shadow-pharmacy border-0 overflow-hidden">
+          <CardContent className="p-10 text-center space-y-4">
+            <div className="h-20 w-20 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center mx-auto shadow-lg shadow-emerald-500/30">
+              <ShoppingCart className="h-10 w-10 text-white" />
+            </div>
+            <div className="space-y-1">
+              <p className="font-semibold text-base">No items in cart</p>
+              <p className="text-sm text-muted-foreground max-w-xs mx-auto">
+                Tap <span className="font-medium text-emerald-600">&ldquo;Add Product&rdquo;</span> above to start a dispense
+              </p>
+            </div>
           </CardContent>
         </Card>
       )}

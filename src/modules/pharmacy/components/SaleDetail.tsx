@@ -60,16 +60,16 @@ const fadeIn = {
 };
 
 const statusColors: Record<string, string> = {
-  completed: "bg-green-100 text-green-700",
-  cancelled: "bg-red-100 text-red-700",
-  pending: "bg-yellow-100 text-yellow-700",
+  completed: "bg-emerald-100 text-emerald-700 border-emerald-200",
+  cancelled: "bg-rose-100 text-rose-700 border-rose-200",
+  pending: "bg-amber-100 text-amber-700 border-amber-200",
 };
 
 const paymentColors: Record<string, string> = {
-  paid: "bg-green-100 text-green-700",
-  partial: "bg-orange-100 text-orange-700",
-  unpaid: "bg-red-100 text-red-700",
-  refunded: "bg-blue-100 text-blue-700",
+  paid: "bg-emerald-100 text-emerald-700 border-emerald-200",
+  partial: "bg-amber-100 text-amber-700 border-amber-200",
+  unpaid: "bg-rose-100 text-rose-700 border-rose-200",
+  refunded: "bg-sky-100 text-sky-700 border-sky-200",
 };
 
 export function SaleDetail() {
@@ -129,19 +129,32 @@ export function SaleDetail() {
 
   if (loading) {
     return (
-      <motion.div {...fadeIn} className="space-y-4">
+      <motion.div {...fadeIn} className="space-y-4 pharmacy-bg min-h-screen">
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="icon" onClick={() => setActiveView("sales")}><ArrowLeft className="h-5 w-5" /></Button>
           <h1 className="text-lg font-bold flex-1">Loading...</h1>
         </div>
-        <Card className="animate-pulse"><CardContent className="p-6 h-32" /></Card>
+        <Card className="shadow-pharmacy border-0 overflow-hidden">
+          <CardContent className="p-6 space-y-3">
+            <div className="skeleton h-8 w-48 rounded-lg" />
+            <div className="skeleton h-4 w-32 rounded" />
+            <div className="skeleton h-4 w-40 rounded" />
+          </CardContent>
+        </Card>
+        <Card className="shadow-pharmacy border-0">
+          <CardContent className="p-4 space-y-2">
+            <div className="skeleton h-12 w-full rounded-lg" />
+            <div className="skeleton h-12 w-full rounded-lg" />
+            <div className="skeleton h-12 w-full rounded-lg" />
+          </CardContent>
+        </Card>
       </motion.div>
     );
   }
 
   if (!sale) {
     return (
-      <motion.div {...fadeIn} className="space-y-4">
+      <motion.div {...fadeIn} className="space-y-4 pharmacy-bg min-h-screen">
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="icon" onClick={() => setActiveView("sales")}><ArrowLeft className="h-5 w-5" /></Button>
           <h1 className="text-lg font-bold flex-1">Sale not found</h1>
@@ -153,61 +166,116 @@ export function SaleDetail() {
   const isCancelled = sale.status === "cancelled";
 
   return (
-    <motion.div {...fadeIn} className="space-y-4 pb-4">
-      {/* Header */}
-      <div className="flex items-center gap-2 print:hidden">
-        <Button variant="ghost" size="icon" className="shrink-0" onClick={() => setActiveView("sales")}>
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-        <h1 className="text-lg font-bold flex-1">{sale.invoiceNo}</h1>
-        <Button variant="ghost" size="icon" onClick={() => window.print()}>
-          <Printer className="h-4 w-4" />
-        </Button>
-        {!isCancelled && (
-          <>
-            {sale.paymentStatus !== "paid" && (
+    <motion.div {...fadeIn} className="space-y-4 pb-4 pharmacy-bg min-h-screen">
+      {/* Header — Gradient emerald card */}
+      <Card className="stagger-in overflow-hidden border-0 shadow-pharmacy-lg print:border-0 print:shadow-none">
+        <div className="bg-gradient-to-br from-emerald-600 via-emerald-500 to-emerald-600 px-5 py-5 text-white">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <Receipt className="h-4 w-4 text-emerald-100" />
+                <p className="text-xs text-emerald-100 uppercase tracking-wider font-medium">Invoice</p>
+              </div>
+              <h2 className="text-xl font-bold font-mono tracking-tight">{sale.invoiceNo}</h2>
+              <p className="text-[11px] text-emerald-50 mt-1 flex items-center gap-1">
+                <Calendar className="h-3 w-3" />
+                {new Date(sale.createdAt).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })}
+              </p>
+              <Badge variant="outline" className={cn("text-[9px] mt-2 bg-white/15 text-white border-white/30 backdrop-blur-sm")}>
+                {sale.status}
+              </Badge>
+            </div>
+            <div className="text-right shrink-0">
+              <p className="text-[10px] text-emerald-100 uppercase tracking-wider">Total</p>
+              <p className="text-2xl font-bold">৳{sale.totalAmount.toFixed(2)}</p>
+            </div>
+          </div>
+          {sale.customer && (
+            <div className="mt-3 pt-3 border-t border-white/20">
+              <p className="text-[10px] text-emerald-100 uppercase tracking-wider mb-0.5">Customer</p>
+              <button
+                className="text-sm font-semibold hover:underline flex items-center gap-1.5"
+                onClick={() => { setActiveCustomerId(sale.customer!.id); setActiveView("customer-detail"); }}
+              >
+                <User className="h-3.5 w-3.5" />
+                {sale.customer.name}
+              </button>
+              {sale.customer.phone && <p className="text-[11px] text-emerald-50 mt-0.5">{sale.customer.phone}</p>}
+            </div>
+          )}
+        </div>
+        {/* Action buttons row */}
+        <CardContent className="p-3 bg-white flex items-center gap-2 print:hidden">
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5 rounded-xl shadow-pharmacy"
+            onClick={() => setActiveView("sales")}
+          >
+            <ArrowLeft className="h-3.5 w-3.5" /> Back to Sales
+          </Button>
+          <div className="flex-1" />
+          <Button
+            className="gap-1.5 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 text-white shadow-md shadow-emerald-500/20 rounded-xl"
+            size="sm"
+            onClick={() => window.print()}
+          >
+            <Printer className="h-3.5 w-3.5" /> Print
+          </Button>
+          {!isCancelled && (
+            <>
+              {sale.paymentStatus !== "paid" && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 text-emerald-700 border-emerald-300 hover:bg-emerald-50 rounded-xl"
+                  onClick={() => {
+                    setSaleCustomerId(sale.customer?.id || null);
+                    setActiveView("payments");
+                  }}
+                >
+                  <DollarSign className="h-3.5 w-3.5" /> Pay
+                </Button>
+              )}
               <Button
                 variant="outline"
                 size="sm"
-                className="gap-1.5 text-green-600 border-green-300"
-                onClick={() => {
-                  setSaleCustomerId(sale.customer?.id || null);
-                  setActiveView("payments");
-                }}
+                className="gap-1.5 text-amber-600 border-amber-300 hover:bg-amber-50 rounded-xl"
+                onClick={() => setActiveView("returns")}
               >
-                <DollarSign className="h-3.5 w-3.5" /> Pay
+                <RotateCcw className="h-3.5 w-3.5" /> Return
               </Button>
-            )}
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-1.5 text-orange-600 border-orange-300"
-              onClick={() => setActiveView("returns")}
-            >
-              <RotateCcw className="h-3.5 w-3.5" /> Return
-            </Button>
-            <Button variant="outline" size="sm" className="gap-1.5 text-destructive" onClick={() => setCancelOpen(true)}>
-              <X className="h-3.5 w-3.5" /> Cancel
-            </Button>
-          </>
-        )}
-      </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5 text-destructive border-rose-300 hover:bg-rose-50 rounded-xl"
+                onClick={() => setCancelOpen(true)}
+              >
+                <X className="h-3.5 w-3.5" /> Cancel
+              </Button>
+            </>
+          )}
+        </CardContent>
+      </Card>
 
       {success && (
-        <Card className="border-green-500/50 bg-green-50 print:hidden">
-          <CardContent className="p-3 flex items-center gap-2 text-sm text-green-700">
-            <Check className="h-4 w-4" /> {success}
+        <Card className="border-emerald-500/30 bg-emerald-50 print:hidden shadow-pharmacy">
+          <CardContent className="p-3 flex items-center gap-2 text-sm text-emerald-700">
+            <div className="h-6 w-6 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
+              <Check className="h-3.5 w-3.5" />
+            </div>
+            {success}
           </CardContent>
         </Card>
       )}
 
       {isCancelled && (
-        <Card className="border-red-500/50 bg-red-50 print:hidden">
-          <CardContent className="p-3 space-y-1">
-            <p className="text-sm font-semibold text-red-700 flex items-center gap-1.5">
+        <Card className="border-rose-500/30 bg-rose-50 print:hidden shadow-pharmacy">
+          <CardContent className="p-3.5 space-y-1">
+            <p className="text-sm font-semibold text-rose-700 flex items-center gap-1.5">
               <X className="h-4 w-4" /> Sale Cancelled
             </p>
-            {sale.cancelReason && <p className="text-xs text-red-600">Reason: {sale.cancelReason}</p>}
+            {sale.cancelReason && <p className="text-xs text-rose-600">Reason: {sale.cancelReason}</p>}
             {sale.cancelledAt && (
               <p className="text-[10px] text-muted-foreground">
                 Cancelled on {new Date(sale.cancelledAt).toLocaleString("en-GB")}
@@ -217,129 +285,138 @@ export function SaleDetail() {
         </Card>
       )}
 
-      {/* Invoice Header (printable) */}
-      <Card className="print:border-0 print:shadow-none">
-        <CardContent className="p-5 space-y-2">
-          <div className="flex items-start justify-between">
-            <div>
-              <h2 className="text-xl font-bold">{session?.business?.name}</h2>
-              {session?.business?.address && <p className="text-xs text-muted-foreground">{session.business.address}</p>}
-              <p className="text-xs text-muted-foreground">{session?.business?.businessType?.name}</p>
-            </div>
-            <div className="text-right">
-              <p className="text-sm font-bold">{sale.invoiceNo}</p>
-              <p className="text-[10px] text-muted-foreground">
-                {new Date(sale.createdAt).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })}
-              </p>
-              <Badge variant="outline" className={cn("text-[9px] mt-1", statusColors[sale.status])}>{sale.status}</Badge>
-            </div>
-          </div>
-          {sale.customer && (
-            <div className="pt-2 border-t mt-2">
-              <p className="text-[10px] text-muted-foreground">Customer</p>
-              <button
-                className="text-sm font-medium hover:underline"
-                onClick={() => { setActiveCustomerId(sale.customer!.id); setActiveView("customer-detail"); }}
-              >
-                {sale.customer.name}
-              </button>
-              {sale.customer.phone && <p className="text-xs text-muted-foreground">{sale.customer.phone}</p>}
-            </div>
-          )}
+      {/* Business header (printable) */}
+      <Card className="stagger-in shadow-pharmacy border-0 print:border-0 print:shadow-none hidden print:block">
+        <CardContent className="p-5">
+          <h2 className="text-xl font-bold">{session?.business?.name}</h2>
+          {session?.business?.address && <p className="text-xs text-muted-foreground">{session.business.address}</p>}
+          <p className="text-xs text-muted-foreground">{session?.business?.businessType?.name}</p>
         </CardContent>
       </Card>
 
       {/* Items */}
-      <Card>
+      <Card className="stagger-in shadow-pharmacy border-0 overflow-hidden">
         <CardContent className="p-0">
-          <div className="px-3 py-2 border-b bg-muted/50">
-            <p className="text-xs font-semibold">Items ({sale.itemCount})</p>
+          <div className="px-4 py-3 border-b bg-gradient-to-r from-emerald-50 to-white flex items-center gap-2">
+            <div className="h-6 w-6 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center">
+              <ShoppingBag className="h-3.5 w-3.5 text-white" />
+            </div>
+            <p className="text-sm font-semibold text-emerald-700">Items ({sale.itemCount})</p>
           </div>
-          <div className="divide-y">
-            {sale.items.map((item) => (
-              <div key={item.id} className="p-3 flex items-start justify-between gap-2">
+          <div className="divide-y divide-dashed">
+            {sale.items.map((item, idx) => (
+              <div
+                key={item.id}
+                className={cn(
+                  "p-3.5 flex items-start justify-between gap-2 transition-colors",
+                  idx % 2 === 0 ? "bg-white" : "bg-emerald-50/30"
+                )}
+              >
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium">{item.productName}</p>
+                  <p className="text-sm font-semibold">{item.productName}</p>
                   {item.genericName && <p className="text-[10px] text-muted-foreground">{item.genericName}</p>}
-                  {item.batchNo && <p className="text-[10px] text-muted-foreground">Batch: {item.batchNo}</p>}
-                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                  {item.batchNo && (
+                    <p className="text-[10px] text-muted-foreground flex items-center gap-1 mt-0.5">
+                      <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                      Batch: <span className="font-medium">{item.batchNo}</span>
+                    </p>
+                  )}
+                  <p className="text-[11px] text-muted-foreground mt-1">
                     {item.quantity} {item.unit} × ৳{item.unitPrice.toFixed(2)}
-                    {item.discountPercent > 0 && <span className="text-orange-600"> (−{item.discountPercent}%)</span>}
+                    {item.discountPercent > 0 && <span className="text-amber-600 font-medium"> (−{item.discountPercent}%)</span>}
                   </p>
                 </div>
-                <p className="text-sm font-semibold shrink-0">৳{item.totalPrice.toFixed(2)}</p>
+                <p className="text-sm font-bold text-emerald-600 shrink-0">৳{item.totalPrice.toFixed(2)}</p>
               </div>
             ))}
           </div>
         </CardContent>
       </Card>
 
-      {/* Totals */}
-      <Card>
-        <CardContent className="p-0 divide-y">
-          <div className="p-3 flex items-center justify-between text-sm">
+      {/* Summary section */}
+      <Card className="stagger-in shadow-pharmacy border-0 overflow-hidden">
+        <CardContent className="p-0 divide-y divide-dashed">
+          <div className="p-3.5 flex items-center justify-between text-sm">
             <span className="text-muted-foreground">Subtotal</span>
-            <span>৳{sale.subtotal.toFixed(2)}</span>
+            <span className="font-medium">৳{sale.subtotal.toFixed(2)}</span>
           </div>
           {sale.discountPercent > 0 && (
-            <div className="p-3 flex items-center justify-between text-sm text-orange-600">
+            <div className="p-3.5 flex items-center justify-between text-sm text-amber-600">
               <span>Discount ({sale.discountPercent}%)</span>
-              <span>−৳{(sale.subtotal * sale.discountPercent / 100).toFixed(2)}</span>
+              <span className="font-medium">−৳{(sale.subtotal * sale.discountPercent / 100).toFixed(2)}</span>
             </div>
           )}
           {sale.discountAmount > 0 && (
-            <div className="p-3 flex items-center justify-between text-sm text-orange-600">
+            <div className="p-3.5 flex items-center justify-between text-sm text-amber-600">
               <span>Additional Discount</span>
-              <span>−৳{sale.discountAmount.toFixed(2)}</span>
+              <span className="font-medium">−৳{sale.discountAmount.toFixed(2)}</span>
             </div>
           )}
           {sale.taxAmount > 0 && (
-            <div className="p-3 flex items-center justify-between text-sm">
+            <div className="p-3.5 flex items-center justify-between text-sm">
               <span className="text-muted-foreground">Tax/VAT</span>
-              <span>+৳{sale.taxAmount.toFixed(2)}</span>
+              <span className="font-medium">+৳{sale.taxAmount.toFixed(2)}</span>
             </div>
           )}
-          <div className="p-3 flex items-center justify-between bg-primary/5">
-            <span className="text-sm font-bold">Total</span>
-            <span className="text-lg font-bold text-primary">৳{sale.totalAmount.toFixed(2)}</span>
+          <div className="p-4 flex items-center justify-between bg-gradient-to-r from-emerald-50 to-emerald-50/50">
+            <span className="text-sm font-bold text-emerald-700">Total</span>
+            <span className="text-2xl font-bold text-emerald-600">৳{sale.totalAmount.toFixed(2)}</span>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Payment Section */}
+      <Card className="stagger-in shadow-pharmacy border-0 overflow-hidden">
+        <CardContent className="p-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center">
+              <DollarSign className="h-3.5 w-3.5 text-white" />
+            </div>
+            <p className="text-sm font-semibold text-emerald-700">Payment</p>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-xl bg-emerald-50/50 p-3 space-y-1">
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Method</p>
+              <p className="text-sm font-semibold capitalize">{sale.paymentMethod.replace("_", " ")}</p>
+            </div>
+            <div className="rounded-xl bg-emerald-50/50 p-3 space-y-1">
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Status</p>
+              <Badge variant="outline" className={cn("text-[9px]", paymentColors[sale.paymentStatus])}>{sale.paymentStatus}</Badge>
+            </div>
           </div>
           {sale.paidAmount < sale.totalAmount && !isCancelled && (
-            <>
-              <div className="p-3 flex items-center justify-between text-sm text-green-600">
-                <span>Paid</span>
-                <span>৳{sale.paidAmount.toFixed(2)}</span>
+            <div className="space-y-1.5 pt-2 border-t border-dashed">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Amount Paid</span>
+                <span className="font-semibold text-emerald-600">৳{sale.paidAmount.toFixed(2)}</span>
               </div>
-              <div className="p-3 flex items-center justify-between text-sm text-red-600">
-                <span>Due</span>
-                <span className="font-bold">৳{(sale.totalAmount - sale.paidAmount).toFixed(2)}</span>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Balance Due</span>
+                <span className="font-bold text-rose-600">৳{(sale.totalAmount - sale.paidAmount).toFixed(2)}</span>
               </div>
-            </>
+            </div>
+          )}
+          {sale.paidAmount >= sale.totalAmount && !isCancelled && (
+            <div className="flex items-center justify-center gap-1.5 pt-2 border-t border-dashed text-emerald-600">
+              <Check className="h-4 w-4" />
+              <span className="text-sm font-medium">Fully Paid</span>
+            </div>
           )}
         </CardContent>
       </Card>
 
-      {/* Payment Info */}
-      <div className="grid grid-cols-2 gap-2 text-xs">
-        <Card><CardContent className="p-2">
-          <p className="text-muted-foreground text-[10px]">Payment Method</p>
-          <p className="font-medium capitalize">{sale.paymentMethod.replace("_", " ")}</p>
-        </CardContent></Card>
-        <Card><CardContent className="p-2">
-          <p className="text-muted-foreground text-[10px]">Payment Status</p>
-          <Badge variant="outline" className={cn("text-[9px]", paymentColors[sale.paymentStatus])}>{sale.paymentStatus}</Badge>
-        </CardContent></Card>
-      </div>
-
       {sale.notes && (
-        <Card><CardContent className="p-3">
-          <p className="text-[10px] text-muted-foreground">Notes</p>
-          <p className="text-xs">{sale.notes}</p>
-        </CardContent></Card>
+        <Card className="stagger-in shadow-pharmacy border-0">
+          <CardContent className="p-3.5">
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">Notes</p>
+            <p className="text-xs text-foreground">{sale.notes}</p>
+          </CardContent>
+        </Card>
       )}
 
       {/* Footer */}
-      <div className="text-center text-[10px] text-muted-foreground pt-2 print:pt-4">
-        <p>Thank you for your business!</p>
+      <div className="stagger-in text-center text-[10px] text-muted-foreground pt-2 print:pt-4 space-y-0.5">
+        <p className="font-medium">Thank you for your business!</p>
         <p>Generated by InventoryOS</p>
       </div>
 
@@ -349,8 +426,10 @@ export function SaleDetail() {
           <DialogHeader><DialogTitle>Cancel Sale {sale.invoiceNo}</DialogTitle></DialogHeader>
           <div className="space-y-3 pt-2">
             {error && <p className="text-sm text-destructive flex items-center gap-1.5"><AlertCircle className="h-3.5 w-3.5" /> {error}</p>}
-            <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 text-xs text-orange-700">
-              <p className="font-semibold">⚠️ This will restore stock to inventory</p>
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-700">
+              <p className="font-semibold flex items-center gap-1.5">
+                <AlertCircle className="h-3.5 w-3.5" /> This will restore stock to inventory
+              </p>
               <p className="mt-1">All {sale.itemCount} item(s) will be returned to their batches via reverse FEFO.</p>
             </div>
             <div className="space-y-1.5">
@@ -359,12 +438,12 @@ export function SaleDetail() {
                 value={cancelReason}
                 onChange={(e) => { setCancelReason(e.target.value); setError(null); }}
                 placeholder="e.g., Customer returned items, billing error, etc."
-                className="min-h-[60px] text-sm"
+                className="min-h-[60px] text-sm rounded-xl border-amber-200 focus-visible:ring-amber-500"
               />
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" className="flex-1" onClick={() => setCancelOpen(false)} disabled={cancelling}>Cancel</Button>
-              <Button variant="destructive" className="flex-1 gap-1.5" onClick={handleCancel} disabled={cancelling || !cancelReason.trim()}>
+              <Button variant="outline" className="flex-1 rounded-xl" onClick={() => setCancelOpen(false)} disabled={cancelling}>Cancel</Button>
+              <Button variant="destructive" className="flex-1 gap-1.5 rounded-xl" onClick={handleCancel} disabled={cancelling || !cancelReason.trim()}>
                 {cancelling ? <Loader2 className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />}
                 {cancelling ? "Cancelling..." : "Confirm Cancel"}
               </Button>
