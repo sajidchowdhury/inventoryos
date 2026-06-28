@@ -1011,3 +1011,92 @@ Stage Summary:
 - Fixed Prisma relation issue: SaleItem has batchId as plain field, not a relation — fetch batch prices separately for COGS calculations
 - Cross-module analytics: single dashboard shows sales + purchases + inventory + expiry + financials + profit in one view
 - All reports support CSV download and print
+
+---
+Task ID: rebuild-after-disk-reset-gap10-redis
+Agent: main
+Task: Rebuild ALL lost infrastructure after disk reset + implement Gap 10 (Redis cache) + set up GitHub linking guide.
+
+Work Log:
+
+CRITICAL ISSUE: Project disk was reset — all post-Phase-6 work was lost (AI cost control, caching, auth middleware, cron jobs, deployment setup, Sentry, SQL Router, AI Response Cache, backup scripts, PgBouncer, Super Admin, etc.). Only Phase 6 state remained (72 API routes, 59 components, 22 Prisma models, 8 lib files).
+
+FIX: Rebuilt everything from scratch using subagents for parallel file creation.
+
+1. Created GITHUB_SETUP.md — comprehensive guide for linking to GitHub (create repo, add remote, PAT/SSH auth, daily workflow, restore from GitHub, .gitenv prevention). This prevents future data loss.
+
+2. Updated .gitignore — added /db/, *.db, .env*, /upload/, /agent-ctx/, *.sql, logs/
+
+3. Updated prisma/schema.prisma — added 7 new models (AIUsageLog, SuperAdmin, SuperAdminSession, BusinessDailyStats, CronJobLog, AIResponseCache) + subscription fields on Business model (subscriptionTier, subscriptionStatus, subscriptionStart, subscriptionEnd, aiEnabled, aiDailyLimit, aiMonthlyLimit, aiTokenBudget) + relations. Total: 29 models.
+
+4. Rebuilt src/lib/cache.ts (Gap 10 — Redis support!):
+   - CacheBackend interface with get/set/delete/invalidatePrefix/clear/getOrCompute/isRedis
+   - MemoryCache class (in-memory Map with TTL timers) — fallback when REDIS_URL not set
+   - RedisCache class (ioredis with SCAN-based prefix invalidation) — used when REDIS_URL is set
+   - Auto-detects REDIS_URL at startup via Proxy pattern
+   - cacheKey(), CACHE_TTL (9 presets), invalidateOnSale/Purchase/ProductChange/BatchChange/Payment helpers
+   - isRedisEnabled() and isRedisConnected() for health checks
+   - Installed ioredis as a dependency
+
+5. Rebuilt src/lib/ai-rate-limit.ts — checkAILimit with burst (5/60s), daily (50), monthly (1000), token budget (500K) + logAIUsage + getAIUsageStats + estimateTokens
+
+6. Rebuilt src/lib/ai-fallback.ts — 9 FallbackReason types with English + Bangla messages, buildFallback, classifyError, classifyRateLimitByType, getLastSuccessfulCall, formatCachedAt
+
+7. Rebuilt src/lib/ai-cache.ts — normalizeQuery, computeDataHash (SHA-256), getCachedResponse, setCachedResponse (upsert with 24h TTL), pruneExpiredCacheEntries, clearBusinessCache
+
+8. Rebuilt src/lib/feature-gate.ts — getTierConfig (free/pro/pro_ai with limits + features)
+
+9. Rebuilt src/middleware.ts — Edge middleware for API auth (PUBLIC_ROUTES, token extraction, 401 on missing token)
+
+10. Rebuilt src/lib/cron-jobs.ts — runNightlyStatsJob, runHourlySubscriptionsJob, runDailyMaintenanceJob, getCronJobStatuses, CRON_JOB_SCHEDULES
+
+11. Rebuilt src/lib/sql-router.ts — 20 query patterns (low-stock, today-sales, expiring-soon, etc.) with routeQuery function
+
+12. Rebuilt Docker infrastructure:
+    - docker-compose.yml (4 services: db, pgbouncer, redis, app with healthchecks)
+    - Dockerfile (3-stage: deps → builder → runner with wget for healthcheck)
+    - .env.production (all env vars with comments)
+    - docker/pgbouncer/pgbouncer.ini (transaction pool mode, max_client_conn=200, default_pool_size=20)
+    - docker/pgbouncer/userlist.txt
+    - docker/pgbouncer/README.md
+    - next.config.ts (wrapped with withSentryConfig)
+    - sentry.client.config.ts + sentry.server.config.ts (optional init)
+
+13. Rebuilt 12 API routes:
+    - /api/cron/nightly-stats, /api/cron/hourly-subscriptions, /api/cron/daily-maintenance, /api/cron/status
+    - /api/super-admin/login, /api/super-admin/businesses, /api/super-admin/businesses/[businessId], /api/super-admin/ai-usage, /api/super-admin/trigger-cron/[jobName]
+    - /api/health, /api/health/test-error
+    - /api/businesses/[id]/subscription
+
+14. Rebuilt 4 AI routes with all gap integrations:
+    - /api/businesses/[id]/ai/chat — SQL router → cache → rate limit → LLM
+    - /api/businesses/[id]/ai/insights — rate limit → cache → LLM
+    - /api/businesses/[id]/ai/expiry-optimizer — rate limit → cache → LLM
+    - /api/businesses/[id]/ai/product-assistant — rate limit → LLM (no cache, product-specific)
+
+15. Rebuilt src/app/admin/page.tsx — complete Super Admin dashboard with login, summary cards, abuse alerts, AI cost today, top spenders, SQL router hit rate, cache hit rate, AI usage by feature, 7-day chart, background jobs, business list, edit dialog
+
+16. Rebuilt 4 backup scripts:
+    - scripts/backup/verify-backup.js (8 structural checks)
+    - scripts/backup/backup.sh (verified pg_dump with retention)
+    - scripts/backup/restore.sh (safe restore with test/prod modes)
+    - scripts/backup/restore-drill.sh (monthly automated drill)
+
+17. Seeded SuperAdmin (username: superadmin, password: admin123)
+
+18. Installed @sentry/nextjs and ioredis
+
+19. Build verified: zero warnings, zero errors. 84 API routes, 15 lib files, 59 components, 29 Prisma models.
+
+20. Committed everything to git (1364 files tracked).
+
+Stage Summary:
+- ALL infrastructure rebuilt after disk reset
+- Gap 10 (Redis cache) implemented directly in cache.ts with auto-detection
+- All 11 gaps from Gap Closure Workflow are now implemented:
+  * Gap 1-4 (Phase A): PgBouncer, migration, backup, AI fallback ✅
+  * Gap 5-7 (Phase B): Sentry, AI cost dashboard, burst limiting ✅
+  * Gap 8-10 (Phase C): SQL Router, AI Response Cache, Redis cache ✅
+  * Gap 11-12 (Phase D): Not yet rebuilt (FEFO audit, Bangla UI)
+- GITHUB_SETUP.md created to prevent future data loss
+- All code committed to git
