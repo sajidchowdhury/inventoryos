@@ -1,0 +1,137 @@
+# ── InventoryOS Production Docker Compose ──
+# 4 services: db (PostgreSQL 16) → pgbouncer → app, plus redis for queues.
+#
+# Usage:
+#   1. Copy .env.production → .env and fill in real secrets (DB_PASSWORD, CRON_SECRET, SENTRY_DSN, …)
+#   2. docker compose build
+#   3. docker compose up -d
+#   4. docker compose exec app npx prisma migrate deploy   # apply migrations (uses DIRECT_DATABASE_URL)
+#   5. docker compose exec app node prisma/seed.js         # optional seed
+#
+# Network: all services live on the `inventoryos-net` bridge network.
+# Database + Redis ports are bound to 127.0.0.1 only (not exposed publicly);
+# the app is published on 0.0.0.0:3000 behind your reverse proxy (e.g. Caddy).
+
+services:
+  # ── PostgreSQL 16 (primary datastore) ──
+  db:
+    image: postgres:16-alpine
+    container_name: inventoryos-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: inventoryos
+      POSTGRES_USER: inventoryos
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U inventoryos -d inventoryos"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - inventoryos-net
+
+  # ── PgBouncer (connection pooler in front of Postgres) ──
+  # Reduces connection churn from Next.js / Prisma under load.
+  # See docker/pgbouncer/README.md for tuning & verification.
+  pgbouncer:
+    image: edoburu/pgbouncer:1.23.1
+    container_name: inventoryos-pgbouncer
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+      AUTH_TYPE: trust
+    ports:
+      # pgbouncer.ini sets listen_port=6432 inside the container, so we
+      # publish 6432 → 6432 (not the edoburu image default of 5432).
+      - "127.0.0.1:6432:6432"
+    volumes:
+      - ./docker/pgbouncer/pgbouncer.ini:/etc/pgbouncer/pgbouncer.ini:ro
+      - ./docker/pgbouncer/userlist.txt:/etc/pgbouncer/userlist.txt:ro
+    healthcheck:
+      test:
+        - "CMD-SHELL"
+        - "psql postgres://inventoryos@127.0.0.1:6432/inventoryos -c 'SHOW VERSION;' || exit 1"
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - inventoryos-net
+
+  # ── Redis 7 (queues, rate-limit, cache) ──
+  redis:
+    image: redis:7-alpine
+    container_name: inventoryos-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - inventoryos-net
+
+  # ── InventoryOS Next.js app (standalone build) ──
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: inventoryos-app:latest
+    container_name: inventoryos-app
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      pgbouncer:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      # Pooled runtime connections go through PgBouncer (transaction pooling).
+      # pgbouncer=true forces Prisma into a pgbouncer-safe URL format and
+      # connection_limit=1 matches PgBouncer's transaction pool model.
+      DATABASE_URL: "postgresql://inventoryos:${DB_PASSWORD}@pgbouncer:6432/inventoryos?schema=public&pgbouncer=true&connection_limit=1"
+      # Direct connection bypasses PgBouncer — required for `prisma migrate deploy`
+      # and any operation that needs a session (advisory locks, LISTEN/NOTIFY, …).
+      DIRECT_DATABASE_URL: "postgresql://inventoryos:${DB_PASSWORD}@db:5432/inventoryos?schema=public"
+      REDIS_URL: "redis://redis:6379"
+      NODE_ENV: production
+      PORT: "3000"
+      CRON_SECRET: ${CRON_SECRET:?CRON_SECRET is required}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      NEXT_PUBLIC_SENTRY_DSN: ${NEXT_PUBLIC_SENTRY_DSN:-}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/api/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    ports:
+      - "0.0.0.0:3000:3000"
+    networks:
+      - inventoryos-net
+
+networks:
+  inventoryos-net:
+    driver: bridge
+    name: inventoryos-net
+
+volumes:
+  pgdata:
+    name: inventoryos-pgdata
+  redisdata:
+    name: inventoryos-redisdata

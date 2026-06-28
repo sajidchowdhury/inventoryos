@@ -1,13 +1,65 @@
 // POST /api/businesses/[id]/ai/expiry-optimizer
 // Analyzes near-expiry batches and recommends optimal actions using LLM
+//
+// Gap integrations:
+//   • Gap 1/7 — Rate Limiter : checkAILimit() gates the LLM call per business quota
+//   • Gap 9 — AI Cache       : getCachedResponse() returns prior recommendations if batch data unchanged
+//   • Gap 4 — Error Fallback : buildFallback()/classifyError() shape every failure mode
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import {
+  normalizeQuery,
+  computeDataHash,
+  getCachedResponse,
+  setCachedResponse,
+} from "@/lib/ai-cache";
+import {
+  checkAILimit,
+  logAIUsage,
+  estimateTokens,
+} from "@/lib/ai-rate-limit";
+import {
+  buildFallback,
+  classifyError,
+  classifyRateLimitByType,
+} from "@/lib/ai-fallback";
+
+const FEATURE = "expiry-optimizer";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  try {
-    const { id: businessId } = await params;
+  const { id: businessId } = await params;
+  const now = new Date();
 
-    const now = new Date();
+  try {
+    // ── 1. Rate limit check (Gap 1/7) ──
+    const limitCheck = await checkAILimit(businessId);
+    if (!limitCheck.allowed) {
+      const fallbackReason = classifyRateLimitByType(limitCheck.limitType, limitCheck.reason);
+      const fallback = buildFallback(fallbackReason, {
+        retryAfterSeconds: limitCheck.retryAfterSeconds,
+        errorMessage: limitCheck.reason,
+      });
+      await logAIUsage(businessId, FEATURE, 0, false, `rate_limited:${limitCheck.limitType}`);
+
+      return NextResponse.json(
+        {
+          success: false,
+          ...fallback,
+          error: fallback.fallbackMessage,
+          type: "rate_limit",
+          limitType: limitCheck.limitType,
+          remaining: limitCheck.remaining,
+        },
+        {
+          status: 429,
+          headers: limitCheck.retryAfterSeconds
+            ? { "Retry-After": String(limitCheck.retryAfterSeconds) }
+            : undefined,
+        }
+      );
+    }
+
+    // ── 2. Fetch batches (existing code) ──
     const ninetyDaysFromNow = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
 
     // Fetch all batches expiring within 90 days (or already expired) with stock
@@ -37,6 +89,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         message: "No batches expiring within 90 days. Your inventory is healthy!",
         recommendations: [],
         summary: { totalBatches: 0, totalValueAtRisk: 0, criticalCount: 0 },
+        cache: { hit: false },
+        remaining: limitCheck.remaining,
       });
     }
 
@@ -47,9 +101,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       );
       const valueAtRisk = (batch.mrp || 0) * batch.quantity;
       const costValue = (batch.purchasePrice || 0) * batch.quantity;
-
-      // Calculate recent sales velocity for this product (last 30 days)
-      const dailyVelocity = 0; // Will be filled by LLM context
 
       return {
         batchId: batch.id,
@@ -81,7 +132,70 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const warningBatches = batchData.filter((b) => b.daysUntilExpiry > 7 && b.daysUntilExpiry <= 30);
     const noticeBatches = batchData.filter((b) => b.daysUntilExpiry > 30 && b.daysUntilExpiry <= 90);
 
-    // ── Call LLM for action recommendations ──
+    // ── 3. Cache check (Gap 9) ──
+    const normalizedQuery = normalizeQuery(FEATURE);
+    const dataHash = computeDataHash(batchData);
+    const cached = await getCachedResponse(businessId, FEATURE, normalizedQuery, dataHash);
+    if (cached) {
+      // Re-hydrate recommendations from the cached raw LLM response.
+      let cachedRecommendations: Array<Record<string, unknown>> = [];
+      try {
+        const jsonMatch = cached.response.match(/\[[\s\S]*\]/);
+        cachedRecommendations = jsonMatch ? JSON.parse(jsonMatch[0]) : [];
+      } catch {
+        cachedRecommendations = [];
+      }
+
+      // Merge batch data with cached recommendations (same logic as the live path)
+      const enrichedRecommendations = batchData.map((batch) => {
+        const rec = cachedRecommendations.find((r) => r.batchId === batch.batchId) || ({} as Record<string, unknown>);
+        return {
+          ...batch,
+          action: (rec.action as string) || (batch.daysUntilExpiry < 0 ? "dispose" : "sell_priority"),
+          discountPercent: (rec.discountPercent as number | null) ?? null,
+          reason: (rec.reason as string) || "No recommendation available",
+          urgency: (rec.urgency as string) || (batch.daysUntilExpiry < 0 ? "critical" : batch.daysUntilExpiry <= 7 ? "critical" : batch.daysUntilExpiry <= 30 ? "high" : "medium"),
+          estimatedRecovery: (rec.estimatedRecovery as string) || "Unknown",
+        };
+      });
+
+      const urgencyOrder = { critical: 0, high: 1, medium: 2, low: 3 };
+      enrichedRecommendations.sort((a, b) => {
+        const uDiff = urgencyOrder[a.urgency as keyof typeof urgencyOrder] - urgencyOrder[b.urgency as keyof typeof urgencyOrder];
+        if (uDiff !== 0) return uDiff;
+        return a.daysUntilExpiry - b.daysUntilExpiry;
+      });
+
+      const actionSummary = enrichedRecommendations.reduce((acc, r) => {
+        acc[r.action] = (acc[r.action] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+
+      await logAIUsage(businessId, "expiry-optimizer-cache", 0, true);
+
+      return NextResponse.json({
+        success: true,
+        generatedAt: cached.cachedAt,
+        summary: {
+          totalBatches: batchData.length,
+          totalValueAtRisk: Math.round(totalValueAtRisk * 100) / 100,
+          expiredCount: expiredBatches.length,
+          criticalCount: criticalBatches.length,
+          warningCount: warningBatches.length,
+          noticeCount: noticeBatches.length,
+          actionSummary,
+        },
+        recommendations: enrichedRecommendations,
+        cache: {
+          hit: true,
+          cachedAt: cached.cachedAt,
+          originalTokensUsed: cached.tokensUsed,
+        },
+        remaining: limitCheck.remaining,
+      });
+    }
+
+    // ── 4. Call LLM for action recommendations ──
     const ZAI = (await import("z-ai-web-dev-sdk")).default;
     const zai = await ZAI.create();
 
@@ -114,20 +228,22 @@ Consider:
 
 Be practical and pharmacy-specific. Return only the JSON array.`;
 
+    const userContent = `Analyze these expiring batches:\n\n${JSON.stringify(batchData, null, 2)}`;
+
     const completion = await zai.chat.completions.create({
       messages: [
         { role: "assistant", content: systemPrompt },
-        { role: "user", content: `Analyze these expiring batches:\n\n${JSON.stringify(batchData, null, 2)}` },
+        { role: "user", content: userContent },
       ],
       thinking: { type: "disabled" },
     });
 
-    const response = completion.choices[0]?.message?.content;
+    const response = completion.choices[0]?.message?.content || "";
 
     // Parse recommendations
-    let recommendations;
+    let recommendations: Array<Record<string, unknown>>;
     try {
-      const jsonMatch = response?.match(/\[[\s\S]*\]/);
+      const jsonMatch = response.match(/\[[\s\S]*\]/);
       recommendations = jsonMatch ? JSON.parse(jsonMatch[0]) : [];
     } catch {
       recommendations = [];
@@ -135,14 +251,14 @@ Be practical and pharmacy-specific. Return only the JSON array.`;
 
     // Merge batch data with recommendations
     const enrichedRecommendations = batchData.map((batch) => {
-      const rec = recommendations.find((r: { batchId: string }) => r.batchId === batch.batchId) || {};
+      const rec = recommendations.find((r) => r.batchId === batch.batchId) || ({} as Record<string, unknown>);
       return {
         ...batch,
-        action: rec.action || (batch.daysUntilExpiry < 0 ? "dispose" : "sell_priority"),
-        discountPercent: rec.discountPercent || null,
-        reason: rec.reason || "No recommendation available",
-        urgency: rec.urgency || (batch.daysUntilExpiry < 0 ? "critical" : batch.daysUntilExpiry <= 7 ? "critical" : batch.daysUntilExpiry <= 30 ? "high" : "medium"),
-        estimatedRecovery: rec.estimatedRecovery || "Unknown",
+        action: (rec.action as string) || (batch.daysUntilExpiry < 0 ? "dispose" : "sell_priority"),
+        discountPercent: (rec.discountPercent as number | null) ?? null,
+        reason: (rec.reason as string) || "No recommendation available",
+        urgency: (rec.urgency as string) || (batch.daysUntilExpiry < 0 ? "critical" : batch.daysUntilExpiry <= 7 ? "critical" : batch.daysUntilExpiry <= 30 ? "high" : "medium"),
+        estimatedRecovery: (rec.estimatedRecovery as string) || "Unknown",
       };
     });
 
@@ -160,6 +276,21 @@ Be practical and pharmacy-specific. Return only the JSON array.`;
       return acc;
     }, {} as Record<string, number>);
 
+    // ── 5. Log + cache write ──
+    const sdkTokens =
+      (completion as { usage?: { total_tokens?: number } })?.usage?.total_tokens;
+    const totalTokens =
+      typeof sdkTokens === "number" && sdkTokens > 0
+        ? sdkTokens
+        : estimateTokens(systemPrompt) + estimateTokens(userContent) + estimateTokens(response);
+
+    await logAIUsage(businessId, FEATURE, totalTokens, true);
+
+    // Cache the raw LLM response so the merge logic can re-run on cache hit
+    // (batch data may differ slightly even with same hash, but the recommendations
+    // are stable for the same batch IDs).
+    await setCachedResponse(businessId, FEATURE, normalizedQuery, dataHash, response, totalTokens);
+
     return NextResponse.json({
       success: true,
       generatedAt: now.toISOString(),
@@ -173,9 +304,34 @@ Be practical and pharmacy-specific. Return only the JSON array.`;
         actionSummary,
       },
       recommendations: enrichedRecommendations,
+      cache: { hit: false },
+      tokensUsed: totalTokens,
+      remaining: limitCheck.remaining,
     });
   } catch (error) {
     console.error("Expiry optimizer error:", error);
-    return NextResponse.json({ error: "Failed to generate expiry recommendations" }, { status: 500 });
+
+    await logAIUsage(
+      businessId,
+      FEATURE,
+      0,
+      false,
+      error instanceof Error ? error.message : String(error)
+    ).catch(() => undefined);
+
+    const reason = classifyError(error);
+    const fallback = buildFallback(reason, {
+      errorMessage: error instanceof Error ? error.message : String(error),
+    });
+
+    return NextResponse.json(
+      {
+        success: false,
+        ...fallback,
+        error: fallback.fallbackMessage,
+        type: "llm_error",
+      },
+      { status: 500 }
+    );
   }
 }

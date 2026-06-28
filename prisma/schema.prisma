@@ -49,6 +49,16 @@ model Business {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
+  // ── Subscription & AI Control ──
+  subscriptionTier   String   @default("free")    // "free" / "pro" / "pro_ai"
+  subscriptionStatus String   @default("trial")   // "trial" / "active" / "suspended" / "cancelled"
+  subscriptionStart  DateTime?
+  subscriptionEnd    DateTime?
+  aiEnabled          Boolean  @default(false)
+  aiDailyLimit       Int      @default(50)
+  aiMonthlyLimit     Int      @default(1000)
+  aiTokenBudget      Int      @default(500000)
+
   user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   businessType BusinessType @relation(fields: [businessTypeId], references: [id])
   businessUsers BusinessUser[]
@@ -69,6 +79,9 @@ model Business {
   suppliers     Supplier[]
   purchases     Purchase[]
   purchaseItems PurchaseItem[]
+  aiUsageLogs   AIUsageLog[]
+  dailyStats    BusinessDailyStats[]
+  aiResponseCache AIResponseCache[]
 
   @@index([userId])
   @@index([businessTypeId])
@@ -643,4 +656,130 @@ model PurchaseItem {
 
   @@index([purchaseId])
   @@index([productId])
+}
+
+// ── AI Usage Log ──
+// Tracks every AI call per business for cost monitoring and rate limiting
+model AIUsageLog {
+  id            String   @id @default(cuid())
+  businessId    String
+  feature       String   // "chat" / "insights" / "expiry-optimizer" / "product-assistant:*" / "sql-router:*" / "*-cache"
+  tokensUsed    Int      @default(0)
+  costEstimate  Float    @default(0)
+  success       Boolean  @default(true)
+  errorMessage  String?
+  createdAt     DateTime @default(now())
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@index([feature])
+  @@index([createdAt])
+  @@index([businessId, createdAt])
+}
+
+// ── Super Admin ──
+model SuperAdmin {
+  id           String   @id @default(cuid())
+  username     String   @unique
+  passwordHash String
+  fullName     String?
+  role         String   @default("super_admin")
+  isActive     Boolean  @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  sessions SuperAdminSession[]
+}
+
+model SuperAdminSession {
+  id              String   @id @default(cuid())
+  superAdminId    String
+  token           String   @unique
+  expiresAt       DateTime
+  createdAt       DateTime @default(now())
+
+  superAdmin SuperAdmin @relation(fields: [superAdminId], references: [id], onDelete: Cascade)
+
+  @@index([superAdminId])
+  @@index([token])
+  @@index([expiresAt])
+}
+
+// ── Business Daily Stats (Cron pre-computation) ──
+model BusinessDailyStats {
+  id              String   @id @default(cuid())
+  businessId      String
+  date            DateTime
+
+  salesTotal      Float    @default(0)
+  salesCount      Int      @default(0)
+  salesDiscount   Float    @default(0)
+  salesReturns    Float    @default(0)
+  salesReturnsCount Int    @default(0)
+  purchasesTotal  Float    @default(0)
+  purchasesCount  Int      @default(0)
+  paymentsIn      Float    @default(0)
+  paymentsOut     Float    @default(0)
+  productCount    Int      @default(0)
+  lowStockCount   Int      @default(0)
+  outOfStockCount Int      @default(0)
+  batchCount      Int      @default(0)
+  nearExpiryCount Int      @default(0)
+  expiredCount    Int      @default(0)
+  inventoryCostValue Float @default(0)
+  inventoryMrpValue  Float @default(0)
+  customerCount       Int  @default(0)
+  supplierCount       Int  @default(0)
+  receivablesTotal    Float @default(0)
+  payablesTotal       Float @default(0)
+  aiCalls         Int      @default(0)
+  aiTokens        Int      @default(0)
+  aiCost          Float    @default(0)
+  createdAt       DateTime @default(now())
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@unique([businessId, date])
+  @@index([businessId, date])
+  @@index([date])
+}
+
+// ── Cron Job Log ──
+model CronJobLog {
+  id            String   @id @default(cuid())
+  jobName       String
+  status        String   // "running" | "success" | "failed"
+  startedAt     DateTime @default(now())
+  finishedAt    DateTime?
+  durationMs    Int?
+  businessesProcessed Int @default(0)
+  recordsWritten     Int @default(0)
+  errorMessage       String?
+  log           String?
+
+  @@index([jobName, startedAt])
+  @@index([status])
+  @@index([startedAt])
+}
+
+// ── AI Response Cache (Gap 9) ──
+model AIResponseCache {
+  id              String   @id @default(cuid())
+  businessId      String
+  feature         String
+  normalizedQuery String
+  dataHash        String
+  response        String
+  tokensUsed      Int      @default(0)
+  createdAt       DateTime @default(now())
+  expiresAt       DateTime
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@unique([businessId, feature, normalizedQuery, dataHash])
+  @@index([businessId, feature, normalizedQuery])
+  @@index([expiresAt])
+  @@index([businessId, expiresAt])
 }

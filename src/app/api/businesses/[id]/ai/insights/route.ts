@@ -1,14 +1,65 @@
 // POST /api/businesses/[id]/ai/insights
 // Gathers business data, sends to LLM, returns AI-generated insights & recommendations
+//
+// Gap integrations:
+//   • Gap 1/7 — Rate Limiter : checkAILimit() gates the LLM call per business quota
+//   • Gap 9 — AI Cache       : getCachedResponse() returns prior insights if data unchanged
+//   • Gap 4 — Error Fallback : buildFallback()/classifyError() shape every failure mode
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import {
+  normalizeQuery,
+  computeDataHash,
+  getCachedResponse,
+  setCachedResponse,
+} from "@/lib/ai-cache";
+import {
+  checkAILimit,
+  logAIUsage,
+  estimateTokens,
+} from "@/lib/ai-rate-limit";
+import {
+  buildFallback,
+  classifyError,
+  classifyRateLimitByType,
+} from "@/lib/ai-fallback";
+
+const FEATURE = "insights";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  try {
-    const { id: businessId } = await params;
+  const { id: businessId } = await params;
+  const now = new Date();
 
-    // ── Gather business data for AI analysis ──
-    const now = new Date();
+  try {
+    // ── 1. Rate limit check (Gap 1/7) — insights has no SQL router shortcut ──
+    const limitCheck = await checkAILimit(businessId);
+    if (!limitCheck.allowed) {
+      const fallbackReason = classifyRateLimitByType(limitCheck.limitType, limitCheck.reason);
+      const fallback = buildFallback(fallbackReason, {
+        retryAfterSeconds: limitCheck.retryAfterSeconds,
+        errorMessage: limitCheck.reason,
+      });
+      await logAIUsage(businessId, FEATURE, 0, false, `rate_limited:${limitCheck.limitType}`);
+
+      return NextResponse.json(
+        {
+          success: false,
+          ...fallback,
+          error: fallback.fallbackMessage,
+          type: "rate_limit",
+          limitType: limitCheck.limitType,
+          remaining: limitCheck.remaining,
+        },
+        {
+          status: 429,
+          headers: limitCheck.retryAfterSeconds
+            ? { "Retry-After": String(limitCheck.retryAfterSeconds) }
+            : undefined,
+        }
+      );
+    }
+
+    // ── 2. Gather business data for AI analysis ──
     const monthStart = new Date(now); monthStart.setMonth(monthStart.getMonth() - 1);
 
     // Sales data
@@ -116,7 +167,48 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       customers: { total: totalCustomers },
     };
 
-    // ── Call LLM for insights ──
+    // ── 3. Cache check (Gap 9) — same data + same feature → reuse prior insights ──
+    const normalizedQuery = normalizeQuery(FEATURE);
+    const dataHash = computeDataHash(dataSummary);
+    const cached = await getCachedResponse(businessId, FEATURE, normalizedQuery, dataHash);
+    if (cached) {
+      // Cache hit → no LLM call, no quota charge.
+      let cachedInsights: unknown;
+      try {
+        const jsonMatch = cached.response.match(/\{[\s\S]*\}/);
+        cachedInsights = jsonMatch ? JSON.parse(jsonMatch[0]) : JSON.parse(cached.response || "{}");
+      } catch {
+        cachedInsights = {
+          summary: cached.response.substring(0, 200) || "Cached insights unavailable",
+          healthScore: 50,
+          healthLabel: "Fair",
+          insights: [],
+          recommendations: [],
+        };
+      }
+
+      await logAIUsage(businessId, "insights-cache", 0, true);
+
+      return NextResponse.json({
+        success: true,
+        insights: cachedInsights,
+        generatedAt: cached.cachedAt,
+        dataPoints: {
+          salesAnalyzed: monthSales._count,
+          productsAnalyzed: topProducts.length,
+          lowStockItems: lowStockProducts.length,
+          expiringBatches: expiringBatches.length,
+        },
+        cache: {
+          hit: true,
+          cachedAt: cached.cachedAt,
+          originalTokensUsed: cached.tokensUsed,
+        },
+        remaining: limitCheck.remaining,
+      });
+    }
+
+    // ── 4. Call LLM for insights ──
     const ZAI = (await import("z-ai-web-dev-sdk")).default;
     const zai = await ZAI.create();
 
@@ -148,26 +240,28 @@ Return a JSON object with this exact structure:
 
 Generate 5-8 insights and 3-5 recommendations. Be specific with numbers from the data. Focus on actionable pharmacy-specific advice.`;
 
+    const userContent = `Analyze this pharmacy data:\n\n${JSON.stringify(dataSummary, null, 2)}`;
+
     const completion = await zai.chat.completions.create({
       messages: [
         { role: "assistant", content: systemPrompt },
-        { role: "user", content: `Analyze this pharmacy data:\n\n${JSON.stringify(dataSummary, null, 2)}` },
+        { role: "user", content: userContent },
       ],
       thinking: { type: "disabled" },
     });
 
-    const response = completion.choices[0]?.message?.content;
+    const response = completion.choices[0]?.message?.content || "";
 
     // Parse JSON from response
     let insights;
     try {
       // Extract JSON from response (handle if wrapped in markdown code blocks)
-      const jsonMatch = response?.match(/\{[\s\S]*\}/);
+      const jsonMatch = response.match(/\{[\s\S]*\}/);
       insights = jsonMatch ? JSON.parse(jsonMatch[0]) : JSON.parse(response || "{}");
     } catch {
       // Fallback if JSON parsing fails
       insights = {
-        summary: response?.substring(0, 200) || "Unable to generate insights",
+        summary: response.substring(0, 200) || "Unable to generate insights",
         healthScore: 50,
         healthLabel: "Fair",
         insights: [],
@@ -175,6 +269,20 @@ Generate 5-8 insights and 3-5 recommendations. Be specific with numbers from the
         rawResponse: response,
       };
     }
+
+    // ── 5. Log + cache write ──
+    const sdkTokens =
+      (completion as { usage?: { total_tokens?: number } })?.usage?.total_tokens;
+    const totalTokens =
+      typeof sdkTokens === "number" && sdkTokens > 0
+        ? sdkTokens
+        : estimateTokens(systemPrompt) + estimateTokens(userContent) + estimateTokens(response);
+
+    await logAIUsage(businessId, FEATURE, totalTokens, true);
+
+    // Cache the raw LLM response string (not the parsed object) so cache
+    // consumers can re-parse on read.
+    await setCachedResponse(businessId, FEATURE, normalizedQuery, dataHash, response, totalTokens);
 
     return NextResponse.json({
       success: true,
@@ -186,9 +294,34 @@ Generate 5-8 insights and 3-5 recommendations. Be specific with numbers from the
         lowStockItems: lowStockProducts.length,
         expiringBatches: expiringBatches.length,
       },
+      cache: { hit: false },
+      tokensUsed: totalTokens,
+      remaining: limitCheck.remaining,
     });
   } catch (error) {
     console.error("AI insights error:", error);
-    return NextResponse.json({ error: "Failed to generate AI insights" }, { status: 500 });
+
+    await logAIUsage(
+      businessId,
+      FEATURE,
+      0,
+      false,
+      error instanceof Error ? error.message : String(error)
+    ).catch(() => undefined);
+
+    const reason = classifyError(error);
+    const fallback = buildFallback(reason, {
+      errorMessage: error instanceof Error ? error.message : String(error),
+    });
+
+    return NextResponse.json(
+      {
+        success: false,
+        ...fallback,
+        error: fallback.fallbackMessage,
+        type: "llm_error",
+      },
+      { status: 500 }
+    );
   }
 }

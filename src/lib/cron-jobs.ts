@@ -1,0 +1,683 @@
+// ── InventoryOS: Cron Job System (Gap 8 — Background KPIs / Maintenance) ──
+//
+// Three background jobs, designed to be triggered by an external scheduler
+// (Vercel Cron, systemd timer, k8s CronJob, or a simple curl-on-a-clock).
+// Each job writes a CronJobLog row to the database so operators can inspect
+// run history, durations, and failures from /api/super-admin/cron-jobs.
+//
+//   runNightlyStatsJob()        — snapshot yesterday's KPIs into BusinessDailyStats
+//   runHourlySubscriptionsJob() — auto-suspend expired paid subscriptions
+//   runDailyMaintenanceJob()    — prune old logs / expired tokens / expired cache
+//
+// All jobs share the same lifecycle:
+//   1. Insert CronJobLog { status: "running" }
+//   2. Do the work, appending to a log buffer
+//   3. Update CronJobLog → { status: "success" | "failed", durationMs, businessesProcessed,
+//                              recordsWritten, errorMessage?, log }
+
+import { db } from "./db";
+import { cache } from "./cache";
+
+// ── Job Names (stored in CronJobLog.jobName) ──
+export const CRON_JOB_NAMES = {
+  NIGHTLY_STATS: "nightly-stats",
+  HOURLY_SUBSCRIPTIONS: "hourly-subscriptions",
+  DAILY_MAINTENANCE: "daily-maintenance",
+} as const;
+
+export type CronJobName = (typeof CRON_JOB_NAMES)[keyof typeof CRON_JOB_NAMES];
+
+// ── Schedules (informational — surfaced via getCronJobStatuses / docs) ──
+export const CRON_JOB_SCHEDULES: Record<
+  CronJobName,
+  { schedule: string; description: string }
+> = {
+  [CRON_JOB_NAMES.NIGHTLY_STATS]: {
+    schedule: "0 1 * * *", // 01:00 UTC daily
+    description:
+      "Snapshot yesterday's KPIs (sales, purchases, payments, inventory, expiry, customers/suppliers, AI usage) for every active business into BusinessDailyStats.",
+  },
+  [CRON_JOB_NAMES.HOURLY_SUBSCRIPTIONS]: {
+    schedule: "0 * * * *", // top of every hour
+    description:
+      "Auto-suspend businesses whose subscriptionEnd has passed while still in trial/active status (skips free tier). Disables AI for suspended pro_ai businesses.",
+  },
+  [CRON_JOB_NAMES.DAILY_MAINTENANCE]: {
+    schedule: "30 1 * * *", // 01:30 UTC daily
+    description:
+      "Prune old CronJobLog (>90d), NotificationLog (>30d), expired OTPs, expired Sessions, and expired AIResponseCache entries.",
+  },
+};
+
+// ── Helpers ──
+
+/** Returns midnight UTC for a given Date (the day-of-month boundary in UTC). */
+function midnightUTC(d: Date): Date {
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+}
+
+/** Append a timestamped line to a log buffer. */
+function logLine(lines: string[], message: string): void {
+  const ts = new Date().toISOString();
+  lines.push(`[${ts}] ${message}`);
+  // Echo to stdout so container logs capture job progress
+  // eslint-disable-next-line no-console
+  console.log(`[cron] ${message}`);
+}
+
+/** Truncate a string to fit in a TEXT column (SQLite has no real limit, but we cap at 64KB). */
+function truncateLog(s: string, maxLen = 64_000): string {
+  if (s.length <= maxLen) return s;
+  return s.slice(0, maxLen - 200) + `\n…[truncated, ${s.length - maxLen + 200} chars omitted]`;
+}
+
+// ── Job #1: Nightly Stats ──
+// Snapshots YESTERDAY's KPIs for every active business into BusinessDailyStats
+// (uses upsert keyed on @@unique([businessId, date])).
+export async function runNightlyStatsJob(): Promise<void> {
+  const startedAt = new Date();
+  const startMs = Date.now();
+  const log: string[] = [];
+  logLine(log, "nightly-stats: starting");
+
+  // Compute yesterday's UTC day range
+  const now = new Date();
+  const yesterday = midnightUTC(new Date(now.getTime() - 24 * 60 * 60 * 1000));
+  const dayStart = yesterday; // 00:00:00.000 UTC
+  const dayEnd = new Date(yesterday.getTime() + 24 * 60 * 60 * 1000 - 1); // 23:59:59.999 UTC
+
+  let cronLogId: string | null = null;
+  try {
+    const created = await db.cronJobLog.create({
+      data: {
+        jobName: CRON_JOB_NAMES.NIGHTLY_STATS,
+        status: "running",
+        startedAt,
+      },
+    });
+    cronLogId = created.id;
+    logLine(log, `nightly-stats: created log ${cronLogId}`);
+    logLine(log, `nightly-stats: snapshotting for UTC day ${dayStart.toISOString()}`);
+
+    // Active businesses only — suspended/cancelled businesses don't get snapshots
+    const businesses = await db.business.findMany({
+      where: { isActive: true },
+      select: { id: true, name: true, subscriptionTier: true },
+    });
+    logLine(log, `nightly-stats: ${businesses.length} active businesses to process`);
+
+    let recordsWritten = 0;
+    let errors = 0;
+
+    for (const biz of businesses) {
+      try {
+        // ── Sales (yesterday, completed only) ──
+        const salesAgg = await db.sale.aggregate({
+          where: {
+            businessId: biz.id,
+            status: "completed",
+            createdAt: { gte: dayStart, lte: dayEnd },
+          },
+          _sum: { totalAmount: true, discountAmount: true },
+          _count: true,
+        });
+
+        // ── Returns / refunds (yesterday) ──
+        const returnsAgg = await db.return.aggregate({
+          where: {
+            businessId: biz.id,
+            createdAt: { gte: dayStart, lte: dayEnd },
+          },
+          _sum: { refundAmount: true },
+          _count: true,
+        });
+
+        // ── Purchases (yesterday, not cancelled) ──
+        const purchasesAgg = await db.purchase.aggregate({
+          where: {
+            businessId: biz.id,
+            status: { not: "cancelled" },
+            createdAt: { gte: dayStart, lte: dayEnd },
+          },
+          _sum: { totalAmount: true },
+          _count: true,
+        });
+
+        // ── Payments in (yesterday — payments are inbound from customers) ──
+        const paymentsAgg = await db.payment.aggregate({
+          where: {
+            businessId: biz.id,
+            createdAt: { gte: dayStart, lte: dayEnd },
+          },
+          _sum: { amount: true },
+          _count: true,
+        });
+
+        // ── Inventory snapshot (current state at time of run) ──
+        const [productCount, lowStockCount, outOfStockCount, batchCount] = await Promise.all([
+          db.product.count({ where: { businessId: biz.id, isActive: true } }),
+          db.product.count({
+            where: {
+              businessId: biz.id,
+              isActive: true,
+              inventory: { quantity: { lte: 10 } },
+            },
+          }),
+          db.product.count({
+            where: {
+              businessId: biz.id,
+              isActive: true,
+              inventory: { quantity: { lte: 0 } },
+            },
+          }),
+          db.batch.count({ where: { businessId: biz.id } }),
+        ]);
+
+        // ── Expiry snapshot ──
+        const expiryThreshold = new Date(dayStart.getTime() + 90 * 24 * 60 * 60 * 1000);
+        const [nearExpiryCount, expiredCount] = await Promise.all([
+          db.batch.count({
+            where: {
+              businessId: biz.id,
+              quantity: { gt: 0 },
+              status: { notIn: ["expired", "destroyed"] },
+              expiryDate: { gte: dayStart, lte: expiryThreshold },
+            },
+          }),
+          db.batch.count({
+            where: {
+              businessId: biz.id,
+              quantity: { gt: 0 },
+              status: "expired",
+            },
+          }),
+        ]);
+
+        // ── Inventory valuation (cost + MRP) ──
+        const batchesWithValue = await db.batch.findMany({
+          where: { businessId: biz.id, quantity: { gt: 0 }, status: { not: "destroyed" } },
+          select: { quantity: true, purchasePrice: true, mrp: true },
+        });
+        const inventoryCostValue = batchesWithValue.reduce(
+          (sum, b) => sum + (b.purchasePrice || 0) * b.quantity,
+          0
+        );
+        const inventoryMrpValue = batchesWithValue.reduce(
+          (sum, b) => sum + (b.mrp || 0) * b.quantity,
+          0
+        );
+
+        // ── Customers / suppliers counts ──
+        const [customerCount, supplierCount] = await Promise.all([
+          db.customer.count({ where: { businessId: biz.id } }),
+          db.supplier.count({ where: { businessId: biz.id } }),
+        ]);
+
+        // ── Receivables (sales with partial/unpaid status) ──
+        const receivablesAgg = await db.sale.aggregate({
+          where: {
+            businessId: biz.id,
+            paymentStatus: { in: ["partial", "unpaid"] },
+          },
+          _sum: { totalAmount: true, paidAmount: true },
+        });
+        const receivablesTotal =
+          (receivablesAgg._sum.totalAmount || 0) - (receivablesAgg._sum.paidAmount || 0);
+
+        // ── Payables (supplier balances) ──
+        const payablesAgg = await db.supplier.aggregate({
+          where: { businessId: biz.id, balance: { gt: 0 } },
+          _sum: { balance: true },
+        });
+        const payablesTotal = payablesAgg._sum.balance || 0;
+
+        // ── AI usage (yesterday) ──
+        const aiAgg = await db.aIUsageLog.aggregate({
+          where: {
+            businessId: biz.id,
+            createdAt: { gte: dayStart, lte: dayEnd },
+          },
+          _sum: { tokensUsed: true, costEstimate: true },
+          _count: true,
+        });
+
+        // ── Upsert daily stats (keyed on businessId + date) ──
+        await db.businessDailyStats.upsert({
+          where: {
+            businessId_date: { businessId: biz.id, date: dayStart },
+          },
+          create: {
+            businessId: biz.id,
+            date: dayStart,
+            salesTotal: salesAgg._sum.totalAmount || 0,
+            salesCount: salesAgg._count,
+            salesDiscount: salesAgg._sum.discountAmount || 0,
+            salesReturns: returnsAgg._sum.refundAmount || 0,
+            salesReturnsCount: returnsAgg._count,
+            purchasesTotal: purchasesAgg._sum.totalAmount || 0,
+            purchasesCount: purchasesAgg._count,
+            paymentsIn: paymentsAgg._sum.amount || 0,
+            paymentsOut: 0, // supplier payments not tracked in Payment table
+            productCount,
+            lowStockCount,
+            outOfStockCount,
+            batchCount,
+            nearExpiryCount,
+            expiredCount,
+            inventoryCostValue,
+            inventoryMrpValue,
+            customerCount,
+            supplierCount,
+            receivablesTotal,
+            payablesTotal,
+            aiCalls: aiAgg._count,
+            aiTokens: aiAgg._sum.tokensUsed || 0,
+            aiCost: aiAgg._sum.costEstimate || 0,
+          },
+          update: {
+            salesTotal: salesAgg._sum.totalAmount || 0,
+            salesCount: salesAgg._count,
+            salesDiscount: salesAgg._sum.discountAmount || 0,
+            salesReturns: returnsAgg._sum.refundAmount || 0,
+            salesReturnsCount: returnsAgg._count,
+            purchasesTotal: purchasesAgg._sum.totalAmount || 0,
+            purchasesCount: purchasesAgg._count,
+            paymentsIn: paymentsAgg._sum.amount || 0,
+            paymentsOut: 0,
+            productCount,
+            lowStockCount,
+            outOfStockCount,
+            batchCount,
+            nearExpiryCount,
+            expiredCount,
+            inventoryCostValue,
+            inventoryMrpValue,
+            customerCount,
+            supplierCount,
+            receivablesTotal,
+            payablesTotal,
+            aiCalls: aiAgg._count,
+            aiTokens: aiAgg._sum.tokensUsed || 0,
+            aiCost: aiAgg._sum.costEstimate || 0,
+          },
+        });
+
+        recordsWritten++;
+      } catch (bizErr) {
+        errors++;
+        const msg = bizErr instanceof Error ? bizErr.message : String(bizErr);
+        logLine(log, `nightly-stats: ERROR for business ${biz.id} (${biz.name}): ${msg}`);
+      }
+    }
+
+    // ── Clear cached dashboards — fresh KPIs just landed ──
+    try {
+      // Invalidate all per-business dashboard caches (uses prefix scan in Redis,
+      // or full iteration in MemoryCache). Daily stats feed dashboard charts.
+      await cache.invalidatePrefix("biz:");
+      logLine(log, "nightly-stats: cleared dashboard cache");
+    } catch (cacheErr) {
+      const msg = cacheErr instanceof Error ? cacheErr.message : String(cacheErr);
+      logLine(log, `nightly-stats: cache invalidation failed (non-fatal): ${msg}`);
+    }
+
+    const durationMs = Date.now() - startMs;
+    logLine(
+      log,
+      `nightly-stats: completed — businesses=${businesses.length} records=${recordsWritten} errors=${errors} durationMs=${durationMs}`
+    );
+
+    await db.cronJobLog.update({
+      where: { id: cronLogId! },
+      data: {
+        status: "success",
+        finishedAt: new Date(),
+        durationMs,
+        businessesProcessed: businesses.length,
+        recordsWritten,
+        log: truncateLog(log.join("\n")),
+      },
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    logLine(log, `nightly-stats: FATAL — ${msg}`);
+    if (cronLogId) {
+      try {
+        await db.cronJobLog.update({
+          where: { id: cronLogId },
+          data: {
+            status: "failed",
+            finishedAt: new Date(),
+            durationMs: Date.now() - startMs,
+            errorMessage: truncateLog(msg),
+            log: truncateLog(log.join("\n")),
+          },
+        });
+      } catch {
+        // best-effort
+      }
+    }
+    throw err;
+  }
+}
+
+// ── Job #2: Hourly Subscription Suspension ──
+// Auto-suspends businesses whose subscription has lapsed.
+export async function runHourlySubscriptionsJob(): Promise<void> {
+  const startedAt = new Date();
+  const startMs = Date.now();
+  const log: string[] = [];
+  logLine(log, "hourly-subscriptions: starting");
+
+  let cronLogId: string | null = null;
+  try {
+    const created = await db.cronJobLog.create({
+      data: {
+        jobName: CRON_JOB_NAMES.HOURLY_SUBSCRIPTIONS,
+        status: "running",
+        startedAt,
+      },
+    });
+    cronLogId = created.id;
+    logLine(log, `hourly-subscriptions: created log ${cronLogId}`);
+
+    const now = new Date();
+
+    // Find businesses that:
+    //   - have subscriptionEnd < now (expired)
+    //   - are still in "trial" or "active" status (not already suspended/cancelled)
+    //   - are NOT free tier (free tier never expires)
+    const expired = await db.business.findMany({
+      where: {
+        subscriptionEnd: { lt: now },
+        subscriptionStatus: { in: ["trial", "active"] },
+        subscriptionTier: { not: "free" },
+        isActive: true,
+      },
+      select: {
+        id: true,
+        name: true,
+        subscriptionTier: true,
+        subscriptionStatus: true,
+        subscriptionEnd: true,
+        aiEnabled: true,
+      },
+    });
+    logLine(
+      log,
+      `hourly-subscriptions: ${expired.length} businesses with lapsed paid subscriptions`
+    );
+
+    let recordsWritten = 0;
+    let aiDisabled = 0;
+
+    for (const biz of expired) {
+      // Suspend + (for pro_ai) disable AI
+      const shouldDisableAi = biz.subscriptionTier === "pro_ai" && biz.aiEnabled;
+      await db.business.update({
+        where: { id: biz.id },
+        data: {
+          subscriptionStatus: "suspended",
+          aiEnabled: shouldDisableAi ? false : biz.aiEnabled,
+        },
+      });
+      recordsWritten++;
+      if (shouldDisableAi) aiDisabled++;
+
+      logLine(
+        log,
+        `hourly-subscriptions: suspended ${biz.id} (${biz.name}) — tier=${biz.subscriptionTier} prevStatus=${biz.subscriptionStatus} aiDisabled=${shouldDisableAi}`
+      );
+    }
+
+    const durationMs = Date.now() - startMs;
+    logLine(
+      log,
+      `hourly-subscriptions: completed — suspended=${recordsWritten} aiDisabled=${aiDisabled} durationMs=${durationMs}`
+    );
+
+    await db.cronJobLog.update({
+      where: { id: cronLogId! },
+      data: {
+        status: "success",
+        finishedAt: new Date(),
+        durationMs,
+        businessesProcessed: recordsWritten,
+        recordsWritten,
+        log: truncateLog(log.join("\n")),
+      },
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    logLine(log, `hourly-subscriptions: FATAL — ${msg}`);
+    if (cronLogId) {
+      try {
+        await db.cronJobLog.update({
+          where: { id: cronLogId },
+          data: {
+            status: "failed",
+            finishedAt: new Date(),
+            durationMs: Date.now() - startMs,
+            errorMessage: truncateLog(msg),
+            log: truncateLog(log.join("\n")),
+          },
+        });
+      } catch {
+        // best-effort
+      }
+    }
+    throw err;
+  }
+}
+
+// ── Job #3: Daily Maintenance (prune old data) ──
+export async function runDailyMaintenanceJob(): Promise<void> {
+  const startedAt = new Date();
+  const startMs = Date.now();
+  const log: string[] = [];
+  logLine(log, "daily-maintenance: starting");
+
+  let cronLogId: string | null = null;
+  try {
+    const created = await db.cronJobLog.create({
+      data: {
+        jobName: CRON_JOB_NAMES.DAILY_MAINTENANCE,
+        status: "running",
+        startedAt,
+      },
+    });
+    cronLogId = created.id;
+    logLine(log, `daily-maintenance: created log ${cronLogId}`);
+
+    const now = new Date();
+    const cutoffCronJobLog = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000); // >90d
+    const cutoffNotificationLog = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000); // >30d
+
+    let recordsWritten = 0;
+
+    // ── 1. Prune old CronJobLog entries (>90d) ──
+    const deletedCronLogs = await db.cronJobLog.deleteMany({
+      where: { startedAt: { lt: cutoffCronJobLog } },
+    });
+    recordsWritten += deletedCronLogs.count;
+    logLine(log, `daily-maintenance: deleted ${deletedCronLogs.count} old CronJobLog rows (>90d)`);
+
+    // ── 2. Prune old NotificationLog entries (>30d) ──
+    const deletedNotifications = await db.notificationLog.deleteMany({
+      where: { createdAt: { lt: cutoffNotificationLog } },
+    });
+    recordsWritten += deletedNotifications.count;
+    logLine(
+      log,
+      `daily-maintenance: deleted ${deletedNotifications.count} old NotificationLog rows (>30d)`
+    );
+
+    // ── 3. Prune expired OTPs ──
+    const deletedOtps = await db.otpVerification.deleteMany({
+      where: { expiresAt: { lt: now } },
+    });
+    recordsWritten += deletedOtps.count;
+    logLine(log, `daily-maintenance: deleted ${deletedOtps.count} expired OTPs`);
+
+    // ── 4. Prune expired Sessions ──
+    const deletedSessions = await db.session.deleteMany({
+      where: { expiresAt: { lt: now } },
+    });
+    recordsWritten += deletedSessions.count;
+    logLine(log, `daily-maintenance: deleted ${deletedSessions.count} expired Sessions`);
+
+    // ── 5. Prune expired AIResponseCache entries ──
+    const deletedAiCache = await db.aIResponseCache.deleteMany({
+      where: { expiresAt: { lt: now } },
+    });
+    recordsWritten += deletedAiCache.count;
+    logLine(
+      log,
+      `daily-maintenance: deleted ${deletedAiCache.count} expired AIResponseCache entries`
+    );
+
+    const durationMs = Date.now() - startMs;
+    logLine(
+      log,
+      `daily-maintenance: completed — totalDeleted=${recordsWritten} durationMs=${durationMs}`
+    );
+
+    await db.cronJobLog.update({
+      where: { id: cronLogId! },
+      data: {
+        status: "success",
+        finishedAt: new Date(),
+        durationMs,
+        businessesProcessed: 0,
+        recordsWritten,
+        log: truncateLog(log.join("\n")),
+      },
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    logLine(log, `daily-maintenance: FATAL — ${msg}`);
+    if (cronLogId) {
+      try {
+        await db.cronJobLog.update({
+          where: { id: cronLogId },
+          data: {
+            status: "failed",
+            finishedAt: new Date(),
+            durationMs: Date.now() - startMs,
+            errorMessage: truncateLog(msg),
+            log: truncateLog(log.join("\n")),
+          },
+        });
+      } catch {
+        // best-effort
+      }
+    }
+    throw err;
+  }
+}
+
+// ── Status Inspector (used by super-admin UI) ──
+export interface CronJobStatus {
+  jobName: CronJobName;
+  schedule: string;
+  description: string;
+  latestRun: {
+    id: string;
+    status: "running" | "success" | "failed" | string;
+    startedAt: Date;
+    finishedAt: Date | null;
+    durationMs: number | null;
+    businessesProcessed: number;
+    recordsWritten: number;
+    errorMessage: string | null;
+  } | null;
+  totalRuns: number;
+  recentFailures: Array<{
+    id: string;
+    startedAt: Date;
+    durationMs: number | null;
+    errorMessage: string | null;
+  }>;
+}
+
+export async function getCronJobStatuses(): Promise<CronJobStatus[]> {
+  const jobNames = Object.values(CRON_JOB_NAMES);
+  const out: CronJobStatus[] = [];
+
+  for (const jobName of jobNames) {
+    const [latest, totalAgg, recentFailures] = await Promise.all([
+      db.cronJobLog.findFirst({
+        where: { jobName },
+        orderBy: { startedAt: "desc" },
+      }),
+      db.cronJobLog.aggregate({
+        where: { jobName },
+        _count: true,
+      }),
+      db.cronJobLog.findMany({
+        where: { jobName, status: "failed" },
+        orderBy: { startedAt: "desc" },
+        take: 5,
+        select: { id: true, startedAt: true, durationMs: true, errorMessage: true },
+      }),
+    ]);
+
+    out.push({
+      jobName,
+      schedule: CRON_JOB_SCHEDULES[jobName].schedule,
+      description: CRON_JOB_SCHEDULES[jobName].description,
+      latestRun: latest
+        ? {
+            id: latest.id,
+            status: latest.status,
+            startedAt: latest.startedAt,
+            finishedAt: latest.finishedAt,
+            durationMs: latest.durationMs,
+            businessesProcessed: latest.businessesProcessed,
+            recordsWritten: latest.recordsWritten,
+            errorMessage: latest.errorMessage,
+          }
+        : null,
+      totalRuns: totalAgg._count,
+      recentFailures: recentFailures.map((f) => ({
+        id: f.id,
+        startedAt: f.startedAt,
+        durationMs: f.durationMs,
+        errorMessage: f.errorMessage,
+      })),
+    });
+  }
+
+  return out;
+}
+
+// ── Convenience: run all jobs (used by /api/super-admin/cron/run-all) ──
+export async function runAllCronJobs(): Promise<{
+  nightlyStats: { ok: boolean; error?: string };
+  hourlySubscriptions: { ok: boolean; error?: string };
+  dailyMaintenance: { ok: boolean; error?: string };
+}> {
+  const result = {
+    nightlyStats: { ok: true as boolean, error: undefined as string | undefined },
+    hourlySubscriptions: { ok: true as boolean, error: undefined as string | undefined },
+    dailyMaintenance: { ok: true as boolean, error: undefined as string | undefined },
+  };
+
+  try {
+    await runNightlyStatsJob();
+  } catch (e) {
+    result.nightlyStats = { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+  try {
+    await runHourlySubscriptionsJob();
+  } catch (e) {
+    result.hourlySubscriptions = { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+  try {
+    await runDailyMaintenanceJob();
+  } catch (e) {
+    result.dailyMaintenance = { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+
+  return result;
+}

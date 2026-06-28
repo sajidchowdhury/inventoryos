@@ -1,0 +1,1024 @@
+     1→"use client";
+     2→
+     3→import { useState, useEffect } from "react";
+     4→import { motion, AnimatePresence } from "framer-motion";
+     5→import {
+     6→  Box,
+     7→  Phone,
+     8→  ShieldCheck,
+     9→  Building2,
+    10→  Plus,
+    11→  ArrowRight,
+    12→  ArrowLeft,
+    13→  Pill,
+    14→  ShoppingCart,
+    15→  UtensilsCrossed,
+    16→  Camera,
+    17→  Smartphone,
+    18→  Zap,
+    19→  Cake,
+    20→  Lock,
+    21→  User,
+    22→  CheckCircle2,
+    23→  LogOut,
+    24→  MapPin,
+    25→  Sparkles,
+    26→  ChevronRight,
+    27→  Eye,
+    28→  EyeOff,
+    29→  RefreshCw,
+    30→} from "lucide-react";
+    31→import { Card, CardContent } from "@/components/ui/card";
+    32→import { Badge } from "@/components/ui/badge";
+    33→import { Button } from "@/components/ui/button";
+    34→import { Input } from "@/components/ui/input";
+    35→import { Label } from "@/components/ui/label";
+    36→import { Separator } from "@/components/ui/separator";
+    37→import { getAllModules } from "@/lib/modules";
+    38→import { useAuthStore } from "@/lib/auth-store";
+    39→import { useNavStore } from "@/lib/nav-store";
+    40→import { PharmacyShell } from "@/modules/pharmacy/components";
+    41→import { cn } from "@/lib/utils";
+    42→
+    43→// ── Icon maps ──
+    44→const iconMap: Record<string, React.ReactNode> = {
+    45→  Pill: <Pill className="h-7 w-7" />,
+    46→  ShoppingCart: <ShoppingCart className="h-7 w-7" />,
+    47→  UtensilsCrossed: <UtensilsCrossed className="h-7 w-7" />,
+    48→  Camera: <Camera className="h-7 w-7" />,
+    49→  Smartphone: <Smartphone className="h-7 w-7" />,
+    50→  Zap: <Zap className="h-7 w-7" />,
+    51→  Cake: <Cake className="h-7 w-7" />,
+    52→};
+    53→
+    54→const smallIconMap: Record<string, React.ReactNode> = {
+    55→  Pill: <Pill className="h-5 w-5" />,
+    56→  ShoppingCart: <ShoppingCart className="h-5 w-5" />,
+    57→  UtensilsCrossed: <UtensilsCrossed className="h-5 w-5" />,
+    58→  Camera: <Camera className="h-5 w-5" />,
+    59→  Smartphone: <Smartphone className="h-5 w-5" />,
+    60→  Zap: <Zap className="h-5 w-5" />,
+    61→  Cake: <Cake className="h-5 w-5" />,
+    62→};
+    63→
+    64→// ── Animation variants ──
+    65→const slideIn = {
+    66→  initial: { opacity: 0, x: 40 },
+    67→  animate: { opacity: 1, x: 0 },
+    68→  exit: { opacity: 0, x: -40 },
+    69→  transition: { duration: 0.3, ease: "easeOut" },
+    70→};
+    71→
+    72→const fadeIn = {
+    73→  initial: { opacity: 0, y: 20 },
+    74→  animate: { opacity: 1, y: 0 },
+    75→  exit: { opacity: 0, y: -10 },
+    76→  transition: { duration: 0.3, ease: "easeOut" },
+    77→};
+    78→
+    79→// ── Step indicator ──
+    80→function StepIndicator({ current, steps }: { current: string; steps: string[] }) {
+    81→  const idx = steps.indexOf(current);
+    82→  return (
+    83→    <div className="flex items-center gap-1.5 justify-center">
+    84→      {steps.map((step, i) => (
+    85→        <button
+    86→          key={step}
+    87→          className={cn(
+    88→            "h-2 rounded-full transition-all duration-500",
+    89→            i === idx ? "w-8 bg-primary" : i < idx ? "w-2 bg-primary/50" : "w-2 bg-muted-foreground/20"
+    90→          )}
+    91→          aria-label={`Step ${i + 1}: ${step}`}
+    92→        />
+    93→      ))}
+    94→    </div>
+    95→  );
+    96→}
+    97→
+    98→// ── Password Input with visibility toggle ──
+    99→function PasswordInput({
+   100→  id,
+   101→  value,
+   102→  onChange,
+   103→  placeholder,
+   104→}: {
+   105→  id: string;
+   106→  value: string;
+   107→  onChange: (val: string) => void;
+   108→  placeholder?: string;
+   109→}) {
+   110→  const [show, setShow] = useState(false);
+   111→  return (
+   112→    <div className="relative">
+   113→      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+   114→      <Input
+   115→        id={id}
+   116→        type={show ? "text" : "password"}
+   117→        placeholder={placeholder}
+   118→        value={value}
+   119→        onChange={(e) => onChange(e.target.value)}
+   120→        className="h-11 pl-9 pr-10"
+   121→      />
+   122→      <button
+   123→        type="button"
+   124→        onClick={() => setShow(!show)}
+   125→        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+   126→        aria-label={show ? "Hide password" : "Show password"}
+   127→      >
+   128→        {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+   129→      </button>
+   130→    </div>
+   131→  );
+   132→}
+   133→
+   134→// ── Landing Step ──
+   135→function LandingStep() {
+   136→  const { setStep, setSelectedBusinessTypeSlug } = useAuthStore();
+   137→  const modules = getAllModules();
+   138→
+   139→  const handleBusinessClick = (slug: string, isActive: boolean) => {
+   140→    if (!isActive) return;
+   141→    setSelectedBusinessTypeSlug(slug);
+   142→    setStep("phone");
+   143→  };
+   144→
+   145→  return (
+   146→    <motion.div {...fadeIn} className="space-y-8">
+   147→      {/* Hero */}
+   148→      <div className="text-center space-y-4">
+   149→        <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-primary shadow-lg shadow-primary/25">
+   150→          <Box className="h-10 w-10 text-primary-foreground" />
+   151→        </div>
+   152→        <h1 className="text-4xl sm:text-5xl font-bold tracking-tight">
+   153→          Inventory<span className="text-primary">OS</span>
+   154→        </h1>
+   155→        <p className="text-lg text-muted-foreground max-w-md mx-auto leading-relaxed">
+   156→          Simple, powerful inventory management built for every business type.
+   157→          One platform, many solutions.
+   158→        </p>
+   159→      </div>
+   160→
+   161→      {/* Business type cards — clickable for active types! */}
+   162→      <div className="space-y-3">
+   163→        <p className="text-sm text-center text-muted-foreground font-medium">
+   164→          Choose your business type to get started
+   165→        </p>
+   166→        <div className="space-y-2">
+   167→          {modules.map((mod) => (
+   168→            <Card
+   169→              key={mod.slug}
+   170→              className={cn(
+   171→                "transition-all",
+   172→                mod.isActive
+   173→                  ? "cursor-pointer hover:shadow-md active:scale-[0.98] border-primary/20"
+   174→                  : "opacity-50 cursor-not-allowed"
+   175→              )}
+   176→              onClick={() => handleBusinessClick(mod.slug, mod.isActive)}
+   177→            >
+   178→              <CardContent className="p-3 flex items-center gap-3">
+   179→                <div
+   180→                  className="w-11 h-11 rounded-xl flex items-center justify-center text-white shrink-0"
+   181→                  style={{ backgroundColor: mod.color }}
+   182→                >
+   183→                  {smallIconMap[mod.icon] || <Box className="h-5 w-5" />}
+   184→                </div>
+   185→                <div className="flex-1 min-w-0">
+   186→                  <p className="font-semibold text-sm">{mod.name}</p>
+   187→                  <p className="text-[11px] text-muted-foreground truncate">{mod.description}</p>
+   188→                </div>
+   189→                {mod.isActive ? (
+   190→                  <ChevronRight className="h-5 w-5 text-primary shrink-0" />
+   191→                ) : (
+   192→                  <Badge variant="secondary" className="text-[10px] shrink-0">Soon</Badge>
+   193→                )}
+   194→              </CardContent>
+   195→            </Card>
+   196→          ))}
+   197→        </div>
+   198→      </div>
+   199→
+   200→      {/* How it works */}
+   201→      <Card className="border-primary/20 bg-primary/5">
+   202→        <CardContent className="p-4 space-y-3">
+   203→          <p className="font-semibold text-sm text-primary flex items-center gap-2">
+   204→            <Sparkles className="h-4 w-4" /> How it works
+   205→          </p>
+   206→          <div className="space-y-2 text-sm text-muted-foreground">
+   207→            <div className="flex items-start gap-2">
+   208→              <span className="text-primary font-bold shrink-0">1.</span>
+   209→              <span>Choose your business type above</span>
+   210→            </div>
+   211→            <div className="flex items-start gap-2">
+   212→              <span className="text-primary font-bold shrink-0">2.</span>
+   213→              <span>Verify your phone number</span>
+   214→            </div>
+   215→            <div className="flex items-start gap-2">
+   216→              <span className="text-primary font-bold shrink-0">3.</span>
+   217→              <span>Set up your business and start managing inventory</span>
+   218→            </div>
+   219→          </div>
+   220→        </CardContent>
+   221→      </Card>
+   222→
+   223→      <p className="text-xs text-center text-muted-foreground">
+   224→        No credit card needed. Free for small businesses.
+   225→      </p>
+   226→    </motion.div>
+   227→  );
+   228→}
+   229→
+   230→// ── Phone Step ──
+   231→function PhoneStep() {
+   232→  const { phone, setPhone, setStep, setIsLoading, setError, isLoading, error } = useAuthStore();
+   233→  const [localPhone, setLocalPhone] = useState(phone || "");
+   234→
+   235→  const handleSendOtp = async () => {
+   236→    if (localPhone.length < 11) {
+   237→      setError("Please enter a valid 11-digit phone number");
+   238→      return;
+   239→    }
+   240→    setIsLoading(true);
+   241→    setError(null);
+   242→    try {
+   243→      setPhone(localPhone);
+   244→      const res = await fetch("/api/auth/send-otp", {
+   245→        method: "POST",
+   246→        headers: { "Content-Type": "application/json" },
+   247→        body: JSON.stringify({ phone: localPhone }),
+   248→      });
+   249→      const data = await res.json();
+   250→      if (!res.ok) throw new Error(data.error);
+   251→      setStep("otp");
+   252→    } catch (err: unknown) {
+   253→      setError(err instanceof Error ? err.message : "Failed to send OTP");
+   254→    } finally {
+   255→      setIsLoading(false);
+   256→    }
+   257→  };
+   258→
+   259→  return (
+   260→    <motion.div {...slideIn} className="space-y-6">
+   261→      <div className="text-center space-y-2">
+   262→        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 text-primary">
+   263→          <Phone className="h-8 w-8" />
+   264→        </div>
+   265→        <h2 className="text-2xl font-bold">Enter your phone number</h2>
+   266→        <p className="text-muted-foreground text-sm">
+   267→          We will send a verification code to confirm it&apos;s you
+   268→        </p>
+   269→      </div>
+   270→
+   271→      <div className="space-y-3">
+   272→        <Label htmlFor="phone" className="text-sm font-medium">
+   273→          Phone Number
+   274→        </Label>
+   275→        <div className="flex gap-2">
+   276→          <div className="flex items-center px-3 rounded-lg border bg-muted/50 text-sm font-medium text-muted-foreground shrink-0">
+   277→            +880
+   278→          </div>
+   279→          <Input
+   280→            id="phone"
+   281→            type="tel"
+   282→            placeholder="1XXX XXXXXX"
+   283→            value={localPhone}
+   284→            onChange={(e) => {
+   285→              const val = e.target.value.replace(/\D/g, "").slice(0, 11);
+   286→              setLocalPhone(val);
+   287→              setError(null);
+   288→            }}
+   289→            className="h-12 text-lg"
+   290→            maxLength={11}
+   291→            autoFocus
+   292→          />
+   293→        </div>
+   294→        <p className="text-xs text-muted-foreground">
+   295→          Demo: use <span className="font-mono font-bold text-primary">01787492561</span> to test
+   296→        </p>
+   297→      </div>
+   298→
+   299→      {error && (
+   300→        <p className="text-sm text-destructive text-center">{error}</p>
+   301→      )}
+   302→
+   303→      <Button
+   304→        size="lg"
+   305→        className="w-full h-12 gap-2"
+   306→        onClick={handleSendOtp}
+   307→        disabled={localPhone.length < 11 || isLoading}
+   308→      >
+   309→        {isLoading ? "Sending..." : "Send Verification Code"}
+   310→        {!isLoading && <ArrowRight className="h-4 w-4" />}
+   311→      </Button>
+   312→
+   313→      <Button variant="ghost" className="w-full gap-2" onClick={() => setStep("landing")}>
+   314→        <ArrowLeft className="h-4 w-4" /> Back
+   315→      </Button>
+   316→    </motion.div>
+   317→  );
+   318→}
+   319→
+   320→// ── OTP Step ──
+   321→function OtpStep() {
+   322→  const { phone, setStep, setUserId, setUserName, setBusinesses, setIsLoading, setError, isLoading, error } = useAuthStore();
+   323→  const [otp, setOtp] = useState(["", "", "", ""]);
+   324→  const [resendCooldown, setResendCooldown] = useState(0);
+   325→
+   326→  // Cooldown timer for resend
+   327→  useState(() => {
+   328→    if (resendCooldown <= 0) return;
+   329→    const timer = setTimeout(() => setResendCooldown(resendCooldown - 1), 1000);
+   330→    return () => clearTimeout(timer);
+   331→  });
+   332→
+   333→  const handleVerify = async (code?: string) => {
+   334→    const otpCode = code || otp.join("");
+   335→    if (otpCode.length < 4) return;
+   336→
+   337→    setIsLoading(true);
+   338→    setError(null);
+   339→    try {
+   340→      const res = await fetch("/api/auth/verify-otp", {
+   341→        method: "POST",
+   342→        headers: { "Content-Type": "application/json" },
+   343→        body: JSON.stringify({ phone, otp: otpCode }),
+   344→      });
+   345→      const data = await res.json();
+   346→      if (!res.ok) throw new Error(data.error);
+   347→
+   348→      setUserId(data.user.id);
+   349→      setUserName(data.user.name);
+   350→      setBusinesses(data.businesses);
+   351→
+   352→      // Route based on whether they have businesses
+   353→      if (data.businesses.length > 0) {
+   354→        setStep("discovery");
+   355→      } else {
+   356→        setStep("add-business");
+   357→      }
+   358→    } catch (err: unknown) {
+   359→      setError(err instanceof Error ? err.message : "Verification failed");
+   360→    } finally {
+   361→      setIsLoading(false);
+   362→    }
+   363→  };
+   364→
+   365→  const handleResend = async () => {
+   366→    if (resendCooldown > 0) return;
+   367→    setIsLoading(true);
+   368→    setError(null);
+   369→    try {
+   370→      const res = await fetch("/api/auth/send-otp", {
+   371→        method: "POST",
+   372→        headers: { "Content-Type": "application/json" },
+   373→        body: JSON.stringify({ phone }),
+   374→      });
+   375→      const data = await res.json();
+   376→      if (!res.ok) throw new Error(data.error);
+   377→      setResendCooldown(60);
+   378→      setOtp(["", "", "", ""]);
+   379→    } catch (err: unknown) {
+   380→      setError(err instanceof Error ? err.message : "Failed to resend OTP");
+   381→    } finally {
+   382→      setIsLoading(false);
+   383→    }
+   384→  };
+   385→
+   386→  const handleChange = (index: number, value: string) => {
+   387→    if (!/^\d*$/.test(value)) return;
+   388→    const newOtp = [...otp];
+   389→    newOtp[index] = value.slice(-1);
+   390→    setOtp(newOtp);
+   391→
+   392→    // Auto-focus next input
+   393→    if (value && index < 3) {
+   394→      const nextInput = document.getElementById(`otp-${index + 1}`);
+   395→      nextInput?.focus();
+   396→    }
+   397→
+   398→    // Auto-verify when all 4 digits entered
+   399→    if (newOtp.every((d) => d !== "") && newOtp.join("").length === 4) {
+   400→      handleVerify(newOtp.join(""));
+   401→    }
+   402→  };
+   403→
+   404→  const handleKeyDown = (index: number, e: React.KeyboardEvent) => {
+   405→    if (e.key === "Backspace" && !otp[index] && index > 0) {
+   406→      const prevInput = document.getElementById(`otp-${index - 1}`);
+   407→      prevInput?.focus();
+   408→    }
+   409→  };
+   410→
+   411→  return (
+   412→    <motion.div {...slideIn} className="space-y-6">
+   413→      <div className="text-center space-y-2">
+   414→        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 text-primary">
+   415→          <ShieldCheck className="h-8 w-8" />
+   416→        </div>
+   417→        <h2 className="text-2xl font-bold">Verify your number</h2>
+   418→        <p className="text-muted-foreground text-sm">
+   419→          Enter the 4-digit code sent to{" "}
+   420→          <span className="font-semibold text-foreground">+880{phone}</span>
+   421→        </p>
+   422→      </div>
+   423→
+   424→      <div className="flex justify-center gap-3">
+   425→        {otp.map((digit, i) => (
+   426→          <Input
+   427→            key={i}
+   428→            id={`otp-${i}`}
+   429→            type="text"
+   430→            inputMode="numeric"
+   431→            maxLength={1}
+   432→            value={digit}
+   433→            onChange={(e) => handleChange(i, e.target.value)}
+   434→            onKeyDown={(e) => handleKeyDown(i, e)}
+   435→            className="w-14 h-14 text-center text-2xl font-bold p-0"
+   436→            autoFocus={i === 0}
+   437→          />
+   438→        ))}
+   439→      </div>
+   440→
+   441→      <p className="text-xs text-center text-muted-foreground">
+   442→        Demo OTP: <span className="font-mono font-bold text-primary">9999</span>
+   443→      </p>
+   444→
+   445→      {error && (
+   446→        <p className="text-sm text-destructive text-center">{error}</p>
+   447→      )}
+   448→
+   449→      <Button
+   450→        size="lg"
+   451→        className="w-full h-12 gap-2"
+   452→        onClick={() => handleVerify()}
+   453→        disabled={otp.some((d) => !d) || isLoading}
+   454→      >
+   455→        {isLoading ? "Verifying..." : "Verify"}
+   456→        {!isLoading && <CheckCircle2 className="h-4 w-4" />}
+   457→      </Button>
+   458→
+   459→      {/* Resend OTP */}
+   460→      <div className="text-center">
+   461→        {resendCooldown > 0 ? (
+   462→          <p className="text-sm text-muted-foreground">
+   463→            Resend code in <span className="font-semibold">{resendCooldown}s</span>
+   464→          </p>
+   465→        ) : (
+   466→          <Button variant="ghost" size="sm" className="gap-1.5" onClick={handleResend} disabled={isLoading}>
+   467→            <RefreshCw className="h-3.5 w-3.5" /> Resend Code
+   468→          </Button>
+   469→        )}
+   470→      </div>
+   471→
+   472→      <Button variant="ghost" className="w-full gap-2" onClick={() => setStep("phone")}>
+   473→        <ArrowLeft className="h-4 w-4" /> Change phone number
+   474→      </Button>
+   475→    </motion.div>
+   476→  );
+   477→}
+   478→
+   479→// ── Discovery Step (existing businesses) ──
+   480→function DiscoveryStep() {
+   481→  const { businesses, setStep, setSelectedBusiness, phone } = useAuthStore();
+   482→
+   483→  return (
+   484→    <motion.div {...slideIn} className="space-y-6">
+   485→      <div className="text-center space-y-2">
+   486→        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 text-primary">
+   487→          <Building2 className="h-8 w-8" />
+   488→        </div>
+   489→        <h2 className="text-2xl font-bold">Your Businesses</h2>
+   490→        <p className="text-muted-foreground text-sm">
+   491→          {businesses.length} {businesses.length === 1 ? "business" : "businesses"} linked to +880{phone}
+   492→        </p>
+   493→      </div>
+   494→
+   495→      <div className="space-y-3">
+   496→        {businesses.map((biz) => (
+   497→          <Card
+   498→            key={biz.id}
+   499→            className="cursor-pointer hover:shadow-md transition-all border-l-4 active:scale-[0.98]"
+   500→            style={{ borderLeftColor: biz.businessType.color }}
+   501→            onClick={() => {
+   502→              setSelectedBusiness(biz);
+   503→              if (biz.hasCredentials) {
+   504→                setStep("login");
+   505→              } else {
+   506→                setStep("create-login");
+   507→              }
+   508→            }}
+   509→          >
+   510→            <CardContent className="p-4 flex items-center gap-3">
+   511→              <div
+   512→                className="w-11 h-11 rounded-xl flex items-center justify-center text-white shrink-0"
+   513→                style={{ backgroundColor: biz.businessType.color }}
+   514→              >
+   515→                {smallIconMap[biz.businessType.icon] || <Box className="h-5 w-5" />}
+   516→              </div>
+   517→              <div className="flex-1 min-w-0">
+   518→                <p className="font-semibold truncate">{biz.name}</p>
+   519→                <p className="text-xs text-muted-foreground">{biz.businessType.name}</p>
+   520→              </div>
+   521→              <div className="text-right">
+   522→                {biz.hasCredentials ? (
+   523→                  <Badge variant="outline" className="text-[10px]">Login</Badge>
+   524→                ) : (
+   525→                  <Badge className="text-[10px] text-white bg-orange-500">Set Up</Badge>
+   526→                )}
+   527→              </div>
+   528→              <ChevronRight className="h-5 w-5 text-muted-foreground shrink-0" />
+   529→            </CardContent>
+   530→          </Card>
+   531→        ))}
+   532→      </div>
+   533→
+   534→      <Separator />
+   535→
+   536→      {/* Add Business button — labeled exactly per spec */}
+   537→      <Button
+   538→        variant="outline"
+   539→        size="lg"
+   540→        className="w-full h-12 gap-2 border-dashed"
+   541→        onClick={() => {
+   542→          setSelectedBusiness(null);
+   543→          setStep("add-business");
+   544→        }}
+   545→      >
+   546→        <Plus className="h-4 w-4" /> Add Business
+   547→      </Button>
+   548→
+   549→      <Button variant="ghost" className="w-full gap-2" onClick={() => { useAuthStore.getState().reset(); }}>
+   550→        <ArrowLeft className="h-4 w-4" /> Use different phone number
+   551→      </Button>
+   552→    </motion.div>
+   553→  );
+   554→}
+   555→
+   556→// ── Add Business Step ──
+   557→function AddBusinessStep() {
+   558→  const { setStep, selectedBusinessTypeSlug, setSelectedBusinessTypeSlug, businesses } = useAuthStore();
+   559→  const modules = getAllModules();
+   560→  const hasExistingBusinesses = businesses.length > 0;
+   561→
+   562→  return (
+   563→    <motion.div {...slideIn} className="space-y-6">
+   564→      <div className="text-center space-y-2">
+   565→        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 text-primary">
+   566→          <Plus className="h-8 w-8" />
+   567→        </div>
+   568→        <h2 className="text-2xl font-bold">Choose your business type</h2>
+   569→        <p className="text-muted-foreground text-sm">
+   570→          Select the type that matches your business
+   571→        </p>
+   572→        {!hasExistingBusinesses && (
+   573→          <p className="text-xs text-muted-foreground bg-muted/50 rounded-lg px-3 py-2">
+   574→            No businesses registered yet. Let&apos;s set up your first one!
+   575→          </p>
+   576→        )}
+   577→      </div>
+   578→
+   579→      <div className="space-y-2">
+   580→        {modules.map((mod) => (
+   581→          <Card
+   582→            key={mod.slug}
+   583→            className={cn(
+   584→              "transition-all",
+   585→              mod.isActive
+   586→                ? "cursor-pointer hover:shadow-md active:scale-[0.98]"
+   587→                : "opacity-50 cursor-not-allowed",
+   588→              selectedBusinessTypeSlug === mod.slug && mod.isActive && "ring-2 ring-primary"
+   589→            )}
+   590→            onClick={() => mod.isActive && setSelectedBusinessTypeSlug(mod.slug)}
+   591→          >
+   592→            <CardContent className="p-3 flex items-center gap-3">
+   593→              <div
+   594→                className="w-10 h-10 rounded-lg flex items-center justify-center text-white shrink-0"
+   595→                style={{ backgroundColor: mod.color }}
+   596→              >
+   597→                {smallIconMap[mod.icon] || <Box className="h-5 w-5" />}
+   598→              </div>
+   599→              <div className="flex-1 min-w-0">
+   600→                <p className="font-semibold text-sm">{mod.name}</p>
+   601→                <p className="text-[11px] text-muted-foreground truncate">{mod.description}</p>
+   602→              </div>
+   603→              {mod.isActive ? (
+   604→                selectedBusinessTypeSlug === mod.slug ? (
+   605→                  <CheckCircle2 className="h-5 w-5 text-primary shrink-0" />
+   606→                ) : null
+   607→              ) : (
+   608→                <Badge variant="secondary" className="text-[10px] shrink-0">Soon</Badge>
+   609→              )}
+   610→            </CardContent>
+   611→          </Card>
+   612→        ))}
+   613→      </div>
+   614→
+   615→      <Button
+   616→        size="lg"
+   617→        className="w-full h-12 gap-2"
+   618→        onClick={() => setStep("create-login")}
+   619→      >
+   620→        Continue with {modules.find((m) => m.slug === selectedBusinessTypeSlug)?.name}
+   621→        <ArrowRight className="h-4 w-4" />
+   622→      </Button>
+   623→
+   624→      <Button variant="ghost" className="w-full gap-2" onClick={() => {
+   625→        if (hasExistingBusinesses) {
+   626→          setStep("discovery");
+   627→        } else {
+   628→          setStep("otp");
+   629→        }
+   630→      }}>
+   631→        <ArrowLeft className="h-4 w-4" /> Back
+   632→      </Button>
+   633→    </motion.div>
+   634→  );
+   635→}
+   636→
+   637→// ── Create Login Step ──
+   638→function CreateLoginStep() {
+   639→  const {
+   640→    userId, selectedBusinessTypeSlug, newBusinessName, setNewBusinessName,
+   641→    newBusinessAddress, setNewBusinessAddress, username, setUsername,
+   642→    password, setPassword, setStep, setBusinesses, setSelectedBusiness,
+   643→    setIsLoading, setError, error, businesses, setSession, isLoading,
+   644→  } = useAuthStore();
+   645→
+   646→  const modules = getAllModules();
+   647→  const selectedType = modules.find((m) => m.slug === selectedBusinessTypeSlug);
+   648→
+   649→  const handleRegister = async () => {
+   650→    if (!newBusinessName.trim()) {
+   651→      setError("Please enter your business name");
+   652→      return;
+   653→    }
+   654→    if (!username.trim() || username.length < 3) {
+   655→      setError("Username must be at least 3 characters");
+   656→      return;
+   657→    }
+   658→    if (!password || password.length < 4) {
+   659→      setError("Password must be at least 4 characters");
+   660→      return;
+   661→    }
+   662→
+   663→    setIsLoading(true);
+   664→    setError(null);
+   665→
+   666→    try {
+   667→      const res = await fetch("/api/auth/register", {
+   668→        method: "POST",
+   669→        headers: { "Content-Type": "application/json" },
+   670→        body: JSON.stringify({
+   671→          userId,
+   672→          businessTypeId: selectedBusinessTypeSlug,
+   673→          businessName: newBusinessName.trim(),
+   674→          address: newBusinessAddress.trim() || null,
+   675→          username: username.trim(),
+   676→          password,
+   677→        }),
+   678→      });
+   679→
+   680→      const data = await res.json();
+   681→      if (!res.ok) throw new Error(data.error);
+   682→
+   683→      // Add new business to list
+   684→      const updatedBusinesses = [...businesses, data.business];
+   685→      setBusinesses(updatedBusinesses);
+   686→      setSelectedBusiness(data.business);
+   687→
+   688→      // Auto-login to get session token
+   689→      const loginRes = await fetch("/api/auth/login", {
+   690→        method: "POST",
+   691→        headers: { "Content-Type": "application/json" },
+   692→        body: JSON.stringify({
+   693→          businessId: data.business.id,
+   694→          username: username.trim(),
+   695→          password,
+   696→        }),
+   697→      });
+   698→      const loginData = await loginRes.json();
+   699→      if (!loginRes.ok) throw new Error(loginData.error);
+   700→
+   701→      setSession(loginData);
+   702→      setStep("dashboard");
+   703→    } catch (err: unknown) {
+   704→      setError(err instanceof Error ? err.message : "Registration failed");
+   705→    } finally {
+   706→      setIsLoading(false);
+   707→    }
+   708→  };
+   709→
+   710→  return (
+   711→    <motion.div {...slideIn} className="space-y-5">
+   712→      <div className="text-center space-y-2">
+   713→        <div
+   714→          className="inline-flex items-center justify-center w-16 h-16 rounded-2xl text-white"
+   715→          style={{ backgroundColor: selectedType?.color || "#2563EB" }}
+   716→        >
+   717→          {smallIconMap[selectedType?.icon || ""] || <Plus className="h-8 w-8" />}
+   718→        </div>
+   719→        <h2 className="text-2xl font-bold">Set up your {selectedType?.name}</h2>
+   720→        <p className="text-muted-foreground text-sm">
+   721→          Tell us about your business and create your login
+   722→        </p>
+   723→      </div>
+   724→
+   725→      {/* Business Details */}
+   726→      <div className="space-y-4">
+   727→        <div className="space-y-2">
+   728→          <Label htmlFor="bizName" className="text-sm font-medium flex items-center gap-1.5">
+   729→            <Building2 className="h-3.5 w-3.5" /> Business Name *
+   730→          </Label>
+   731→          <Input
+   732→            id="bizName"
+   733→            placeholder="e.g., City Pharmacy"
+   734→            value={newBusinessName}
+   735→            onChange={(e) => { setNewBusinessName(e.target.value); setError(null); }}
+   736→            className="h-11"
+   737→            autoFocus
+   738→          />
+   739→        </div>
+   740→        <div className="space-y-2">
+   741→          <Label htmlFor="bizAddr" className="text-sm font-medium flex items-center gap-1.5">
+   742→            <MapPin className="h-3.5 w-3.5" /> Address (optional)
+   743→          </Label>
+   744→          <Input
+   745→            id="bizAddr"
+   746→            placeholder="e.g., 123 Main Road, Dhaka"
+   747→            value={newBusinessAddress}
+   748→            onChange={(e) => setNewBusinessAddress(e.target.value)}
+   749→            className="h-11"
+   750→          />
+   751→        </div>
+   752→      </div>
+   753→
+   754→      <Separator />
+   755→
+   756→      {/* Create Login Credentials */}
+   757→      <div className="space-y-3">
+   758→        <p className="text-sm font-semibold flex items-center gap-1.5">
+   759→          <Lock className="h-3.5 w-3.5" /> Create your login credentials
+   760→        </p>
+   761→        <p className="text-xs text-muted-foreground">
+   762→          These credentials are only for this business. You can create different logins for other businesses.
+   763→        </p>
+   764→        <div className="space-y-2">
+   765→          <Label htmlFor="username" className="text-xs font-medium">Username *</Label>
+   766→          <div className="relative">
+   767→            <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+   768→            <Input
+   769→              id="username"
+   770→              placeholder="e.g., admin"
+   771→              value={username}
+   772→              onChange={(e) => { setUsername(e.target.value); setError(null); }}
+   773→              className="h-11 pl-9"
+   774→            />
+   775→          </div>
+   776→        </div>
+   777→        <div className="space-y-2">
+   778→          <Label htmlFor="password" className="text-xs font-medium">Password *</Label>
+   779→          <PasswordInput
+   780→            id="regPassword"
+   781→            value={password}
+   782→            onChange={(val) => { setPassword(val); setError(null); }}
+   783→            placeholder="Min 4 characters"
+   784→          />
+   785→        </div>
+   786→      </div>
+   787→
+   788→      {error && (
+   789→        <p className="text-sm text-destructive text-center">{error}</p>
+   790→      )}
+   791→
+   792→      <Button
+   793→        size="lg"
+   794→        className="w-full h-12 gap-2"
+   795→        onClick={handleRegister}
+   796→        disabled={isLoading}
+   797→      >
+   798→        {isLoading ? "Creating..." : "Create Business & Login"}
+   799→        {!isLoading && <CheckCircle2 className="h-4 w-4" />}
+   800→      </Button>
+   801→
+   802→      <Button variant="ghost" className="w-full gap-2" onClick={() => setStep("add-business")}>
+   803→        <ArrowLeft className="h-4 w-4" /> Back
+   804→      </Button>
+   805→    </motion.div>
+   806→  );
+   807→}
+   808→
+   809→// ── Login Step ──
+   810→function LoginStep() {
+   811→  const {
+   812→    selectedBusiness, username, setUsername, password, setPassword,
+   813→    setStep, setSession, setIsLoading, setError, error, isLoading,
+   814→  } = useAuthStore();
+   815→
+   816→  const handleLogin = async () => {
+   817→    if (!username.trim() || !password) {
+   818→      setError("Please enter your username and password");
+   819→      return;
+   820→    }
+   821→
+   822→    setIsLoading(true);
+   823→    setError(null);
+   824→
+   825→    try {
+   826→      const res = await fetch("/api/auth/login", {
+   827→        method: "POST",
+   828→        headers: { "Content-Type": "application/json" },
+   829→        body: JSON.stringify({
+   830→          businessId: selectedBusiness?.id,
+   831→          username: username.trim(),
+   832→          password,
+   833→        }),
+   834→      });
+   835→
+   836→      const data = await res.json();
+   837→      if (!res.ok) throw new Error(data.error);
+   838→
+   839→      setSession(data);
+   840→      setStep("dashboard");
+   841→    } catch (err: unknown) {
+   842→      setError(err instanceof Error ? err.message : "Login failed");
+   843→    } finally {
+   844→      setIsLoading(false);
+   845→    }
+   846→  };
+   847→
+   848→  return (
+   849→    <motion.div {...slideIn} className="space-y-6">
+   850→      <div className="text-center space-y-2">
+   851→        {selectedBusiness && (
+   852→          <div
+   853→            className="inline-flex items-center justify-center w-16 h-16 rounded-2xl text-white"
+   854→            style={{ backgroundColor: selectedBusiness.businessType.color }}
+   855→          >
+   856→            {smallIconMap[selectedBusiness.businessType.icon] || <Building2 className="h-8 w-8" />}
+   857→          </div>
+   858→        )}
+   859→        <h2 className="text-2xl font-bold">Welcome back</h2>
+   860→        <p className="text-muted-foreground text-sm">
+   861→          Log in to <span className="font-semibold text-foreground">{selectedBusiness?.name}</span>
+   862→        </p>
+   863→      </div>
+   864→
+   865→      <div className="space-y-3">
+   866→        <div className="space-y-2">
+   867→          <Label htmlFor="loginUser" className="text-sm font-medium">Username</Label>
+   868→          <div className="relative">
+   869→            <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+   870→            <Input
+   871→              id="loginUser"
+   872→              placeholder="Enter your username"
+   873→              value={username}
+   874→              onChange={(e) => { setUsername(e.target.value); setError(null); }}
+   875→              className="h-11 pl-9"
+   876→              autoFocus
+   877→            />
+   878→          </div>
+   879→        </div>
+   880→        <div className="space-y-2">
+   881→          <Label htmlFor="loginPass" className="text-sm font-medium">Password</Label>
+   882→          <PasswordInput
+   883→            id="loginPass"
+   884→            value={password}
+   885→            onChange={(val) => { setPassword(val); setError(null); }}
+   886→            placeholder="Enter your password"
+   887→          />
+   888→        </div>
+   889→      </div>
+   890→
+   891→      {error && (
+   892→        <p className="text-sm text-destructive text-center">{error}</p>
+   893→      )}
+   894→
+   895→      <Button
+   896→        size="lg"
+   897→        className="w-full h-12 gap-2"
+   898→        onClick={handleLogin}
+   899→        disabled={isLoading}
+   900→      >
+   901→        {isLoading ? "Logging in..." : "Log In"}
+   902→        {!isLoading && <ArrowRight className="h-4 w-4" />}
+   903→      </Button>
+   904→
+   905→      <Button variant="ghost" className="w-full gap-2" onClick={() => setStep("discovery")}>
+   906→        <ArrowLeft className="h-4 w-4" /> Back to my businesses
+   907→      </Button>
+   908→    </motion.div>
+   909→  );
+   910→}
+   911→
+   912→// ── Dashboard Step ──
+   913→// Now renders the full PharmacyShell with dashboard, products, categories, etc.
+   914→function DashboardStep() {
+   915→  const session = useAuthStore((s) => s.session);
+   916→
+   917→  if (!session) return null;
+   918→
+   919→  return <PharmacyShell />;
+   920→}
+   921→
+   922→// ── Dynamic step indicator steps ──
+   923→function getStepPath(step: string, businesses: number): string[] {
+   924→  if (step === "landing") return [];
+   925→  if (businesses > 0) {
+   926→    // Has businesses path: phone → otp → discovery → (login or add-business → create-login) → dashboard
+   927→    return ["phone", "otp", "discovery", "login", "dashboard"];
+   928→  }
+   929→  // No businesses path: phone → otp → add-business → create-login → dashboard
+   930→  return ["phone", "otp", "add-business", "create-login", "dashboard"];
+   931→}
+   932→
+   933→// ── Main Page ──
+   934→export default function HomePage() {
+   935→  const { step, businesses, session, reset, setStep } = useAuthStore();
+   936→  const stepPath = getStepPath(step, businesses.length);
+   937→
+   938→  // On mount, check if we have a persisted session and redirect to dashboard
+   939→  // This setState-in-effect is intentional: we need to hydrate from localStorage
+   940→  // after the first render to avoid SSR/client mismatch
+   941→  const [ready, setReady] = useState(false);
+   942→
+   943→  useEffect(() => {
+   944→    // Restore session from persisted state
+   945→    const store = useAuthStore.getState();
+   946→    if (store.session && store.step !== "dashboard") {
+   947→      store.setStep("dashboard");
+   948→    }
+   949→    // eslint-disable-next-line react-hooks/set-state-in-effect
+   950→    setReady(true);
+   951→  }, []);
+   952→
+   953→  // Show nothing until first check is complete to avoid flash of wrong state
+   954→  if (!ready) {
+   955→    return (
+   956→      <div className="min-h-screen flex items-center justify-center">
+   957→        <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center animate-pulse">
+   958→          <Box className="h-5 w-5 text-primary-foreground" />
+   959→        </div>
+   960→      </div>
+   961→    );
+   962→  }
+   963→
+   964→  // Dashboard has its own bottom nav and full-screen layout
+   965→  const isDashboard = step === "dashboard";
+   966→
+   967→  return (
+   968→    <div className="min-h-screen flex flex-col bg-gradient-to-b from-background via-background to-muted/20">
+   969→      {!isDashboard && (
+   970→        <>
+   971→          {/* Header */}
+   972→          <header className="border-b bg-card/80 backdrop-blur-sm sticky top-0 z-10">
+   973→            <div className="max-w-md mx-auto px-4 py-3 flex items-center gap-2.5">
+   974→              <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
+   975→                <Box className="h-5 w-5 text-primary-foreground" />
+   976→              </div>
+   977→              <span className="font-bold text-lg">Inventory<span className="text-primary">OS</span></span>
+   978→              {step !== "landing" && (
+   979→                <Button variant="ghost" size="sm" className="ml-auto text-xs" onClick={reset}>
+   980→                  Start Over
+   981→                </Button>
+   982→              )}
+   983→            </div>
+   984→          </header>
+   985→
+   986→          {/* Step indicator */}
+   987→          {stepPath.length > 1 && (
+   988→            <div className="py-3 bg-card/50">
+   989→              <StepIndicator current={step} steps={stepPath} />
+   990→            </div>
+   991→          )}
+   992→        </>
+   993→      )}
+   994→
+   995→      {/* Main content */}
+   996→      <main className={cn(
+   997→        "flex-1 max-w-md mx-auto w-full",
+   998→        isDashboard ? "px-4 py-4" : "px-4 py-6",
+   999→        isDashboard && "flex flex-col"
+  1000→      )}>
+  1001→        <AnimatePresence mode="wait">
+  1002→          {step === "landing" && <LandingStep key="landing" />}
+  1003→          {step === "phone" && <PhoneStep key="phone" />}
+  1004→          {step === "otp" && <OtpStep key="otp" />}
+  1005→          {step === "discovery" && <DiscoveryStep key="discovery" />}
+  1006→          {step === "add-business" && <AddBusinessStep key="add-business" />}
+  1007→          {step === "create-login" && <CreateLoginStep key="create-login" />}
+  1008→          {step === "login" && <LoginStep key="login" />}
+  1009→          {step === "dashboard" && <DashboardStep key="dashboard" />}
+  1010→        </AnimatePresence>
+  1011→      </main>
+  1012→
+  1013→      {!isDashboard && (
+  1014→        /* Footer */
+  1015→        <footer className="border-t bg-card/50 mt-auto">
+  1016→          <div className="max-w-md mx-auto px-4 py-3 text-center text-[11px] text-muted-foreground">
+  1017→            InventoryOS — Simple inventory for every business
+  1018→          </div>
+  1019→        </footer>
+  1020→      )}
+  1021→    </div>
+  1022→  );
+  1023→}
+  1024→

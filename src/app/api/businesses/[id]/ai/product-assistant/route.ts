@@ -1,19 +1,90 @@
 // POST /api/businesses/[id]/ai/product-assistant
 // AI-powered product assistant: auto-generate descriptions, detect interactions, suggest categories
+//
+// Gap integrations:
+//   • Gap 1/7 — Rate Limiter : checkAILimit() gates each LLM call per business quota
+//   • Gap 4 — Error Fallback : buildFallback()/classifyError() shape every failure mode
+//   • No AI cache — product-specific queries (per-product prompts) are too varied to cache
+//     effectively, and the cost of a stale description/interaction-check is too high.
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import {
+  checkAILimit,
+  logAIUsage,
+  estimateTokens,
+} from "@/lib/ai-rate-limit";
+import {
+  buildFallback,
+  classifyError,
+  classifyRateLimitByType,
+} from "@/lib/ai-fallback";
+
+const VALID_ACTIONS = [
+  "generate_description",
+  "check_interactions",
+  "suggest_category",
+  "suggest_dosage",
+] as const;
+type AssistantAction = (typeof VALID_ACTIONS)[number];
+
+function featureFor(action: AssistantAction): string {
+  return `product-assistant:${action}`;
+}
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id: businessId } = await params;
+
   try {
-    const { id: businessId } = await params;
     const body = await req.json();
-    const { action, productId, productData, customerConditions } = body;
+    const { action, productId, productData } = body;
+
+    // Validate action before consuming any quota.
+    if (!action || !VALID_ACTIONS.includes(action)) {
+      return NextResponse.json(
+        {
+          error: `Unknown action. Use: ${VALID_ACTIONS.join(", ")}`,
+        },
+        { status: 400 }
+      );
+    }
+    const typedAction = action as AssistantAction;
+    const feature = featureFor(typedAction);
+
+    // ── 1. Rate limit check (Gap 1/7) ──
+    const limitCheck = await checkAILimit(businessId);
+    if (!limitCheck.allowed) {
+      const fallbackReason = classifyRateLimitByType(limitCheck.limitType, limitCheck.reason);
+      const fallback = buildFallback(fallbackReason, {
+        retryAfterSeconds: limitCheck.retryAfterSeconds,
+        errorMessage: limitCheck.reason,
+      });
+      await logAIUsage(businessId, feature, 0, false, `rate_limited:${limitCheck.limitType}`);
+
+      return NextResponse.json(
+        {
+          success: false,
+          ...fallback,
+          error: fallback.fallbackMessage,
+          type: "rate_limit",
+          limitType: limitCheck.limitType,
+          remaining: limitCheck.remaining,
+        },
+        {
+          status: 429,
+          headers: limitCheck.retryAfterSeconds
+            ? { "Retry-After": String(limitCheck.retryAfterSeconds) }
+            : undefined,
+        }
+      );
+    }
 
     const ZAI = (await import("z-ai-web-dev-sdk")).default;
     const zai = await ZAI.create();
 
+    // ── 2. Dispatch by action — each path makes its own LLM call ──
+
     // ── Action: Generate product description ──
-    if (action === "generate_description") {
+    if (typedAction === "generate_description") {
       const product = productData || (productId
         ? await db.product.findFirst({
             where: { id: productId, businessId },
@@ -25,39 +96,39 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         return NextResponse.json({ error: "Product data required" }, { status: 400 });
       }
 
+      const systemPrompt = `You are a pharmaceutical product catalog expert. Generate a concise, professional product description for a pharmacy inventory system. Include: what it treats, common uses, key warnings. Keep it under 100 words. Do not include dosing instructions.`;
+      const userContent = `Product: ${product.name}\nGeneric: ${product.genericName || "Unknown"}\nStrength: ${product.strength || "Unknown"}\nForm: ${product.dosageForm || "Unknown"}\nManufacturer: ${product.manufacturer || "Unknown"}\nSchedule: ${product.scheduleType || "OTC"}\nPrescription required: ${product.isPrescription ? "Yes" : "No"}`;
+
       const completion = await zai.chat.completions.create({
         messages: [
-          {
-            role: "assistant",
-            content: `You are a pharmaceutical product catalog expert. Generate a concise, professional product description for a pharmacy inventory system. Include: what it treats, common uses, key warnings. Keep it under 100 words. Do not include dosing instructions.`,
-          },
-          {
-            role: "user",
-            content: `Product: ${product.name}\nGeneric: ${product.genericName || "Unknown"}\nStrength: ${product.strength || "Unknown"}\nForm: ${product.dosageForm || "Unknown"}\nManufacturer: ${product.manufacturer || "Unknown"}\nSchedule: ${product.scheduleType || "OTC"}\nPrescription required: ${product.isPrescription ? "Yes" : "No"}`,
-          },
+          { role: "assistant", content: systemPrompt },
+          { role: "user", content: userContent },
         ],
         thinking: { type: "disabled" },
       });
 
+      const description = completion.choices[0]?.message?.content || "";
+      const tokens = extractTokens(completion, systemPrompt, userContent, description);
+
+      await logAIUsage(businessId, feature, tokens, true);
+
       return NextResponse.json({
         success: true,
-        description: completion.choices[0]?.message?.content,
+        description,
+        tokensUsed: tokens,
+        remaining: limitCheck.remaining,
       });
     }
 
     // ── Action: Check drug interactions ──
-    if (action === "check_interactions") {
+    if (typedAction === "check_interactions") {
       const { products, conditions } = body;
 
       if (!Array.isArray(products) || products.length === 0) {
         return NextResponse.json({ error: "Products array required" }, { status: 400 });
       }
 
-      const completion = await zai.chat.completions.create({
-        messages: [
-          {
-            role: "assistant",
-            content: `You are a clinical pharmacist. Analyze the provided medications and patient conditions for potential drug interactions, contraindications, and safety concerns.
+      const systemPrompt = `You are a clinical pharmacist. Analyze the provided medications and patient conditions for potential drug interactions, contraindications, and safety concerns.
 
 Return a JSON object:
 {
@@ -79,40 +150,42 @@ Return a JSON object:
   "generalAdvice": "Overall safety recommendation"
 }
 
-If no interactions found, return empty arrays and riskLevel "none". Be thorough but practical.`,
-          },
-          {
-            role: "user",
-            content: `Medications being dispensed:\n${JSON.stringify(products, null, 2)}\n\nPatient conditions/allergies:\n${JSON.stringify(conditions || [], null, 2)}`,
-          },
+If no interactions found, return empty arrays and riskLevel "none". Be thorough but practical.`;
+      const userContent = `Medications being dispensed:\n${JSON.stringify(products, null, 2)}\n\nPatient conditions/allergies:\n${JSON.stringify(conditions || [], null, 2)}`;
+
+      const completion = await zai.chat.completions.create({
+        messages: [
+          { role: "assistant", content: systemPrompt },
+          { role: "user", content: userContent },
         ],
         thinking: { type: "disabled" },
       });
 
-      const response = completion.choices[0]?.message?.content;
+      const response = completion.choices[0]?.message?.content || "";
       let result;
       try {
-        const jsonMatch = response?.match(/\{[\s\S]*\}/);
+        const jsonMatch = response.match(/\{[\s\S]*\}/);
         result = jsonMatch ? JSON.parse(jsonMatch[0]) : { generalAdvice: response };
       } catch {
         result = { generalAdvice: response };
       }
 
+      const tokens = extractTokens(completion, systemPrompt, userContent, response);
+      await logAIUsage(businessId, feature, tokens, true);
+
       return NextResponse.json({
         success: true,
         interactionCheck: result,
+        tokensUsed: tokens,
+        remaining: limitCheck.remaining,
       });
     }
 
     // ── Action: Suggest category ──
-    if (action === "suggest_category") {
+    if (typedAction === "suggest_category") {
       const { productName, genericName } = body;
 
-      const completion = await zai.chat.completions.create({
-        messages: [
-          {
-            role: "assistant",
-            content: `You are a pharmacy categorization expert. Given a product name and generic name, suggest the most appropriate pharmacy category. Respond in JSON:
+      const systemPrompt = `You are a pharmacy categorization expert. Given a product name and generic name, suggest the most appropriate pharmacy category. Respond in JSON:
 {
   "suggestedCategory": "category name",
   "suggestedType": "medicine" | "surgical" | "cosmetic" | "supplement" | "baby-care" | "other",
@@ -121,40 +194,42 @@ If no interactions found, return empty arrays and riskLevel "none". Be thorough 
   "reason": "why this category"
 }
 
-Common pharmacy categories: Antibiotics, Pain & Fever, Cold & Flu, Digestive Health, Diabetes, Heart & BP, Vitamins & Supplements, Skin Care, Eye & Ear, Baby Care, Surgical Items, Cosmetics & Beauty, Personal Care, First Aid, Herbal & Homeopathy, Medical Devices, Orthopedic, Respiratory.`,
-          },
-          {
-            role: "user",
-            content: `Product: ${productName || "Unknown"}\nGeneric: ${genericName || "Unknown"}`,
-          },
+Common pharmacy categories: Antibiotics, Pain & Fever, Cold & Flu, Digestive Health, Diabetes, Heart & BP, Vitamins & Supplements, Skin Care, Eye & Ear, Baby Care, Surgical Items, Cosmetics & Beauty, Personal Care, First Aid, Herbal & Homeopathy, Medical Devices, Orthopedic, Respiratory.`;
+      const userContent = `Product: ${productName || "Unknown"}\nGeneric: ${genericName || "Unknown"}`;
+
+      const completion = await zai.chat.completions.create({
+        messages: [
+          { role: "assistant", content: systemPrompt },
+          { role: "user", content: userContent },
         ],
         thinking: { type: "disabled" },
       });
 
-      const response = completion.choices[0]?.message?.content;
+      const response = completion.choices[0]?.message?.content || "";
       let result;
       try {
-        const jsonMatch = response?.match(/\{[\s\S]*\}/);
+        const jsonMatch = response.match(/\{[\s\S]*\}/);
         result = jsonMatch ? JSON.parse(jsonMatch[0]) : {};
       } catch {
         result = {};
       }
 
+      const tokens = extractTokens(completion, systemPrompt, userContent, response);
+      await logAIUsage(businessId, feature, tokens, true);
+
       return NextResponse.json({
         success: true,
         suggestion: result,
+        tokensUsed: tokens,
+        remaining: limitCheck.remaining,
       });
     }
 
     // ── Action: Suggest dosage info ──
-    if (action === "suggest_dosage") {
+    if (typedAction === "suggest_dosage") {
       const { genericName, strength, dosageForm } = body;
 
-      const completion = await zai.chat.completions.create({
-        messages: [
-          {
-            role: "assistant",
-            content: `You are a clinical pharmacist. Provide standard dosage information for the given medication. Return JSON:
+      const systemPrompt = `You are a clinical pharmacist. Provide standard dosage information for the given medication. Return JSON:
 {
   "adultDose": "Standard adult dosage",
   "pediatricDose": "Standard pediatric dosage (if applicable)",
@@ -163,34 +238,92 @@ Common pharmacy categories: Antibiotics, Pain & Fever, Cold & Flu, Digestive Hea
   "keyWarnings": ["warning1", "warning2"],
   "storageAdvice": "How to store"
 }
-Keep it concise and factual. Do not include specific brand recommendations.`,
-          },
-          {
-            role: "user",
-            content: `Generic: ${genericName || "Unknown"}\nStrength: ${strength || "Unknown"}\nForm: ${dosageForm || "Unknown"}`,
-          },
+Keep it concise and factual. Do not include specific brand recommendations.`;
+      const userContent = `Generic: ${genericName || "Unknown"}\nStrength: ${strength || "Unknown"}\nForm: ${dosageForm || "Unknown"}`;
+
+      const completion = await zai.chat.completions.create({
+        messages: [
+          { role: "assistant", content: systemPrompt },
+          { role: "user", content: userContent },
         ],
         thinking: { type: "disabled" },
       });
 
-      const response = completion.choices[0]?.message?.content;
+      const response = completion.choices[0]?.message?.content || "";
       let result;
       try {
-        const jsonMatch = response?.match(/\{[\s\S]*\}/);
+        const jsonMatch = response.match(/\{[\s\S]*\}/);
         result = jsonMatch ? JSON.parse(jsonMatch[0]) : {};
       } catch {
         result = {};
       }
 
+      const tokens = extractTokens(completion, systemPrompt, userContent, response);
+      await logAIUsage(businessId, feature, tokens, true);
+
       return NextResponse.json({
         success: true,
         dosageInfo: result,
+        tokensUsed: tokens,
+        remaining: limitCheck.remaining,
       });
     }
 
-    return NextResponse.json({ error: "Unknown action. Use: generate_description, check_interactions, suggest_category, suggest_dosage" }, { status: 400 });
+    // Should be unreachable thanks to the early VALID_ACTIONS check, but keep
+    // the original 400 response shape as a safety net.
+    return NextResponse.json(
+      { error: `Unknown action. Use: ${VALID_ACTIONS.join(", ")}` },
+      { status: 400 }
+    );
   } catch (error) {
     console.error("Product assistant error:", error);
-    return NextResponse.json({ error: "Failed to process AI request" }, { status: 500 });
+
+    // We don't know which action triggered the failure here, but the catch
+    // wraps all of them — log under the generic feature name so usage stats
+    // still capture the failed attempt.
+    await logAIUsage(
+      businessId,
+      "product-assistant",
+      0,
+      false,
+      error instanceof Error ? error.message : String(error)
+    ).catch(() => undefined);
+
+    const reason = classifyError(error);
+    const fallback = buildFallback(reason, {
+      errorMessage: error instanceof Error ? error.message : String(error),
+    });
+
+    return NextResponse.json(
+      {
+        success: false,
+        ...fallback,
+        error: fallback.fallbackMessage,
+        type: "llm_error",
+      },
+      { status: 500 }
+    );
   }
+}
+
+// ── Helpers ──
+
+/**
+ * Extract total tokens from an LLM completion, falling back to a heuristic
+ * estimate (system + user + response) when the SDK doesn't report usage.
+ */
+function extractTokens(
+  completion: unknown,
+  systemPrompt: string,
+  userContent: string,
+  response: string
+): number {
+  const c = completion as { usage?: { total_tokens?: number } };
+  const sdkTokens: unknown = c?.usage?.total_tokens;
+  if (typeof sdkTokens === "number" && sdkTokens > 0) return sdkTokens;
+  return (
+    estimateTokens(systemPrompt) +
+    estimateTokens(userContent) +
+    estimateTokens(response)
+  );
 }
