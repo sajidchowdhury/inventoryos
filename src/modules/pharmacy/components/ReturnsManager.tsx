@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
   ArrowLeft, Plus, Search, X, RefreshCw, RotateCcw,
-  AlertCircle, Check, Loader2, Package, Receipt,
+  AlertCircle, Check, Loader2, Receipt, Calendar, User,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -199,24 +199,28 @@ export function ReturnsManager() {
   });
 
   return (
-    <motion.div {...fadeIn} className="space-y-4 pb-4">
+    <motion.div {...fadeIn} className="space-y-4 pb-4 pharmacy-bg min-h-screen">
       {/* Header */}
-      <div className="flex items-center gap-2">
-        <Button variant="ghost" size="icon" className="shrink-0" onClick={() => setActiveView("dashboard")}>
+      <div className="flex items-center gap-2 stagger-in">
+        <Button variant="ghost" size="icon" className="shrink-0 rounded-xl" onClick={() => setActiveView("dashboard")}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <h1 className="text-lg font-bold flex-1">Returns &amp; Refunds</h1>
-        <Button variant="ghost" size="icon" onClick={fetchReturns} disabled={loading}>
+        <Button variant="ghost" size="icon" onClick={fetchReturns} disabled={loading} className="rounded-xl">
           <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
         </Button>
-        <Button size="sm" className="gap-1.5" onClick={() => { setForm({ saleId: activeSaleId || "", reason: "", refundMethod: "cash", restockItems: true, notes: "" }); setError(null); setDialogOpen(true); }}>
-          <Plus className="h-4 w-4" /> Process
+        <Button
+          size="sm"
+          className="gap-1.5 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 text-white shadow-md shadow-emerald-500/20 rounded-xl"
+          onClick={() => { setForm({ saleId: activeSaleId || "", reason: "", refundMethod: "cash", restockItems: true, notes: "" }); setError(null); setDialogOpen(true); }}
+        >
+          <Plus className="h-4 w-4" /> Process Return
         </Button>
       </div>
 
       {success && (
-        <Card className="border-green-500/50 bg-green-50">
-          <CardContent className="p-3 flex items-center gap-2 text-sm text-green-700">
+        <Card className="stagger-in shadow-pharmacy border-0 overflow-hidden border-l-4 border-l-emerald-500">
+          <CardContent className="p-3 flex items-center gap-2 text-sm text-emerald-700 bg-emerald-50">
             <Check className="h-4 w-4" /> {success}
           </CardContent>
         </Card>
@@ -224,33 +228,43 @@ export function ReturnsManager() {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 gap-3">
-        <Card className="border-l-4 border-l-orange-500">
-          <CardContent className="p-3">
-            <p className="text-[10px] text-muted-foreground">Today&apos;s Returns</p>
-            <p className="text-xl font-bold text-orange-600">৳{summary.today.refund.toFixed(2)}</p>
+        <Card className="stagger-in shadow-pharmacy border-0 overflow-hidden">
+          <CardContent className="p-4 bg-gradient-to-br from-amber-50 to-white">
+            <div className="flex items-center gap-2 mb-1">
+              <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-md shadow-amber-500/20">
+                <RotateCcw className="h-3.5 w-3.5 text-white" />
+              </div>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wide font-medium">Today&apos;s Returns</p>
+            </div>
+            <p className="text-xl font-bold text-amber-600">৳{summary.today.refund.toFixed(2)}</p>
             <p className="text-[10px] text-muted-foreground">{summary.today.count} return(s)</p>
           </CardContent>
         </Card>
-        <Card className="border-l-4 border-l-red-500">
-          <CardContent className="p-3">
-            <p className="text-[10px] text-muted-foreground">This Month</p>
-            <p className="text-xl font-bold text-red-600">৳{summary.month.refund.toFixed(2)}</p>
+        <Card className="stagger-in shadow-pharmacy border-0 overflow-hidden">
+          <CardContent className="p-4 bg-gradient-to-br from-rose-50 to-white">
+            <div className="flex items-center gap-2 mb-1">
+              <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-rose-500 to-rose-600 flex items-center justify-center shadow-md shadow-rose-500/20">
+                <Receipt className="h-3.5 w-3.5 text-white" />
+              </div>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wide font-medium">This Month</p>
+            </div>
+            <p className="text-xl font-bold text-rose-600">৳{summary.month.refund.toFixed(2)}</p>
             <p className="text-[10px] text-muted-foreground">{summary.month.count} return(s)</p>
           </CardContent>
         </Card>
       </div>
 
       {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+      <div className="stagger-in relative">
+        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-emerald-600" />
         <Input
           placeholder="Search by return no, invoice, customer..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="pl-9 pr-9 h-10"
+          className="pl-10 pr-10 h-11 rounded-2xl border-emerald-200 bg-white shadow-pharmacy focus-visible:ring-emerald-500 focus-visible:border-emerald-500"
         />
         {search && (
-          <Button variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7" onClick={() => setSearch("")}>
+          <Button variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 rounded-lg" onClick={() => setSearch("")}>
             <X className="h-4 w-4" />
           </Button>
         )}
@@ -258,55 +272,99 @@ export function ReturnsManager() {
 
       {/* List */}
       {loading ? (
-        <div className="space-y-2">{[1, 2, 3].map((i) => <Card key={i} className="animate-pulse"><CardContent className="p-4 h-16" /></Card>)}</div>
-      ) : filtered.length === 0 ? (
-        <Card>
-          <CardContent className="p-8 text-center space-y-2">
-            <RotateCcw className="h-12 w-12 mx-auto text-muted-foreground/30" />
-            <p className="font-medium">No returns found</p>
-            <Button size="sm" className="gap-1.5" onClick={() => setDialogOpen(true)}>
-              <Plus className="h-3.5 w-3.5" /> Process Return
-            </Button>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="space-y-2">
-          {filtered.map((ret) => (
-            <Card key={ret.id} className="cursor-pointer hover:shadow-md transition-shadow"
-              onClick={() => { setActiveSaleId(ret.sale.id); setActiveView("sale-detail"); }}>
-              <CardContent className="p-3 space-y-1.5">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm font-bold">{ret.returnNo}</p>
-                      <Badge variant="outline" className="text-[9px]">{reasonLabels[ret.reason] || ret.reason}</Badge>
-                    </div>
-                    <p className="text-[10px] text-muted-foreground">
-                      For {ret.sale.invoiceNo} · {ret.customer?.name || "Walk-in"}
-                    </p>
-                  </div>
-                  <p className="text-sm font-bold text-red-600">−৳{ret.refundAmount.toFixed(2)}</p>
-                </div>
-                <div className="flex items-center gap-2 text-[9px] text-muted-foreground">
-                  <Badge variant="secondary" className="text-[9px] capitalize">{ret.refundMethod.replace("_", " ")}</Badge>
-                  {ret.restockItems && <span className="text-green-600">✓ Restocked</span>}
-                  <span className="ml-auto">
-                    {new Date(ret.createdAt).toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
-                  </span>
-                </div>
-                {ret.items.length > 0 && (
-                  <div className="text-[10px] text-muted-foreground pt-1 border-t">
-                    {ret.items.map((item, i) => (
-                      <span key={i}>
-                        {i > 0 && ", "}
-                        {item.productName} ({item.quantity})
-                      </span>
-                    ))}
-                  </div>
-                )}
+        <div className="space-y-2.5">
+          {[1, 2, 3, 4].map((i) => (
+            <Card key={i} className="shadow-pharmacy border-0 overflow-hidden">
+              <CardContent className="p-4 space-y-2">
+                <div className="skeleton h-4 w-32 rounded" />
+                <div className="skeleton h-3 w-48 rounded" />
+                <div className="skeleton h-3 w-24 rounded" />
+                <div className="skeleton h-8 w-full rounded mt-2" />
               </CardContent>
             </Card>
           ))}
+        </div>
+      ) : filtered.length === 0 ? (
+        <Card className="stagger-in shadow-pharmacy border-0 overflow-hidden">
+          <CardContent className="p-10 text-center space-y-4">
+            <div className="h-20 w-20 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center mx-auto shadow-lg shadow-emerald-500/30">
+              <RotateCcw className="h-10 w-10 text-white" />
+            </div>
+            <div className="space-y-1">
+              <p className="font-semibold text-base">No returns found</p>
+              <p className="text-sm text-muted-foreground max-w-xs mx-auto">
+                {search ? "Try adjusting your search" : "Process your first return to get started"}
+              </p>
+            </div>
+            {!search && (
+              <Button
+                size="sm"
+                className="gap-1.5 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 text-white shadow-md shadow-emerald-500/20 rounded-xl"
+                onClick={() => setDialogOpen(true)}
+              >
+                <Plus className="h-3.5 w-3.5" /> Process Return
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-2.5">
+          {filtered.map((ret) => {
+            const isCompleted = ret.status === "completed";
+            return (
+              <Card
+                key={ret.id}
+                className={cn(
+                  "card-hover shadow-pharmacy border-0 overflow-hidden cursor-pointer border-l-4",
+                  isCompleted ? "border-l-emerald-500" : "border-l-amber-500"
+                )}
+                onClick={() => { setActiveSaleId(ret.sale.id); setActiveView("sale-detail"); }}
+              >
+                <CardContent className="p-3.5 space-y-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-bold font-mono tracking-tight">{ret.returnNo}</p>
+                        <Badge variant="outline" className={cn("text-[9px]", isCompleted ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-amber-50 text-amber-700 border-amber-200")}>
+                          {isCompleted ? "Completed" : "Pending"}
+                        </Badge>
+                        <Badge variant="outline" className="text-[9px] bg-blue-50 text-blue-700 border-blue-200">
+                          {reasonLabels[ret.reason] || ret.reason}
+                        </Badge>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground mt-1 flex items-center gap-1">
+                        <Receipt className="h-2.5 w-2.5" /> For {ret.sale.invoiceNo}
+                      </p>
+                      {ret.customer && (
+                        <p className="text-[10px] text-muted-foreground flex items-center gap-1">
+                          <User className="h-2.5 w-2.5" /> {ret.customer.name}
+                        </p>
+                      )}
+                    </div>
+                    <p className="text-sm font-bold text-rose-600 shrink-0">−৳{ret.refundAmount.toFixed(2)}</p>
+                  </div>
+                  <div className="flex items-center gap-2 text-[9px] text-muted-foreground pt-2 border-t border-dashed">
+                    <Badge variant="secondary" className="text-[9px] capitalize">{ret.refundMethod.replace("_", " ")}</Badge>
+                    {ret.restockItems && <span className="text-emerald-600 flex items-center gap-0.5"><Check className="h-2.5 w-2.5" /> Restocked</span>}
+                    <span className="ml-auto flex items-center gap-1">
+                      <Calendar className="h-2.5 w-2.5" />
+                      {new Date(ret.createdAt).toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
+                    </span>
+                  </div>
+                  {ret.items.length > 0 && (
+                    <div className="text-[10px] text-muted-foreground">
+                      {ret.items.map((item, i) => (
+                        <span key={i}>
+                          {i > 0 && ", "}
+                          {item.productName} ({item.quantity})
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
 
@@ -323,7 +381,7 @@ export function ReturnsManager() {
                 value={form.saleId}
                 onChange={(e) => setForm({ ...form, saleId: e.target.value })}
                 placeholder="INV-2026-0001 or sale ID"
-                className="h-10"
+                className="h-10 rounded-xl"
               />
             </div>
 
@@ -331,7 +389,7 @@ export function ReturnsManager() {
               <div className="space-y-2">
                 <Label className="text-xs font-medium">Items to Return</Label>
                 {saleItems.map((item) => (
-                  <div key={item.id} className="flex items-center gap-2 p-2 rounded-lg border">
+                  <div key={item.id} className="flex items-center gap-2 p-2.5 rounded-xl border border-emerald-100 bg-emerald-50/30">
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-medium truncate">{item.productName}</p>
                       <p className="text-[10px] text-muted-foreground">
@@ -344,15 +402,15 @@ export function ReturnsManager() {
                       placeholder="0"
                       value={returnQtys[item.id] || ""}
                       onChange={(e) => setReturnQtys({ ...returnQtys, [item.id]: e.target.value })}
-                      className="h-8 w-16 text-xs"
+                      className="h-8 w-16 text-xs rounded-lg"
                       max={item.quantity}
                     />
                   </div>
                 ))}
                 {totalRefund > 0 && (
-                  <div className="bg-red-50 rounded-lg p-2 flex items-center justify-between text-xs">
-                    <span className="text-red-700">Total Refund</span>
-                    <span className="font-bold text-red-700">৳{totalRefund.toFixed(2)}</span>
+                  <div className="bg-gradient-to-r from-rose-50 to-rose-100/50 rounded-xl p-2.5 flex items-center justify-between">
+                    <span className="text-xs text-rose-700 font-medium">Total Refund</span>
+                    <span className="font-bold text-rose-600">৳{totalRefund.toFixed(2)}</span>
                   </div>
                 )}
               </div>
@@ -361,7 +419,7 @@ export function ReturnsManager() {
             <div className="space-y-1.5">
               <Label className="text-xs font-medium">Reason *</Label>
               <Select value={form.reason} onValueChange={(v) => setForm({ ...form, reason: v })}>
-                <SelectTrigger className="h-10"><SelectValue placeholder="Select reason" /></SelectTrigger>
+                <SelectTrigger className="h-10 rounded-xl"><SelectValue placeholder="Select reason" /></SelectTrigger>
                 <SelectContent>
                   {Object.entries(reasonLabels).map(([value, label]) => (
                     <SelectItem key={value} value={value}>{label}</SelectItem>
@@ -373,7 +431,7 @@ export function ReturnsManager() {
             <div className="space-y-1.5">
               <Label className="text-xs font-medium">Refund Method</Label>
               <Select value={form.refundMethod} onValueChange={(v) => setForm({ ...form, refundMethod: v })}>
-                <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="h-10 rounded-xl"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="cash">Cash</SelectItem>
                   <SelectItem value="credit">Store Credit</SelectItem>
@@ -382,7 +440,7 @@ export function ReturnsManager() {
               </Select>
             </div>
 
-            <div className="flex items-center justify-between py-1">
+            <div className="flex items-center justify-between py-1 px-2 rounded-xl bg-emerald-50/50">
               <Label className="text-xs font-medium">Restock items to inventory</Label>
               <Switch
                 checked={form.restockItems}
@@ -395,12 +453,16 @@ export function ReturnsManager() {
               <Textarea
                 value={form.notes}
                 onChange={(e) => setForm({ ...form, notes: e.target.value })}
-                className="min-h-[40px] text-sm"
+                className="min-h-[40px] text-sm rounded-xl"
                 placeholder="Additional details"
               />
             </div>
 
-            <Button className="w-full h-10 gap-2" onClick={handleSave} disabled={saving || !form.saleId || !form.reason || totalRefund <= 0}>
+            <Button
+              className="w-full h-11 gap-2 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 text-white shadow-md shadow-emerald-500/20 rounded-xl"
+              onClick={handleSave}
+              disabled={saving || !form.saleId || !form.reason || totalRefund <= 0}
+            >
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
               {saving ? "Processing..." : `Process Return (৳${totalRefund.toFixed(2)})`}
             </Button>

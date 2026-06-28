@@ -3,8 +3,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
-  ArrowLeft, Plus, Search, X, Truck, Phone, Mail, MapPin,
-  Edit2, Trash2, ChevronRight, Package, DollarSign,
+  ArrowLeft, Plus, Search, X, Truck, Phone,
+  Edit2, Trash2, Package,
   AlertCircle, Check, Loader2,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -12,7 +12,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
@@ -51,6 +50,29 @@ const emptyForm = {
   address: "",
   notes: "",
 };
+
+/** Map a supplier's outstanding balance to a colored status badge. */
+function getBalanceStatus(balance: number) {
+  if (balance <= 0) {
+    return {
+      label: "Clear",
+      className: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200",
+      dot: "bg-emerald-500",
+    };
+  }
+  if (balance < 5000) {
+    return {
+      label: `৳${balance.toFixed(0)} due`,
+      className: "bg-amber-50 text-amber-700 ring-1 ring-amber-200",
+      dot: "bg-amber-500",
+    };
+  }
+  return {
+    label: `৳${balance.toFixed(0)} due`,
+    className: "bg-rose-50 text-rose-700 ring-1 ring-rose-200",
+    dot: "bg-rose-500",
+  };
+}
 
 export function SupplierManager() {
   const session = useAuthStore((s) => s.session);
@@ -160,109 +182,215 @@ export function SupplierManager() {
     }
   };
 
+  const totalOutstanding = suppliers.reduce((s, sup) => s + sup.balance, 0);
+  const totalPurchasedAll = suppliers.reduce((s, sup) => s + sup.totalPurchased, 0);
+
   return (
-    <motion.div {...fadeIn} className="space-y-4 pb-4">
+    <motion.div {...fadeIn} className="pharmacy-bg min-h-screen space-y-4 p-4 pb-6">
       {/* Header */}
       <div className="flex items-center gap-2">
-        <Button variant="ghost" size="icon" className="shrink-0" onClick={() => setActiveView("dashboard")}>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="shrink-0 rounded-xl hover:bg-emerald-50"
+          onClick={() => setActiveView("dashboard")}
+        >
           <ArrowLeft className="h-5 w-5" />
         </Button>
-        <h1 className="text-lg font-bold flex-1">Suppliers</h1>
-        <Button size="sm" className="gap-1.5" onClick={openCreateDialog}>
-          <Plus className="h-4 w-4" /> Add
+        <div className="flex-1 min-w-0">
+          <h1 className="text-xl font-bold tracking-tight text-slate-900">Suppliers</h1>
+          <p className="text-[11px] text-muted-foreground">Manage vendor relationships &amp; payables</p>
+        </div>
+        <Button
+          size="sm"
+          className="gap-1.5 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-pharmacy hover:from-emerald-600 hover:to-teal-700 border-0"
+          onClick={openCreateDialog}
+        >
+          <Plus className="h-4 w-4" /> Add Supplier
         </Button>
       </div>
 
       {/* Search */}
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
           placeholder="Search by name, phone, code..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="pl-9 pr-9 h-10"
+          className={cn(
+            "h-11 rounded-2xl border-slate-200 bg-white pl-10 pr-9 shadow-pharmacy",
+            "transition-all duration-200",
+            "focus-visible:border-emerald-400 focus-visible:ring-2 focus-visible:ring-emerald-100 focus-visible:ring-offset-0",
+          )}
         />
         {search && (
-          <Button variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7" onClick={() => setSearch("")}>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 rounded-lg hover:bg-emerald-50"
+            onClick={() => setSearch("")}
+          >
             <X className="h-4 w-4" />
           </Button>
         )}
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-2">
-        <Card><CardContent className="p-2 text-center">
-          <p className="text-base font-bold text-primary">{suppliers.length}</p>
-          <p className="text-[9px] text-muted-foreground">Total</p>
-        </CardContent></Card>
-        <Card><CardContent className="p-2 text-center">
-          <p className="text-base font-bold text-orange-600">
-            ৳{suppliers.reduce((s, sup) => s + sup.balance, 0).toFixed(0)}
-          </p>
-          <p className="text-[9px] text-muted-foreground">Outstanding</p>
-        </CardContent></Card>
-        <Card><CardContent className="p-2 text-center">
-          <p className="text-base font-bold text-blue-600">
-            ৳{suppliers.reduce((s, sup) => s + sup.totalPurchased, 0).toFixed(0)}
-          </p>
-          <p className="text-[9px] text-muted-foreground">Purchased</p>
-        </CardContent></Card>
+      <div className="grid grid-cols-3 gap-2.5">
+        <Card className="shadow-pharmacy border-slate-200/70">
+          <CardContent className="p-3 text-center">
+            <div className="mx-auto mb-1 flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-50">
+              <Truck className="h-3.5 w-3.5 text-emerald-600" />
+            </div>
+            <p className="text-lg font-bold text-slate-900">{suppliers.length}</p>
+            <p className="text-[10px] text-muted-foreground">Total</p>
+          </CardContent>
+        </Card>
+        <Card className="shadow-pharmacy border-slate-200/70">
+          <CardContent className="p-3 text-center">
+            <div className="mx-auto mb-1 flex h-7 w-7 items-center justify-center rounded-lg bg-rose-50">
+              <span className="text-[10px] font-bold text-rose-600">৳</span>
+            </div>
+            <p className="text-lg font-bold text-slate-900">৳{totalOutstanding.toFixed(0)}</p>
+            <p className="text-[10px] text-muted-foreground">Outstanding</p>
+          </CardContent>
+        </Card>
+        <Card className="shadow-pharmacy border-slate-200/70">
+          <CardContent className="p-3 text-center">
+            <div className="mx-auto mb-1 flex h-7 w-7 items-center justify-center rounded-lg bg-sky-50">
+              <Package className="h-3.5 w-3.5 text-sky-600" />
+            </div>
+            <p className="text-lg font-bold text-slate-900">৳{totalPurchasedAll.toFixed(0)}</p>
+            <p className="text-[10px] text-muted-foreground">Purchased</p>
+          </CardContent>
+        </Card>
       </div>
 
       {/* List */}
       {loading ? (
-        <div className="space-y-2">{[1, 2, 3].map((i) => <Card key={i} className="animate-pulse"><CardContent className="p-4 h-16" /></Card>)}</div>
-      ) : suppliers.length === 0 ? (
-        <Card>
-          <CardContent className="p-8 text-center space-y-2">
-            <Truck className="h-12 w-12 mx-auto text-muted-foreground/30" />
-            <p className="font-medium">{search ? "No suppliers found" : "No suppliers yet"}</p>
-            {!search && <Button size="sm" className="gap-1.5" onClick={openCreateDialog}><Plus className="h-3.5 w-3.5" /> Add Supplier</Button>}
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="space-y-2">
-          {suppliers.map((supplier) => (
-            <Card key={supplier.id} className="overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
-              onClick={() => { setActiveSupplierId(supplier.id); setActiveView("supplier-detail"); }}>
-              <CardContent className="p-3 flex items-start gap-3">
-                <div className="h-10 w-10 rounded-full bg-orange-50 flex items-center justify-center shrink-0">
-                  <Truck className="h-5 w-5 text-orange-600" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="text-sm font-semibold truncate">{supplier.name}</p>
-                    {supplier.code && <Badge variant="secondary" className="text-[9px]">{supplier.code}</Badge>}
+        <div className="space-y-2.5">
+          {[1, 2, 3, 4].map((i) => (
+            <Card key={i} className="overflow-hidden border-slate-200/70">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="skeleton h-12 w-12 rounded-2xl" />
+                  <div className="flex-1 space-y-2">
+                    <div className="skeleton h-3.5 w-1/3 rounded" />
+                    <div className="skeleton h-3 w-1/2 rounded" />
                   </div>
-                  {supplier.contactPerson && <p className="text-[10px] text-muted-foreground">{supplier.contactPerson}</p>}
-                  {supplier.phone && (
-                    <p className="text-[11px] text-muted-foreground flex items-center gap-1">
-                      <Phone className="h-3 w-3" /> {supplier.phone}
-                    </p>
-                  )}
-                  <div className="flex items-center gap-2 mt-1">
-                    <Badge variant="outline" className="text-[9px]">
-                      <Package className="h-2.5 w-2.5 mr-0.5" />
-                      {supplier._count?.purchases || 0} purchase(s)
-                    </Badge>
-                    {supplier.balance > 0 && (
-                      <Badge variant="outline" className="text-[9px] text-red-600 border-red-300">
-                        ৳{supplier.balance.toFixed(0)} due
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-                <div className="flex flex-col gap-1 shrink-0">
-                  <button className="p-1.5 rounded hover:bg-muted" onClick={(e) => { e.stopPropagation(); openEditDialog(supplier.id); }}>
-                    <Edit2 className="h-3.5 w-3.5 text-muted-foreground" />
-                  </button>
-                  <button className="p-1.5 rounded hover:bg-red-50" onClick={(e) => { e.stopPropagation(); setDeleteConfirm(supplier); }}>
-                    <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive" />
-                  </button>
+                  <div className="skeleton h-6 w-16 rounded-full" />
                 </div>
               </CardContent>
             </Card>
           ))}
+        </div>
+      ) : suppliers.length === 0 ? (
+        <Card className="card-hover shadow-pharmacy border-slate-200/70">
+          <CardContent className="p-8 text-center space-y-3">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-50 to-teal-50">
+              <Truck className="h-8 w-8 text-emerald-500" />
+            </div>
+            <div className="space-y-1">
+              <p className="font-semibold text-slate-900">
+                {search ? "No suppliers found" : "No suppliers yet"}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {search ? "Try a different search term" : "Add your first supplier to track purchases"}
+              </p>
+            </div>
+            {!search && (
+              <Button
+                size="sm"
+                className="gap-1.5 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-pharmacy hover:from-emerald-600 hover:to-teal-700 border-0"
+                onClick={openCreateDialog}
+              >
+                <Plus className="h-4 w-4" /> Add Supplier
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-2.5">
+          {suppliers.map((supplier) => {
+            const status = getBalanceStatus(supplier.balance);
+            return (
+              <Card
+                key={supplier.id}
+                className="card-hover stagger-in cursor-pointer overflow-hidden border-slate-200/70 shadow-pharmacy"
+                onClick={() => { setActiveSupplierId(supplier.id); setActiveView("supplier-detail"); }}
+              >
+                <CardContent className="p-3.5">
+                  <div className="flex items-start gap-3">
+                    {/* Gradient truck icon */}
+                    <div className="relative shrink-0">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-600 shadow-sm">
+                        <Truck className="h-5 w-5 text-white" />
+                      </div>
+                      <span className={cn("absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-white", status.dot)} />
+                    </div>
+
+                    {/* Name + code + meta */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <p className="text-sm font-semibold text-slate-900 truncate">{supplier.name}</p>
+                            {supplier.code && (
+                              <span className="inline-flex items-center rounded-md bg-slate-100 px-1.5 py-0.5 text-[9px] font-mono font-medium text-slate-600">
+                                {supplier.code}
+                              </span>
+                            )}
+                          </div>
+                          {supplier.contactPerson && (
+                            <p className="text-[10px] text-muted-foreground mt-0.5">{supplier.contactPerson}</p>
+                          )}
+                          {supplier.phone && (
+                            <p className="text-[11px] text-muted-foreground flex items-center gap-1 mt-0.5">
+                              <Phone className="h-3 w-3" /> {supplier.phone}
+                            </p>
+                          )}
+                        </div>
+                        {/* Balance badge */}
+                        <span className={cn("shrink-0 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold", status.className)}>
+                          {status.label}
+                        </span>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2 mt-2">
+                        <span className="inline-flex items-center gap-1 rounded-md bg-slate-50 px-1.5 py-0.5 text-[10px] font-medium text-slate-600">
+                          <Package className="h-2.5 w-2.5 text-slate-400" />
+                          {supplier._count?.purchases || 0} purchase(s)
+                        </span>
+                        {supplier.totalPurchased > 0 && (
+                          <span className="inline-flex items-center gap-1 rounded-md bg-sky-50 px-1.5 py-0.5 text-[10px] font-semibold text-sky-700">
+                            ৳{supplier.totalPurchased.toFixed(0)} purchased
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Action buttons */}
+                    <div className="flex flex-col gap-1 shrink-0">
+                      <button
+                        className="p-1.5 rounded-lg hover:bg-emerald-50 transition-colors"
+                        onClick={(e) => { e.stopPropagation(); openEditDialog(supplier.id); }}
+                        aria-label="Edit supplier"
+                      >
+                        <Edit2 className="h-3.5 w-3.5 text-slate-400 hover:text-emerald-600" />
+                      </button>
+                      <button
+                        className="p-1.5 rounded-lg hover:bg-rose-50 transition-colors"
+                        onClick={(e) => { e.stopPropagation(); setDeleteConfirm(supplier); }}
+                        aria-label="Delete supplier"
+                      >
+                        <Trash2 className="h-3.5 w-3.5 text-slate-400 hover:text-rose-600" />
+                      </button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
 
@@ -302,7 +430,7 @@ export function SupplierManager() {
               <Label className="text-xs font-medium">Notes</Label>
               <Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className="min-h-[40px] text-sm" />
             </div>
-            <Button className="w-full h-10 gap-2" onClick={handleSave} disabled={saving || !form.name.trim()}>
+            <Button className="w-full h-10 gap-2 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-pharmacy hover:from-emerald-600 hover:to-teal-700 border-0" onClick={handleSave} disabled={saving || !form.name.trim()}>
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : (editingId ? <Check className="h-4 w-4" /> : <Plus className="h-4 w-4" />)}
               {saving ? "Saving..." : editingId ? "Update" : "Add Supplier"}
             </Button>
@@ -323,8 +451,8 @@ export function SupplierManager() {
               </p>
             )}
             <div className="flex gap-2">
-              <Button variant="outline" className="flex-1" onClick={() => setDeleteConfirm(null)}>Cancel</Button>
-              <Button variant="destructive" className="flex-1 gap-1.5" onClick={handleDelete}>
+              <Button variant="outline" className="flex-1 rounded-xl" onClick={() => setDeleteConfirm(null)}>Cancel</Button>
+              <Button variant="destructive" className="flex-1 gap-1.5 rounded-xl" onClick={handleDelete}>
                 <Trash2 className="h-4 w-4" /> Delete
               </Button>
             </div>

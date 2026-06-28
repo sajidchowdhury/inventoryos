@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import {
-  ArrowLeft, Save, Package, Truck, Plus, X, Search,
-  Calendar, AlertCircle, Check, Loader2, Pill,
+  ArrowLeft, Save, Truck, Plus, X, Search,
+  AlertCircle, Check, Loader2, Pill, CreditCard,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -186,16 +186,24 @@ export function PurchaseForm() {
 
   if (success) {
     return (
-      <motion.div {...fadeIn} className="space-y-4 pb-4">
-        <Card className="border-l-4 border-l-green-500">
-          <CardContent className="p-6 text-center space-y-3">
-            <div className="h-16 w-16 rounded-full bg-green-50 flex items-center justify-center mx-auto">
-              <Check className="h-8 w-8 text-green-600" />
+      <motion.div {...fadeIn} className="space-y-4 pb-4 pharmacy-bg min-h-screen">
+        <div className="flex items-center gap-2 stagger-in">
+          <Button variant="ghost" size="icon" className="shrink-0 rounded-xl" onClick={() => setActiveView("purchases")}>
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <h1 className="text-lg font-bold flex-1">New Purchase</h1>
+        </div>
+        <Card className="stagger-in shadow-pharmacy-lg border-0 overflow-hidden">
+          <CardContent className="p-8 text-center space-y-4">
+            <div className="h-20 w-20 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center mx-auto shadow-lg shadow-emerald-500/30 animate-scale-in">
+              <Check className="h-10 w-10 text-white" />
             </div>
-            <h2 className="text-lg font-bold">Purchase Recorded!</h2>
-            <p className="text-sm text-muted-foreground">
-              Stock received and batches created successfully.
-            </p>
+            <div className="space-y-1">
+              <h2 className="text-lg font-bold">Purchase Recorded!</h2>
+              <p className="text-sm text-muted-foreground">
+                Stock received and batches created successfully.
+              </p>
+            </div>
           </CardContent>
         </Card>
       </motion.div>
@@ -203,31 +211,34 @@ export function PurchaseForm() {
   }
 
   return (
-    <motion.div {...fadeIn} className="space-y-4 pb-4">
+    <motion.div {...fadeIn} className="space-y-4 pb-4 pharmacy-bg min-h-screen">
       {/* Header */}
-      <div className="flex items-center gap-2">
-        <Button variant="ghost" size="icon" className="shrink-0" onClick={() => setActiveView("purchases")}>
+      <div className="flex items-center gap-2 stagger-in">
+        <Button variant="ghost" size="icon" className="shrink-0 rounded-xl" onClick={() => setActiveView("purchases")}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <h1 className="text-lg font-bold flex-1">New Purchase</h1>
       </div>
 
       {error && (
-        <Card className="border-destructive/50 bg-destructive/5">
-          <CardContent className="p-3 flex items-center gap-2 text-sm text-destructive">
+        <Card className="stagger-in shadow-pharmacy border-0 overflow-hidden border-l-4 border-l-rose-500">
+          <CardContent className="p-3 flex items-center gap-2 text-sm text-rose-700 bg-rose-50">
             <AlertCircle className="h-4 w-4 shrink-0" /> {error}
           </CardContent>
         </Card>
       )}
 
-      {/* Supplier */}
-      <Card>
+      {/* Supplier Section */}
+      <Card className="stagger-in shadow-pharmacy border-0 overflow-hidden">
         <CardContent className="p-4 space-y-3">
-          <div className="flex items-center gap-2 text-sm font-semibold text-primary">
-            <Truck className="h-4 w-4" /> Supplier
+          <div className="flex items-center gap-2">
+            <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shrink-0">
+              <Truck className="h-3.5 w-3.5 text-white" />
+            </div>
+            <h2 className="text-sm font-semibold">Supplier</h2>
           </div>
           <Select value={selectedSupplierId} onValueChange={setSelectedSupplierId}>
-            <SelectTrigger className="h-10">
+            <SelectTrigger className="h-10 rounded-xl shadow-pharmacy border-blue-200 focus-visible:ring-blue-500">
               <SelectValue placeholder="Select supplier (optional)" />
             </SelectTrigger>
             <SelectContent>
@@ -240,31 +251,39 @@ export function PurchaseForm() {
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
               <Label className="text-xs font-medium">Supplier Invoice No</Label>
-              <Input value={invoiceNo} onChange={(e) => setInvoiceNo(e.target.value)} className="h-10" placeholder="Optional" />
+              <Input value={invoiceNo} onChange={(e) => setInvoiceNo(e.target.value)} className="h-10 rounded-xl" placeholder="Optional" />
             </div>
             <div className="space-y-1">
               <Label className="text-xs font-medium">Invoice Date</Label>
-              <Input type="date" value={invoiceDate} onChange={(e) => setInvoiceDate(e.target.value)} className="h-10" />
+              <Input type="date" value={invoiceDate} onChange={(e) => setInvoiceDate(e.target.value)} className="h-10 rounded-xl" />
             </div>
           </div>
         </CardContent>
       </Card>
 
+      {/* Items Section */}
+      <div className="stagger-in flex items-center gap-2">
+        <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shrink-0">
+          <Pill className="h-3.5 w-3.5 text-white" />
+        </div>
+        <h2 className="text-sm font-semibold">Items {cart.length > 0 && <span className="text-muted-foreground font-normal">({cart.length})</span>}</h2>
+      </div>
+
       {/* Add Product */}
       {showSearch ? (
-        <Card>
+        <Card className="stagger-in shadow-pharmacy border-0 overflow-hidden">
           <CardContent className="p-3 space-y-2">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-emerald-600" />
               <Input
                 ref={searchInputRef}
                 placeholder="Search product to add..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="pl-9 pr-9 h-10"
+                className="pl-10 pr-10 h-11 rounded-2xl border-emerald-200 bg-white shadow-pharmacy focus-visible:ring-emerald-500 focus-visible:border-emerald-500"
                 autoFocus
               />
-              <Button variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+              <Button variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 rounded-lg"
                 onClick={() => { setShowSearch(false); setSearch(""); }}>
                 <X className="h-4 w-4" />
               </Button>
@@ -279,13 +298,13 @@ export function PurchaseForm() {
                     return (
                       <button
                         key={product.id}
-                        className="w-full text-left p-2 rounded-lg flex items-center gap-2 hover:bg-muted transition-colors disabled:opacity-50"
+                        className="w-full text-left p-2 rounded-xl flex items-center gap-2 hover:bg-emerald-50 transition-colors disabled:opacity-50"
                         onClick={() => !inCart && addToCart(product)}
                         disabled={inCart}
                       >
-                        <div className="h-8 w-8 rounded-lg flex items-center justify-center shrink-0"
-                          style={{ backgroundColor: product.category?.color ? `${product.category.color}20` : "#f3f4f6" }}>
-                          <Pill className="h-4 w-4" style={{ color: product.category?.color || "#6b7280" }} />
+                        <div className="h-9 w-9 rounded-xl flex items-center justify-center shrink-0 bg-gradient-to-br from-emerald-400 to-emerald-600"
+                          style={product.category?.color ? { background: `linear-gradient(135deg, ${product.category.color}, ${product.category.color}dd)` } : undefined}>
+                          <Pill className="h-4 w-4 text-white" />
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium truncate">{product.name}</p>
@@ -303,92 +322,93 @@ export function PurchaseForm() {
           </CardContent>
         </Card>
       ) : (
-        <Button variant="outline" className="w-full h-12 gap-2 border-dashed" onClick={() => setShowSearch(true)}>
+        <Button variant="outline" className="w-full h-12 gap-2 border-dashed rounded-2xl border-emerald-300 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800" onClick={() => setShowSearch(true)}>
           <Plus className="h-4 w-4" /> Add Product
         </Button>
       )}
 
       {/* Cart Items */}
-      {cart.length > 0 && (
-        <div className="space-y-2">
-          <h2 className="text-sm font-semibold text-muted-foreground">Items ({cart.length})</h2>
-          {cart.map((item) => (
-            <Card key={item.product.id}>
-              <CardContent className="p-3 space-y-2">
-                <div className="flex items-start gap-2">
-                  <div className="h-9 w-9 rounded-lg flex items-center justify-center shrink-0"
-                    style={{ backgroundColor: item.product.category?.color ? `${item.product.category.color}20` : "#f3f4f6" }}>
-                    <Pill className="h-4 w-4" style={{ color: item.product.category?.color || "#6b7280" }} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold truncate">{item.product.name}</p>
-                    <p className="text-[10px] text-muted-foreground">{item.product.unit}</p>
-                  </div>
-                  <button className="p-1 rounded hover:bg-red-50" onClick={() => removeFromCart(item.product.id)}>
-                    <X className="h-3.5 w-3.5 text-destructive" />
-                  </button>
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="space-y-1">
-                    <label className="text-[10px] text-muted-foreground">Quantity *</label>
-                    <Input type="number" step="0.01" value={item.quantity} onChange={(e) => updateItem(item.product.id, "quantity", e.target.value)} className="h-9 text-sm" />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] text-muted-foreground">Unit Cost (৳) *</label>
-                    <Input type="number" step="0.01" value={item.unitCost} onChange={(e) => updateItem(item.product.id, "unitCost", e.target.value)} className="h-9 text-sm" />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] text-muted-foreground">Batch No *</label>
-                    <Input value={item.batchNo} onChange={(e) => updateItem(item.product.id, "batchNo", e.target.value)} className="h-9 text-sm" placeholder="SQ240101" />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] text-muted-foreground">Expiry *</label>
-                    <Input type="date" value={item.expiryDate} onChange={(e) => updateItem(item.product.id, "expiryDate", e.target.value)} className="h-9 text-sm" />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] text-muted-foreground">Mfg Date</label>
-                    <Input type="date" value={item.mfgDate} onChange={(e) => updateItem(item.product.id, "mfgDate", e.target.value)} className="h-9 text-sm" />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] text-muted-foreground">MRP (৳)</label>
-                    <Input type="number" step="0.01" value={item.mrp} onChange={(e) => updateItem(item.product.id, "mrp", e.target.value)} className="h-9 text-sm" />
-                  </div>
-                </div>
-                <div className="text-right text-xs font-medium pt-1 border-t">
-                  Line Total: ৳{((parseFloat(item.quantity) || 0) * (parseFloat(item.unitCost) || 0)).toFixed(2)}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
+      {cart.map((item, idx) => (
+        <Card key={item.product.id} className={`card-hover shadow-pharmacy border-0 overflow-hidden ${idx === 0 ? "stagger-in" : ""}`}>
+          <CardContent className="p-3 space-y-2">
+            <div className="flex items-start gap-2">
+              <div className="h-9 w-9 rounded-xl flex items-center justify-center shrink-0 bg-gradient-to-br from-emerald-400 to-emerald-600"
+                style={item.product.category?.color ? { background: `linear-gradient(135deg, ${item.product.category.color}, ${item.product.category.color}dd)` } : undefined}>
+                <Pill className="h-4 w-4 text-white" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold truncate">{item.product.name}</p>
+                <p className="text-[10px] text-muted-foreground">{item.product.unit}</p>
+              </div>
+              <button className="p-1 rounded-lg hover:bg-rose-50" onClick={() => removeFromCart(item.product.id)}>
+                <X className="h-3.5 w-3.5 text-rose-500" />
+              </button>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <label className="text-[10px] text-muted-foreground">Quantity *</label>
+                <Input type="number" step="0.01" value={item.quantity} onChange={(e) => updateItem(item.product.id, "quantity", e.target.value)} className="h-9 text-sm rounded-lg" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] text-muted-foreground">Unit Cost (৳) *</label>
+                <Input type="number" step="0.01" value={item.unitCost} onChange={(e) => updateItem(item.product.id, "unitCost", e.target.value)} className="h-9 text-sm rounded-lg" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] text-muted-foreground">Batch No *</label>
+                <Input value={item.batchNo} onChange={(e) => updateItem(item.product.id, "batchNo", e.target.value)} className="h-9 text-sm rounded-lg font-mono" placeholder="SQ240101" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] text-muted-foreground">Expiry *</label>
+                <Input type="date" value={item.expiryDate} onChange={(e) => updateItem(item.product.id, "expiryDate", e.target.value)} className="h-9 text-sm rounded-lg" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] text-muted-foreground">Mfg Date</label>
+                <Input type="date" value={item.mfgDate} onChange={(e) => updateItem(item.product.id, "mfgDate", e.target.value)} className="h-9 text-sm rounded-lg" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] text-muted-foreground">MRP (৳)</label>
+                <Input type="number" step="0.01" value={item.mrp} onChange={(e) => updateItem(item.product.id, "mrp", e.target.value)} className="h-9 text-sm rounded-lg" />
+              </div>
+            </div>
+            <div className="text-right text-xs font-medium pt-1 border-t border-dashed">
+              Line Total: <span className="text-emerald-600 font-bold">৳{((parseFloat(item.quantity) || 0) * (parseFloat(item.unitCost) || 0)).toFixed(2)}</span>
+            </div>
+          </CardContent>
+        </Card>
+      ))}
 
-      {/* Totals */}
+      {/* Payment Section */}
       {cart.length > 0 && (
-        <Card>
+        <Card className="stagger-in shadow-pharmacy border-0 overflow-hidden">
           <CardContent className="p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shrink-0">
+                <CreditCard className="h-3.5 w-3.5 text-white" />
+              </div>
+              <h2 className="text-sm font-semibold">Payment Summary</h2>
+            </div>
             <div className="space-y-2">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">Subtotal</span>
-                <span>৳{subtotal.toFixed(2)}</span>
+                <span className="font-medium">৳{subtotal.toFixed(2)}</span>
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1">
                   <label className="text-[10px] text-muted-foreground">Discount (৳)</label>
-                  <Input type="number" step="0.01" value={discountAmount} onChange={(e) => setDiscountAmount(e.target.value)} className="h-9 text-sm" />
+                  <Input type="number" step="0.01" value={discountAmount} onChange={(e) => setDiscountAmount(e.target.value)} className="h-9 text-sm rounded-lg" />
                 </div>
                 <div className="space-y-1">
                   <label className="text-[10px] text-muted-foreground">Tax/VAT (৳)</label>
-                  <Input type="number" step="0.01" value={taxAmount} onChange={(e) => setTaxAmount(e.target.value)} className="h-9 text-sm" />
+                  <Input type="number" step="0.01" value={taxAmount} onChange={(e) => setTaxAmount(e.target.value)} className="h-9 text-sm rounded-lg" />
                 </div>
               </div>
-              <div className="flex items-center justify-between font-bold text-base pt-1 border-t">
+              <div className="flex items-center justify-between font-bold text-base pt-2 border-t border-dashed">
                 <span>Total</span>
-                <span className="text-primary">৳{total.toFixed(2)}</span>
+                <span className="text-emerald-600 text-lg">৳{total.toFixed(2)}</span>
               </div>
-              <div className="space-y-1">
+              <div className="space-y-1 pt-1">
                 <label className="text-[10px] text-muted-foreground">Paid Amount (৳)</label>
-                <Input type="number" step="0.01" value={paidAmount} onChange={(e) => setPaidAmount(e.target.value)} className="h-9 text-sm" placeholder="0 (unpaid)" />
+                <Input type="number" step="0.01" value={paidAmount} onChange={(e) => setPaidAmount(e.target.value)} className="h-9 text-sm rounded-lg" placeholder="0 (unpaid)" />
               </div>
             </div>
           </CardContent>
@@ -396,13 +416,20 @@ export function PurchaseForm() {
       )}
 
       {/* Notes */}
-      <div className="space-y-1.5">
-        <Label className="text-xs font-medium">Notes</Label>
-        <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} className="min-h-[50px] text-sm" placeholder="Optional notes" />
-      </div>
+      {cart.length > 0 && (
+        <div className="stagger-in space-y-1.5">
+          <Label className="text-xs font-medium">Notes</Label>
+          <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} className="min-h-[50px] text-sm rounded-xl" placeholder="Optional notes" />
+        </div>
+      )}
 
       {/* Save */}
-      <Button size="lg" className="w-full h-12 gap-2" onClick={handleSave} disabled={saving || cart.length === 0}>
+      <Button
+        size="lg"
+        className="w-full h-12 gap-2 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 text-white shadow-lg shadow-emerald-500/30 rounded-2xl"
+        onClick={handleSave}
+        disabled={saving || cart.length === 0}
+      >
         {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
         {saving ? "Saving..." : "Record Purchase & Receive Stock"}
       </Button>
