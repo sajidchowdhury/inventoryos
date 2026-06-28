@@ -1,0 +1,489 @@
+     1→const {
+     2→  Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
+     3→  PageBreak, Header, Footer, PageNumber, NumberFormat,
+     4→  AlignmentType, HeadingLevel, WidthType, BorderStyle, ShadingType,
+     5→  TableOfContents, LevelFormat,
+     6→} = require("docx");
+     7→const fs = require("fs");
+     8→
+     9→// Palette: Pharmacy green + navy
+    10→const P = {
+    11→  primary: "#0B1D3A",
+    12→  body: "#1A2332",
+    13→  secondary: "#5A6B80",
+    14→  accent: "#16A34A",
+    15→  surface: "#F0FDF4",
+    16→  coverBg: "#0B1D3A",
+    17→  coverTitle: "#FFFFFF",
+    18→  coverSubtitle: "#86EFAC",
+    19→  coverMeta: "#CBD5E1",
+    20→};
+    21→const c = (hex) => hex.replace("#", "");
+    22→
+    23→function heading(text, level = HeadingLevel.HEADING_1) {
+    24→  return new Paragraph({
+    25→    heading: level,
+    26→    spacing: { before: level === HeadingLevel.HEADING_1 ? 360 : 240, after: 120 },
+    27→    children: [new TextRun({ text, bold: true, color: c(P.primary), font: { ascii: "Calibri", eastAsia: "SimHei" } })],
+    28→  });
+    29→}
+    30→
+    31→function body(text) {
+    32→  return new Paragraph({
+    33→    alignment: AlignmentType.JUSTIFIED,
+    34→    spacing: { line: 312, after: 120 },
+    35→    children: [new TextRun({ text, size: 24, color: c(P.body), font: { ascii: "Calibri", eastAsia: "SimSun" } })],
+    36→  });
+    37→}
+    38→
+    39→function bullet(text, level = 0) {
+    40→  return new Paragraph({
+    41→    bullet: { level },
+    42→    spacing: { line: 312, after: 60 },
+    43→    children: [new TextRun({ text, size: 24, color: c(P.body), font: { ascii: "Calibri" } })],
+    44→  });
+    45→}
+    46→
+    47→function boldBody(text) {
+    48→  return new Paragraph({
+    49→    alignment: AlignmentType.JUSTIFIED,
+    50→    spacing: { line: 312, after: 120 },
+    51→    children: [new TextRun({ text, size: 24, color: c(P.body), bold: true, font: { ascii: "Calibri", eastAsia: "SimSun" } })],
+    52→  });
+    53→}
+    54→
+    55→function phaseTitle(text) {
+    56→  return new Paragraph({
+    57→    heading: HeadingLevel.HEADING_2,
+    58→    spacing: { before: 300, after: 120 },
+    59→    children: [
+    60→      new TextRun({ text: "\u2705 ", size: 28, font: { ascii: "Calibri" } }),
+    61→      new TextRun({ text, bold: true, color: c(P.accent), size: 28, font: { ascii: "Calibri", eastAsia: "SimHei" } }),
+    62→    ],
+    63→  });
+    64→}
+    65→
+    66→function subPhaseTitle(text) {
+    67→  return new Paragraph({
+    68→    heading: HeadingLevel.HEADING_3,
+    69→    spacing: { before: 200, after: 100 },
+    70→    children: [
+    71→      new TextRun({ text: "\u25B6 ", size: 24, color: c(P.secondary), font: { ascii: "Calibri" } }),
+    72→      new TextRun({ text, bold: true, color: c(P.primary), size: 24, font: { ascii: "Calibri", eastAsia: "SimHei" } }),
+    73→    ],
+    74→  });
+    75→}
+    76→
+    77→function makeTable(headers, rows) {
+    78→  const borderStyle = { style: BorderStyle.SINGLE, size: 2, color: c(P.accent) };
+    79→  const lightBorder = { style: BorderStyle.SINGLE, size: 1, color: "D0D0D0" };
+    80→  const noBorder = { style: BorderStyle.NONE, size: 0 };
+    81→  return new Table({
+    82→    width: { size: 100, type: WidthType.PERCENTAGE },
+    83→    borders: {
+    84→      top: borderStyle, bottom: borderStyle, left: noBorder, right: noBorder,
+    85→      insideHorizontal: lightBorder, insideVertical: noBorder,
+    86→    },
+    87→    rows: [
+    88→      new TableRow({
+    89→        tableHeader: true, cantSplit: true,
+    90→        children: headers.map(h =>
+    91→          new TableCell({
+    92→            children: [new Paragraph({ children: [new TextRun({ text: h, bold: true, size: 21, color: c(P.primary) })] })],
+    93→            shading: { type: ShadingType.CLEAR, fill: c(P.surface) },
+    94→            margins: { top: 60, bottom: 60, left: 120, right: 120 },
+    95→          })
+    96→        ),
+    97→      }),
+    98→      ...rows.map(row =>
+    99→        new TableRow({
+   100→          cantSplit: true,
+   101→          children: row.map(cell =>
+   102→            new TableCell({
+   103→              children: [new Paragraph({ children: [new TextRun({ text: cell, size: 21, color: c(P.body) })] })],
+   104→              margins: { top: 50, bottom: 50, left: 120, right: 120 },
+   105→            })
+   106→          ),
+   107→        })
+   108→      ),
+   109→    ],
+   110→  });
+   111→}
+   112→
+   113→function spacer() {
+   114→  return new Paragraph({ spacing: { before: 60, after: 60 }, children: [] });
+   115→}
+   116→
+   117→// ── Cover (R4-style) ──
+   118→function buildCover() {
+   119→  return new Table({
+   120→    width: { size: 100, type: WidthType.PERCENTAGE },
+   121→    rows: [
+   122→      new TableRow({
+   123→        height: { value: 9600, rule: "exact" },
+   124→        children: [new TableCell({
+   125→          width: { size: 100, type: WidthType.PERCENTAGE },
+   126→          shading: { type: ShadingType.CLEAR, fill: c(P.coverBg) },
+   127→          verticalAlign: "top",
+   128→          borders: { top: { style: BorderStyle.NONE }, bottom: { style: BorderStyle.NONE }, left: { style: BorderStyle.NONE }, right: { style: BorderStyle.NONE } },
+   129→          children: [
+   130→            new Paragraph({ spacing: { before: 2600 } }),
+   131→            new Paragraph({ alignment: AlignmentType.CENTER, spacing: { line: 900, lineRule: "atLeast" }, children: [
+   132→              new TextRun({ text: "Pharmacy Module", size: 72, bold: true, color: c(P.coverTitle), font: { ascii: "Calibri" } }),
+   133→            ]}),
+   134→            new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 200, line: 480, lineRule: "atLeast" }, children: [
+   135→              new TextRun({ text: "Phase-by-Phase Development Roadmap", size: 32, color: c(P.coverSubtitle), font: { ascii: "Calibri" } }),
+   136→            ]}),
+   137→            new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 100 }, children: [
+   138→              new TextRun({ text: "InventoryOS \u2014 A Collection of Inventory Systems", size: 24, color: c(P.coverMeta), font: { ascii: "Calibri" } }),
+   139→            ]}),
+   140→          ],
+   141→        })],
+   142→      }),
+   143→      new TableRow({
+   144→        height: { value: 7238, rule: "exact" },
+   145→        children: [new TableCell({
+   146→          width: { size: 100, type: WidthType.PERCENTAGE },
+   147→          verticalAlign: "top",
+   148→          borders: { top: { style: BorderStyle.NONE }, bottom: { style: BorderStyle.NONE }, left: { style: BorderStyle.NONE }, right: { style: BorderStyle.NONE } },
+   149→          children: [
+   150→            new Paragraph({ spacing: { before: 1200 } }),
+   151→            new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 80 }, children: [
+   152→              new TextRun({ text: "From Product Master to AI-Powered Insights", size: 22, color: c(P.secondary), font: { ascii: "Calibri" } }),
+   153→            ]}),
+   154→            new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 80 }, children: [
+   155→              new TextRun({ text: "10 Phases | 28 Sub-Phases | Built for Bangladesh Pharmacies", size: 22, color: c(P.secondary), font: { ascii: "Calibri" } }),
+   156→            ]}),
+   157→            new Paragraph({ spacing: { before: 800 } }),
+   158→            new Paragraph({ alignment: AlignmentType.CENTER, children: [
+   159→              new TextRun({ text: "June 2026", size: 22, color: c(P.secondary), font: { ascii: "Calibri" } }),
+   160→            ]}),
+   161→          ],
+   162→        })],
+   163→      }),
+   164→    ],
+   165→  });
+   166→}
+   167→
+   168→// ── Build Document ──
+   169→const doc = new Document({
+   170→  styles: {
+   171→    default: {
+   172→      document: {
+   173→        run: { font: { ascii: "Calibri", eastAsia: "Microsoft YaHei" }, size: 24, color: c(P.body) },
+   174→        paragraph: { spacing: { line: 312 } },
+   175→      },
+   176→      heading1: { run: { font: { ascii: "Calibri", eastAsia: "SimHei" }, size: 32, bold: true, color: c(P.primary) }, paragraph: { spacing: { before: 360, after: 160, line: 312 } } },
+   177→      heading2: { run: { font: { ascii: "Calibri", eastAsia: "SimHei" }, size: 28, bold: true, color: c(P.primary) }, paragraph: { spacing: { before: 240, after: 120, line: 312 } } },
+   178→      heading3: { run: { font: { ascii: "Calibri", eastAsia: "SimHei" }, size: 24, bold: true, color: c(P.primary) }, paragraph: { spacing: { before: 200, after: 100, line: 312 } } },
+   179→    },
+   180→  },
+   181→  numbering: {
+   182→    config: [
+   183→      { reference: "phase-list", levels: [{ level: 0, format: LevelFormat.DECIMAL, text: "%1.", alignment: AlignmentType.LEFT, style: { paragraph: { indent: { left: 720, hanging: 360 } } } }] },
+   184→    ],
+   185→  },
+   186→  sections: [
+   187→    // Cover
+   188→    { properties: { page: { margin: { top: 0, bottom: 0, left: 0, right: 0 }, size: { width: 11906, height: 16838 } } }, children: [buildCover()] },
+   189→    // TOC
+   190→    {
+   191→      properties: { page: { margin: { top: 1440, bottom: 1440, left: 1701, right: 1417 }, pageNumbers: { start: 1, formatType: NumberFormat.UPPER_ROMAN } } },
+   192→      headers: { default: new Header({ children: [new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: "InventoryOS Pharmacy Roadmap", size: 18, color: c(P.secondary) })] })] }) },
+   193→      footers: { default: new Footer({ children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ children: [PageNumber.CURRENT], size: 18, color: c(P.secondary) })] })] }) },
+   194→      children: [
+   195→        new Paragraph({ spacing: { after: 300 }, children: [new TextRun({ text: "Table of Contents", size: 32, bold: true, color: c(P.primary), font: { ascii: "Calibri" } })] }),
+   196→        new TableOfContents("Table of Contents", { hyperlink: true, headingStyleRange: "1-3" }),
+   197→        new Paragraph({ spacing: { before: 200 }, children: [new TextRun({ text: "Right-click the Table of Contents and select \"Update Field\" to refresh page numbers.", italics: true, size: 20, color: "888888" })] }),
+   198→        new Paragraph({ children: [new PageBreak()] }),
+   199→      ],
+   200→    },
+   201→    // Body
+   202→    {
+   203→      properties: { page: { margin: { top: 1440, bottom: 1440, left: 1701, right: 1417 }, pageNumbers: { start: 1, formatType: NumberFormat.DECIMAL } } },
+   204→      headers: { default: new Header({ children: [new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: "InventoryOS Pharmacy Roadmap", size: 18, color: c(P.secondary) })] })] }) },
+   205→      footers: { default: new Footer({ children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ children: [PageNumber.CURRENT], size: 18, color: c(P.secondary) })] })] }) },
+   206→      children: [
+   207→        // ── 1. Executive Summary ──
+   208→        heading("1. Executive Summary"),
+   209→        body("This document defines the complete development roadmap for the InventoryOS Pharmacy Module, the first business-specific module in the InventoryOS platform. Based on a comprehensive business model analysis of Bangladesh pharmacy operations, the module has been decomposed into 10 development phases with 28 sub-phases, organized from foundational data structures to advanced AI-powered features."),
+   210→        body("The pharmacy module is not merely a stock-keeping tool. It is designed to reduce expiry waste by 70-90% through FEFO enforcement and smart alerts, minimize stockouts to increase sales, accelerate daily operations by 50%+ with a three-tap billing flow, provide beautiful dashboards and reports for smarter decisions, and ensure DGDA/Model Pharmacy compliance readiness. Each phase builds incrementally on the previous one, ensuring that every delivery is testable, demonstrable, and useful to real pharmacy owners in Bangladesh."),
+   211→        body("The roadmap prioritizes the features that deliver the highest value first: product management and batch tracking form the data foundation, followed by expiry management (the single biggest value driver), then sales/dispensing for daily operations, and progressively more advanced features like supplier management, reporting, compliance, and AI enhancements."),
+   212→
+   213→        // ── 2. Phase Overview ──
+   214→        heading("2. Phase Overview"),
+   215→        body("The following table provides a high-level view of all 10 phases, their sub-phase counts, estimated timelines, and primary deliverables. Complex phases that require significant development effort are broken into smaller sub-phases to enable incremental testing and delivery."),
+   216→        makeTable(
+   217→          ["Phase", "Name", "Sub-Phases", "Est. Time", "Key Deliverable"],
+   218→          [
+   219→            ["1", "Product Master & Categories", "1a, 1b", "2 weeks", "Full medicine catalogue with categories, units, and search"],
+   220→            ["2", "Batch & Stock Management", "2a, 2b, 2c", "3 weeks", "Multi-batch tracking, FEFO, stock audit, color-coded views"],
+   221→            ["3", "Expiry & Near-Expiry Management", "3a, 3b", "2 weeks", "Smart alerts, quarantine, destruction records"],
+   222→            ["4", "Sales & Quick Dispensing", "4a, 4b, 4c", "3 weeks", "3-tap billing, FEFO auto-select, invoice print, credit sales"],
+   223→            ["5", "Purchase & Supplier Management", "5a, 5b", "2 weeks", "Purchase orders, GRN, supplier returns, payment tracking"],
+   224→            ["6", "Dashboard & Alerts", "6a, 6b", "2 weeks", "Real-time KPIs, smart alerts, purchase suggestions"],
+   225→            ["7", "Reports & Analytics", "7a, 7b", "2 weeks", "Sales, stock valuation, expiry risk, VAT reports"],
+   226→            ["8", "Compliance & Audit Trail", "8a, 8b", "1.5 weeks", "Audit trail, DGDA compliance, temperature logs, drug license"],
+   227→            ["9", "User Roles & Access Control", "9a, 9b", "1.5 weeks", "Role-based permissions, activity logs, session management"],
+   228→            ["10", "AI Features & Value-Adds", "10a, 10b, 10c", "3 weeks", "Generic suggestions, voice search, demand forecasting, PWA offline"],
+   229→          ]
+   230→        ),
+   231→        body("Total estimated development time: approximately 22 weeks (5.5 months). Each sub-phase is designed to be independently testable and deployable, allowing real pharmacy feedback to guide priorities and adjustments."),
+   232→
+   233→        // ── 3. Phase 1: Product Master & Categories ──
+   234→        heading("3. Phase 1: Product Master & Categories"),
+   235→        body("The product master is the data foundation of the entire pharmacy module. Every subsequent feature, from batch tracking to sales dispensing to expiry alerts, depends on having a complete, well-structured product catalogue. This phase ensures that pharmacy owners can define their medicines with all the fields that matter in Bangladesh, including generic/brand duality, therapeutic categories, schedule types, HSN codes for VAT, and unit conversions for strip/box sales."),
+   236→        phaseTitle("Phase 1a: Product Database Schema & CRUD"),
+   237→        body("This sub-phase focuses on creating the pharmacy_products extension table with all required fields and building the basic Create, Read, Update, and Delete operations for products. The extension table links to the base products table via a one-to-one relationship, keeping the core schema clean while adding pharmacy-specific fields like generic name, batch number, manufacturer, expiry date, HSN code, MRP, GST rate, schedule type, and rack number. The API endpoints will support full-text search across brand name, generic name, and category, which is critical for the quick-dispense flow that comes in Phase 4."),
+   238→        bullet("Create pharmacy_products Prisma extension table with all 17+ fields from the business model"),
+   239→        bullet("Build CRUD API endpoints: POST/GET/PUT/DELETE /api/businesses/:id/pharmacy/products"),
+   240→        bullet("Implement full-text search across brand name, generic name, category, and barcode"),
+   241→        bullet("Add unit conversion logic (1 Box = 10 Strip = 100 Tablet) with base unit tracking"),
+   242→        bullet("Support non-medicine items (surgical, baby care, cosmetics, supplements) via product type flag"),
+   243→        bullet("Mobile-first product list with search bar, category filter, and quick-add button"),
+   244→
+   245→        phaseTitle("Phase 1b: Category Management & Product Import"),
+   246→        body("Categories in pharmacies follow a therapeutic class hierarchy (e.g., Antibiotics > Penicillin, or Pain Management > NSAIDs). This sub-phase builds the hierarchical category system with parent-child relationships, pre-seeds common Bangladesh pharmacy categories, and provides a bulk import tool so pharmacy owners can load their existing product lists quickly rather than entering hundreds of items one by one. The import tool will accept CSV uploads with column mapping and validation feedback."),
+   247→        bullet("Build hierarchical category CRUD with parent-child nesting and drag-and-drop reorder"),
+   248→        bullet("Pre-seed 30+ common therapeutic categories used in Bangladesh pharmacies"),
+   249→        bullet("CSV bulk import with column mapping, validation errors preview, and batch insertion"),
+   250→        bullet("Category-wise product counts and stock value summaries on the category list page"),
+   251→        bullet("Category assignment during product creation with auto-suggest from existing categories"),
+   252→
+   253→        // ── 4. Phase 2: Batch & Stock Management ──
+   254→        heading("4. Phase 2: Batch & Stock Management"),
+   255→        body("Batch management is the most critical operational feature for pharmacies. Unlike general retail where products are interchangeable, medicines are tracked by batch number because each batch has its own manufacturing date, expiry date, and purchase price. A single product can have 5-10 active batches at any time, and the system must enforce FEFO (First Expiry First Out) to minimize expiry losses. This phase builds the entire batch lifecycle from receipt through sale to audit."),
+   256→        phaseTitle("Phase 2a: Batch Tracking & FEFO Enforcement"),
+   257→        body("Every incoming stock entry must capture Batch Number, Manufacturing Date, and Expiry Date as mandatory fields. The system will maintain real-time stock quantities at both the batch level and the aggregate product level. FEFO enforcement means that when a sale is made, the system automatically selects the batch with the nearest expiry date. If a pharmacist overrides the FEFO suggestion, they must provide a reason, which is logged for audit purposes. This single feature can reduce expiry waste by 50-70% on its own."),
+   258→        bullet("Create batch model linked to product with batch_no, mfg_date, expiry_date, purchase_price, quantity"),
+   259→        bullet("FEFO auto-selection on sale: system picks nearest-expiry batch by default"),
+   260→        bullet("FEFO override requires reason text, logged in audit trail"),
+   261→        bullet("Real-time quantity tracking: per-batch quantity + total product quantity"),
+   262→        bullet("Color-coded batch list: red (<7 days), orange (<15 days), yellow (<30 days), green (safe)"),
+   263→        bullet("Negative stock prevention: system blocks any transaction that would result in negative quantity"),
+   264→
+   265→        phaseTitle("Phase 2b: Stock Adjustment & Physical Audit"),
+   266→        body("Pharmacies need regular physical stock audits to reconcile system quantities with actual shelf counts. This sub-phase builds the stock adjustment workflow, where staff can perform a physical count, enter the actual quantities, and the system calculates variances. Each variance must have a reason code (Damage, Theft, Expiry, Recount, etc.) and is logged for compliance. The audit interface should be optimized for mobile use, with a batch-wise entry form that allows counting each batch on the shelf."),
+   267→        bullet("Physical stock audit workflow: select products, enter counted quantities, auto-calculate variances"),
+   268→        bullet("Variance reason codes: Damage, Theft, Expiry, Recount, Supplier Short, Other"),
+   269→        bullet("Stock adjustment API with mandatory reason and optional notes"),
+   270→        bullet("Audit history report showing all adjustments with who, when, why, and values"),
+   271→        bullet("Batch-wise audit entry form optimized for mobile with large number input"),
+   272→
+   273→        phaseTitle("Phase 2c: Stock Views & Quick Actions"),
+   274→        body("The stock overview page is the pharmacist's daily command center. It must show at a glance which products are healthy, which are low, and which are approaching expiry. This sub-phase builds the visual stock dashboard with filterable views, quick actions for common tasks, and a responsive layout that works on both mobile phones and tablets. The color-coded batch system from Phase 2a is extended here with summary indicators at the product level."),
+   275→        bullet("Stock list view with color-coded status indicators per product"),
+   276→        bullet("Filters: All, Low Stock, Near Expiry, Out of Stock, Overstock"),
+   277→        bullet("Quick actions: Add Stock, Adjust Stock, View Batches, View History"),
+   278→        bullet("Sort by: Name, Stock Level, Expiry Risk, Category, Last Updated"),
+   279→        bullet("Product detail page with batch list, transaction history, and stock timeline"),
+   280→
+   281→        // ── 5. Phase 3: Expiry & Near-Expiry Management ──
+   282→        heading("5. Phase 3: Expiry & Near-Expiry Management"),
+   283→        body("Expiry management is the single highest-value feature for pharmacies in Bangladesh. A typical pharmacy loses 3-5% of its inventory value to expired products annually, and many lose much more. This phase builds the complete expiry management lifecycle: early warning alerts, near-expiry segregation, supplier return processing, and expired stock quarantine with destruction records. Combined with FEFO from Phase 2, this can reduce expiry waste by 70-90%."),
+   284→        phaseTitle("Phase 3a: Smart Expiry Alerts & Dashboard"),
+   285→        body("The expiry alert system must be proactive and visible. It should not wait for the pharmacist to check a report; it must surface critical information on the dashboard and through push notifications. This sub-phase implements the three-tier alert system (<7 days critical red, <15 days warning orange, <30 days notice yellow), a dedicated near-expiry section on the dashboard, and automatic value-at-risk calculations so the owner knows exactly how much money is at stake."),
+   286→        bullet("Three-tier alert system: Critical (<7 days, red), Warning (<15 days, orange), Notice (<30 days, yellow)"),
+   287→        bullet("Dashboard near-expiry section with count, value at risk, and product list"),
+   288→        bullet("Auto-generated near-expiry report: total value at risk, category-wise breakdown"),
+   289→        bullet("Push notification for critical expiry items (using service worker notifications)"),
+   290→        bullet("Near-expiry segregation: ability to tag items for priority sale or supplier return"),
+   291→
+   292→        phaseTitle("Phase 3b: Supplier Return & Destruction Records"),
+   293→        body("When medicines approach expiry, the best-case scenario is returning them to the supplier for credit (many Bangladesh distributors have short-dated return policies). The worst case is documenting their destruction for DGDA compliance. This sub-phase builds both workflows: the supplier return process with credit note tracking, and the destruction documentation with reason, witness, and disposal method records. Both workflows integrate with the batch and stock system to automatically adjust quantities."),
+   294→        bullet("Supplier return workflow: select near-expiry batches, create return request, track credit note"),
+   295→        bullet("Destruction record: select expired batches, record disposal method, witness name, date"),
+   296→        bullet("Auto-adjust stock quantities on return or destruction confirmation"),
+   297→        bullet("Return history report: how much was returned vs destroyed, supplier-wise breakdown"),
+   298→        bullet("Compliance-ready destruction certificate with all required fields"),
+   299→
+   300→        // ── 6. Phase 4: Sales & Quick Dispensing ──
+   301→        heading("6. Phase 4: Sales & Quick Dispensing"),
+   302→        body("The dispensing flow is what pharmacy staff use 50-200 times per day. If it is slow or confusing, they will abandon the system and go back to manual billing. The goal is a three-tap flow: Search the product, select the batch (FEFO default), enter quantity, done. This phase builds the entire sales pipeline from quick-dispense to invoice printing to credit sale tracking, all optimized for speed on mobile devices with large touch targets and minimal scrolling."),
+   303→        phaseTitle("Phase 4a: Quick Dispense & FEFO Auto-Select"),
+   304→        body("The quick dispense interface is the heart of daily pharmacy operations. When a customer asks for a medicine, the pharmacist types a few characters, sees matching products instantly, taps to select, the system auto-selects the FEFO batch, they enter the quantity, and the item is added to the bill. The entire interaction should take under 10 seconds for a known product. The search must work across brand name, generic name, category, barcode, and rack number to handle however the pharmacist remembers the product."),
+   305→        bullet("Search bar with instant results across brand, generic, category, barcode, rack number"),
+   306→        bullet("Quick dispense mode: Search > Select product > FEFO batch auto-selected > Enter qty > Add to bill"),
+   307→        bullet("Three-tap bill flow optimized for mobile with large buttons and minimal screens"),
+   308→        bullet("MRP below-cost warning: alert if selling price is below purchase price (margin protection)"),
+   309→        bullet("VAT auto-calculation with inclusive/exclusive toggle (medicines have reduced VAT in Bangladesh)"),
+   310→
+   311→        phaseTitle("Phase 4b: Invoice, Prescription & Customer Info"),
+   312→        body("Every sale must produce an invoice, and for prescription medicines, the system should record the prescription details for compliance and traceability. This sub-phase builds the invoice generation system with thermal printer friendly formatting, prescription upload and doctor name recording, optional customer information capture (for loyalty or credit tracking), and WhatsApp/SMS invoice sharing. The invoice template must include all DGDA-required fields: business name, address, license number, dispenser name, and medicine details with batch and expiry."),
+   313→        bullet("Invoice generation with thermal printer friendly layout (58mm/80mm paper width)"),
+   314→        bullet("Prescription upload: camera capture or file upload, doctor name field, prescription notes"),
+   315→        bullet("Customer info: optional name and phone capture for loyalty and credit tracking"),
+   316→        bullet("WhatsApp/SMS invoice sharing via share API (native mobile sharing)"),
+   317→        bullet("Invoice includes: business name, address, drug license, dispenser, batch details, expiry dates"),
+   318→
+   319→        phaseTitle("Phase 4c: Credit Sales, Returns & Due Collection"),
+   320→        body("Many pharmacy transactions in Bangladesh involve credit, especially with regular customers, local clinics, or nearby hospitals. This sub-phase builds the credit sale workflow, due collection tracking, and customer return processing. Credit sales create a receivable record linked to the customer, and the due collection page shows all outstanding amounts with payment history. Returns are processed by linking back to the original sale batch, ensuring stock accuracy."),
+   321→        bullet("Credit sale workflow: mark sale as credit, link to customer, create receivable record"),
+   322→        bullet("Due collection page: outstanding amounts, payment history, customer-wise summary"),
+   323→        bullet("Partial payment support: collect part of the due amount with balance carry-forward"),
+   324→        bullet("Customer return processing: select original sale, select items, auto-adjust batch stock"),
+   325→        bullet("Return reason codes: Wrong Medicine, Defective, Doctor Changed, Side Effect, Other"),
+   326→
+   327→        // ── 7. Phase 5: Purchase & Supplier Management ──
+   328→        heading("7. Phase 5: Purchase & Supplier Management"),
+   329→        body("Purchase management completes the inventory cycle. Pharmacies receive stock from multiple suppliers (Square, Beximco, Renata, local distributors, wholesalers), each with different pricing, return policies, and payment terms. This phase builds the supplier master, purchase order workflow, goods receipt with batch details, invoice and payment tracking, and supplier return processing for short-dated or damaged goods."),
+   330→        phaseTitle("Phase 5a: Supplier Master & Purchase Orders"),
+   331→        body("The supplier master stores all distributor information, and the purchase order workflow allows the pharmacist to create orders from the stock dashboard itself. When the system detects low stock, it can generate a suggested purchase order based on reorder levels and recent sales velocity. The PO is sent to the supplier (initially as a shareable list, later as a direct message), and when goods arrive, they are received against the PO in the GRN step."),
+   332→        bullet("Supplier master: name, contact, address, drug license, return policy, payment terms"),
+   333→        bullet("Purchase order creation: from stock alert suggestion or manual entry"),
+   334→        bullet("PO line items: product, quantity, expected price, notes"),
+   335→        bullet("Smart purchase suggestion based on reorder level and recent sales velocity"),
+   336→        bullet("PO status tracking: Draft, Sent, Partially Received, Fully Received, Cancelled"),
+   337→
+   338→        phaseTitle("Phase 5b: GRN, Invoice Entry & Supplier Returns"),
+   339→        body("The Goods Receipt Note (GRN) is where incoming stock is formally recorded with batch details. Each GRN line item captures the product, batch number, manufacturing date, expiry date, quantity received, and purchase price. If the expiry date is too close (configurable threshold, e.g., less than 6 months remaining), the system alerts the receiver. Supplier returns for short-dated or damaged items create a credit note that reduces the supplier's outstanding balance. Purchase price history is maintained batch-wise for profit calculations."),
+   340→        bullet("GRN workflow: receive against PO or direct entry, batch details mandatory per line"),
+   341→        bullet("Expiry date validation alert on receive if remaining shelf life is below threshold"),
+   342→        bullet("Invoice/bill entry linked to GRN with due date and payment status tracking"),
+   343→        bullet("Supplier return/credit note: select items, reason, auto-adjust stock and supplier balance"),
+   344→        bullet("Purchase price history per product per batch for COGS and margin calculation"),
+   345→
+   346→        // ── 8. Phase 6: Dashboard & Alerts ──
+   347→        heading("8. Phase 6: Dashboard & Alerts"),
+   348→        body("The dashboard is the pharmacy owner's daily command center. It must answer the most important questions at a single glance: How much did I sell today? How much stock do I have? What is expiring soon? What needs reordering? This phase builds the real-time KPI dashboard with visual indicators and the proactive alert system that pushes critical information to the owner without requiring them to dig through reports."),
+   349→        phaseTitle("Phase 6a: Real-Time KPI Dashboard"),
+   350→        body("The dashboard displays four primary KPI cards at the top (today's sales, total stock value, near-expiry count, low-stock count), followed by trend charts and quick-access sections. Below the KPIs, the dashboard shows the near-expiry alert list (with color-coded severity), the low-stock alert list (with reorder suggestions), and a recent activity feed (last 10 transactions). The layout is optimized for mobile with stacked cards that are tappable for drill-down detail views."),
+   351→        bullet("Top KPI cards: Today's Sales, Stock Value (at cost + at MRP), Near-Expiry Count, Low-Stock Count"),
+   352→        bullet("Near-expiry alert section with severity colors and value-at-risk summary"),
+   353→        bullet("Low-stock alert section with reorder level indicator and quick-reorder button"),
+   354→        bullet("Recent activity feed: last 10 transactions with type icons and timestamps"),
+   355→        bullet("Daily sales trend mini-chart (last 7 days) and top 5 selling products today"),
+   356→
+   357→        phaseTitle("Phase 6b: Smart Notifications & Purchase Suggestions"),
+   358→        body("Beyond the dashboard, the system must proactively notify the owner about critical situations. This sub-phase implements the notification engine that generates alerts for low stock (below configurable threshold), expiry warnings (30/15/7 days), slow-moving items (no sales in X days), overstock warnings (above max stock), and daily sales vs target comparisons. The most valuable feature is the smart purchase suggestion: based on recent sales velocity and current stock, the system recommends which products to reorder and in what quantity."),
+   359→        bullet("Low stock alert: configurable per-product threshold, notification + dashboard indicator"),
+   360→        bullet("Expiry alerts: 30-day notice, 15-day warning, 7-day critical, push notification for critical"),
+   361→        bullet("Slow-moving items report: no sales in configurable number of days"),
+   362→        bullet("Overstock warning: stock above max level, tying up capital unnecessarily"),
+   363→        bullet("Smart purchase suggestion: sales velocity + current stock + reorder lead time = optimal order quantity"),
+   364→
+   365→        // ── 9. Phase 7: Reports & Analytics ──
+   366→        heading("9. Phase 7: Reports & Analytics"),
+   367→        body("Reports transform raw transaction data into business intelligence that helps pharmacy owners make smart decisions. This phase builds the complete reporting suite: daily sales, stock valuation, expiry risk, fast/slow movers, purchase vs sales, supplier performance, profit and loss, VAT reports, and inventory efficiency metrics. Each report is designed to be shareable (PDF/WhatsApp) and filterable by date range, category, and supplier."),
+   368→        phaseTitle("Phase 7a: Core Business Reports"),
+   369→        body("The core reports are the ones pharmacy owners check daily or weekly. The daily sales report shows category-wise breakdown, top 10 products, and profit margins. The stock valuation report calculates the total inventory value at both cost price and MRP. The expiry and near-expiry report quantifies the value at risk by category and batch. The fast/slow movers report identifies which products are driving sales and which are tying up capital. All reports support date range filtering and PDF/WhatsApp export."),
+   370→        bullet("Daily Sales Report: category-wise, top 10 products, profit margin per product"),
+   371→        bullet("Stock Valuation Report: total value at cost price + at MRP, category-wise breakdown"),
+   372→        bullet("Expiry & Near-Expiry Report: value at risk by category, by batch, by time bucket"),
+   373→        bullet("Fast/Slow Moving Items: ranked by sales velocity with stock days remaining"),
+   374→        bullet("Purchase vs Sales Report: compare what was bought vs sold, identify wastage"),
+   375→
+   376→        phaseTitle("Phase 7b: Financial & Compliance Reports"),
+   377→        body("Financial reports help the owner understand profitability and tax obligations. The profit and loss report calculates COGS batch-wise for accurate margins. The VAT/tax report generates compliance-ready summaries with HSN-code-wise breakdown. Supplier performance reports track delivery reliability, pricing consistency, and return rates. Advanced analytics include inventory turnover ratio and Days Sales of Inventory (DSI) for operational efficiency measurement. Customer-wise sales history is available if customer tracking is enabled."),
+   378→        bullet("Profit & Loss Report: revenue, COGS (batch-wise), gross margin, by period"),
+   379→        bullet("VAT / Tax Report: HSN-code-wise, inclusive/exclusive, compliance-ready format"),
+   380→        bullet("Supplier Performance Report: delivery time, pricing, return rate, credit note history"),
+   381→        bullet("Inventory Turnover Ratio + Days Sales of Inventory (DSI) per category"),
+   382→        bullet("Customer-wise sales history (if customer tracking is enabled in sales)"),
+   383→
+   384→        // ── 10. Phase 8: Compliance & Audit Trail ──
+   385→        heading("10. Phase 8: Compliance & Audit Trail"),
+   386→        body("DGDA (Directorate General of Drug Administration) and Model Pharmacy inspections require specific documentation: who dispensed what, when, from which batch, with what prescription. This phase builds the complete compliance infrastructure including a full audit trail of all data changes, batch-wise sales traceability for drug recalls, controlled drug registers, temperature logs for fridge items, and drug license information storage."),
+   387→        phaseTitle("Phase 8a: Audit Trail & Traceability"),
+   388→        body("Every data modification in the system must be logged with who changed what, when, and why. The audit trail captures all CRUD operations on products, batches, stock levels, and transactions. Batch-wise sales traceability enables the pharmacy to quickly identify which patients received a specific batch if a drug recall is issued. This is not just a compliance requirement; it is a critical safety feature that protects the pharmacy and its customers."),
+   389→        bullet("Full audit trail: entity, action, old value, new value, user, timestamp, reason"),
+   390→        bullet("Audit log viewer with filters: by date range, user, entity type, action type"),
+   391→        bullet("Batch-wise sales traceability: which batches were sold to whom, when"),
+   392→        bullet("Drug recall response: search by batch number, list all sales of that batch"),
+   393→        bullet("Data export for DGDA inspection: structured audit reports in required format"),
+   394→
+   395→        phaseTitle("Phase 8b: DGDA Compliance Features"),
+   396→        body("Model Pharmacy certification requires specific documentation and operational controls. This sub-phase adds controlled drug registers (for Schedule H, H1, X drugs), temperature log entries for fridge-stored items, drug license information storage and renewal reminders, and sales registers with dispenser identification. These features make the pharmacy inspection-ready and reduce the compliance burden from hours of manual record-keeping to automated digital records."),
+   397→        bullet("Controlled drug register: separate log for Schedule H, H1, X drugs with dispenser signature"),
+   398→        bullet("Temperature log: daily entry for fridge items, alert if temperature exceeds threshold"),
+   399→        bullet("Drug license info storage: license number, validity, renewal reminder alerts"),
+   400→        bullet("Sales register with dispenser info: who dispensed, prescription reference, timestamp"),
+   401→        bullet("Model Pharmacy checklist: built-in compliance checklist with progress indicator"),
+   402→
+   403→        // ── 11. Phase 9: User Roles & Access Control ──
+   404→        heading("11. Phase 9: User Roles & Access Control"),
+   405→        body("Most pharmacies have 2-5 staff members with different responsibilities. The owner needs full access, the pharmacist needs dispensing and report access, and sales staff should only see the dispensing interface with limited reporting. This phase builds role-based access control with three default roles, per-screen permission management, and activity logging so the owner always knows who did what."),
+   406→        phaseTitle("Phase 9a: Role-Based Access Control"),
+   407→        body("The RBAC system defines three default roles: Owner/Admin (full access to all features), Pharmacist (dispense, view reports, manage stock), and Sales Staff (dispense only, limited stock view, no reports). Each role maps to specific screen and action permissions. The owner can customize permissions or create additional roles if needed. Per-business credentials (already built in Phase 1) ensure that staff from one business cannot access another business under the same phone number."),
+   408→        bullet("Three default roles: Owner/Admin, Pharmacist, Sales Staff with pre-defined permissions"),
+   409→        bullet("Permission matrix: screen-level and action-level (view, create, edit, delete) controls"),
+   410→        bullet("Custom role creation for businesses with unique staff structures"),
+   411→        bullet("Per-business credentials isolation (already implemented in auth system from Phase 1)"),
+   412→        bullet("Role assignment UI in business settings with user management table"),
+   413→
+   414→        phaseTitle("Phase 9b: Activity Logging & Session Management"),
+   415→        body("Every user action is logged with the user ID, timestamp, action type, and affected entity. The activity log is viewable by the owner/admin and can be filtered by user, date, and action type. Session management includes login/logout tracking, device information, and automatic session expiry after a configurable idle period. This ensures that the owner has complete visibility into who is using the system and what they are doing, which is especially important when multiple staff members share devices."),
+   416→        bullet("Activity log: user, timestamp, action, entity, details"),
+   417→        bullet("Owner-visible activity feed with filtering by user, date, and action type"),
+   418→        bullet("Session management: login/logout times, device info, idle timeout, forced logout"),
+   419→        bullet("Concurrent session control: limit number of active sessions per user"),
+   420→        bullet("Suspicious activity detection: multiple failed logins, after-hours access alerts"),
+   421→
+   422→        // ── 12. Phase 10: AI Features & Value-Adds ──
+   423→        heading("12. Phase 10: AI Features & Value-Adds"),
+   424→        body("AI features transform the pharmacy module from a record-keeping tool into an intelligent business partner. All AI features are opt-in with a master toggle (\"Enable AI Features\") and individual feature toggles. The user always has full control and can disable any or all AI features without affecting core functionality. This phase implements the four highest-value AI features identified in the business model, plus the PWA offline mode that is critical for Bangladesh's unreliable internet connectivity."),
+   425→        phaseTitle("Phase 10a: Alternative Medicine Suggestions & Voice Search"),
+   426→        body("When a customer asks for a medicine that is out of stock, the system should instantly suggest generic alternatives or cheaper brands with the same active ingredient. This feature uses the generic name field to find matching products and presents them with a price comparison. Voice search allows the pharmacist to say a medicine name in Bengali (e.g., \"paracetamol dekhao\") and instantly see matching results, which is particularly valuable for staff who may not know exact spellings."),
+   427→        bullet("Alternative medicine suggestion: search by generic name, show all brands with prices"),
+   428→        bullet("Generic substitute highlight: flag cheaper alternatives with same active ingredient"),
+   429→        bullet("Voice search integration: Bengali + English speech recognition via Web Speech API"),
+   430→        bullet("Voice-to-product matching: fuzzy search to handle pronunciation variations"),
+   431→        bullet("Master AI toggle + individual feature toggles in settings"),
+   432→
+   433→        phaseTitle("Phase 10b: Demand Forecasting & Expiry Risk Prediction"),
+   434→        body("Demand forecasting uses historical sales data to predict which products will run out soon and how much to reorder. Instead of relying on static reorder levels, the system analyzes the last 30/60/90 days of sales velocity, considers seasonal patterns (e.g., flu season increases paracetamol demand), and suggests optimal reorder quantities that balance availability against expiry risk. Expiry risk prediction takes this further by calculating whether a batch will be fully consumed before it expires, based on current sales rate."),
+   435→        bullet("Demand forecasting: 30/60/90-day sales velocity analysis per product"),
+   436→        bullet("Reorder suggestion: optimal quantity based on velocity + lead time + safety stock"),
+   437→        bullet("Seasonal pattern recognition: detect monthly/seasonal demand fluctuations"),
+   438→        bullet("Expiry risk prediction per batch: will this batch sell out before it expires?"),
+   439→        bullet("Purchase optimization: recommend quantity that minimizes both stockout and expiry risk"),
+   440→
+   441→        phaseTitle("Phase 10c: PWA Offline Mode & Quick Reports"),
+   442→        body("Internet connectivity in Bangladesh can be unreliable, especially outside major cities. The PWA (Progressive Web App) offline mode ensures that the pharmacy module continues to function when the internet is down. Critical operations (dispensing, stock adjustment, product search) work offline using locally cached data, and all transactions are queued for automatic sync when connectivity returns. The quick report generation feature allows the owner to ask for reports in natural language, such as \"show today's sales\" or \"near expiry list\"."),
+   443→        bullet("PWA service worker: cache product data, categories, and recent transactions locally"),
+   444→        bullet("Offline-first dispensing: create sales in local IndexedDB, auto-sync when online"),
+   445→        bullet("Conflict resolution: handle data conflicts when syncing offline transactions"),
+   446→        bullet("Quick report generation: natural language queries via AI (\"today's sales\", \"near expiry\")"),
+   447→        bullet("Offline indicator: visible status badge showing online/offline/syncing state"),
+   448→
+   449→        // ── 13. Development Principles ──
+   450→        heading("13. Development Principles"),
+   451→        body("Throughout all phases, the following principles must be maintained to ensure the pharmacy module meets its goal of being a system that pharmacy owners love rather than tolerate."),
+   452→        makeTable(
+   453→          ["Principle", "Description", "How We Enforce It"],
+   454→          [
+   455→            ["Mobile-First", "Every screen is designed for 360px width first, then enhanced for desktop", "All components use responsive Tailwind classes with sm/md/lg breakpoints"],
+   456→            ["8th-Grader Friendly", "If an 8th-grade student cannot use a feature in 30 seconds, it needs simplification", "Maximum 3 steps per action, large touch targets, clear visual feedback"],
+   457→            ["No Data Loss", "Every transaction is permanent and traceable; nothing is truly deleted", "Soft deletes with isActive flags, full audit trail on all mutations"],
+   458→            ["FEFO Everywhere", "First Expiry First Out is enforced in sales, suggestions, and alerts", "Default batch selection is always FEFO; override requires reason"],
+   459→            ["Offline Resilient", "The system must work without internet for core operations", "PWA with IndexedDB cache and background sync queue"],
+   460→            ["Bilingual", "All UI text available in Bengali and English", "Translation keys from Phase 1, language toggle in settings"],
+   461→          ]
+   462→        ),
+   463→
+   464→        // ── 14. Risk Mitigation ──
+   465→        heading("14. Risk Mitigation"),
+   466→        body("Pharmacy software carries unique risks because it deals with health-critical data and regulatory compliance. The following table identifies the key risks and mitigation strategies that apply across all phases."),
+   467→        makeTable(
+   468→          ["Risk", "Impact", "Mitigation"],
+   469→          [
+   470→            ["Incorrect FEFO enforcement leads to selling expired medicine", "Health hazard, legal liability", "Automated FEFO checks at sale time, mandatory batch selection, expiry date visible on every sale screen"],
+   471→            ["Data entry errors in batch/expiry dates", "Wrong stock levels, missed expiry alerts", "Date validation on entry, barcode scanning for batch details, cross-check against supplier invoice data"],
+   472→            ["Offline sync conflicts corrupt data", "Inconsistent stock records", "Last-write-wins with audit trail, manual conflict resolution UI for discrepancies, regular stock audits"],
+   473→            ["Staff resistance to new system", "Low adoption, continued manual processes", "Phase 4 dispensing flow must be faster than manual; training mode with sample data; gamified onboarding"],
+   474→            ["Regulatory changes (DGDA)", "Non-compliance features", "Modular compliance features in Phase 8, configurable fields, regular review of DGDA requirements"],
+   475→            ["VPS resource limits (80GB)", "Cannot scale with data growth", "Aggressive data archival policy, compressed transaction history, monthly backup rotation"],
+   476→          ]
+   477→        ),
+   478→      ],
+   479→    },
+   480→  ],
+   481→});
+   482→
+   483→Packer.toBuffer(doc).then((buffer) => {
+   484→  const outputPath = "/home/z/my-project/download/InventoryOS_Pharmacy_Roadmap.docx";
+   485→  fs.writeFileSync(outputPath, buffer);
+   486→  console.log(`Document generated: ${outputPath}`);
+   487→  console.log(`Size: ${(buffer.length / 1024).toFixed(1)} KB`);
+   488→});
+   489→
