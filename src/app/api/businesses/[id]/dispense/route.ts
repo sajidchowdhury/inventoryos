@@ -1,7 +1,14 @@
 // POST /api/businesses/[id]/dispense
-// Multi-item dispense using FEFO allocation
-// Input: { items: [{ productId, quantity }], note?: string }
-// Output: Per-item allocation results + overall success/failure
+// Multi-item dispense using FEFO allocation with optional manual batch override (Gap 11)
+//
+// Input:
+//   { items: [{ productId, quantity, manualBatches?: [{ batchId, quantity, overrideReason? }] }], note? }
+//
+// If manualBatches is omitted → standard FEFO allocation (auto)
+// If manualBatches is provided → use those batches instead of FEFO order
+//   - If the first manual batch is NOT the FEFO-first batch → override=true
+//   - overrideReason is required (min 10 chars) when override=true
+//   - A FefoOverride record is created for audit trail
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 
@@ -12,9 +19,16 @@ function calculateBatchStatus(expiryDate: Date): string {
   return "active";
 }
 
+interface ManualBatch {
+  batchId: string;
+  quantity: number;
+  overrideReason?: string;
+}
+
 interface DispenseItem {
   productId: string;
   quantity: number;
+  manualBatches?: ManualBatch[];
 }
 
 interface DispenseResult {
@@ -25,11 +39,14 @@ interface DispenseResult {
   allocated: number;
   shortFall: number;
   success: boolean;
+  override: boolean;
+  overrideReason?: string;
   allocations: Array<{
     batchId: string;
     batchNo: string;
     expiryDate: Date;
     allocated: number;
+    override: boolean;
   }>;
   error?: string;
 }
@@ -48,6 +65,8 @@ export async function POST(
 
     const items: DispenseItem[] = body.items;
     const note = body.note || "Quick dispense";
+    const userId = body.userId || null;
+    const userName = body.userName || null;
 
     // Validate all items first
     for (const item of items) {
@@ -58,14 +77,26 @@ export async function POST(
       if (isNaN(qty) || qty <= 0) {
         return NextResponse.json({ error: "All quantities must be positive numbers" }, { status: 400 });
       }
+      // Validate manual batch overrides
+      if (item.manualBatches && item.manualBatches.length > 0) {
+        for (const mb of item.manualBatches) {
+          if (!mb.batchId) {
+            return NextResponse.json({ error: "manualBatches entries must have batchId" }, { status: 400 });
+          }
+          if (isNaN(mb.quantity) || mb.quantity <= 0) {
+            return NextResponse.json({ error: "manualBatches quantities must be positive" }, { status: 400 });
+          }
+        }
+      }
     }
 
     const results: DispenseResult[] = [];
     let totalSuccess = 0;
     let totalFailures = 0;
     let totalValue = 0;
+    let totalOverrides = 0;
 
-    // Process each item via FEFO
+    // Process each item
     for (const item of items) {
       const requestedQty = parseFloat(item.quantity);
 
@@ -84,6 +115,7 @@ export async function POST(
           allocated: 0,
           shortFall: requestedQty,
           success: false,
+          override: false,
           allocations: [],
           error: "Product not found",
         });
@@ -91,8 +123,8 @@ export async function POST(
         continue;
       }
 
-      // Fetch batches in FEFO order
-      const batches = await db.batch.findMany({
+      // Fetch all available batches in FEFO order
+      const allBatches = await db.batch.findMany({
         where: {
           businessId,
           productId: item.productId,
@@ -102,26 +134,116 @@ export async function POST(
         orderBy: [{ expiryDate: "asc" }, { createdAt: "asc" }],
       });
 
-      // Run FEFO allocation
-      let remaining = requestedQty;
-      const allocations = [];
-      let totalAvailable = 0;
-
-      for (const batch of batches) {
-        totalAvailable += batch.quantity;
-        if (remaining <= 0) continue;
-
-        const take = Math.min(batch.quantity, remaining);
-        allocations.push({
-          batchId: batch.id,
-          batchNo: batch.batchNo,
-          expiryDate: batch.expiryDate,
-          allocated: take,
+      if (allBatches.length === 0) {
+        results.push({
+          productId: product.id,
+          productName: product.name,
+          unit: product.unit,
+          requested: requestedQty,
+          allocated: 0,
+          shortFall: requestedQty,
+          success: false,
+          override: false,
+          allocations: [],
+          error: "No available stock",
         });
-        remaining -= take;
+        totalFailures++;
+        continue;
       }
 
-      const allocated = requestedQty - remaining;
+      // ── Determine allocation: manual or FEFO ──
+      let allocations: Array<{ batchId: string; batchNo: string; expiryDate: Date; allocated: number; override: boolean }> = [];
+      let isOverride = false;
+      let overrideReason: string | undefined;
+
+      if (item.manualBatches && item.manualBatches.length > 0) {
+        // ── Manual batch selection (Gap 11) ──
+        // Check if the first manual batch is NOT the FEFO-first batch
+        const fefoFirstBatchId = allBatches[0]?.id;
+        const firstManualBatchId = item.manualBatches[0]?.batchId;
+
+        if (firstManualBatchId !== fefoFirstBatchId) {
+          // This is an override — require a reason
+          isOverride = true;
+          overrideReason = item.manualBatches[0]?.overrideReason;
+          if (!overrideReason || overrideReason.trim().length < 10) {
+            results.push({
+              productId: product.id,
+              productName: product.name,
+              unit: product.unit,
+              requested: requestedQty,
+              allocated: 0,
+              shortFall: requestedQty,
+              success: false,
+              override: true,
+              allocations: [],
+              error: "Override reason required (min 10 characters) when not using FEFO order",
+            });
+            totalFailures++;
+            continue;
+          }
+        }
+
+        // Build allocations from manual selections
+        for (const mb of item.manualBatches) {
+          const batch = allBatches.find(b => b.id === mb.batchId);
+          if (!batch) {
+            // Try to find it even if it's not in the FEFO list (e.g., quarantined but staff override)
+            const anyBatch = await db.batch.findFirst({
+              where: { id: mb.batchId, businessId, productId: item.productId },
+            });
+            if (!anyBatch) {
+              results.push({
+                productId: product.id,
+                productName: product.name,
+                unit: product.unit,
+                requested: requestedQty,
+                allocated: 0,
+                shortFall: requestedQty,
+                success: false,
+                override: isOverride,
+                allocations: [],
+                error: `Batch ${mb.batchId} not found for product ${product.name}`,
+              });
+              totalFailures++;
+              continue;
+            }
+            allocations.push({
+              batchId: anyBatch.id,
+              batchNo: anyBatch.batchNo,
+              expiryDate: anyBatch.expiryDate,
+              allocated: mb.quantity,
+              override: isOverride,
+            });
+          } else {
+            allocations.push({
+              batchId: batch.id,
+              batchNo: batch.batchNo,
+              expiryDate: batch.expiryDate,
+              allocated: mb.quantity,
+              override: isOverride,
+            });
+          }
+        }
+      } else {
+        // ── Standard FEFO allocation ──
+        let remaining = requestedQty;
+        for (const batch of allBatches) {
+          if (remaining <= 0) continue;
+          const take = Math.min(batch.quantity, remaining);
+          allocations.push({
+            batchId: batch.id,
+            batchNo: batch.batchNo,
+            expiryDate: batch.expiryDate,
+            allocated: take,
+            override: false,
+          });
+          remaining -= take;
+        }
+      }
+
+      // Calculate totals
+      const allocated = allocations.reduce((sum, a) => sum + a.allocated, 0);
       const shortFall = Math.max(0, requestedQty - allocated);
 
       if (shortFall > 0) {
@@ -133,6 +255,8 @@ export async function POST(
           allocated,
           shortFall,
           success: false,
+          override: isOverride,
+          overrideReason,
           allocations,
           error: `Insufficient stock: only ${allocated} of ${requestedQty} ${product.unit} available`,
         });
@@ -169,9 +293,30 @@ export async function POST(
             type: "SALE",
             quantity: alloc.allocated,
             unitPrice: updatedBatch.mrp,
-            note: `${note} (batch ${alloc.batchNo})`,
+            note: `${note} (batch ${alloc.batchNo})${alloc.override ? " [FEFO OVERRIDE]" : ""}`,
           },
         });
+      }
+
+      // ── Gap 11: Create FefoOverride audit record ──
+      if (isOverride && overrideReason) {
+        const fefoFirstBatch = allBatches[0];
+        const selectedBatch = allocations[0];
+        await db.fefoOverride.create({
+          data: {
+            businessId,
+            productId: product.id,
+            productName: product.name,
+            selectedBatchId: selectedBatch.batchId,
+            selectedBatchNo: selectedBatch.batchNo,
+            expectedBatchId: fefoFirstBatch?.id || "",
+            expectedBatchNo: fefoFirstBatch?.batchNo || "",
+            userId,
+            userName,
+            reason: overrideReason,
+          },
+        });
+        totalOverrides++;
       }
 
       // Update inventory
@@ -188,6 +333,8 @@ export async function POST(
         allocated,
         shortFall: 0,
         success: true,
+        override: isOverride,
+        overrideReason,
         allocations,
       });
       totalSuccess++;
@@ -198,13 +345,14 @@ export async function POST(
     return NextResponse.json({
       success: allSuccess,
       message: allSuccess
-        ? `Dispensed ${totalSuccess} item(s) successfully`
+        ? `Dispensed ${totalSuccess} item(s) successfully${totalOverrides > 0 ? ` (${totalOverrides} FEFO override${totalOverrides > 1 ? "s" : ""})` : ""}`
         : `${totalSuccess} succeeded, ${totalFailures} failed`,
       summary: {
         totalItems: items.length,
         success: totalSuccess,
         failures: totalFailures,
         totalValue,
+        totalOverrides,
       },
       results,
     });

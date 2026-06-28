@@ -82,6 +82,7 @@ model Business {
   aiUsageLogs   AIUsageLog[]
   dailyStats    BusinessDailyStats[]
   aiResponseCache AIResponseCache[]
+  fefoOverrides FefoOverride[]
 
   @@index([userId])
   @@index([businessTypeId])
@@ -445,6 +446,7 @@ model SaleItem {
   unitPrice   Float    // price per unit (MRP at time of sale)
   discountPercent Float @default(0)  // per-line discount
   totalPrice  Float    // quantity * unitPrice * (1 - discountPercent/100)
+  override    Boolean  @default(false)  // Gap 11: true when staff picked a non-FEFO batch
 
   sale    Sale    @relation(fields: [saleId], references: [id], onDelete: Cascade)
   business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
@@ -782,4 +784,30 @@ model AIResponseCache {
   @@index([businessId, feature, normalizedQuery])
   @@index([expiresAt])
   @@index([businessId, expiresAt])
+}
+
+// ── FEFO Override Audit Trail (Gap 11) ──
+// Records every time staff overrides FEFO (picks a later-expiring batch
+// instead of the soonest-expiring one). Required for DGDA compliance.
+model FefoOverride {
+  id              String   @id @default(cuid())
+  businessId      String
+  saleId          String?
+  saleItemId      String?
+  productId       String
+  productName     String   // snapshot
+  selectedBatchId String   // the batch actually dispensed
+  selectedBatchNo String   // snapshot
+  expectedBatchId String   // the FEFO-first batch that was skipped
+  expectedBatchNo String   // snapshot
+  userId          String?  // who made the override
+  userName        String?  // snapshot
+  reason          String   // required, min 10 chars
+  createdAt       DateTime @default(now())
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId, createdAt])
+  @@index([saleId])
+  @@index([productId])
 }
