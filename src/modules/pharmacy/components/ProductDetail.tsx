@@ -11,6 +11,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
@@ -165,28 +166,38 @@ export function ProductDetail() {
 
   if (loading) {
     return (
-      <motion.div {...fadeIn} className="space-y-4">
+      <motion.div {...fadeIn} className="pharmacy-bg space-y-4 pb-4">
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="icon" onClick={() => setActiveView("products")}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <h1 className="text-lg font-bold flex-1">Loading...</h1>
+          <div className="h-5 w-28 skeleton rounded-md" />
         </div>
-        <Card className="animate-pulse"><CardContent className="p-6 h-32" /></Card>
+        {/* Gradient header skeleton */}
+        <div className="h-40 skeleton rounded-2xl" />
+        {/* Stat cards skeleton */}
+        <div className="grid grid-cols-3 gap-2">
+          <div className="h-24 skeleton rounded-xl" />
+          <div className="h-24 skeleton rounded-xl" />
+          <div className="h-24 skeleton rounded-xl" />
+        </div>
+        {/* Tabs skeleton */}
+        <div className="h-9 skeleton rounded-full" />
+        <div className="h-48 skeleton rounded-xl" />
       </motion.div>
     );
   }
 
   if (error || !product) {
     return (
-      <motion.div {...fadeIn} className="space-y-4">
+      <motion.div {...fadeIn} className="pharmacy-bg space-y-4 pb-4">
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="icon" onClick={() => setActiveView("products")}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <h1 className="text-lg font-bold flex-1">Error</h1>
         </div>
-        <Card><CardContent className="p-6 text-center text-sm text-destructive">{error || "Product not found"}</CardContent></Card>
+        <Card className="shadow-pharmacy"><CardContent className="p-6 text-center text-sm text-destructive">{error || "Product not found"}</CardContent></Card>
       </motion.div>
     );
   }
@@ -196,10 +207,14 @@ export function ProductDetail() {
   const activeBatches = product.batches.filter((b) => b.status !== "expired" && b.quantity > 0);
   const expiredBatches = product.batches.filter((b) => b.status === "expired");
 
+  const headerGradient = product.category?.color
+    ? `linear-gradient(135deg, ${product.category.color} 0%, color-mix(in srgb, ${product.category.color}, black 28%) 100%)`
+    : "linear-gradient(135deg, #10b981 0%, #059669 100%)";
+
   return (
-    <motion.div {...fadeIn} className="space-y-4 pb-4">
-      {/* Header */}
-      <div className="flex items-center gap-2">
+    <motion.div {...fadeIn} className="pharmacy-bg space-y-4 pb-4">
+      {/* Toolbar */}
+      <div className="flex items-center gap-2 stagger-in">
         <Button variant="ghost" size="icon" className="shrink-0" onClick={() => setActiveView("products")}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
@@ -212,79 +227,102 @@ export function ProductDetail() {
         </Button>
       </div>
 
-      {/* Product Card */}
-      <Card className="overflow-hidden">
-        <CardContent className="p-4 space-y-3">
-          <div className="flex items-start gap-3">
-            <div
-              className="h-12 w-12 rounded-xl flex items-center justify-center shrink-0"
-              style={{ backgroundColor: product.category?.color ? `${product.category.color}20` : "#f3f4f6" }}
-            >
-              <Pill className="h-6 w-6" style={{ color: product.category?.color || "#6b7280" }} />
+      {/* Gradient Header Card */}
+      <Card className="stagger-in overflow-hidden border-0 shadow-pharmacy-lg">
+        <div
+          className="relative p-5"
+          style={{ background: headerGradient }}
+        >
+          {/* Decorative glow */}
+          <div
+            className="absolute inset-0 opacity-30 pointer-events-none"
+            style={{ backgroundImage: "radial-gradient(circle at 85% 15%, rgba(255,255,255,0.55) 0%, transparent 45%)" }}
+          />
+          <div className="relative flex items-start gap-3">
+            <div className="h-14 w-14 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center shrink-0 ring-1 ring-white/30">
+              <Pill className="h-7 w-7 text-white" />
             </div>
             <div className="flex-1 min-w-0">
-              <h2 className="text-base font-bold">{product.name}</h2>
-              {product.genericName && (
-                <p className="text-sm text-muted-foreground">{product.genericName}</p>
-              )}
-              <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex-1 min-w-0">
+                  <h2 className="text-lg font-bold text-white truncate">{product.name}</h2>
+                  {product.genericName && (
+                    <p className="text-sm text-white/85 truncate">{product.genericName}</p>
+                  )}
+                </div>
+                {product.category && (
+                  <span className="text-[10px] bg-white/25 backdrop-blur-sm text-white px-2 py-0.5 rounded-full font-semibold ring-1 ring-white/30 shrink-0">
+                    {product.category.name}
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-1.5 mt-2 flex-wrap">
                 {product.strength && (
-                  <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded font-medium">{product.strength}</span>
+                  <span className="text-[10px] bg-white/20 text-white px-1.5 py-0.5 rounded font-medium">{product.strength}</span>
                 )}
                 {product.dosageForm && (
-                  <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded font-medium">{product.dosageForm}</span>
+                  <span className="text-[10px] bg-white/20 text-white px-1.5 py-0.5 rounded font-medium">{product.dosageForm}</span>
                 )}
                 {product.scheduleType && (
-                  <span className={cn("text-[10px] px-1.5 py-0.5 rounded font-medium", scheduleColors[product.scheduleType] || "bg-gray-100 text-gray-700")}>
+                  <span className="text-[10px] bg-white/25 text-white px-1.5 py-0.5 rounded font-medium ring-1 ring-white/30">
                     {product.scheduleType.replace("_", " ")}
                   </span>
                 )}
                 {product.isPrescription && (
-                  <span className="text-[10px] bg-red-50 text-red-600 px-1.5 py-0.5 rounded font-medium">Rx</span>
+                  <span className="text-[10px] bg-white/35 text-white px-1.5 py-0.5 rounded font-bold ring-1 ring-white/40">Rx</span>
+                )}
+                {/* Stock status badge */}
+                {stockLevel === "ok" && (
+                  <span className="text-[10px] bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded font-semibold ring-1 ring-emerald-200">In Stock</span>
+                )}
+                {stockLevel === "low" && (
+                  <span className="text-[10px] bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded font-semibold ring-1 ring-amber-200">Low Stock</span>
+                )}
+                {stockLevel === "out" && (
+                  <span className="text-[10px] bg-rose-50 text-rose-700 px-1.5 py-0.5 rounded font-semibold ring-1 ring-rose-200">Out of Stock</span>
                 )}
               </div>
             </div>
           </div>
-
           {product.manufacturer && (
-            <div className="text-xs text-muted-foreground">
-              by <span className="font-medium text-foreground">{product.manufacturer}</span>
-              {product.rackNo && <> · Rack <span className="font-medium text-foreground">{product.rackNo}</span></>}
+            <div className="relative text-xs text-white/85 mt-3 pt-3 border-t border-white/20 flex items-center flex-wrap gap-1.5">
+              <span>by <span className="font-semibold text-white">{product.manufacturer}</span></span>
+              {product.rackNo && <><span className="text-white/40">•</span><span>Rack <span className="font-semibold text-white">{product.rackNo}</span></span></>}
             </div>
           )}
-        </CardContent>
+        </div>
       </Card>
 
       {/* Stock Summary */}
-      <div className="grid grid-cols-3 gap-2">
-        <Card>
+      <div className="grid grid-cols-3 gap-2 stagger-in">
+        <Card className="card-hover shadow-pharmacy">
           <CardContent className="p-3 text-center">
             <Boxes className={cn(
               "h-5 w-5 mx-auto mb-1",
-              stockLevel === "out" && "text-red-600",
-              stockLevel === "low" && "text-orange-600",
-              stockLevel === "ok" && "text-green-600"
+              stockLevel === "out" && "text-rose-600",
+              stockLevel === "low" && "text-amber-600",
+              stockLevel === "ok" && "text-emerald-600"
             )} />
             <p className={cn(
               "text-lg font-bold",
-              stockLevel === "out" && "text-red-600",
-              stockLevel === "low" && "text-orange-600",
-              stockLevel === "ok" && "text-green-600"
+              stockLevel === "out" && "text-rose-600",
+              stockLevel === "low" && "text-amber-600",
+              stockLevel === "ok" && "text-emerald-600"
             )}>{totalStock}</p>
             <p className="text-[10px] text-muted-foreground">Total Stock</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="card-hover shadow-pharmacy">
           <CardContent className="p-3 text-center">
             <Package className="h-5 w-5 mx-auto mb-1 text-blue-600" />
             <p className="text-lg font-bold text-blue-600">{product.batches.length}</p>
             <p className="text-[10px] text-muted-foreground">Batches</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="card-hover shadow-pharmacy">
           <CardContent className="p-3 text-center">
-            <AlertTriangle className="h-5 w-5 mx-auto mb-1 text-red-600" />
-            <p className="text-lg font-bold text-red-600">{expiredBatches.length}</p>
+            <AlertTriangle className="h-5 w-5 mx-auto mb-1 text-rose-600" />
+            <p className="text-lg font-bold text-rose-600">{expiredBatches.length}</p>
             <p className="text-[10px] text-muted-foreground">Expired</p>
           </CardContent>
         </Card>
@@ -292,174 +330,202 @@ export function ProductDetail() {
 
       {stockLevel !== "ok" && (
         <Card className={cn(
-          "border-l-4",
-          stockLevel === "out" ? "border-l-red-500 bg-red-50" : "border-l-orange-500 bg-orange-50"
+          "card-hover shadow-pharmacy border-l-4",
+          stockLevel === "out" ? "border-l-rose-500 bg-rose-50" : "border-l-amber-500 bg-amber-50"
         )}>
           <CardContent className="p-3 flex items-center gap-2">
-            <AlertTriangle className={cn("h-4 w-4 shrink-0", stockLevel === "out" ? "text-red-600" : "text-orange-600")} />
-            <p className={cn("text-xs font-medium", stockLevel === "out" ? "text-red-700" : "text-orange-700")}>
+            <AlertTriangle className={cn("h-4 w-4 shrink-0", stockLevel === "out" ? "text-rose-600" : "text-amber-600")} />
+            <p className={cn("text-xs font-medium", stockLevel === "out" ? "text-rose-700" : "text-amber-700")}>
               {stockLevel === "out" ? "OUT OF STOCK" : `LOW STOCK — below minimum (${product.inventory?.minStock || product.minStock} ${product.unit})`}
             </p>
           </CardContent>
         </Card>
       )}
 
-      {/* Storage & Pricing Info */}
-      <Card>
-        <CardContent className="p-0 divide-y">
-          {product.storageCondition && (
-            <div className="p-3 flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">Storage</span>
-              <span className="text-xs font-medium">{product.storageCondition}</span>
-            </div>
-          )}
-          {product.mrp && (
-            <div className="p-3 flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">MRP</span>
-              <span className="text-xs font-bold">৳{product.mrp}</span>
-            </div>
-          )}
-          {product.sku && (
-            <div className="p-3 flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">SKU</span>
-              <span className="text-xs font-medium">{product.sku}</span>
-            </div>
-          )}
-          {product.stripSize && (
-            <div className="p-3 flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">Strip / Box</span>
-              <span className="text-xs font-medium">{product.stripSize} / {product.boxSize || "—"}</span>
-            </div>
-          )}
-          {product.reorderLevel > 0 && (
-            <div className="p-3 flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">Reorder At</span>
-              <span className="text-xs font-medium">{product.reorderLevel} {product.unit}</span>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      {/* Tabbed View */}
+      <Tabs defaultValue="overview" className="stagger-in">
+        <TabsList className="grid grid-cols-3 w-full rounded-full bg-muted/60 p-1 h-auto gap-1">
+          <TabsTrigger value="overview" className="rounded-full py-1.5 text-xs font-semibold data-[state=active]:bg-emerald-500 data-[state=active]:text-white data-[state=active]:shadow-sm dark:data-[state=active]:bg-emerald-500 dark:data-[state=active]:text-white dark:data-[state=active]:border-transparent">Overview</TabsTrigger>
+          <TabsTrigger value="batches" className="rounded-full py-1.5 text-xs font-semibold data-[state=active]:bg-emerald-500 data-[state=active]:text-white data-[state=active]:shadow-sm dark:data-[state=active]:bg-emerald-500 dark:data-[state=active]:text-white dark:data-[state=active]:border-transparent">
+            Batches ({product.batches.length})
+          </TabsTrigger>
+          <TabsTrigger value="history" className="rounded-full py-1.5 text-xs font-semibold data-[state=active]:bg-emerald-500 data-[state=active]:text-white data-[state=active]:shadow-sm dark:data-[state=active]:bg-emerald-500 dark:data-[state=active]:text-white dark:data-[state=active]:border-transparent">History</TabsTrigger>
+        </TabsList>
 
-      {/* Batches Section */}
-      <div>
-        <div className="flex items-center justify-between mb-2">
-          <h2 className="text-sm font-semibold text-muted-foreground flex items-center gap-1.5">
-            <Boxes className="h-4 w-4" /> Batches ({product.batches.length})
-          </h2>
-          <Button size="sm" className="gap-1.5" onClick={handleAddBatch}>
-            <Plus className="h-3.5 w-3.5" /> Add Batch
-          </Button>
-        </div>
-
-        {product.batches.length === 0 ? (
-          <Card>
-            <CardContent className="p-6 text-center space-y-2">
-              <Package className="h-10 w-10 mx-auto text-muted-foreground/30" />
-              <p className="text-sm font-medium">No batches yet</p>
-              <p className="text-xs text-muted-foreground">Add a batch to start tracking stock &amp; expiry</p>
+        <TabsContent value="overview" className="space-y-4 mt-3 focus-visible:outline-none">
+          {/* Storage & Pricing Info */}
+          <Card className="card-hover shadow-pharmacy">
+            <CardContent className="p-0 divide-y">
+              {product.storageCondition && (
+                <div className="p-3 flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">Storage</span>
+                  <span className="text-xs font-medium">{product.storageCondition}</span>
+                </div>
+              )}
+              {product.mrp && (
+                <div className="p-3 flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">MRP</span>
+                  <span className="text-xs font-bold">৳{product.mrp}</span>
+                </div>
+              )}
+              {product.sku && (
+                <div className="p-3 flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">SKU</span>
+                  <span className="text-xs font-medium">{product.sku}</span>
+                </div>
+              )}
+              {product.stripSize && (
+                <div className="p-3 flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">Strip / Box</span>
+                  <span className="text-xs font-medium">{product.stripSize} / {product.boxSize || "—"}</span>
+                </div>
+              )}
+              {product.reorderLevel > 0 && (
+                <div className="p-3 flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">Reorder At</span>
+                  <span className="text-xs font-medium">{product.reorderLevel} {product.unit}</span>
+                </div>
+              )}
             </CardContent>
           </Card>
-        ) : (
-          <div className="space-y-2">
-            {product.batches.map((batch) => {
-              const expiry = formatExpiry(batch.expiryDate);
-              const isQuarantined = batch.status === "quarantined";
-              const isDestroyed = batch.status === "destroyed";
-              const isActive = !isQuarantined && !isDestroyed;
-              return (
-                <Card key={batch.id} className={cn(
-                  "overflow-hidden",
-                  isQuarantined && "border-orange-300 bg-orange-50/30",
-                  isDestroyed && "border-red-300 bg-red-50/30 opacity-75"
-                )}>
-                  <CardContent className="p-3 space-y-2">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <p className="text-sm font-semibold">Batch #{batch.batchNo}</p>
-                          {isActive && (
-                            <Badge
-                              variant="outline"
-                              className={cn("text-[9px] px-1.5 py-0", severityColors[expiry.severity])}
-                            >
-                              {expiry.label}
-                            </Badge>
-                          )}
-                          {isQuarantined && (
-                            <Badge className="text-[9px] px-1.5 py-0 bg-orange-100 text-orange-700">
-                              <ShieldAlert className="h-2.5 w-2.5 mr-0.5" /> QUARANTINED
-                            </Badge>
-                          )}
-                          {isDestroyed && (
-                            <Badge className="text-[9px] px-1.5 py-0 bg-red-100 text-red-700">
-                              <Trash2 className="h-2.5 w-2.5 mr-0.5" /> DESTROYED
-                            </Badge>
+        </TabsContent>
+
+        <TabsContent value="batches" className="space-y-3 mt-3 focus-visible:outline-none">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-muted-foreground flex items-center gap-1.5">
+              <Boxes className="h-4 w-4" /> Batches ({product.batches.length})
+            </h2>
+            <Button size="sm" className="gap-1.5 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white shadow-sm border-0" onClick={handleAddBatch}>
+              <Plus className="h-3.5 w-3.5" /> Add Batch
+            </Button>
+          </div>
+
+          {product.batches.length === 0 ? (
+            <Card className="card-hover shadow-pharmacy">
+              <CardContent className="p-6 text-center space-y-2">
+                <Package className="h-10 w-10 mx-auto text-muted-foreground/30" />
+                <p className="text-sm font-medium">No batches yet</p>
+                <p className="text-xs text-muted-foreground">Add a batch to start tracking stock &amp; expiry</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-2">
+              {product.batches.map((batch) => {
+                const expiry = formatExpiry(batch.expiryDate);
+                const isQuarantined = batch.status === "quarantined";
+                const isDestroyed = batch.status === "destroyed";
+                const isExpiredStatus = batch.status === "expired";
+                const isActive = !isQuarantined && !isDestroyed;
+                return (
+                  <Card key={batch.id} className={cn(
+                    "card-hover shadow-pharmacy overflow-hidden border-l-4",
+                    isExpiredStatus
+                      ? "border-l-rose-500 bg-rose-50/30"
+                      : isQuarantined
+                        ? "border-l-amber-500 bg-amber-50/30"
+                        : isDestroyed
+                          ? "border-l-rose-500 bg-rose-50/30 opacity-75"
+                          : "border-l-emerald-500"
+                  )}>
+                    <CardContent className="p-3 space-y-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="text-sm font-semibold">Batch #{batch.batchNo}</p>
+                            {isActive && (
+                              <Badge
+                                variant="outline"
+                                className={cn("text-[9px] px-1.5 py-0", severityColors[expiry.severity])}
+                              >
+                                {expiry.label}
+                              </Badge>
+                            )}
+                            {isQuarantined && (
+                              <Badge className="text-[9px] px-1.5 py-0 bg-orange-100 text-orange-700">
+                                <ShieldAlert className="h-2.5 w-2.5 mr-0.5" /> QUARANTINED
+                              </Badge>
+                            )}
+                            {isDestroyed && (
+                              <Badge className="text-[9px] px-1.5 py-0 bg-red-100 text-red-700">
+                                <Trash2 className="h-2.5 w-2.5 mr-0.5" /> DESTROYED
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-[11px] text-muted-foreground mt-0.5">
+                            Qty: <span className="font-medium text-foreground">{batch.quantity} {product.unit}</span>
+                            {batch.purchasePrice && <> · Cost: ৳{batch.purchasePrice}</>}
+                            {batch.mrp && <> · MRP: ৳{batch.mrp}</>}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground flex items-center gap-1 mt-0.5">
+                            <Calendar className="h-3 w-3" />
+                            Exp: {new Date(batch.expiryDate).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
+                            {batch.mfgDate && <> · Mfg: {new Date(batch.mfgDate).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}</>}
+                          </p>
+                          {batch.notes && (
+                            <p className="text-[10px] text-muted-foreground italic mt-0.5">{batch.notes}</p>
                           )}
                         </div>
-                        <p className="text-[11px] text-muted-foreground mt-0.5">
-                          Qty: <span className="font-medium text-foreground">{batch.quantity} {product.unit}</span>
-                          {batch.purchasePrice && <> · Cost: ৳{batch.purchasePrice}</>}
-                          {batch.mrp && <> · MRP: ৳{batch.mrp}</>}
-                        </p>
-                        <p className="text-[10px] text-muted-foreground flex items-center gap-1 mt-0.5">
-                          <Calendar className="h-3 w-3" />
-                          Exp: {new Date(batch.expiryDate).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
-                          {batch.mfgDate && <> · Mfg: {new Date(batch.mfgDate).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}</>}
-                        </p>
-                        {batch.notes && (
-                          <p className="text-[10px] text-muted-foreground italic mt-0.5">{batch.notes}</p>
-                        )}
                       </div>
-                    </div>
 
-                    {/* Action Buttons — only show for active batches */}
-                    {isActive && (
-                      <div className="grid grid-cols-3 gap-1 pt-1 border-t">
-                        <button
-                          className="py-1.5 text-[11px] font-medium text-green-700 hover:bg-green-50 rounded flex items-center justify-center gap-1"
-                          onClick={() => setAdjustBatch({ ...batch, status: "STOCK_IN" } as Batch)}
-                        >
-                          <TrendingUp className="h-3 w-3" /> In
-                        </button>
-                        <button
-                          className="py-1.5 text-[11px] font-medium text-orange-700 hover:bg-orange-50 rounded flex items-center justify-center gap-1"
-                          onClick={() => setAdjustBatch({ ...batch, status: "STOCK_OUT" } as Batch)}
-                        >
-                          <TrendingDown className="h-3 w-3" /> Out
-                        </button>
-                        <button
-                          className="py-1.5 text-[11px] font-medium text-orange-700 hover:bg-orange-50 rounded flex items-center justify-center gap-1"
-                          onClick={() => setQuarantineBatch(batch)}
-                        >
-                          <ShieldAlert className="h-3 w-3" /> Quarantine
-                        </button>
-                        <button
-                          className="py-1.5 text-[11px] font-medium text-red-700 hover:bg-red-50 rounded flex items-center justify-center gap-1"
-                          onClick={() => setDisposeBatch(batch)}
-                        >
-                          <Trash2 className="h-3 w-3" /> Dispose
-                        </button>
-                        <button
-                          className="py-1.5 text-[11px] font-medium text-muted-foreground hover:bg-muted rounded flex items-center justify-center gap-1"
-                          onClick={() => handleEditBatch(batch.id)}
-                        >
-                          <Edit2 className="h-3 w-3" /> Edit
-                        </button>
-                        <button
-                          className="py-1.5 text-[11px] font-medium text-destructive hover:bg-red-50 rounded flex items-center justify-center gap-1"
-                          onClick={() => handleDeleteBatch(batch.id, batch.batchNo)}
-                        >
-                          <Trash2 className="h-3 w-3" /> Del
-                        </button>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-        )}
-      </div>
+                      {/* Action Buttons — only show for active batches */}
+                      {isActive && (
+                        <div className="grid grid-cols-3 gap-1 pt-1 border-t">
+                          <button
+                            className="py-1.5 text-[11px] font-medium text-emerald-700 hover:bg-emerald-50 rounded flex items-center justify-center gap-1 transition-colors"
+                            onClick={() => setAdjustBatch({ ...batch, status: "STOCK_IN" } as Batch)}
+                          >
+                            <TrendingUp className="h-3 w-3" /> In
+                          </button>
+                          <button
+                            className="py-1.5 text-[11px] font-medium text-amber-700 hover:bg-amber-50 rounded flex items-center justify-center gap-1 transition-colors"
+                            onClick={() => setAdjustBatch({ ...batch, status: "STOCK_OUT" } as Batch)}
+                          >
+                            <TrendingDown className="h-3 w-3" /> Out
+                          </button>
+                          <button
+                            className="py-1.5 text-[11px] font-medium text-amber-700 hover:bg-amber-50 rounded flex items-center justify-center gap-1 transition-colors"
+                            onClick={() => setQuarantineBatch(batch)}
+                          >
+                            <ShieldAlert className="h-3 w-3" /> Quarantine
+                          </button>
+                          <button
+                            className="py-1.5 text-[11px] font-medium text-rose-700 hover:bg-rose-50 rounded flex items-center justify-center gap-1 transition-colors"
+                            onClick={() => setDisposeBatch(batch)}
+                          >
+                            <Trash2 className="h-3 w-3" /> Dispose
+                          </button>
+                          <button
+                            className="py-1.5 text-[11px] font-medium text-muted-foreground hover:bg-muted rounded flex items-center justify-center gap-1 transition-colors"
+                            onClick={() => handleEditBatch(batch.id)}
+                          >
+                            <Edit2 className="h-3 w-3" /> Edit
+                          </button>
+                          <button
+                            className="py-1.5 text-[11px] font-medium text-destructive hover:bg-rose-50 rounded flex items-center justify-center gap-1 transition-colors"
+                            onClick={() => handleDeleteBatch(batch.id, batch.batchNo)}
+                          >
+                            <Trash2 className="h-3 w-3" /> Del
+                          </button>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="history" className="mt-3 focus-visible:outline-none">
+          <Card className="card-hover shadow-pharmacy">
+            <CardContent className="p-8 text-center space-y-2">
+              <Clock className="h-10 w-10 mx-auto text-muted-foreground/30" />
+              <p className="text-sm font-medium">No history yet</p>
+              <p className="text-xs text-muted-foreground">Stock adjustments and batch events will appear here</p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
       {/* Stock Adjust Dialog */}
       <Dialog open={!!adjustBatch} onOpenChange={(open) => !open && setAdjustBatch(null)}>

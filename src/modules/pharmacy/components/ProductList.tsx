@@ -3,13 +3,12 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
-  Search, Plus, Pill, Filter, X, ChevronDown,
-  Package, Edit2, Trash2, ArrowLeft, AlertCircle, Upload, Eye,
+  Search, Plus, Pill, X, ChevronRight,
+  Package, Edit2, Trash2, ArrowLeft, Upload, Eye,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { useAuthStore } from "@/lib/auth-store";
 import { useNavStore } from "@/lib/nav-store";
 import { cn } from "@/lib/utils";
@@ -67,7 +66,6 @@ export function ProductList() {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [showFilters, setShowFilters] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
 
   const fetchProducts = useCallback(async () => {
@@ -143,36 +141,56 @@ export function ProductList() {
     return "ok";
   };
 
+  const iconGradient = (color?: string | null) => ({
+    background: color
+      ? `linear-gradient(135deg, ${color}, rgba(0,0,0,0.20))`
+      : "linear-gradient(135deg, #94a3b8, #475569)",
+  });
+
   return (
-    <motion.div {...fadeIn} className="space-y-4 pb-4">
+    <motion.div {...fadeIn} className="space-y-4 pb-4 pharmacy-bg">
       {/* Header */}
-      <div className="flex items-center gap-2">
-        <Button variant="ghost" size="icon" className="shrink-0" onClick={() => setActiveView("dashboard")}>
+      <div className="flex items-center gap-2 pt-1">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="shrink-0 rounded-full"
+          onClick={() => setActiveView("dashboard")}
+        >
           <ArrowLeft className="h-5 w-5" />
         </Button>
-        <h1 className="text-lg font-bold flex-1">Products</h1>
-        <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setActiveView("import")}>
+        <h1 className="text-xl font-bold tracking-tight flex-1">Products</h1>
+        <Button
+          size="sm"
+          variant="outline"
+          className="gap-1.5 shadow-pharmacy bg-white"
+          onClick={() => setActiveView("import")}
+        >
           <Upload className="h-4 w-4" /> Import
         </Button>
-        <Button size="sm" className="gap-1.5" onClick={() => setActiveView("add-product")}>
+        <Button
+          size="sm"
+          className="gap-1.5 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white shadow-pharmacy border-0"
+          onClick={() => setActiveView("add-product")}
+        >
           <Plus className="h-4 w-4" /> Add
         </Button>
       </div>
 
       {/* Search Bar */}
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-emerald-500" />
         <Input
           placeholder="Search by name, generic, manufacturer..."
           value={search}
           onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-          className="pl-9 pr-10 h-11"
+          className="pl-10 pr-10 h-12 rounded-2xl shadow-pharmacy border-0 bg-white focus-visible:ring-emerald-500/40 focus-visible:border-emerald-500"
         />
         {(search || selectedCategory) && (
           <Button
             variant="ghost"
             size="icon"
-            className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8"
+            className="absolute right-1.5 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full"
             onClick={() => { setSearch(""); setSelectedCategory(null); setPage(1); }}
           >
             <X className="h-4 w-4" />
@@ -180,14 +198,14 @@ export function ProductList() {
         )}
       </div>
 
-      {/* Category Filter Chips */}
-      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+      {/* Category Filter Pills */}
+      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide -mx-1 px-1">
         <button
           className={cn(
-            "px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors shrink-0",
+            "px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-all shrink-0",
             !selectedCategory
-              ? "bg-primary text-primary-foreground"
-              : "bg-muted text-muted-foreground hover:bg-muted/80"
+              ? "bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-pharmacy"
+              : "bg-white text-gray-600 shadow-pharmacy hover:shadow-pharmacy-lg"
           )}
           onClick={() => { setSelectedCategory(null); setPage(1); }}
         >
@@ -197,10 +215,10 @@ export function ProductList() {
           <button
             key={cat.id}
             className={cn(
-              "px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors shrink-0",
+              "px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-all shrink-0",
               selectedCategory === cat.id
-                ? "text-white"
-                : "bg-muted text-muted-foreground hover:bg-muted/80"
+                ? "text-white shadow-pharmacy"
+                : "bg-white text-gray-600 shadow-pharmacy hover:shadow-pharmacy-lg"
             )}
             style={selectedCategory === cat.id ? { backgroundColor: cat.color } : undefined}
             onClick={() => { setSelectedCategory(cat.id); setPage(1); }}
@@ -211,7 +229,7 @@ export function ProductList() {
       </div>
 
       {/* Results count */}
-      <p className="text-xs text-muted-foreground">
+      <p className="text-xs text-gray-400 px-1">
         {loading ? "Searching..." : `${products.length} product${products.length !== 1 ? "s" : ""} found`}
       </p>
 
@@ -219,75 +237,104 @@ export function ProductList() {
       {loading ? (
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
-            <Card key={i} className="animate-pulse">
-              <CardContent className="p-4">
-                <div className="h-4 bg-muted rounded w-3/4 mb-2" />
-                <div className="h-3 bg-muted rounded w-1/2 mb-2" />
-                <div className="h-3 bg-muted rounded w-1/4" />
+            <Card key={i} className="shadow-pharmacy">
+              <CardContent className="p-4 space-y-3">
+                <div className="flex items-center gap-3">
+                  <div className="h-12 w-12 rounded-2xl skeleton" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-4 w-2/3 rounded skeleton" />
+                    <div className="h-3 w-1/2 rounded skeleton" />
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <div className="h-5 w-16 rounded-full skeleton" />
+                  <div className="h-5 w-20 rounded-full skeleton" />
+                </div>
               </CardContent>
             </Card>
           ))}
         </div>
       ) : products.length === 0 ? (
-        <Card>
-          <CardContent className="p-8 text-center space-y-3">
-            <Package className="h-12 w-12 mx-auto text-muted-foreground/30" />
-            <p className="font-medium">No products found</p>
-            <p className="text-sm text-muted-foreground">
-              {search || selectedCategory
-                ? "Try adjusting your search or filters"
-                : "Add your first product to get started"}
-            </p>
+        <Card className="shadow-pharmacy">
+          <CardContent className="p-10 text-center space-y-4">
+            <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-emerald-50 to-emerald-100 flex items-center justify-center mx-auto">
+              <Package className="h-8 w-8 text-emerald-500" />
+            </div>
+            <div className="space-y-1">
+              <p className="font-bold text-base">No products found</p>
+              <p className="text-sm text-gray-400">
+                {search || selectedCategory
+                  ? "Try adjusting your search or filters"
+                  : "Add your first product to get started"}
+              </p>
+            </div>
             {!search && !selectedCategory && (
-              <Button size="sm" className="gap-1.5" onClick={() => setActiveView("add-product")}>
-                <Plus className="h-3.5 w-3.5" /> Add Product
+              <Button
+                size="sm"
+                className="gap-1.5 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white shadow-pharmacy border-0"
+                onClick={() => setActiveView("add-product")}
+              >
+                <Plus className="h-4 w-4" /> Add your first product
               </Button>
             )}
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-2.5">
           {products.map((product) => {
             const qty = product.inventory?.quantity ?? 0;
             const level = stockLevel(qty, 5);
 
             return (
-              <Card key={product.id} className="overflow-hidden">
+              <Card key={product.id} className="card-hover stagger-in overflow-hidden shadow-pharmacy">
                 <CardContent className="p-0">
+                  {/* Main content - clickable */}
                   <div
-                    className="p-3 flex items-start gap-3 cursor-pointer"
+                    className="p-3.5 flex items-center gap-3 cursor-pointer"
                     onClick={() => handleView(product.id)}
                   >
-                    {/* Category Color Indicator */}
+                    {/* Gradient icon */}
                     <div
-                      className="h-10 w-10 rounded-xl flex items-center justify-center shrink-0 mt-0.5"
-                      style={{ backgroundColor: product.category?.color ? `${product.category.color}20` : "#f3f4f6" }}
+                      className="h-12 w-12 rounded-2xl flex items-center justify-center shrink-0 shadow-sm"
+                      style={iconGradient(product.category?.color)}
                     >
-                      <Pill
-                        className="h-5 w-5"
-                        style={{ color: product.category?.color || "#6b7280" }}
-                      />
+                      <Pill className="h-5 w-5 text-white" />
                     </div>
 
-                    {/* Product Details */}
+                    {/* Product details */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
                           <p className="text-sm font-semibold truncate">{product.name}</p>
                           {product.genericName && (
-                            <p className="text-xs text-muted-foreground truncate">{product.genericName}</p>
+                            <p className="text-xs text-gray-400 truncate mt-0.5">
+                              {product.genericName}
+                            </p>
                           )}
                         </div>
+                        <ChevronRight className="h-4 w-4 text-gray-300 shrink-0 mt-1" />
                       </div>
 
-                      <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                      {/* Badges row */}
+                      <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+                        {product.category && (
+                          <span
+                            className="text-[10px] px-2 py-0.5 rounded-full font-medium"
+                            style={{
+                              backgroundColor: `${product.category.color}20`,
+                              color: product.category.color,
+                            }}
+                          >
+                            {product.category.name}
+                          </span>
+                        )}
                         {product.strength && (
-                          <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded font-medium">
+                          <span className="text-[10px] bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded font-medium">
                             {product.strength}
                           </span>
                         )}
                         {product.dosageForm && (
-                          <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded font-medium">
+                          <span className="text-[10px] bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded font-medium">
                             {product.dosageForm}
                           </span>
                         )}
@@ -297,49 +344,57 @@ export function ProductList() {
                           </span>
                         )}
                         {product.isPrescription && (
-                          <span className="text-[10px] bg-red-50 text-red-600 px-1.5 py-0.5 rounded font-medium">
+                          <span className="text-[10px] bg-rose-50 text-rose-600 px-1.5 py-0.5 rounded font-medium">
                             Rx
+                          </span>
+                        )}
+
+                        {/* Stock badge */}
+                        {level === "ok" && (
+                          <span className="text-[10px] bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full font-semibold">
+                            {qty} in stock
+                          </span>
+                        )}
+                        {level === "low" && (
+                          <span className="text-[10px] bg-amber-50 text-amber-700 px-2 py-0.5 rounded-full font-semibold">
+                            {qty} left
+                          </span>
+                        )}
+                        {level === "out" && (
+                          <span className="text-[10px] bg-rose-50 text-rose-700 px-2 py-0.5 rounded-full font-semibold">
+                            Out of stock
                           </span>
                         )}
                       </div>
 
+                      {/* Manufacturer + price */}
                       <div className="flex items-center justify-between mt-1.5">
-                        <div className="flex items-center gap-2">
-                          <span className={cn(
-                            "text-xs font-semibold",
-                            level === "out" && "text-red-600",
-                            level === "low" && "text-orange-600",
-                            level === "ok" && "text-green-600"
-                          )}>
-                            {qty} {product.unit}{qty !== 1 ? "s" : ""}
-                          </span>
-                          {product.manufacturer && (
-                            <span className="text-[10px] text-muted-foreground">{product.manufacturer}</span>
-                          )}
-                        </div>
+                        {product.manufacturer && (
+                          <span className="text-[10px] text-gray-400">{product.manufacturer}</span>
+                        )}
                         {product.mrp && (
-                          <span className="text-xs font-semibold">৳{product.mrp}</span>
+                          <span className="text-xs font-semibold text-gray-700">৳{product.mrp}</span>
                         )}
                       </div>
                     </div>
                   </div>
 
                   {/* Action Buttons */}
-                  <div className="border-t flex divide-x">
+                  <div className="border-t border-gray-100 flex divide-x divide-gray-100 bg-gray-50/40">
                     <button
-                      className="flex-1 py-2 text-xs font-medium text-muted-foreground hover:text-primary hover:bg-muted/50 transition-colors flex items-center justify-center gap-1"
+                      className="flex-1 py-2.5 text-xs font-medium text-gray-500 hover:text-emerald-600 hover:bg-emerald-50/50 transition-colors flex items-center justify-center gap-1"
                       onClick={() => handleView(product.id)}
                     >
                       <Eye className="h-3 w-3" /> View
                     </button>
                     <button
-                      className="flex-1 py-2 text-xs font-medium text-muted-foreground hover:text-primary hover:bg-muted/50 transition-colors flex items-center justify-center gap-1"
+                      className="flex-1 py-2.5 text-xs font-medium text-gray-500 hover:text-emerald-600 hover:bg-emerald-50/50 transition-colors flex items-center justify-center gap-1"
                       onClick={() => handleEdit(product.id)}
                     >
                       <Edit2 className="h-3 w-3" /> Edit
                     </button>
                     <button
-                      className="flex-1 py-2 text-xs font-medium text-muted-foreground hover:text-destructive hover:bg-red-50 transition-colors flex items-center justify-center gap-1 disabled:opacity-50"
+                      className="flex-1 py-2.5 text-xs font-medium text-gray-500 hover:text-rose-600 hover:bg-rose-50/50 transition-colors flex items-center justify-center gap-1 disabled:opacity-50"
                       onClick={() => handleDelete(product.id)}
                       disabled={deleting === product.id}
                     >
@@ -355,21 +410,23 @@ export function ProductList() {
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-2 pt-2">
+        <div className="flex items-center justify-center gap-3 pt-2">
           <Button
             variant="outline"
             size="sm"
+            className="shadow-pharmacy bg-white"
             disabled={page <= 1}
             onClick={() => setPage((p) => Math.max(1, p - 1))}
           >
             Previous
           </Button>
-          <span className="text-xs text-muted-foreground">
+          <span className="text-xs text-gray-500 font-medium">
             Page {page} of {totalPages}
           </span>
           <Button
             variant="outline"
             size="sm"
+            className="shadow-pharmacy bg-white"
             disabled={page >= totalPages}
             onClick={() => setPage((p) => p + 1)}
           >

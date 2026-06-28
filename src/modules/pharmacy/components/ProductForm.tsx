@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import {
   ArrowLeft, Save, Pill, Tag, Box, Thermometer,
   MapPin, Hash, DollarSign, AlertCircle, Check,
+  Sparkles, Loader2,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -71,6 +72,10 @@ const storageConditions = ["Room Temp", "Fridge (2-8°C)", "Cool & Dry", "Freeze
 const productTypes = ["medicine", "surgical", "cosmetic", "supplement", "baby-care", "other"];
 const units = ["piece", "tablet", "capsule", "strip", "box", "bottle", "tube", "sachet", "ml", "g", "kg"];
 
+/** Shared input styling — rounded-xl corners with emerald focus ring. */
+const inputClass =
+  "h-10 rounded-xl focus-visible:border-emerald-500/70 focus-visible:ring-emerald-500/30";
+
 interface ProductFormProps {
   mode: "add" | "edit";
 }
@@ -84,6 +89,8 @@ export function ProductForm({ mode }: ProductFormProps) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [aiSuggesting, setAiSuggesting] = useState(false);
+  const [aiSuggestion, setAiSuggestion] = useState<string | null>(null);
 
   // Form state
   const [form, setForm] = useState({
@@ -228,20 +235,68 @@ export function ProductForm({ mode }: ProductFormProps) {
     }
   };
 
+  const handleAISuggestCategory = async () => {
+    if (!businessId || !form.name.trim()) return;
+    setAiSuggesting(true);
+    setAiSuggestion(null);
+    try {
+      const res = await fetch(`/api/businesses/${businessId}/ai/product-assistant`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "suggest_category",
+          productName: form.name.trim(),
+          genericName: form.genericName.trim() || undefined,
+        }),
+      });
+      const data = await res.json();
+      if (data.success && data.suggestion) {
+        const suggestedName = (data.suggestion.suggestedCategory || "").toLowerCase().trim();
+        if (!suggestedName) {
+          setAiSuggestion(data.fallbackMessage || "Unable to suggest a category");
+          return;
+        }
+        const match = categories.find(
+          (c) =>
+            c.name.toLowerCase() === suggestedName ||
+            c.name.toLowerCase().includes(suggestedName) ||
+            suggestedName.includes(c.name.toLowerCase())
+        );
+        if (match) {
+          updateField("categoryId", match.id);
+          setAiSuggestion(`Selected: ${match.name}${data.suggestion.reason ? ` — ${data.suggestion.reason}` : ""}`);
+        } else {
+          setAiSuggestion(`AI suggests "${data.suggestion.suggestedCategory}" — not in your categories yet`);
+        }
+      } else {
+        setAiSuggestion(data.fallbackMessage || data.error || "Unable to suggest a category");
+      }
+    } catch {
+      setAiSuggestion("Failed to get AI suggestion");
+    } finally {
+      setAiSuggesting(false);
+    }
+  };
+
   return (
-    <motion.div {...fadeIn} className="space-y-4 pb-4">
+    <motion.div {...fadeIn} className="pharmacy-bg space-y-4 pb-4">
       {/* Header */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 stagger-in">
         <Button variant="ghost" size="icon" className="shrink-0" onClick={() => setActiveView("products")}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
-        <h1 className="text-lg font-bold flex-1">
-          {mode === "edit" ? "Edit Product" : "Add New Product"}
-        </h1>
+        <div className="flex-1 min-w-0">
+          <h1 className="text-lg font-bold truncate">
+            {mode === "edit" ? "Edit Product" : "Add Product"}
+          </h1>
+          <p className="text-xs text-muted-foreground truncate">
+            {mode === "edit" ? "Update product information" : "Create a new product in your inventory"}
+          </p>
+        </div>
       </div>
 
       {error && (
-        <Card className="border-destructive/50 bg-destructive/5">
+        <Card className="border-destructive/50 bg-destructive/5 shadow-pharmacy">
           <CardContent className="p-3 flex items-center gap-2 text-sm text-destructive">
             <AlertCircle className="h-4 w-4 shrink-0" /> {error}
           </CardContent>
@@ -249,18 +304,22 @@ export function ProductForm({ mode }: ProductFormProps) {
       )}
 
       {success && (
-        <Card className="border-green-500/50 bg-green-50">
-          <CardContent className="p-3 flex items-center gap-2 text-sm text-green-700">
+        <Card className="border-emerald-500/50 bg-emerald-50 shadow-pharmacy">
+          <CardContent className="p-3 flex items-center gap-2 text-sm text-emerald-700">
             <Check className="h-4 w-4 shrink-0" /> Product saved successfully!
           </CardContent>
         </Card>
       )}
 
+      {/* Form sections wrapper for staggered animations */}
+      <div className="space-y-4">
+
       {/* Basic Info Section */}
-      <Card>
+      <Card className="card-hover shadow-pharmacy stagger-in">
         <CardContent className="p-4 space-y-4">
-          <div className="flex items-center gap-2 text-sm font-semibold text-primary">
-            <Pill className="h-4 w-4" /> Basic Information
+          <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+            <span className="h-2.5 w-2.5 rounded-full bg-blue-500 shrink-0 ring-4 ring-blue-500/15" />
+            Basic Information
           </div>
 
           <div className="space-y-3">
@@ -270,7 +329,7 @@ export function ProductForm({ mode }: ProductFormProps) {
                 placeholder="e.g., Napa Extra"
                 value={form.name}
                 onChange={(e) => updateField("name", e.target.value)}
-                className="h-10"
+                className={inputClass}
               />
             </div>
 
@@ -280,15 +339,26 @@ export function ProductForm({ mode }: ProductFormProps) {
                 placeholder="e.g., Paracetamol + Caffeine"
                 value={form.genericName}
                 onChange={(e) => updateField("genericName", e.target.value)}
-                className="h-10"
+                className={inputClass}
               />
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label className="text-xs font-medium">Category</Label>
+                <div className="flex items-center justify-between gap-2">
+                  <Label className="text-xs font-medium">Category</Label>
+                  <button
+                    type="button"
+                    onClick={handleAISuggestCategory}
+                    disabled={aiSuggesting || !form.name.trim()}
+                    className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-gradient-to-r from-purple-500 to-violet-600 text-white shadow-sm hover:shadow-md hover:from-purple-600 hover:to-violet-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                  >
+                    {aiSuggesting ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <Sparkles className="h-2.5 w-2.5" />}
+                    {aiSuggesting ? "Thinking..." : "AI Suggest"}
+                  </button>
+                </div>
                 <Select value={form.categoryId} onValueChange={(v) => updateField("categoryId", v)}>
-                  <SelectTrigger className="h-10">
+                  <SelectTrigger className={inputClass}>
                     <SelectValue placeholder="Select" />
                   </SelectTrigger>
                   <SelectContent>
@@ -302,11 +372,17 @@ export function ProductForm({ mode }: ProductFormProps) {
                     ))}
                   </SelectContent>
                 </Select>
+                {aiSuggestion && (
+                  <p className="text-[10px] text-purple-600 italic flex items-start gap-1">
+                    <Sparkles className="h-2.5 w-2.5 mt-0.5 shrink-0" />
+                    <span>{aiSuggestion}</span>
+                  </p>
+                )}
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs font-medium">Product Type</Label>
                 <Select value={form.productType} onValueChange={(v) => updateField("productType", v)}>
-                  <SelectTrigger className="h-10">
+                  <SelectTrigger className={inputClass}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -325,7 +401,7 @@ export function ProductForm({ mode }: ProductFormProps) {
                   placeholder="Internal code"
                   value={form.sku}
                   onChange={(e) => updateField("sku", e.target.value)}
-                  className="h-10"
+                  className={inputClass}
                 />
               </div>
               <div className="space-y-1.5">
@@ -334,7 +410,7 @@ export function ProductForm({ mode }: ProductFormProps) {
                   placeholder="Scan barcode"
                   value={form.barcode}
                   onChange={(e) => updateField("barcode", e.target.value)}
-                  className="h-10"
+                  className={inputClass}
                 />
               </div>
             </div>
@@ -343,10 +419,11 @@ export function ProductForm({ mode }: ProductFormProps) {
       </Card>
 
       {/* Pharmacy Details */}
-      <Card>
+      <Card className="card-hover shadow-pharmacy stagger-in">
         <CardContent className="p-4 space-y-4">
-          <div className="flex items-center gap-2 text-sm font-semibold text-primary">
-            <Tag className="h-4 w-4" /> Pharmacy Details
+          <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+            <span className="h-2.5 w-2.5 rounded-full bg-purple-500 shrink-0 ring-4 ring-purple-500/15" />
+            Pharmacy Details
           </div>
 
           <div className="space-y-3">
@@ -357,13 +434,13 @@ export function ProductForm({ mode }: ProductFormProps) {
                   placeholder="e.g., 500mg"
                   value={form.strength}
                   onChange={(e) => updateField("strength", e.target.value)}
-                  className="h-10"
+                  className={inputClass}
                 />
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs font-medium">Dosage Form</Label>
                 <Select value={form.dosageForm} onValueChange={(v) => updateField("dosageForm", v)}>
-                  <SelectTrigger className="h-10">
+                  <SelectTrigger className={inputClass}>
                     <SelectValue placeholder="Select" />
                   </SelectTrigger>
                   <SelectContent>
@@ -381,7 +458,7 @@ export function ProductForm({ mode }: ProductFormProps) {
                 placeholder="e.g., Square, Beximco, Renata"
                 value={form.manufacturer}
                 onChange={(e) => updateField("manufacturer", e.target.value)}
-                className="h-10"
+                className={inputClass}
               />
             </div>
 
@@ -389,7 +466,7 @@ export function ProductForm({ mode }: ProductFormProps) {
               <div className="space-y-1.5">
                 <Label className="text-xs font-medium">Schedule Type</Label>
                 <Select value={form.scheduleType} onValueChange={(v) => updateField("scheduleType", v)}>
-                  <SelectTrigger className="h-10">
+                  <SelectTrigger className={inputClass}>
                     <SelectValue placeholder="Select" />
                   </SelectTrigger>
                   <SelectContent>
@@ -402,7 +479,7 @@ export function ProductForm({ mode }: ProductFormProps) {
               <div className="space-y-1.5">
                 <Label className="text-xs font-medium">Storage</Label>
                 <Select value={form.storageCondition} onValueChange={(v) => updateField("storageCondition", v)}>
-                  <SelectTrigger className="h-10">
+                  <SelectTrigger className={inputClass}>
                     <SelectValue placeholder="Select" />
                   </SelectTrigger>
                   <SelectContent>
@@ -426,10 +503,11 @@ export function ProductForm({ mode }: ProductFormProps) {
       </Card>
 
       {/* Unit & Packaging */}
-      <Card>
+      <Card className="card-hover shadow-pharmacy stagger-in">
         <CardContent className="p-4 space-y-4">
-          <div className="flex items-center gap-2 text-sm font-semibold text-primary">
-            <Box className="h-4 w-4" /> Unit & Packaging
+          <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+            <span className="h-2.5 w-2.5 rounded-full bg-cyan-500 shrink-0 ring-4 ring-cyan-500/15" />
+            Unit &amp; Packaging
           </div>
 
           <div className="space-y-3">
@@ -437,7 +515,7 @@ export function ProductForm({ mode }: ProductFormProps) {
               <div className="space-y-1.5">
                 <Label className="text-xs font-medium">Base Unit</Label>
                 <Select value={form.unit} onValueChange={(v) => updateField("unit", v)}>
-                  <SelectTrigger className="h-10">
+                  <SelectTrigger className={inputClass}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -454,7 +532,7 @@ export function ProductForm({ mode }: ProductFormProps) {
                   placeholder="e.g., 10"
                   value={form.stripSize}
                   onChange={(e) => updateField("stripSize", e.target.value)}
-                  className="h-10"
+                  className={inputClass}
                 />
               </div>
               <div className="space-y-1.5">
@@ -464,7 +542,7 @@ export function ProductForm({ mode }: ProductFormProps) {
                   placeholder="e.g., 10"
                   value={form.boxSize}
                   onChange={(e) => updateField("boxSize", e.target.value)}
-                  className="h-10"
+                  className={inputClass}
                 />
               </div>
             </div>
@@ -473,10 +551,11 @@ export function ProductForm({ mode }: ProductFormProps) {
       </Card>
 
       {/* Pricing & Tax */}
-      <Card>
+      <Card className="card-hover shadow-pharmacy stagger-in">
         <CardContent className="p-4 space-y-4">
-          <div className="flex items-center gap-2 text-sm font-semibold text-primary">
-            <DollarSign className="h-4 w-4" /> Pricing & Tax
+          <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+            <span className="h-2.5 w-2.5 rounded-full bg-amber-500 shrink-0 ring-4 ring-amber-500/15" />
+            Pricing &amp; Tax
           </div>
 
           <div className="space-y-3">
@@ -489,7 +568,7 @@ export function ProductForm({ mode }: ProductFormProps) {
                   placeholder="0.00"
                   value={form.mrp}
                   onChange={(e) => updateField("mrp", e.target.value)}
-                  className="h-10"
+                  className={inputClass}
                 />
               </div>
               <div className="space-y-1.5">
@@ -500,7 +579,7 @@ export function ProductForm({ mode }: ProductFormProps) {
                   placeholder="0"
                   value={form.vatRate}
                   onChange={(e) => updateField("vatRate", e.target.value)}
-                  className="h-10"
+                  className={inputClass}
                 />
               </div>
             </div>
@@ -511,7 +590,7 @@ export function ProductForm({ mode }: ProductFormProps) {
                   placeholder="e.g., 30049099"
                   value={form.hsnCode}
                   onChange={(e) => updateField("hsnCode", e.target.value)}
-                  className="h-10"
+                  className={inputClass}
                 />
               </div>
               <div className="space-y-1.5">
@@ -520,7 +599,7 @@ export function ProductForm({ mode }: ProductFormProps) {
                   placeholder="e.g., A3, Rack-5"
                   value={form.rackNo}
                   onChange={(e) => updateField("rackNo", e.target.value)}
-                  className="h-10"
+                  className={inputClass}
                 />
               </div>
             </div>
@@ -529,10 +608,11 @@ export function ProductForm({ mode }: ProductFormProps) {
       </Card>
 
       {/* Stock Thresholds */}
-      <Card>
+      <Card className="card-hover shadow-pharmacy stagger-in">
         <CardContent className="p-4 space-y-4">
-          <div className="flex items-center gap-2 text-sm font-semibold text-primary">
-            <AlertCircle className="h-4 w-4" /> Stock Alerts
+          <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+            <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 shrink-0 ring-4 ring-emerald-500/15" />
+            Stock Alerts
           </div>
 
           <div className="space-y-3">
@@ -544,7 +624,7 @@ export function ProductForm({ mode }: ProductFormProps) {
                   placeholder="0"
                   value={form.minStock}
                   onChange={(e) => updateField("minStock", e.target.value)}
-                  className="h-10"
+                  className={inputClass}
                 />
               </div>
               <div className="space-y-1.5">
@@ -554,7 +634,7 @@ export function ProductForm({ mode }: ProductFormProps) {
                   placeholder="0"
                   value={form.maxStock}
                   onChange={(e) => updateField("maxStock", e.target.value)}
-                  className="h-10"
+                  className={inputClass}
                 />
               </div>
               <div className="space-y-1.5">
@@ -564,7 +644,7 @@ export function ProductForm({ mode }: ProductFormProps) {
                   placeholder="0"
                   value={form.reorderLevel}
                   onChange={(e) => updateField("reorderLevel", e.target.value)}
-                  className="h-10"
+                  className={inputClass}
                 />
               </div>
             </div>
@@ -572,10 +652,12 @@ export function ProductForm({ mode }: ProductFormProps) {
         </CardContent>
       </Card>
 
+      </div>
+
       {/* Submit Button */}
       <Button
         size="lg"
-        className="w-full h-12 gap-2"
+        className="w-full h-12 gap-2 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white shadow-lg shadow-emerald-500/30 border-0"
         onClick={handleSubmit}
         disabled={saving || !form.name.trim()}
       >

@@ -3,13 +3,12 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
-  ArrowLeft, Boxes, Clock, AlertTriangle, Calendar,
-  Search, X, Package, TrendingUp, TrendingDown,
+  ArrowLeft, Boxes, Clock, Calendar,
+  Search, X, Package,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { useAuthStore } from "@/lib/auth-store";
 import { useNavStore } from "@/lib/nav-store";
 import { cn } from "@/lib/utils";
@@ -47,18 +46,61 @@ const fadeIn = {
   transition: { duration: 0.3 },
 };
 
-type FilterTab = "all" | "active" | "near_expiry" | "expired";
+type FilterTab = "all" | "active" | "near_expiry" | "expired" | "quarantined";
 
 function daysUntil(dateStr: string): number {
   return Math.floor((new Date(dateStr).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
 }
 
-const filterTabs: { key: FilterTab; label: string; icon: typeof Boxes }[] = [
-  { key: "all", label: "All", icon: Boxes },
-  { key: "active", label: "Active", icon: Package },
-  { key: "near_expiry", label: "Expiring", icon: Clock },
-  { key: "expired", label: "Expired", icon: AlertTriangle },
+const filterTabs: { key: FilterTab; label: string; activeClass: string }[] = [
+  { key: "all", label: "All", activeClass: "bg-gradient-to-r from-emerald-500 to-emerald-600 text-white" },
+  { key: "active", label: "Active", activeClass: "bg-green-500 text-white" },
+  { key: "near_expiry", label: "Near Expiry", activeClass: "bg-amber-500 text-white" },
+  { key: "expired", label: "Expired", activeClass: "bg-rose-500 text-white" },
+  { key: "quarantined", label: "Quarantined", activeClass: "bg-purple-500 text-white" },
 ];
+
+const statusConfig: Record<string, {
+  border: string;
+  dot: string;
+  qtyBadge: string;
+  label: string;
+  pulse?: boolean;
+}> = {
+  active: {
+    border: "border-l-emerald-500",
+    dot: "bg-emerald-500",
+    qtyBadge: "bg-emerald-50 text-emerald-700",
+    label: "Active",
+  },
+  near_expiry: {
+    border: "border-l-amber-500",
+    dot: "bg-amber-500",
+    qtyBadge: "bg-amber-50 text-amber-700",
+    label: "Near Expiry",
+    pulse: true,
+  },
+  expired: {
+    border: "border-l-rose-500",
+    dot: "bg-rose-500",
+    qtyBadge: "bg-rose-50 text-rose-700",
+    label: "Expired",
+    pulse: true,
+  },
+  quarantined: {
+    border: "border-l-purple-500",
+    dot: "bg-purple-500",
+    qtyBadge: "bg-purple-50 text-purple-700",
+    label: "Quarantined",
+  },
+};
+
+const defaultStatus = {
+  border: "border-l-gray-300",
+  dot: "bg-gray-400",
+  qtyBadge: "bg-gray-100 text-gray-600",
+  label: "Unknown",
+};
 
 export function BatchList() {
   const session = useAuthStore((s) => s.session);
@@ -92,10 +134,8 @@ export function BatchList() {
 
   // Filter batches based on search + active filter
   const filteredBatches = batches.filter((b) => {
-    // Status filter
     if (activeFilter !== "all" && b.status !== activeFilter) return false;
 
-    // Search filter (across batch no, product name, manufacturer)
     if (search) {
       const q = search.toLowerCase();
       return (
@@ -123,67 +163,88 @@ export function BatchList() {
     active: summary.active?.count ?? 0,
     near_expiry: summary.near_expiry?.count ?? 0,
     expired: summary.expired?.count ?? 0,
+    quarantined: summary.quarantined?.count ?? 0,
   };
 
   const renderBatch = (batch: Batch) => {
     const days = daysUntil(batch.expiryDate);
-    const severity = days < 0 ? "expired" : days <= 30 ? "critical" : days <= 90 ? "warning" : "ok";
-    const severityColors = {
-      ok: "border-l-green-500",
-      warning: "border-l-orange-500",
-      critical: "border-l-red-500",
-      expired: "border-l-red-700 bg-red-50/50",
-    };
+    const cfg = statusConfig[batch.status] ?? defaultStatus;
+
+    const countdownText = days < 0
+      ? `Expired ${Math.abs(days)} day${Math.abs(days) !== 1 ? "s" : ""} ago`
+      : days === 0
+        ? "Expires today"
+        : `Expires in ${days} day${days !== 1 ? "s" : ""}`;
+    const countdownColor = days < 0
+      ? "text-rose-600"
+      : days <= 30
+        ? "text-amber-600"
+        : "text-gray-500";
 
     return (
       <Card
         key={batch.id}
-        className={cn("border-l-4 overflow-hidden cursor-pointer hover:shadow-md transition-shadow", severityColors[severity])}
+        className={cn(
+          "card-hover stagger-in border-l-4 overflow-hidden cursor-pointer shadow-pharmacy",
+          cfg.border
+        )}
         onClick={() => handleBatchClick(batch)}
       >
-        <CardContent className="p-3 space-y-2">
-          <div className="flex items-start gap-2">
+        <CardContent className="p-3.5 space-y-2.5">
+          {/* Top: gradient icon + product info + status dot */}
+          <div className="flex items-start gap-3">
             <div
-              className="h-9 w-9 rounded-lg flex items-center justify-center shrink-0"
-              style={{ backgroundColor: batch.product.category?.color ? `${batch.product.category.color}20` : "#f3f4f6" }}
+              className="h-11 w-11 rounded-xl flex items-center justify-center shrink-0 shadow-sm"
+              style={{
+                background: batch.product.category?.color
+                  ? `linear-gradient(135deg, ${batch.product.category.color}, rgba(0,0,0,0.20))`
+                  : "linear-gradient(135deg, #94a3b8, #475569)",
+              }}
             >
-              <Package className="h-4 w-4" style={{ color: batch.product.category?.color || "#6b7280" }} />
+              <Package className="h-5 w-5 text-white" />
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold truncate">{batch.product.name}</p>
-              <p className="text-[11px] text-muted-foreground truncate">
+              <p className="text-xs text-gray-400 truncate mt-0.5">
                 {batch.product.genericName || batch.product.manufacturer || "—"}
                 {batch.product.strength && ` · ${batch.product.strength}`}
               </p>
             </div>
-            <div className="text-right shrink-0">
-              <p className="text-sm font-bold">{batch.quantity}</p>
-              <p className="text-[10px] text-muted-foreground">{batch.product.unit}</p>
+            {/* Status indicator dot */}
+            <div className="flex items-center gap-1.5 shrink-0 pt-1">
+              <span
+                className={cn(
+                  "h-2 w-2 rounded-full",
+                  cfg.dot,
+                  cfg.pulse && "animate-pulse-soft"
+                )}
+              />
             </div>
           </div>
 
-          <div className="flex items-center justify-between text-[11px]">
-            <span className="text-muted-foreground">Batch #{batch.batchNo}</span>
-            <Badge
-              variant="outline"
-              className={cn(
-                "text-[9px] px-1.5 py-0",
-                severity === "expired" && "bg-red-100 text-red-700",
-                severity === "critical" && "bg-red-50 text-red-600",
-                severity === "warning" && "bg-orange-50 text-orange-600",
-                severity === "ok" && "bg-green-50 text-green-600"
-              )}
-            >
-              {days < 0 ? `Expired ${Math.abs(days)}d ago` : `${days}d left`}
-            </Badge>
+          {/* Middle: batch no badge + quantity */}
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[10px] bg-gray-100 text-gray-600 px-2 py-1 rounded-md font-mono font-semibold">
+              #{batch.batchNo}
+            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-gray-400">{batch.product.unit}</span>
+              <span className={cn("text-xs font-bold px-2 py-0.5 rounded-full", cfg.qtyBadge)}>
+                {batch.quantity} units
+              </span>
+            </div>
           </div>
 
-          <div className="flex items-center justify-between text-[10px] text-muted-foreground pt-1 border-t">
-            <span className="flex items-center gap-1">
+          {/* Bottom: expiry date + countdown */}
+          <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+            <span className="flex items-center gap-1.5 text-[11px] text-gray-500">
               <Calendar className="h-3 w-3" />
-              Exp: {new Date(batch.expiryDate).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "2-digit" })}
+              {new Date(batch.expiryDate).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "2-digit" })}
             </span>
-            {batch.mrp && <span className="font-medium">৳{batch.mrp}</span>}
+            <span className={cn("text-[11px] font-semibold flex items-center gap-1", countdownColor)}>
+              {(days < 0 || days <= 30) && <Clock className="h-3 w-3" />}
+              {countdownText}
+            </span>
           </div>
         </CardContent>
       </Card>
@@ -191,61 +252,34 @@ export function BatchList() {
   };
 
   return (
-    <motion.div {...fadeIn} className="space-y-4 pb-4">
+    <motion.div {...fadeIn} className="space-y-4 pb-4 pharmacy-bg">
       {/* Header */}
-      <div className="flex items-center gap-2">
-        <Button variant="ghost" size="icon" className="shrink-0" onClick={() => setActiveView("dashboard")}>
+      <div className="flex items-center gap-2 pt-1">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="shrink-0 rounded-full"
+          onClick={() => setActiveView("dashboard")}
+        >
           <ArrowLeft className="h-5 w-5" />
         </Button>
-        <h1 className="text-lg font-bold flex-1">All Batches</h1>
-      </div>
-
-      {/* Summary Cards */}
-      <div className="grid grid-cols-4 gap-2">
-        <Card>
-          <CardContent className="p-2 text-center">
-            <Boxes className="h-4 w-4 mx-auto text-blue-600 mb-0.5" />
-            <p className="text-base font-bold text-blue-600">{tabCounts.all}</p>
-            <p className="text-[9px] text-muted-foreground">Total</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-2 text-center">
-            <Package className="h-4 w-4 mx-auto text-green-600 mb-0.5" />
-            <p className="text-base font-bold text-green-600">{tabCounts.active}</p>
-            <p className="text-[9px] text-muted-foreground">Active</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-2 text-center">
-            <Clock className="h-4 w-4 mx-auto text-orange-600 mb-0.5" />
-            <p className="text-base font-bold text-orange-600">{tabCounts.near_expiry}</p>
-            <p className="text-[9px] text-muted-foreground">Expiring</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-2 text-center">
-            <AlertTriangle className="h-4 w-4 mx-auto text-red-600 mb-0.5" />
-            <p className="text-base font-bold text-red-600">{tabCounts.expired}</p>
-            <p className="text-[9px] text-muted-foreground">Expired</p>
-          </CardContent>
-        </Card>
+        <h1 className="text-xl font-bold tracking-tight flex-1">Batches</h1>
       </div>
 
       {/* Search */}
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-emerald-500" />
         <Input
           placeholder="Search by batch no, product, manufacturer..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="pl-9 pr-9 h-11"
+          className="pl-10 pr-9 h-12 rounded-2xl shadow-pharmacy border-0 bg-white focus-visible:ring-emerald-500/40 focus-visible:border-emerald-500"
         />
         {search && (
           <Button
             variant="ghost"
             size="icon"
-            className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8"
+            className="absolute right-1.5 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full"
             onClick={() => setSearch("")}
           >
             <X className="h-4 w-4" />
@@ -253,22 +287,28 @@ export function BatchList() {
         )}
       </div>
 
-      {/* Filter Tabs */}
-      <div className="flex gap-1 bg-muted/50 rounded-lg p-1">
+      {/* Status Filter Pills */}
+      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide -mx-1 px-1">
         {filterTabs.map((tab) => (
           <button
             key={tab.key}
             className={cn(
-              "flex-1 py-1.5 text-xs font-medium rounded-md transition-colors flex items-center justify-center gap-1",
+              "px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-all shrink-0 flex items-center gap-1.5",
               activeFilter === tab.key
-                ? "bg-card text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
+                ? cn(tab.activeClass, "shadow-pharmacy")
+                : "bg-white text-gray-600 shadow-pharmacy hover:shadow-pharmacy-lg"
             )}
             onClick={() => setActiveFilter(tab.key)}
           >
-            <tab.icon className="h-3.5 w-3.5" />
             {tab.label}
-            <span className="text-[10px] opacity-70">({tabCounts[tab.key]})</span>
+            <span
+              className={cn(
+                "text-[10px] px-1.5 py-0 rounded-full font-bold",
+                activeFilter === tab.key ? "bg-white/25" : "bg-gray-100 text-gray-500"
+              )}
+            >
+              {tabCounts[tab.key]}
+            </span>
           </button>
         ))}
       </div>
@@ -277,32 +317,49 @@ export function BatchList() {
       {loading ? (
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
-            <Card key={i} className="animate-pulse">
-              <CardContent className="p-4 h-20" />
+            <Card key={i} className="shadow-pharmacy">
+              <CardContent className="p-3.5 space-y-3">
+                <div className="flex items-center gap-3">
+                  <div className="h-11 w-11 rounded-xl skeleton" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-4 w-2/3 rounded skeleton" />
+                    <div className="h-3 w-1/2 rounded skeleton" />
+                  </div>
+                </div>
+                <div className="h-6 w-full rounded skeleton" />
+              </CardContent>
             </Card>
           ))}
         </div>
       ) : sortedBatches.length === 0 ? (
-        <Card>
-          <CardContent className="p-8 text-center space-y-2">
-            <Boxes className="h-12 w-12 mx-auto text-muted-foreground/30" />
-            <p className="font-medium">
-              {search ? "No batches match your search" : `No ${activeFilter !== "all" ? activeFilter.replace("_", " ") : ""} batches`}
-            </p>
-            <p className="text-sm text-muted-foreground">
-              {activeFilter === "expired" || activeFilter === "near_expiry"
-                ? "Great! Nothing to worry about."
-                : "Add batches from any product's detail page"}
-            </p>
+        <Card className="shadow-pharmacy">
+          <CardContent className="p-10 text-center space-y-4">
+            <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-emerald-50 to-emerald-100 flex items-center justify-center mx-auto">
+              <Boxes className="h-8 w-8 text-emerald-500" />
+            </div>
+            <div className="space-y-1">
+              <p className="font-bold text-base">
+                {search
+                  ? "No batches match your search"
+                  : `No ${activeFilter !== "all" ? activeFilter.replace("_", " ") : ""} batches`}
+              </p>
+              <p className="text-sm text-gray-400">
+                {activeFilter === "expired" || activeFilter === "near_expiry"
+                  ? "Great! Nothing to worry about."
+                  : "Add batches from any product's detail page"}
+              </p>
+            </div>
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-2">
-          <p className="text-xs text-muted-foreground text-center">
-            Showing {sortedBatches.length} batch{sortedBatches.length !== 1 ? "es" : ""} (sorted by expiry)
+        <>
+          <p className="text-xs text-gray-400 text-center">
+            Showing {sortedBatches.length} batch{sortedBatches.length !== 1 ? "es" : ""} · sorted by expiry
           </p>
-          {sortedBatches.map(renderBatch)}
-        </div>
+          <div className="space-y-2.5">
+            {sortedBatches.map(renderBatch)}
+          </div>
+        </>
       )}
     </motion.div>
   );
