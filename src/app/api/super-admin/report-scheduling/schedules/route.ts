@@ -7,7 +7,14 @@ export async function GET(req: NextRequest) {
   const session = await verifySuperAdmin(req);
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   try {
+    const { searchParams } = new URL(req.url);
+    const businessTypeId = searchParams.get("businessTypeId"); // Phase 6: multi-project filter
+
+    const where: any = {};
+    if (businessTypeId) where.businessTypeId = businessTypeId;
+
     const schedules = await db.reportSchedule.findMany({
+      where,
       orderBy: { createdAt: "desc" },
     });
     return NextResponse.json({ success: true, schedules });
@@ -23,7 +30,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { name, description, frequency, dayOfWeek, dayOfMonth, startDate, endDate,
       occasions, considerSeasons, considerEpidemics, targetClientMode, targetClientIds,
-      deliveryChannels, reportPeriodDays, isActive } = body;
+      deliveryChannels, reportPeriodDays, isActive, businessTypeId } = body;
 
     if (!name || !frequency) {
       return NextResponse.json({ error: "name and frequency are required" }, { status: 400 });
@@ -58,6 +65,7 @@ export async function POST(req: NextRequest) {
         targetClientIds: targetClientIds ? JSON.stringify(targetClientIds) : null,
         deliveryChannels: JSON.stringify(deliveryChannels || ["email"]),
         reportPeriodDays: reportPeriodDays || 7,
+        businessTypeId: businessTypeId || null, // Phase 6: null = all projects
         isActive: isActive ?? true,
         nextRunAt,
         createdBy: session.superAdmin.username,

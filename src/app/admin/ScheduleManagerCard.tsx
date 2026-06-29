@@ -44,6 +44,7 @@ interface Schedule {
   targetClientIds: string | null;
   deliveryChannels: string;
   reportPeriodDays: number;
+  businessTypeId: string | null; // Phase 6: null = all projects
   isActive: boolean;
   lastRunAt: string | null;
   nextRunAt: string | null;
@@ -96,6 +97,7 @@ export function ScheduleManagerCard({ token }: { token: string }) {
     selectedBusinessIds: [] as string[],
     deliveryChannels: ["email"] as string[],
     reportPeriodDays: 7,
+    businessTypeId: null as string | null, // Phase 6: null = all projects
     isActive: true,
   });
 
@@ -141,7 +143,7 @@ export function ScheduleManagerCard({ token }: { token: string }) {
       name: "", description: "", frequency: "weekly", dayOfWeek: 1, dayOfMonth: 1,
       startDate: "", endDate: "", selectedOccasions: [], considerSeasons: true,
       considerEpidemics: true, targetClientMode: "all", selectedBusinessIds: [],
-      deliveryChannels: ["email"], reportPeriodDays: 7, isActive: true,
+      deliveryChannels: ["email"], reportPeriodDays: 7, businessTypeId: null, isActive: true,
     });
     setShowForm(true);
   };
@@ -163,6 +165,7 @@ export function ScheduleManagerCard({ token }: { token: string }) {
       selectedBusinessIds: JSON.parse(s.targetClientIds || "[]"),
       deliveryChannels: JSON.parse(s.deliveryChannels || "[\"email\"]"),
       reportPeriodDays: s.reportPeriodDays,
+      businessTypeId: s.businessTypeId || null,
       isActive: s.isActive,
     });
     setShowForm(true);
@@ -191,6 +194,7 @@ export function ScheduleManagerCard({ token }: { token: string }) {
         targetClientIds: form.targetClientMode === "selected" ? form.selectedBusinessIds : null,
         deliveryChannels: form.deliveryChannels,
         reportPeriodDays: form.reportPeriodDays,
+        businessTypeId: form.businessTypeId || null,
         isActive: form.isActive,
       };
 
@@ -467,6 +471,39 @@ export function ScheduleManagerCard({ token }: { token: string }) {
             )}
             {form.targetClientMode === "selected" && form.selectedBusinessIds.length > 0 && (
               <p className="text-xs text-muted-foreground">{form.selectedBusinessIds.length} business(es) selected</p>
+            )}
+          </div>
+
+          {/* Section 4.5: Project Scope (Phase 6) */}
+          <div className="space-y-3">
+            <Label className="text-sm font-semibold">4.5 Project Scope</Label>
+            <p className="text-xs text-muted-foreground">Which business type should this schedule target? Leave as 'All Projects' for cross-project reports.</p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setForm({ ...form, businessTypeId: null })}
+                className={`px-3 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                  !form.businessTypeId
+                    ? "border-purple-500 bg-purple-50 dark:bg-purple-950/30 text-purple-700"
+                    : "border-slate-200 dark:border-slate-800"
+                }`}
+              >
+                All Projects
+              </button>
+              <button
+                onClick={() => setForm({ ...form, businessTypeId: "pharmacy" })}
+                className={`px-3 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                  form.businessTypeId === "pharmacy"
+                    ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700"
+                    : "border-slate-200 dark:border-slate-800"
+                }`}
+              >
+                Pharmacy Only
+              </button>
+            </div>
+            {form.businessTypeId && (
+              <Badge className="bg-emerald-100 text-emerald-700 text-xs">
+                Schedule targets: {form.businessTypeId} businesses only
+              </Badge>
             )}
           </div>
 

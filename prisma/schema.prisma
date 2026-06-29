@@ -934,6 +934,9 @@ model ReportSchedule {
   targetClientIds   String?   // JSON array of businessIds. Null if "all"
   deliveryChannels  String    @default("[\"email\"]") // JSON: ["email"] | ["whatsapp"] | ["email","whatsapp"]
   reportPeriodDays  Int       @default(7) // How many days ahead to predict (7=weekly, 14=biweekly)
+  // Phase 6: multi-project filtering. Null = all projects (backward compatible).
+  // When set, the schedule checker only targets businesses of this type.
+  businessTypeId    String?
   isActive          Boolean   @default(true)
   lastRunAt         DateTime?
   nextRunAt         DateTime?
@@ -945,6 +948,7 @@ model ReportSchedule {
 
   @@index([isActive, nextRunAt])
   @@index([frequency])
+  @@index([businessTypeId])
   @@map("report_schedules")
 }
 

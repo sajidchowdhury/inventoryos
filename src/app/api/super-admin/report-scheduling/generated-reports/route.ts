@@ -14,6 +14,7 @@ export async function GET(req: NextRequest) {
     const scheduleId = searchParams.get("scheduleId");
     const businessId = searchParams.get("businessId");
     const status = searchParams.get("status");
+    const businessTypeId = searchParams.get("businessTypeId"); // Phase 6
     const limit = parseInt(searchParams.get("limit") || "50", 10);
     const offset = parseInt(searchParams.get("offset") || "0", 10);
 
@@ -21,6 +22,10 @@ export async function GET(req: NextRequest) {
     if (scheduleId) where.scheduleId = scheduleId;
     if (businessId) where.businessId = businessId;
     if (status) where.generationStatus = status;
+    // Phase 6: filter by business type via the business relation
+    if (businessTypeId) {
+      where.business = { businessTypeId };
+    }
 
     const [reports, total] = await Promise.all([
       db.generatedReport.findMany({
