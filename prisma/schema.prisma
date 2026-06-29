@@ -59,6 +59,14 @@ model Business {
   aiMonthlyLimit     Int      @default(1000)
   aiTokenBudget      Int      @default(500000)
 
+  // ── Report Scheduling (Phase A) ──
+  // Email address for the business owner — used to deliver AI reports.
+  // Falls back to the email of the BusinessUser with role "owner" if null.
+  ownerEmail         String?
+  // WhatsApp number with country code (e.g., "+8801712345678") for report delivery.
+  // Falls back to Business.phone if null.
+  ownerWhatsapp      String?
+
   user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   businessType BusinessType @relation(fields: [businessTypeId], references: [id])
   businessUsers BusinessUser[]
@@ -83,6 +91,7 @@ model Business {
   dailyStats    BusinessDailyStats[]
   aiResponseCache AIResponseCache[]
   fefoOverrides FefoOverride[]
+  generatedReports GeneratedReport[]
 
   @@index([userId])
   @@index([businessTypeId])
@@ -891,4 +900,230 @@ model NotificationRecipient {
   updatedAt DateTime @updatedAt
 
   @@map("notification_recipients")
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ── AI REPORT SCHEDULING SYSTEM (Phase A) ──
+// 7 models for the weekly client-hook feature:
+//   1. ReportSchedule   — founder's schedule config (weekly/monthly/date_range)
+//   2. ReportOccasion   — point events (Eid, Friday, Puja)
+//   3. ReportSeason     — recurring seasonal periods (Winter, Monsoon, Summer)
+//   4. HolidayCalendar  — specific occasion dates per year (Eid 2026 = 2026-04-10)
+//   5. EpidemicAlert    — active outbreaks (dengue, COVID) that override predictions
+//   6. GeneratedReport  — the report itself (one per business per schedule run)
+//   7. ReportDelivery   — delivery tracking (email + WhatsApp)
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ── 1. ReportSchedule ──
+// Founder's schedule configuration. Each row defines one recurring schedule
+// (e.g., "Weekly Monday report for all Pro+AI clients considering Eid + Winter").
+// Platform-wide — generates reports for multiple businesses.
+model ReportSchedule {
+  id                String    @id @default(cuid())
+  name              String    // e.g., "Weekly Eid-Aware Report"
+  description       String?
+  frequency         String    // "weekly" | "monthly" | "date_range"
+  dayOfWeek         Int?      // For weekly: 0=Sun, 1=Mon, ..., 6=Sat
+  dayOfMonth        Int?      // For monthly: 1-28 (avoids 29/30/31 to prevent skipped months)
+  startDate         DateTime? // For date_range: first report date
+  endDate           DateTime? // For date_range: last report date
+  occasions         String    @default("[]") // JSON array of occasion IDs to consider (empty = all active)
+  considerSeasons   Boolean   @default(true) // Whether to apply seasonal adjustments
+  considerEpidemics Boolean   @default(true) // Whether to apply active epidemic alerts
+  targetClientMode  String    @default("all") // "all" | "selected"
+  targetClientIds   String?   // JSON array of businessIds. Null if "all"
+  deliveryChannels  String    @default("[\"email\"]") // JSON: ["email"] | ["whatsapp"] | ["email","whatsapp"]
+  reportPeriodDays  Int       @default(7) // How many days ahead to predict (7=weekly, 14=biweekly)
+  isActive          Boolean   @default(true)
+  lastRunAt         DateTime?
+  nextRunAt         DateTime?
+  createdBy         String?   // super-admin username
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  generatedReports GeneratedReport[]
+
+  @@index([isActive, nextRunAt])
+  @@index([frequency])
+  @@map("report_schedules")
+}
+
+// ── 2. ReportOccasion ──
+// Point-in-time events (Eid, Friday, Puja, government holidays).
+// Duration is short (1-7 days). Recurrence is predictable (annual/weekly).
+// Pre-seeded with 14+ Bangladesh occasions.
+model ReportOccasion {
+  id              String   @id @default(cuid())
+  name            String   // "Eid-ul-Fitr", "Friday", etc.
+  slug            String   @unique // "eid-ul-fitr", "friday"
+  type            String   // "religious" | "national" | "weekly" | "custom"
+  datePattern     String   // "fixed_date" | "lunar_approximate" | "recurring_weekly"
+  fixedMonth      Int?     // For fixed_date: 1-12
+  fixedDay        Int?     // For fixed_date: 1-31
+  weeklyDayOfWeek Int?     // For recurring_weekly: 0=Sun, 5=Fri, 6=Sat
+  impactWeight    Float    @default(1.0) // 1.0=normal, 2.5=150% boost, 0.3=70% reduction
+  durationDays    Int      @default(1) // How long the spike lasts (Eid=7, Friday=1)
+  leadDays        Int      @default(0) // Days BEFORE occasion the spike starts (Eid shopping=5 days before)
+  description     String?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  holidayCalendar HolidayCalendar[]
+
+  @@map("report_occasions")
+}
+
+// ── 3. ReportSeason ──
+// Recurring seasonal periods that shift baseline demand for months at a time.
+// Unlike occasions (point events), seasons are extended periods (2-3 months)
+// with a "multiplier" that adjusts the baseline demand for affected product
+// categories throughout the season.
+//
+// Pre-seeded with 4 Bangladesh seasons:
+//   - Winter (Dec-Feb): respiratory meds spike 1.5x
+//   - Summer (Mar-May): ORS, antacids, heatstroke meds 1.3x (overlaps Ramadan/Eid)
+//   - Monsoon (Jun-Sep): dengue/malaria/water-borne disease meds 2.0x
+//   - Autumn (Oct-Nov): transition, baseline 1.0x
+//
+// A season's effect is COMPOUND with occasions: Eid in Monsoon = Eid spike (2.8x)
+// applied to the Monsoon-adjusted baseline (2.0x) = 5.6x for dengue meds during
+// Eid in monsoon. The prediction algorithm handles this layering.
+model ReportSeason {
+  id              String   @id @default(cuid())
+  name            String   // "Winter", "Summer", "Monsoon", "Autumn"
+  slug            String   @unique // "winter", "monsoon"
+  startMonth      Int      // 1-12 (e.g., Winter = 12)
+  startDay        Int      @default(1) // 1-31
+  endMonth        Int      // 1-12 (e.g., Winter = 2)
+  endDay          Int      @default(28) // 1-31
+  impactWeight    Float    @default(1.0) // 1.0=normal, 1.5=50% boost, 0.8=20% reduction
+  affectedCategories String @default("[]") // JSON array of category names most affected
+  description     String?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("report_seasons")
+}
+
+// ── 4. HolidayCalendar ──
+// Stores the specific dates of occasions for each year.
+// Necessary because lunar occasions (Eid) shift each year and must be confirmed.
+// The prediction algorithm queries this to know which dates in the next 7-14
+// days have occasions, then looks up the same occasions in historical sales.
+model HolidayCalendar {
+  id          String   @id @default(cuid())
+  occasionId  String
+  date        DateTime // Specific date of this occurrence (e.g., 2026-06-17 for Eid-ul-Adha 2026)
+  isConfirmed Boolean  @default(false) // Lunar dates are estimates until founder confirms
+  year        Int      // Derived from date — used for yearly filtering
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  occasion ReportOccasion @relation(fields: [occasionId], references: [id], onDelete: Cascade)
+
+  @@unique([occasionId, date])
+  @@index([date])
+  @@index([year])
+  @@map("holiday_calendar")
+}
+
+// ── 5. EpidemicAlert ──
+// Active disease outbreaks that override normal prediction patterns.
+// Unlike occasions and seasons (which are predictable), epidemics are
+// unpredictable events declared by the founder when an outbreak is detected
+// (e.g., "Dengue outbreak in Dhaka — severity high — antimalarials + IV fluids
+// spike 4x"). The alert has a start/end date and is "active" during that window.
+// The prediction algorithm applies the epidemic multiplier ON TOP of seasonal
+// and occasion adjustments, because during an outbreak, demand for affected
+// products spikes regardless of season.
+//
+// Pre-seeded with 2 example alerts (inactive by default):
+//   - Dengue outbreak (annual, founder activates when detected)
+//   - COVID-19 (historical, inactive)
+model EpidemicAlert {
+  id                String    @id @default(cuid())
+  name              String    // "Dengue Outbreak 2026", "COVID-19 Wave"
+  slug              String    @unique
+  diseaseType       String    // "dengue" | "covid" | "cholera" | "nipah" | "flu" | "custom"
+  severity          String    @default("moderate") // "mild" | "moderate" | "severe" | "critical"
+  impactWeight      Float     @default(2.0) // Multiplier for affected products (2.0 = 100% boost)
+  affectedCategories String   @default("[]") // JSON array of category names most affected
+  affectedProducts  String    @default("[]") // JSON array of specific product names (optional)
+  startDate         DateTime
+  endDate           DateTime  // When the alert is expected to end (founder extends if needed)
+  isActive          Boolean   @default(true) // Founder can deactivate without deleting
+  declaredBy        String?   // super-admin username
+  notes             String?   // e.g., "Dhaka city reports 500+ cases per week"
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([isActive, startDate, endDate])
+  @@index([diseaseType])
+  @@map("epidemic_alerts")
+}
+
+// ── 6. GeneratedReport ──
+// One row per business per schedule run. Contains the full report content as
+// JSON fields, plus cost tracking and status. This is the table the report
+// viewer UI queries.
+model GeneratedReport {
+  id                   String    @id @default(cuid())
+  scheduleId           String
+  businessId           String
+  reportDate           DateTime  // When the report was generated
+  reportPeriodStart    DateTime  // First day of prediction period (e.g., next Monday)
+  reportPeriodEnd      DateTime  // Last day of prediction period (e.g., next Sunday)
+  executiveSummary     String?   // 2-3 sentence AI-generated summary
+  spikePredictions     String?   // JSON array of top 3 spike predictions
+  topItems             String?   // JSON array of 20 items with predictedQty, profit, supplier, stock status
+  stockRisks           String?   // JSON array of stock risk items with purchase recommendations
+  appliedInfluences    String    @default("{}") // JSON: which occasions/seasons/epidemics were considered
+  aiTokensUsed         Int       @default(0)
+  aiCostEstimate       Float     @default(0.0)
+  generationStatus     String    @default("pending") // "pending" | "generating" | "completed" | "failed"
+  errorMessage         String?
+  pdfUrl               String?
+  predictionConfidence String    @default("medium") // "low" | "medium" | "high"
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  schedule ReportSchedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  business Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  deliveries ReportDelivery[]
+
+  @@index([scheduleId, reportDate])
+  @@index([businessId, reportDate])
+  @@index([generationStatus])
+  @@index([reportDate])
+  @@map("generated_reports")
+}
+
+// ── 7. ReportDelivery ──
+// Tracks delivery of each report via each channel. One GeneratedReport can
+// have multiple ReportDelivery rows (one per channel). This is the table the
+// delivery status UI queries.
+model ReportDelivery {
+  id                String    @id @default(cuid())
+  reportId          String
+  channel           String    // "email" | "whatsapp"
+  recipient         String    // email address or phone number
+  status            String    @default("queued") // "queued" | "sent" | "delivered" | "read" | "failed"
+  sentAt            DateTime?
+  deliveredAt       DateTime?
+  readAt            DateTime?
+  errorMessage      String?
+  retryCount        Int       @default(0)
+  providerMessageId String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  report GeneratedReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@index([reportId])
+  @@index([status])
+  @@index([channel, status])
+  @@map("report_deliveries")
 }
