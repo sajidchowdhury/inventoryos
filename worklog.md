@@ -1504,3 +1504,31 @@ Stage Summary:
 - Document structure: Cover → TOC → How to Use → PART 1 Technical Features (7 sections, 4 tables) → PART 2 Business Features (11 sections, 8 tables) → Summary
 - Visual style: Emerald Pharmacy palette (emerald primary, violet AI accent, dark emerald cover) matching InventoryOS brand
 - Includes tier comparison table (Free/Pro/Pro+AI), 20 SQL Router patterns, 13 gap items (features in code but not wired to UI), and a founder's pitch summary callout
+
+---
+Task ID: ai-report-phased-plan
+Agent: Super Z (Main Agent)
+Task: Edit the existing AI Features Report to add a phased implementation plan at the end, dividing all the fixes/recommendations into phases. Commit and push to GitHub before and after.
+
+Work Log:
+- Pre-edit push: confirmed working tree was clean, 2 unpushed commits (AI report + Feature catalog from prior sessions). Pushed both to origin/main using PAT credentials (commit c67baae).
+- Edited src/scripts/ai-report-body3.js: added new function buildPhasedPlan() generating Section 7 "Phased Implementation Plan" with 5 phases:
+  * Phase 1 — P0 Critical Fixes (Days 1-7, 35 min code): max_tokens caps on 4 LLM routes, batch row cap, products array validation. 8 tasks in Table 7.1. Gate: before next paying customer.
+  * Phase 2 — P1 Structural Defenses (Days 8-30, 4 hrs): free-tier guard on 4 routes, circuit breaker module + wiring, new fallback reason. 11 tasks in Table 7.2. Gate: before 50 pharmacies.
+  * Phase 3 — P2 Optimizations (Days 31-60, 6 hrs): product-asst cache, insights prompt refactor, "Smart" rename for forecast/reorder, AIUsageLog for non-LLM endpoints, client-side cache, overstock alert. 8 tasks in Table 7.3. Gate: before 200 pharmacies.
+  * Phase 4 — Kill-Switch Automation (Days 61-90, 3 hrs): KillSwitch Prisma model, ai-kill-switch.ts module, wiring into checkAILimit, founder email notification, super-admin banner + reset button, manual drill. 8 tasks in Table 7.4. Gate: before 1,000 pharmacies.
+  * Phase 5 — Ongoing Operations (Continuous, 15 min/week + 30 min/month): weekly dashboard review, weekly Sentry check, monthly cost-vs-estimate comparison, monthly tier mix review, monthly DR drill, quarterly Z.ai pricing re-eval, quarterly report re-run, on-incident kill-switch response. 8 recurring tasks in Table 7.5.
+- Added Table 7.6 (5-row roadmap summary: Phase / Goal / Duration / Effort / Gate / Status) for the founder to print and pin.
+- Added Section 7.7 "How to Use This Plan" explaining phase sequencing dependencies and the status-column update ritual.
+- Updated scripts/gen-ai-report.js to import buildPhasedPlan and append it to the body content.
+- Regenerated InventoryOS_AI_Features_Report.docx — now 337.9 KB (up from 325.6 KB), 61 headings (up from 43), ~10,000 words (up from ~6,500).
+- Ran add_toc_placeholders.py — 61 headings indexed (18 new from Section 7).
+- Ran postcheck.py — 0 errors, 2 acceptable warnings (TOC PageBreak separator + table cell line spacing — both expected).
+- Post-edit commit (cefa0be): "docs(ai): add Section 7 Phased Implementation Plan to AI Features Report". Pushed to origin/main.
+
+Stage Summary:
+- Final deliverable: /home/z/my-project/download/InventoryOS_AI_Features_Report.docx (338 KB, 61 headings, 14 tables, 2 charts, ~10,000 words)
+- Section 7 added 6 new tables (7.1 through 7.6), 18 new headings, ~3,500 new words
+- Each phase has: Goal, Duration, Blocking Gate, Task Table (with file paths, exact code changes, effort estimates, done-checkboxes), Exit Criteria
+- Total implementation effort across all 4 build phases: ~13 hours of code spread over 90 days + ongoing Phase 5 operations
+- GitHub sync confirmed: 2 commits pushed (c67baae pre-edit + cefa0be post-edit), origin/main up to date
