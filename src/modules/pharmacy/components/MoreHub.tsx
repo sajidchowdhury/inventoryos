@@ -2,10 +2,10 @@
 
 import { motion } from "framer-motion";
 import {
-  Users, Truck, PackagePlus, DollarSign, RotateCcw,
-  Percent, Shield, Bell, ChevronRight, LogOut,
-  UserCog, FileText, User, CreditCard,
-  Pencil,
+  Users, DollarSign, RotateCcw, Percent, ChevronRight, LogOut,
+  UserCog, Shield, Bell, User, CreditCard, Pencil,
+  LayoutDashboard, TrendingUp, Boxes, Receipt, History, Database,
+  FileText, Package,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -45,21 +45,21 @@ interface MoreSection {
   items: MoreItem[];
 }
 
+// ── Reorganized: Admin → Operations → Reports (top to bottom) ──
+// Purchasing removed (accessible from Home quick actions)
+// All settings consolidated under Admin section
+// All reports listed individually (not just a hub link)
 const sections: MoreSection[] = [
   {
-    title: "People",
+    title: "Admin",
     accent: "blue",
     items: [
       { icon: Users, label: "Customers", desc: "Customer profiles & credit", view: "customers", gradient: "from-blue-500 to-blue-600" },
-      { icon: Truck, label: "Suppliers", desc: "Vendor management", view: "suppliers", gradient: "from-cyan-500 to-sky-500" },
-    ],
-  },
-  {
-    title: "Purchasing",
-    accent: "emerald",
-    items: [
-      { icon: PackagePlus, label: "New Purchase", desc: "Record stock receipt", view: "add-purchase", gradient: "from-emerald-500 to-emerald-600" },
-      { icon: Truck, label: "Purchase History", desc: "All purchase orders", view: "purchases", gradient: "from-teal-500 to-emerald-500" },
+      { icon: UserCog, label: "User Management", desc: "Roles & permissions", view: "users", gradient: "from-slate-500 to-slate-600" },
+      { icon: Shield, label: "Alert Settings", desc: "Configure thresholds", view: "alert-settings", gradient: "from-stone-500 to-slate-500" },
+      { icon: Bell, label: "Alerts Center", desc: "View all alerts", view: "alerts", gradient: "from-red-500 to-rose-500" },
+      { icon: User, label: "Profile", desc: "Business & account info", view: "profile", gradient: "from-emerald-500 to-emerald-600" },
+      { icon: CreditCard, label: "Subscription", desc: "Plan & AI usage", view: "subscription", gradient: "from-violet-500 to-purple-600" },
     ],
   },
   {
@@ -75,19 +75,13 @@ const sections: MoreSection[] = [
     title: "Reports",
     accent: "sky",
     items: [
-      { icon: FileText, label: "Reports Hub", desc: "Business dashboard, P&L, valuation, tax", view: "reports-hub", gradient: "from-sky-500 to-blue-500" },
-    ],
-  },
-  {
-    title: "Settings",
-    accent: "gray",
-    items: [
-      { icon: UserCog, label: "User Management", desc: "Roles & permissions", view: "users", gradient: "from-slate-500 to-slate-600" },
-      { icon: Shield, label: "Alert Settings", desc: "Configure thresholds", view: "alert-settings", gradient: "from-stone-500 to-slate-500" },
-      { icon: Bell, label: "Alerts Center", desc: "View all alerts", view: "alerts", gradient: "from-red-500 to-rose-500" },
+      { icon: LayoutDashboard, label: "Business Dashboard", desc: "Unified KPIs & financial position", view: "business-dashboard", gradient: "from-sky-500 to-blue-500" },
+      { icon: TrendingUp, label: "Profit & Loss", desc: "Revenue vs COGS, margin analysis", view: "profit-loss", gradient: "from-emerald-500 to-teal-500" },
+      { icon: Boxes, label: "Inventory Valuation", desc: "Cost & MRP value of stock", view: "inventory-value", gradient: "from-blue-500 to-indigo-500" },
+      { icon: Receipt, label: "Tax Report", desc: "VAT / tax compliance", view: "tax-report", gradient: "from-amber-500 to-orange-500" },
       { icon: FileText, label: "Expiry Report", desc: "Printable expiry report", view: "report", gradient: "from-cyan-500 to-blue-500" },
-      { icon: User, label: "Profile", desc: "Business & account info", view: "profile", gradient: "from-emerald-500 to-emerald-600" },
-      { icon: CreditCard, label: "Subscription", desc: "Plan & AI usage", view: "subscription", gradient: "from-violet-500 to-purple-600" },
+      { icon: History, label: "Audit Trail", desc: "Transaction history & logs", view: "audit-trail", gradient: "from-cyan-500 to-sky-500" },
+      { icon: Database, label: "Data Export", desc: "Backup & export your data", view: "data-export", gradient: "from-teal-500 to-cyan-500" },
     ],
   },
 ];

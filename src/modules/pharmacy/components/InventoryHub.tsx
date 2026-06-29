@@ -17,18 +17,6 @@ const fadeIn = {
 
 const sections = [
   {
-    title: "Products",
-    accentText: "text-blue-600",
-    accentDot: "bg-blue-500",
-    border: "border-l-blue-500",
-    items: [
-      { icon: Package, label: "All Products", desc: "View, search, manage products", view: "products" as const, gradient: "from-blue-500 to-blue-600" },
-      { icon: Plus, label: "Add Product", desc: "Add a new medicine", view: "add-product" as const, gradient: "from-emerald-500 to-emerald-600" },
-      { icon: Upload, label: "Import CSV", desc: "Bulk import products", view: "import" as const, gradient: "from-cyan-500 to-cyan-600" },
-      { icon: Tag, label: "Categories", desc: "Manage product categories", view: "categories" as const, gradient: "from-purple-500 to-purple-600" },
-    ],
-  },
-  {
     title: "Stock & Batches",
     accentText: "text-orange-600",
     accentDot: "bg-orange-500",
@@ -44,6 +32,18 @@ const sections = [
     border: "border-l-rose-500",
     items: [
       { icon: CalendarClock, label: "Expiry Dashboard", desc: "Track & manage expiring stock", view: "expiry" as const, gradient: "from-rose-500 to-rose-600" },
+    ],
+  },
+  {
+    title: "Products",
+    accentText: "text-blue-600",
+    accentDot: "bg-blue-500",
+    border: "border-l-blue-500",
+    items: [
+      { icon: Package, label: "All Products", desc: "View, search, manage products", view: "products" as const, gradient: "from-blue-500 to-blue-600" },
+      { icon: Plus, label: "Add Product", desc: "Add a new medicine", view: "add-product" as const, gradient: "from-emerald-500 to-emerald-600" },
+      { icon: Upload, label: "Import CSV", desc: "Bulk import products", view: "import" as const, gradient: "from-cyan-500 to-cyan-600" },
+      { icon: Tag, label: "Categories", desc: "Manage product categories", view: "categories" as const, gradient: "from-purple-500 to-purple-600" },
     ],
   },
 ];
