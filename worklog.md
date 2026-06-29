@@ -1656,3 +1656,33 @@ Stage Summary:
 - Up to 3 email addresses configurable from /admin (SMTP env vars required for actual sending)
 - Comprehensive help off-canvas explains every super-admin feature
 - Ready for Phase 5 (ongoing operational monitoring — continuous, no code changes needed).
+
+---
+Task ID: phase5-implementation
+Agent: Super Z (Main Agent)
+Task: Implement Phase 5 of the AI Features Report Phased Implementation Plan — operations health dashboard + weekly AI health email. This is the final phase; it turns the Phase 1-4 infrastructure into an actionable monitoring practice.
+
+Work Log:
+- Verified Phases 1-4 complete: all commits on GitHub, all tags present (v1.1.0 through v1.4.0), all defense-stack markers confirmed in code.
+- Created GET /api/super-admin/ops-health endpoint: returns consolidated health status (healthy/watch/action_needed auto-computed), weekly review metrics (this week cost, last week cost, growth rate, calls, errors, top 5 spenders, kill-switch/circuit breaker trip counts), monthly comparison (per-feature actual vs estimated cost with variance ratio + status), tier mix (count + percentage by tier), quarterly reminders (Z.ai pricing re-eval + report re-run in first week of quarter).
+- Created Phase5OpsCard.tsx (310 lines): placed at TOP of /admin as most actionable view. Health status banner (green/amber/red), weekly review with 4 metric cards + top 5 spenders + alert counts, monthly comparison table with status badges, tier mix grid with low-Pro+AI warning, quarterly reminders panel.
+- Added WEEKLY_AI_HEALTH to CRON_JOB_NAMES + CRON_JOB_SCHEDULES (06:00 UTC every Monday). Implemented runWeeklyAiHealthJob() in cron-jobs.ts: gathers metrics, computes health status, builds HTML email with metrics table + top spenders + issues list, sends to all recipients, logs to CronJobLog. Updated runAllCronJobs() to include it.
+- Created POST /api/cron/weekly-ai-health with DUAL auth: accepts x-cron-secret (external schedulers) OR super-admin Bearer token (manual trigger from /admin). GET returns schedule info without auth.
+- Updated trigger-cron/[jobName] to include weekly-ai-health in JOB_RUNNERS map.
+- Added 2 new entries to SuperAdminHelp: 'Phase 5: Operations Health Dashboard' (Monitoring) + 'Weekly AI Health Email (Cron Job)' (Operations).
+- 4 smoke tests PASSED: ops-health returned healthStatus='action_needed' (correctly detected 54.5% error rate from earlier kill-switch test calls), weekly-ai-health cron endpoint schedule info, POST with super-admin Bearer ran the job, manual trigger via trigger-cron worked.
+- TypeScript: zero errors in Phase 5 files. Next.js build: clean, both new routes registered.
+- Committed as cbd988c, tagged v1.5.0-ai-ops, pushed to origin/main with tag.
+
+Stage Summary:
+- Phase 5 of the Phased Implementation Plan is now COMPLETE.
+- Files added: 3 (ops-health/route.ts, weekly-ai-health/route.ts, Phase5OpsCard.tsx)
+- Files modified: 4 (cron-jobs.ts, trigger-cron route, SuperAdminHelp.tsx, admin/page.tsx) + db + tsbuildinfo
+- Total: 9 files changed, 1110 insertions, 2 deletions in commit cbd988c
+- 5-PHASE ROADMAP COMPLETE:
+  * Phase 1 — P0 fixes — v1.1.0-ai-p0
+  * Phase 2 — P1 defenses — v1.2.0-ai-p1
+  * Phase 3 — P2 optimizations — v1.3.0-ai-p2
+  * Phase 4 — Kill-switch — v1.4.0-ai-killswitch
+  * Phase 5 — Operations health — v1.5.0-ai-ops
+- The AI cost-control system is now fully operational end-to-end.
