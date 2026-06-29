@@ -25,8 +25,9 @@ export const CRON_JOB_NAMES = {
   DAILY_MAINTENANCE: "daily-maintenance",
   WEEKLY_AI_HEALTH: "weekly-ai-health",
   REPORT_SCHEDULE_CHECKER: "report-schedule-checker",
-  REPORT_GENERATOR_WORKER: "report-generator-worker",
-  REPORT_DELIVERY_WORKER: "report-delivery-worker",
+  REPORT_GENERATOR_WORKER: "report-generator-worker", // @deprecated — use REPORT_WORKER
+  REPORT_DELIVERY_WORKER: "report-delivery-worker",   // @deprecated — use REPORT_WORKER
+  REPORT_WORKER: "report-worker", // Phase 4: merged generator + delivery
 } as const;
 
 export type CronJobName = (typeof CRON_JOB_NAMES)[keyof typeof CRON_JOB_NAMES];
@@ -57,19 +58,24 @@ export const CRON_JOB_SCHEDULES: Record<
       "Phase 5: Send weekly AI health summary email to all notification recipients. Includes this week's cost, top spenders, error rate, kill-switch triggers, and any health issues that need attention.",
   },
   [CRON_JOB_NAMES.REPORT_SCHEDULE_CHECKER]: {
-    schedule: "*/15 * * * *", // every 15 minutes
+    schedule: "0 * * * *", // every 1 hour (Phase 4: was every 15 min, reduced 75%)
     description:
-      "Phase C: Check all active report schedules. For each schedule where nextRunAt <= now, create GeneratedReport rows (status=pending) for each target business, then update the schedule's lastRunAt and nextRunAt.",
+      "Phase C: Check all active report schedules. For each schedule where nextRunAt <= now, create GeneratedReport rows (status=pending) for each target business, then update the schedule's lastRunAt and nextRunAt. Weekly/monthly schedules don't need 15-min precision — hourly is sufficient.",
   },
   [CRON_JOB_NAMES.REPORT_GENERATOR_WORKER]: {
-    schedule: "*/5 * * * *", // every 5 minutes
+    schedule: "*/5 * * * *", // @deprecated — use report-worker instead
     description:
-      "Phase D: Pick up pending GeneratedReport rows (status=pending), call the AI prediction algorithm to generate report content, then create ReportDelivery rows (status=queued) for each configured channel.",
+      "[DEPRECATED — Phase 4 merged into report-worker] Pick up pending GeneratedReport rows, call AI, create delivery rows. Kept for backward compatibility with existing external schedulers.",
   },
   [CRON_JOB_NAMES.REPORT_DELIVERY_WORKER]: {
-    schedule: "* * * * *", // every 1 minute
+    schedule: "* * * * *", // @deprecated — use report-worker instead
     description:
-      "Phase D: Pick up queued ReportDelivery rows (status=queued), send via email (SMTP) or WhatsApp (future), update status to sent/failed. Retry up to 3 times with exponential backoff (1min, 5min, 15min).",
+      "[DEPRECATED — Phase 4 merged into report-worker] Pick up queued deliveries, send via email/WhatsApp. Kept for backward compatibility with existing external schedulers.",
+  },
+  [CRON_JOB_NAMES.REPORT_WORKER]: {
+    schedule: "*/2 * * * *", // every 2 minutes (Phase 4: replaces generator + delivery)
+    description:
+      "Phase 4: Merged report-generator-worker + report-delivery-worker into a single job. First processes pending reports (calls AI prediction algorithm), then processes queued deliveries (sends emails). Reduces cron triggers by 58% vs the two separate workers.",
   },
 };
 
@@ -1311,6 +1317,248 @@ export async function runReportDeliveryWorker(): Promise<void> {
   }
 }
 
+// ── runReportWorker (Phase 4 — merged generator + delivery) ──
+// Single job that replaces runReportGeneratorWorker + runReportDeliveryWorker.
+// Runs every 2 minutes. Does two things in sequence:
+//   1. Process pending reports (call AI, create delivery rows)
+//   2. Process queued deliveries (send emails, retry on failure)
+//
+// This reduces cron triggers from 1,440 + 288 = 1,728/day to 720/day (58% reduction).
+// The old separate endpoints are kept for backward compatibility but should be
+// replaced with this single endpoint in external scheduler configs.
+export async function runReportWorker(): Promise<void> {
+  const jobName = CRON_JOB_NAMES.REPORT_WORKER;
+  const log: string[] = [];
+  const startedAt = new Date();
+  log.push(`[${startedAt.toISOString()}] Starting report worker (merged generator + delivery)`);
+
+  const cronLog = await db.cronJobLog.create({
+    data: { jobName, status: "running", startedAt, log: log.join("\n") },
+  });
+
+  let reportsProcessed = 0;
+  let reportsSucceeded = 0;
+  let reportsFailed = 0;
+  let deliveriesSent = 0;
+  let deliveriesFailed = 0;
+
+  try {
+    // ═══ PHASE 1: Process pending reports (was runReportGeneratorWorker) ═══
+    const PENDING_BATCH = 5;
+    const pendingReports = await db.generatedReport.findMany({
+      where: { generationStatus: "pending" },
+      orderBy: { reportDate: "asc" },
+      take: PENDING_BATCH,
+      include: { schedule: true },
+    });
+
+    log.push(`Phase 1: Found ${pendingReports.length} pending report(s)`);
+
+    for (const pendingReport of pendingReports) {
+      log.push(`  Processing report ${pendingReport.id} for business ${pendingReport.businessId}`);
+      reportsProcessed++;
+
+      await db.generatedReport.update({
+        where: { id: pendingReport.id },
+        data: { generationStatus: "generating" },
+      });
+
+      try {
+        const { generateReport } = await import("./report-generator");
+        const result = await generateReport({
+          businessId: pendingReport.businessId,
+          scheduleId: pendingReport.scheduleId,
+          reportPeriodDays: pendingReport.schedule.reportPeriodDays,
+          considerSeasons: pendingReport.schedule.considerSeasons,
+          considerEpidemics: pendingReport.schedule.considerEpidemics,
+        });
+
+        if (result.success) {
+          // Delete the pending placeholder (generateReport creates its own row)
+          await db.generatedReport.delete({ where: { id: pendingReport.id } });
+
+          // Create delivery rows for the new report
+          if (result.reportId) {
+            const channels = JSON.parse(pendingReport.schedule.deliveryChannels || "[\"email\"]");
+            const business = await db.business.findUnique({
+              where: { id: pendingReport.businessId },
+              select: { ownerEmail: true, ownerWhatsapp: true, phone: true, name: true },
+            });
+
+            for (const channel of channels) {
+              let recipient: string | null = null;
+              if (channel === "email") recipient = business?.ownerEmail || null;
+              else if (channel === "whatsapp") recipient = business?.ownerWhatsapp || business?.phone || null;
+
+              if (recipient) {
+                await db.reportDelivery.create({
+                  data: { reportId: result.reportId, channel, recipient, status: "queued" },
+                });
+                log.push(`    Created ${channel} delivery to ${recipient}`);
+              } else {
+                log.push(`    ⚠ No ${channel} recipient for ${business?.name || pendingReport.businessId}`);
+              }
+            }
+          }
+          reportsSucceeded++;
+          log.push(`    ✓ Success (tokens: ${result.aiTokensUsed}, cost: ${result.aiCostEstimate} BDT${result.fallbackUsed ? ", FALLBACK" : ""})`);
+        } else {
+          await db.generatedReport.update({
+            where: { id: pendingReport.id },
+            data: { generationStatus: "failed", errorMessage: result.errorMessage || "Unknown error" },
+          });
+          reportsFailed++;
+          log.push(`    ✗ Failed: ${result.errorMessage}`);
+        }
+      } catch (err) {
+        await db.generatedReport.update({
+          where: { id: pendingReport.id },
+          data: { generationStatus: "failed", errorMessage: err instanceof Error ? err.message : String(err) },
+        });
+        reportsFailed++;
+        log.push(`    ✗ Exception: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    }
+
+    // ═══ PHASE 2: Process queued deliveries (was runReportDeliveryWorker) ═══
+    const DELIVERY_BATCH = 20;
+    const queuedDeliveries = await db.reportDelivery.findMany({
+      where: { status: "queued" },
+      orderBy: { createdAt: "asc" },
+      take: DELIVERY_BATCH,
+      include: {
+        report: {
+          include: {
+            business: { select: { name: true } },
+            schedule: { select: { name: true } },
+          },
+        },
+      },
+    });
+
+    log.push(`Phase 2: Found ${queuedDeliveries.length} queued deliver(ies)`);
+
+    const { sendEmail } = await import("./email");
+
+    for (const delivery of queuedDeliveries) {
+      log.push(`  Delivery ${delivery.id} (${delivery.channel} → ${delivery.recipient})`);
+
+      try {
+        if (delivery.channel === "email") {
+          // Build HTML email from report content
+          const report = delivery.report;
+          const spikePredictions = report.spikePredictions ? JSON.parse(report.spikePredictions) : [];
+          const topItems = report.topItems ? JSON.parse(report.topItems) : [];
+          const stockRisks = report.stockRisks ? JSON.parse(report.stockRisks) : [];
+          const businessName = report.business?.name || "Your Pharmacy";
+          const periodStart = new Date(report.reportPeriodStart).toLocaleDateString();
+          const periodEnd = new Date(report.reportPeriodEnd).toLocaleDateString();
+
+          const spikesHtml = spikePredictions.map((s: any, i: number) =>
+            `<tr><td style="padding:6px;border:1px solid #e5e7eb;">${i + 1}</td><td style="padding:6px;border:1px solid #e5e7eb;">${s.product}</td><td style="padding:6px;border:1px solid #e5e7eb;color:#dc2626;font-weight:bold;">+${s.spikePercent}%</td><td style="padding:6px;border:1px solid #e5e7eb;">${s.occasion}</td><td style="padding:6px;border:1px solid #e5e7eb;">${s.recommendation}</td></tr>`
+          ).join("");
+
+          const topItemsHtml = topItems.slice(0, 20).map((item: any, i: number) => {
+            const sc = item.stockStatus === "order_now" || item.stockStatus === "out" ? "#dc2626" : item.stockStatus === "low" ? "#f59e0b" : "#10b981";
+            return `<tr><td style="padding:4px 6px;border:1px solid #e5e7eb;">${i + 1}</td><td style="padding:4px 6px;border:1px solid #e5e7eb;">${item.product}</td><td style="padding:4px 6px;border:1px solid #e5e7eb;text-align:right;">${item.predictedQty}</td><td style="padding:4px 6px;border:1px solid #e5e7eb;text-align:right;">৳${item.predictedProfit?.toLocaleString() || 0}</td><td style="padding:4px 6px;border:1px solid #e5e7eb;text-align:right;">${item.currentStock}</td><td style="padding:4px 6px;border:1px solid #e5e7eb;text-align:center;color:${sc};font-weight:bold;">${item.stockStatus?.toUpperCase() || "GOOD"}</td></tr>`;
+          }).join("");
+
+          const risksHtml = stockRisks.map((r: any) => {
+            const uc = r.urgency === "critical" ? "#dc2626" : r.urgency === "high" ? "#f59e0b" : "#3b82f6";
+            return `<tr><td style="padding:6px;border:1px solid #e5e7eb;font-weight:bold;">${r.product}</td><td style="padding:6px;border:1px solid #e5e7eb;">${r.daysUntilStockout !== null ? r.daysUntilStockout + " days" : "Already out"}</td><td style="padding:6px;border:1px solid #e5e7eb;">Order: ${r.recommendedPurchaseQty}</td><td style="padding:6px;border:1px solid #e5e7eb;">${r.supplier || "—"}</td><td style="padding:6px;border:1px solid #e5e7eb;color:${uc};font-weight:bold;">${r.urgency?.toUpperCase() || "MEDIUM"}</td></tr>`;
+          }).join("");
+
+          const html = `<div style="font-family:Arial,sans-serif;max-width:650px;margin:0 auto;background:#f9fafb;padding:20px;"><div style="background:#064e3b;color:white;padding:20px;border-radius:8px 8px 0 0;text-align:center;"><h1 style="margin:0;font-size:24px;">📊 InventoryOS Weekly Prediction</h1><p style="margin:4px 0 0 0;font-size:14px;opacity:0.9;">${businessName} · ${periodStart} → ${periodEnd}</p></div><div style="background:white;padding:20px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 8px 8px;"><div style="background:#f0fdf4;border-left:4px solid #10b981;padding:12px;margin-bottom:20px;border-radius:4px;"><strong>Executive Summary:</strong><br/>${report.executiveSummary || "No summary available."}</div>${spikePredictions.length > 0 ? `<h2 style="color:#7c3aed;font-size:16px;margin-bottom:8px;">📈 Big Sales Spike Predictions</h2><table style="width:100%;border-collapse:collapse;margin-bottom:20px;font-size:13px;"><thead><tr style="background:#f3f4f6;"><th style="padding:6px;border:1px solid #e5e7eb;text-align:left;">#</th><th style="padding:6px;border:1px solid #e5e7eb;text-align:left;">Product</th><th style="padding:6px;border:1px solid #e5e7eb;text-align:left;">Spike</th><th style="padding:6px;border:1px solid #e5e7eb;text-align:left;">Occasion</th><th style="padding:6px;border:1px solid #e5e7eb;text-align:left;">Recommendation</th></tr></thead><tbody>${spikesHtml}</tbody></table>` : ""}${topItems.length > 0 ? `<h2 style="color:#2563eb;font-size:16px;margin-bottom:8px;">🏆 Top 20 High-Potential Items</h2><table style="width:100%;border-collapse:collapse;margin-bottom:20px;font-size:12px;"><thead><tr style="background:#f3f4f6;"><th style="padding:4px 6px;border:1px solid #e5e7eb;text-align:left;">#</th><th style="padding:4px 6px;border:1px solid #e5e7eb;text-align:left;">Product</th><th style="padding:4px 6px;border:1px solid #e5e7eb;text-align:right;">Pred. Qty</th><th style="padding:4px 6px;border:1px solid #e5e7eb;text-align:right;">Profit</th><th style="padding:4px 6px;border:1px solid #e5e7eb;text-align:right;">Stock</th><th style="padding:4px 6px;border:1px solid #e5e7eb;text-align:center;">Status</th></tr></thead><tbody>${topItemsHtml}</tbody></table>` : ""}${stockRisks.length > 0 ? `<h2 style="color:#dc2626;font-size:16px;margin-bottom:8px;">⚠️ Stock Risks & Recommendations</h2><table style="width:100%;border-collapse:collapse;margin-bottom:20px;font-size:13px;"><thead><tr style="background:#fef2f2;"><th style="padding:6px;border:1px solid #e5e7eb;text-align:left;">Product</th><th style="padding:6px;border:1px solid #e5e7eb;text-align:left;">Stockout In</th><th style="padding:6px;border:1px solid #e5e7eb;text-align:left;">Action</th><th style="padding:6px;border:1px solid #e5e7eb;text-align:left;">Supplier</th><th style="padding:6px;border:1px solid #e5e7eb;text-align:left;">Urgency</th></tr></thead><tbody>${risksHtml}</tbody></table>` : ""}<hr style="border:none;border-top:1px solid #e5e7eb;margin:20px 0;"/><p style="font-size:11px;color:#6b7280;text-align:center;">Generated by InventoryOS AI · Prediction confidence: ${report.predictionConfidence}<br/>This is an automated report. You received this email because your pharmacy is subscribed to InventoryOS Pro+AI.</p></div></div>`;
+
+          const textContent = `Weekly Prediction Report — ${businessName}\nPeriod: ${periodStart} to ${periodEnd}\n\nExecutive Summary:\n${report.executiveSummary || "No summary available."}\n\nVisit InventoryOS for the full report with top 20 items and stock risks.`;
+
+          const emailResult = await sendEmail({
+            to: [delivery.recipient],
+            subject: `📊 Weekly Sales Prediction — ${businessName} — ${periodStart}`,
+            html, text: textContent,
+          });
+
+          if (emailResult.sent) {
+            await db.reportDelivery.update({
+              where: { id: delivery.id },
+              data: { status: "sent", sentAt: new Date(), providerMessageId: emailResult.messageIds[0] || null },
+            });
+            deliveriesSent++;
+            log.push(`    ✓ Email sent`);
+          } else {
+            const newRetry = delivery.retryCount + 1;
+            if (newRetry >= 3) {
+              await db.reportDelivery.update({
+                where: { id: delivery.id },
+                data: { status: "failed", retryCount: newRetry, errorMessage: emailResult.error || "Failed after 3 attempts" },
+              });
+              deliveriesFailed++;
+              log.push(`    ✗ Failed permanently (${newRetry}/3): ${emailResult.error}`);
+            } else {
+              await db.reportDelivery.update({
+                where: { id: delivery.id },
+                data: { retryCount: newRetry, errorMessage: emailResult.error || "Will retry" },
+              });
+              log.push(`    ⚠ Failed (${newRetry}/3), will retry: ${emailResult.error}`);
+            }
+          }
+        } else if (delivery.channel === "whatsapp") {
+          await db.reportDelivery.update({
+            where: { id: delivery.id },
+            data: { status: "failed", errorMessage: "WhatsApp delivery not yet implemented (Phase E)" },
+          });
+          deliveriesFailed++;
+          log.push(`    ✗ WhatsApp not implemented (Phase E)`);
+        }
+      } catch (err) {
+        const errorMsg = err instanceof Error ? err.message : String(err);
+        const newRetry = delivery.retryCount + 1;
+        if (newRetry >= 3) {
+          await db.reportDelivery.update({
+            where: { id: delivery.id },
+            data: { status: "failed", retryCount: newRetry, errorMessage: errorMsg },
+          });
+          deliveriesFailed++;
+          log.push(`    ✗ Exception (permanent): ${errorMsg}`);
+        } else {
+          await db.reportDelivery.update({
+            where: { id: delivery.id },
+            data: { retryCount: newRetry, errorMessage: errorMsg },
+          });
+          log.push(`    ⚠ Exception (${newRetry}/3), will retry: ${errorMsg}`);
+        }
+      }
+    }
+
+    // ═══ Summary ═══
+    const summary = `Reports: ${reportsProcessed} processed (${reportsSucceeded} ok, ${reportsFailed} failed) | Deliveries: ${queuedDeliveries.length} processed (${deliveriesSent} sent, ${deliveriesFailed} failed)`;
+    log.push(`\n${summary}`);
+
+    await db.cronJobLog.update({
+      where: { id: cronLog.id },
+      data: {
+        status: "success",
+        durationMs: Date.now() - startedAt.getTime(),
+        businessesProcessed: reportsProcessed + queuedDeliveries.length,
+        recordsWritten: reportsSucceeded + deliveriesSent,
+        log: log.join("\n"),
+      },
+    });
+  } catch (err) {
+    log.push(`[ERROR] ${err instanceof Error ? err.message : String(err)}`);
+    await db.cronJobLog.update({
+      where: { id: cronLog.id },
+      data: {
+        status: "failed",
+        durationMs: Date.now() - startedAt.getTime(),
+        errorMessage: err instanceof Error ? err.message : String(err),
+        log: log.join("\n"),
+      },
+    });
+    throw err;
+  }
+}
+
 // ── Status Inspector (used by super-admin UI) ──
 export interface CronJobStatus {
   jobName: CronJobName;
@@ -1393,8 +1641,7 @@ export async function runAllCronJobs(): Promise<{
   dailyMaintenance: { ok: boolean; error?: string };
   weeklyAiHealth: { ok: boolean; error?: string };
   reportScheduleChecker: { ok: boolean; error?: string };
-  reportGeneratorWorker: { ok: boolean; error?: string };
-  reportDeliveryWorker: { ok: boolean; error?: string };
+  reportWorker: { ok: boolean; error?: string };
 }> {
   const result = {
     nightlyStats: { ok: true as boolean, error: undefined as string | undefined },
@@ -1402,45 +1649,15 @@ export async function runAllCronJobs(): Promise<{
     dailyMaintenance: { ok: true as boolean, error: undefined as string | undefined },
     weeklyAiHealth: { ok: true as boolean, error: undefined as string | undefined },
     reportScheduleChecker: { ok: true as boolean, error: undefined as string | undefined },
-    reportGeneratorWorker: { ok: true as boolean, error: undefined as string | undefined },
-    reportDeliveryWorker: { ok: true as boolean, error: undefined as string | undefined },
+    reportWorker: { ok: true as boolean, error: undefined as string | undefined },
   };
 
-  try {
-    await runNightlyStatsJob();
-  } catch (e) {
-    result.nightlyStats = { ok: false, error: e instanceof Error ? e.message : String(e) };
-  }
-  try {
-    await runHourlySubscriptionsJob();
-  } catch (e) {
-    result.hourlySubscriptions = { ok: false, error: e instanceof Error ? e.message : String(e) };
-  }
-  try {
-    await runDailyMaintenanceJob();
-  } catch (e) {
-    result.dailyMaintenance = { ok: false, error: e instanceof Error ? e.message : String(e) };
-  }
-  try {
-    await runWeeklyAiHealthJob();
-  } catch (e) {
-    result.weeklyAiHealth = { ok: false, error: e instanceof Error ? e.message : String(e) };
-  }
-  try {
-    await runReportScheduleCheckerJob();
-  } catch (e) {
-    result.reportScheduleChecker = { ok: false, error: e instanceof Error ? e.message : String(e) };
-  }
-  try {
-    await runReportGeneratorWorker();
-  } catch (e) {
-    result.reportGeneratorWorker = { ok: false, error: e instanceof Error ? e.message : String(e) };
-  }
-  try {
-    await runReportDeliveryWorker();
-  } catch (e) {
-    result.reportDeliveryWorker = { ok: false, error: e instanceof Error ? e.message : String(e) };
-  }
+  try { await runNightlyStatsJob(); } catch (e) { result.nightlyStats = { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  try { await runHourlySubscriptionsJob(); } catch (e) { result.hourlySubscriptions = { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  try { await runDailyMaintenanceJob(); } catch (e) { result.dailyMaintenance = { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  try { await runWeeklyAiHealthJob(); } catch (e) { result.weeklyAiHealth = { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  try { await runReportScheduleCheckerJob(); } catch (e) { result.reportScheduleChecker = { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  try { await runReportWorker(); } catch (e) { result.reportWorker = { ok: false, error: e instanceof Error ? e.message : String(e) }; }
 
   return result;
 }
