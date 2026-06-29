@@ -1420,3 +1420,87 @@ Stage Summary:
 - Key findings reported: 4 LLM + 2 mislabelled features, Z.ai GLM-4 at 0.03 BDT/1K tokens, max 15 BDT/pharmacy/month, 3 P0 fixes (max_tokens, row cap, free-tier guard) — 35 min total effort
 - Kill-switch criteria: 200 BDT/pharmacy/month, 50K tokens/pharmacy/day, 100K BDT/platform/month, 10% Z.ai error rate
 - Recommended pricing: Free=0 BDT, Pro=99 BDT (limited AI), Pro+AI=199 BDT (full AI, 13x margin)
+
+---
+Task ID: feature-inventory-1
+Agent: Explore (Feature Inventory Sub-Agent)
+Task: Catalog EVERY feature in InventoryOS — Technical + Business — for founder-facing reference doc
+
+Work Log:
+- Read /home/z/my-project/worklog.md (lines 1-200) for prior context — understood Phase 0 → Phase 8b build history
+- Listed and inventoried ALL 84 API route files under src/app/api/ recursively (auth, businesses, super-admin, cron, health, root)
+- Read first 30-60 lines of every API route to extract endpoint purpose, request/response shape, and gap-integration notes (SQL router, AI cache, rate limit, fallback)
+- Listed and read first 40 lines of all 61 .tsx component files under src/modules/pharmacy/components/
+- Read all 15 lib files in full: auth.ts, db.ts, cache.ts, rbac.ts, modules.ts, ai-rate-limit.ts, ai-cache.ts, ai-fallback.ts, sql-router.ts, feature-gate.ts, cron-jobs.ts, auth-store.ts, nav-store.ts, use-permissions.ts, utils.ts
+- Read entire prisma/schema.prisma (813 lines, 30 models) — extracted every model with fields, relations, indexes, compound uniques
+- Read configuration files: package.json (86 deps + 10 devDeps), docker-compose.yml (4 services), Dockerfile (3-stage), Caddyfile, next.config.ts, tailwind.config.ts, sentry.client.config.ts, sentry.server.config.ts
+- Read src/middleware.ts (edge auth gate), src/app/layout.tsx, src/app/admin/page.tsx (first 80 lines of 1891)
+- Listed scripts/ directory (~52 files) and read headers of: backup.sh, restore.sh, verify-backup.js, restore-drill.sh, migrate-to-postgres.js, start-server.sh, start-persistent.sh, run-1b-tests.sh, gen-ai-report.js, generate-pharmacy-roadmap.js, generate-inventory-doc.js, gen-sqa-report.js, gen-integration-report.js, gen-readiness-plan.js, gen-ui-redesign-plan.js, gen-ai-cost-chart.py
+- Read docker/pgbouncer/pgbouncer.ini (transaction pool, 200 clients / 20 pool / 5 reserve)
+- Read src/modules/pharmacy/{services,routes,schema}/index.ts (all placeholders), src/modules/pharmacy/types/index.ts, src/types/business-module.ts, src/types/index.ts
+- Grep'd sql-router.ts to enumerate all 20 deterministic pattern handlers
+- Grep'd schema.prisma to enumerate all 30 models with line numbers
+
+Inventory Compiled:
+- 84 API route files (auth: 4, businesses root: 1, business [id] sub-routes: 70, cron: 4, health: 2, super-admin: 5, root: 1)
+- 61 pharmacy UI components (.tsx) + 1 barrel index.ts
+- 30 Prisma models (BusinessType, User, Business, BusinessUser, Category, Product, Batch, Inventory, Transaction, OtpVerification, Session, AlertPreference, NotificationLog, Customer, Sale, SaleItem, Payment, Return, ReturnItem, DiscountRule, Supplier, Purchase, PurchaseItem, AIUsageLog, SuperAdmin, SuperAdminSession, BusinessDailyStats, CronJobLog, AIResponseCache, FefoOverride)
+- 15 lib files
+- ~52 scripts (17 API test runners, 17 test-apis.js files, 5 AI report builders, 8 doc generators, 4 backup scripts, 1 migration script, 2 server start scripts)
+- 3 subscription tiers (free / pro / pro_ai) with full feature-gate mapping
+- 6 RBAC roles (owner / admin / manager / pharmacist / cashier / stock_clerk) with 41 permission strings
+- 20 SQL router deterministic patterns (low-stock, out-of-stock, product-count, today-sales, top-selling, expiring-soon, expired, customers-owe, owe-suppliers, inventory-value, total-customers, total-suppliers, month-sales, week-sales, recent-purchases, categories, today-purchases, returns, payments-received, dashboard-summary)
+- 3 cron jobs (nightly-stats 01:00 UTC, hourly-subscriptions top of hour, daily-maintenance 01:30 UTC)
+
+Key Findings (founder-relevant):
+- Tech stack: Next.js 16 + React 19 + TypeScript 5 + Tailwind 4 + shadcn/ui + Prisma 6 + SQLite(dev)/Postgres 16(prod) + Redis 7 + Sentry + z-ai-web-dev-sdk
+- Production architecture: Docker multi-stage build, PgBouncer transaction pooling, Caddy reverse proxy, 4-service docker-compose
+- AI infrastructure: 5-tier rate limiter (subscription → AI flag → burst 5/60s → daily 50 → monthly 1000 → 500K tokens), 24h AI response cache with data-hash keying, bilingual fallback system (9 reason types, EN+BN messages), 20-pattern SQL router for free deterministic shortcuts
+- Multi-tenant by Business — every entity carries businessId with cascade deletes
+- Edge middleware auth gate — runs on Edge runtime, refuses protected routes without token
+- Full audit trail: Transaction (stock movements), FefoOverride (DGDA compliance), AIUsageLog (AI cost tracking), NotificationLog (alert history), Session (login activity)
+
+Features NOT yet wired (flagged for founder awareness):
+- AI Demand Forecast endpoint claims LLM but is actually deterministic statistics
+- AI Smart Reorder endpoint is deterministic (not LLM) but feature-gate flags it as pro_ai
+- Email/SMS alert channels (AlertPreference.emailEnabled/smsEnabled) are schema-only — digest endpoint logs to DB but doesn't send emails/SMS
+- Quiet hours settings are editable in UI but not enforced by digest endpoint
+- 6 non-pharmacy business modules (grocery, restaurant, cctv, mobile, electric, bakery) registered but inactive — no component directories exist
+- Cron jobs are functional but require external scheduler (no vercel.json cron config in repo)
+- next-auth, next-intl, @dnd-kit, @mdxeditor/editor, react-syntax-highlighter are installed but unused
+- Product.maxStock (overstock warning) stored but no UI surfaces it
+- Category hierarchy (parentId) supported in API but UI shows flat lists
+
+Stage Summary:
+- Delivered complete structured Markdown report with TWO main sections (TECHNICAL FEATURES + BUSINESS FEATURES) organized into 13 + 14 subcategories respectively
+- Each feature entry includes: feature name, what it does (1-2 sentences), key file path(s)
+- Total counts table provided at top (84 routes, 61 components, 30 models, 15 lib files, ~52 scripts)
+- Feature flag/tier matrix provided (free vs pro vs pro_ai)
+- Stubbed/unwired features explicitly called out in dedicated section
+- No files generated — research-only as instructed
+- Work log appended to /home/z/my-project/worklog.md
+
+---
+Task ID: feature-catalog-final
+Agent: Super Z (Main Agent)
+Task: Generate the InventoryOS Complete Feature Catalog (.docx) divided into 2 sectors: Technical Features and Business Features. Founder reference document.
+
+Work Log:
+- Dispatched exploration agent (Task ID: feature-inventory-1) to inventory ALL features in the codebase: 84 API routes, 61 UI components, 30 Prisma models, 15 lib files, ~52 scripts. Agent returned exhaustive feature inventory organized into Technical and Business sectors, including a list of 13 features that exist in code but are not yet wired to UI. Findings appended to worklog (lines 1481-1539).
+- Called Outline tool with 23 sections: Cover, TOC, How to Use, Part 1 Divider, 6 Technical sections (Foundation, Auth, DB/Cache, AI Infra, Background Jobs, DevOps, Security), Part 2 Divider, 10 Business sections (Product/Inventory, Sales, Purchases, Dashboards, Reports, Expiry, AI Features, Alerts, User/Sub, Audit), Summary.
+- Wrote modular docx generation scripts under /home/z/my-project/scripts/:
+  * feature-catalog-cover.js (R1 recipe, dark emerald, "Everything Your Product Can Do Today" subtitle)
+  * feature-catalog-body1.js (How to Use + Part 1 Divider + Tech Foundation + Auth + DB/Cache)
+  * feature-catalog-body2.js (AI Infra with 20-pattern SQL router table + Background Jobs + DevOps + Security/SuperAdmin/DataPortability)
+  * feature-catalog-body3.js (Part 2 Divider + Product/Inventory with 11-row summary table + Sales + Purchases)
+  * feature-catalog-body4.js (Dashboards + 7 Reports + Expiry + 7 AI Features + Alerts + User/Sub with tier comparison table + Audit + Summary with 13-row gap table + pitch callout)
+  * gen-feature-catalog.js (orchestrator with 3 sections: Cover / TOC / Body)
+- Reused ai-report-helpers.js (same Emerald Pharmacy palette) for consistency with prior AI Features Report.
+- Ran add_toc_placeholders.py — 99 headings auto-extracted, TOC populated.
+- Ran postcheck.py — 0 errors, 2 acceptable warnings (PageBreak separators for Part 1/Part 2 dividers + table cell line spacing variance — both expected and benign).
+
+Stage Summary:
+- Final deliverable: /home/z/my-project/download/InventoryOS_Feature_Catalog.docx (55 KB, 99 headings, ~10,000 words, 13 tables)
+- Document structure: Cover → TOC → How to Use → PART 1 Technical Features (7 sections, 4 tables) → PART 2 Business Features (11 sections, 8 tables) → Summary
+- Visual style: Emerald Pharmacy palette (emerald primary, violet AI accent, dark emerald cover) matching InventoryOS brand
+- Includes tier comparison table (Free/Pro/Pro+AI), 20 SQL Router patterns, 13 gap items (features in code but not wired to UI), and a founder's pitch summary callout
