@@ -11,7 +11,7 @@ const fs = require("fs");
 const { buildCover } = require("./ai-report-cover");
 const { buildExecSummary, buildFeatureInventory, buildHealthDashboard } = require("./ai-report-body1");
 const { buildCostModel, buildRiskAnalysis } = require("./ai-report-body2");
-const { buildMitigationPlan, buildFinalVerdict } = require("./ai-report-body3");
+const { buildMitigationPlan, buildFinalVerdict, buildPhasedPlan } = require("./ai-report-body3");
 
 // =============================================================================
 // PAGE LAYOUT CONSTANTS
@@ -101,6 +101,7 @@ function buildBodyContent() {
   body.push(...buildRiskAnalysis());
   body.push(...buildMitigationPlan());
   body.push(...buildFinalVerdict());
+  body.push(...buildPhasedPlan());
   return body;
 }
 
