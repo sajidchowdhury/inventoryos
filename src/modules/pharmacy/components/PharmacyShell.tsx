@@ -45,6 +45,7 @@ import { ReorderSuggestions } from "./ReorderSuggestions";
 import { DemandForecast } from "./DemandForecast";
 import { ExpiryOptimizer } from "./ExpiryOptimizer";
 import { ProfileView } from "./ProfileView";
+import { SubscriptionStatus } from "./SubscriptionStatus";
 import { BottomNav } from "./BottomNav";
 
 export function PharmacyShell() {
@@ -180,6 +181,10 @@ export function PharmacyShell() {
       // ── PROFILE ──
       case "profile":
         return <ProfileView />;
+
+      // ── SUBSCRIPTION ──
+      case "subscription":
+        return <SubscriptionStatus />;
 
       default:
         return <PharmacyDashboard />;

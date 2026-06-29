@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
   ArrowLeft, RefreshCw, Smartphone, Monitor, Trash2,
-  Clock, Shield, AlertCircle, Check,
+  Clock, Shield, AlertCircle, Check, Globe,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -31,14 +31,17 @@ const fadeIn = {
   transition: { duration: 0.3 },
 };
 
-const roleColors: Record<string, string> = {
-  owner: "bg-purple-100 text-purple-700",
-  admin: "bg-blue-100 text-blue-700",
-  manager: "bg-green-100 text-green-700",
-  pharmacist: "bg-orange-100 text-orange-700",
-  cashier: "bg-red-100 text-red-700",
-  stock_clerk: "bg-indigo-100 text-indigo-700",
+// Role color system matching the rest of the app
+const roleStyles: Record<string, { badge: string; grad: string }> = {
+  owner:       { badge: "bg-purple-100 text-purple-700",  grad: "from-purple-500 to-fuchsia-500" },
+  admin:       { badge: "bg-emerald-100 text-emerald-700", grad: "from-emerald-500 to-teal-500" },
+  manager:     { badge: "bg-blue-100 text-blue-700",       grad: "from-blue-500 to-indigo-500" },
+  pharmacist:  { badge: "bg-cyan-100 text-cyan-700",       grad: "from-cyan-500 to-sky-500" },
+  cashier:     { badge: "bg-amber-100 text-amber-700",     grad: "from-amber-500 to-orange-500" },
+  stock_clerk: { badge: "bg-slate-100 text-slate-700",     grad: "from-slate-500 to-slate-600" },
 };
+
+const defaultRoleStyle = roleStyles.stock_clerk;
 
 function getDeviceInfo(deviceStr: string): { icon: typeof Smartphone; label: string } {
   if (!deviceStr || deviceStr === "Unknown") return { icon: Monitor, label: "Unknown device" };
@@ -112,42 +115,63 @@ export function SessionManager() {
   };
 
   return (
-    <motion.div {...fadeIn} className="space-y-4 pb-4">
+    <motion.div
+      {...fadeIn}
+      className="pharmacy-bg min-h-screen -mx-4 -my-4 px-4 py-4 space-y-4 pb-6"
+    >
+      {/* ── Header ── */}
       <div className="flex items-center gap-2">
-        <Button variant="ghost" size="icon" className="shrink-0" onClick={() => setActiveView("users")}>
+        <Button variant="ghost" size="icon" className="shrink-0 shadow-pharmacy" onClick={() => setActiveView("users")}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
-        <h1 className="text-lg font-bold flex-1">Active Sessions</h1>
-        <Button variant="ghost" size="icon" onClick={fetchSessions} disabled={loading}>
+        <div className="flex-1">
+          <h1 className="text-lg font-bold leading-tight">Active Sessions</h1>
+          <p className="text-[11px] text-muted-foreground">Manage logged-in devices</p>
+        </div>
+        <Button variant="ghost" size="icon" onClick={fetchSessions} disabled={loading} className="shadow-pharmacy">
           <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
         </Button>
       </div>
 
+      {/* ── Success toast ── */}
       {success && (
-        <Card className="border-green-500/50 bg-green-50">
-          <CardContent className="p-3 flex items-center gap-2 text-sm text-green-700">
-            <Check className="h-4 w-4" /> {success}
+        <Card className="border-emerald-200 bg-emerald-50 stagger-in">
+          <CardContent className="p-3 flex items-center gap-2 text-sm text-emerald-700">
+            <Check className="h-4 w-4 shrink-0" /> {success}
           </CardContent>
         </Card>
       )}
 
-      <Card className="bg-blue-50 border-blue-200">
+      {/* ── Security info banner ── */}
+      <Card className="bg-gradient-to-br from-blue-50 to-sky-50 border-blue-100 stagger-in">
         <CardContent className="p-3 flex items-start gap-2 text-xs text-blue-700">
-          <Shield className="h-4 w-4 shrink-0 mt-0.5" />
+          <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-blue-500 to-sky-500 flex items-center justify-center shrink-0">
+            <Shield className="h-4 w-4 text-white" />
+          </div>
           <div>
-            <p className="font-semibold">Session Security</p>
-            <p className="mt-0.5">{sessions.length} active session(s). Revoke to force logout a user from a specific device.</p>
+            <p className="font-bold">Session Security</p>
+            <p className="mt-0.5 text-blue-600">{sessions.length} active session(s). Revoke to force logout a user from a specific device.</p>
           </div>
         </CardContent>
       </Card>
 
+      {/* ── Session List ── */}
       {loading ? (
-        <div className="space-y-2">{[1, 2].map((i) => <Card key={i} className="animate-pulse"><CardContent className="p-4 h-16" /></Card>)}</div>
+        <div className="space-y-2">
+          {[1, 2].map((i) => (
+            <Card key={i} className="border-0 shadow-pharmacy">
+              <CardContent className="p-4 h-24 skeleton rounded-xl" />
+            </Card>
+          ))}
+        </div>
       ) : sessions.length === 0 ? (
-        <Card>
+        <Card className="shadow-pharmacy border-0 stagger-in">
           <CardContent className="p-8 text-center space-y-2">
-            <Clock className="h-12 w-12 mx-auto text-muted-foreground/30" />
-            <p className="font-medium">No active sessions</p>
+            <div className="h-14 w-14 rounded-2xl bg-muted flex items-center justify-center mx-auto">
+              <Clock className="h-7 w-7 text-muted-foreground/50" />
+            </div>
+            <p className="font-semibold">No active sessions</p>
+            <p className="text-xs text-muted-foreground">Logins will appear here</p>
           </CardContent>
         </Card>
       ) : (
@@ -155,34 +179,65 @@ export function SessionManager() {
           {sessions.map((s) => {
             const device = getDeviceInfo(s.deviceInfo);
             const isCurrent = currentToken && s.token.startsWith(currentToken.substring(0, 8));
+            const roleStyle = roleStyles[s.role] || defaultRoleStyle;
             return (
-              <Card key={s.id} className={cn("overflow-hidden", isCurrent && "border-green-300 bg-green-50/30")}>
+              <Card
+                key={s.id}
+                className={cn(
+                  "card-hover shadow-pharmacy border-0 overflow-hidden stagger-in",
+                  isCurrent && "ring-2 ring-emerald-300"
+                )}
+              >
                 <CardContent className="p-3 flex items-start gap-3">
-                  <div className="h-9 w-9 rounded-lg bg-muted flex items-center justify-center shrink-0">
-                    <device.icon className="h-4 w-4 text-muted-foreground" />
+                  {/* Gradient device icon */}
+                  <div className={cn(
+                    "h-10 w-10 rounded-xl bg-gradient-to-br flex items-center justify-center shrink-0 shadow-sm",
+                    isCurrent ? "from-emerald-500 to-teal-500" : "from-slate-500 to-slate-600"
+                  )}>
+                    <device.icon className="h-5 w-5 text-white" />
                   </div>
+
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 flex-wrap">
                       <p className="text-sm font-semibold">{s.fullName || s.username}</p>
-                      <Badge variant="outline" className={cn("text-[9px]", roleColors[s.role])}>{s.role}</Badge>
-                      {isCurrent && <Badge className="text-[9px] bg-green-100 text-green-700">Current</Badge>}
+                      <Badge variant="outline" className={cn("text-[9px]", roleStyle.badge)}>{s.role}</Badge>
+                      {isCurrent && (
+                        <Badge className="text-[9px] bg-emerald-100 text-emerald-700 hover:bg-emerald-100 border-0">
+                          <Check className="h-2.5 w-2.5 mr-0.5" /> Current
+                        </Badge>
+                      )}
                     </div>
-                    <p className="text-[10px] text-muted-foreground">{device.label}</p>
-                    <p className="text-[10px] text-muted-foreground">
-                      Logged in: {new Date(s.createdAt).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })}
+                    <p className="text-[11px] text-muted-foreground flex items-center gap-1 mt-0.5">
+                      <Globe className="h-2.5 w-2.5" /> {device.label}
                     </p>
-                    <p className="text-[10px] text-muted-foreground">
-                      Expires: {new Date(s.expiresAt).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })}
-                    </p>
+                    <div className="flex flex-col gap-0.5 mt-1 text-[10px] text-muted-foreground">
+                      <span className="flex items-center gap-1">
+                        <Clock className="h-2.5 w-2.5" />
+                        <span className="font-medium text-foreground/80">Logged in:</span>
+                        {" "}{new Date(s.createdAt).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <AlertCircle className="h-2.5 w-2.5" />
+                        <span className="font-medium text-foreground/80">Expires:</span>
+                        {" "}{new Date(s.expiresAt).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })}
+                      </span>
+                    </div>
                   </div>
+
+                  {/* Revoke button — rose outline */}
                   {!isCurrent && (
-                    <button
-                      className="p-1.5 rounded hover:bg-red-50 shrink-0 disabled:opacity-50"
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="shrink-0 gap-1 border-rose-300 text-rose-600 hover:bg-rose-50 hover:text-rose-700 h-8"
                       onClick={() => handleRevoke(s.id, s.fullName || s.username)}
                       disabled={revoking === s.id}
                     >
-                      <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive" />
-                    </button>
+                      {revoking === s.id
+                        ? <RefreshCw className="h-3 w-3 animate-spin" />
+                        : <Trash2 className="h-3 w-3" />}
+                      Revoke
+                    </Button>
                   )}
                 </CardContent>
               </Card>
@@ -190,6 +245,7 @@ export function SessionManager() {
           })}
         </div>
       )}
+
     </motion.div>
   );
 }
