@@ -1563,3 +1563,38 @@ Stage Summary:
 - Total: 13 files changed, 863 insertions, 4 deletions in commit 310f4c5
 - Default config values: chat=1024 tokens, insights=2048 tokens, expiry-optimizer=2048 tokens + 50 batches, product-assistant=512 tokens + 20 meds
 - Ready for Phase 2 (P1 structural defenses: free-tier guard + circuit breaker).
+
+---
+Task ID: phase2-implementation
+Agent: Super Z (Main Agent)
+Task: Implement Phase 2 of the AI Features Report Phased Implementation Plan — P1 structural defenses (free-tier guard + global circuit breaker). Verified Phase 1 was 100% complete before starting.
+
+Work Log:
+- Verified Phase 1 completion: all 4 P0 fixes (max_tokens on 4 routes, take:50 on expiry-optimizer, products.length>20 on product-assistant) confirmed in code via grep. Commit 310f4c5 + 2 worklog auto-saves pushed to origin/main.
+- Task 2.1: Discovered feature-gate.ts ALREADY exposes aiEnabled: boolean on TierLimits + isAIEnabled() helper. No refactor needed — task was already done in a prior session.
+- Task 2.2-2.5 (free-tier guard): Instead of adding tier checks to 4 AI routes individually, added the check ONCE inside checkAILimit() in src/lib/ai-rate-limit.ts. This is a better design (DRY, covers future AI routes automatically, separates tier gate from manual aiEnabled override). Imported getTierConfig, added subscriptionTier to business lookup, new check step 2 returns tier_blocked with helpful upgrade message. New AILimitType: 'tier_blocked'.
+- Task 2.6: Created src/lib/ai-circuit-breaker.ts (140 lines). Exports checkCircuitBreaker(businessId) which queries AIUsageLog for 24h token usage and trips when usage > 80% of aiTokenBudget (default 500K → trips at 400K tokens). Stateless (queries DB every check), fail-open on DB error, auto-recovers as 24h window slides. Returns { open, tokensUsed24h, tokensBudget, tokensThreshold, percentUsed, reason }.
+- Task 2.7: Wired circuit breaker into checkAILimit() as new step 4 (after tier + aiEnabled checks, before burst/daily/monthly rate limits). New AILimitType: 'circuit_open'.
+- Task 2.8: Added 'circuit_open' and 'tier_blocked' to FallbackReason type in src/lib/ai-fallback.ts. Added bilingual (EN + BN) messages for both reasons. tier_blocked is retryable=false (user must upgrade). circuit_open is retryable=true (window slides). Added cases to classifyRateLimitByType() for both new limit types.
+- Wrote 2 smoke test scripts:
+  * scripts/test-phase2-ai-defenses.js (3 tests): free-tier block, pro_ai access restored, circuit breaker closed at low usage
+  * scripts/simulate-circuit-breaker-trip.js (1 test): inserts 450K tokens of mock AIUsageLog rows, verifies next AI call returns HTTP 429 with limitType=circuit_open + bilingual fallback, cleans up mock rows
+- All 4 smoke tests PASSED against live server on :3001.
+- TypeScript check: zero errors in changed files. Next.js build: clean.
+- Committed as a0278b2, tagged v1.2.0-ai-p1, pushed to origin/main with tag.
+
+Stage Summary:
+- Phase 2 of the Phased Implementation Plan is now COMPLETE.
+- Files added: src/lib/ai-circuit-breaker.ts (140 lines), scripts/test-phase2-ai-defenses.js, scripts/simulate-circuit-breaker-trip.js (3 new files)
+- Files modified: src/lib/ai-rate-limit.ts (tier check + circuit breaker wiring), src/lib/ai-fallback.ts (2 new fallback reasons + bilingual messages + classifyRateLimitByType cases) (2 modified files)
+- Total: 7 files changed, 501 insertions, 2 deletions in commit a0278b2
+- 6-tier AI defense stack now enforced in checkAILimit() in this order:
+  1. Subscription status (suspended/cancelled → blocked)
+  2. Tier check (free/pro → tier_blocked) [NEW in Phase 2]
+  3. aiEnabled flag (manual founder override → ai_disabled)
+  4. Circuit breaker (24h usage > 80% monthly budget → circuit_open) [NEW in Phase 2]
+  5. Burst (5 calls/60s → rate_limit_burst)
+  6. Daily (50 calls/day → rate_limit_daily)
+  7. Monthly (1000 calls/month → rate_limit_monthly)
+  8. Token budget (500K tokens/month → rate_limit_tokens)
+- Ready for Phase 3 (P2 optimizations: product-asst cache, insights prompt refactor, Smart rename for forecast/reorder, AIUsageLog for non-LLM endpoints, client-side cache, overstock alert).
