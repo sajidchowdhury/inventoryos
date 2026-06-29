@@ -42,6 +42,7 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
+import { AiConfigCard } from "./AiConfigCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -1842,6 +1843,9 @@ export default function AdminPage() {
             />
           )}
         </div>
+
+        {/* Phase 1: AI Configuration (tunable cost-control knobs) */}
+        <AiConfigCard token={token!} />
 
         {/* Business list */}
         {businessesData && (

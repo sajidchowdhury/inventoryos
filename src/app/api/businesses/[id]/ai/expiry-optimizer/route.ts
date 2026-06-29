@@ -23,6 +23,7 @@ import {
   classifyError,
   classifyRateLimitByType,
 } from "@/lib/ai-fallback";
+import { getAiConfig } from "@/lib/ai-config";
 
 const FEATURE = "expiry-optimizer";
 
@@ -59,10 +60,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       );
     }
 
-    // ── 2. Fetch batches (existing code) ──
+    // ── 2. Fetch batches (capped by configurable maxInputBatches) ──
     const ninetyDaysFromNow = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
 
-    // Fetch all batches expiring within 90 days (or already expired) with stock
+    // Load AI config early so we can apply maxInputBatches to the query.
+    // Default is 50 — prevents a 500-batch pharmacy from sending a 35K-token prompt.
+    const aiConfig = await getAiConfig("expiry-optimizer");
+    const batchTake = aiConfig.maxInputBatches ?? 50;
+
+    // Fetch batches expiring within 90 days (or already expired) with stock.
+    // Capped to the configured limit, ordered by expiry ASC so the most urgent
+    // batches are always analyzed first.
     const batches = await db.batch.findMany({
       where: {
         businessId,
@@ -81,6 +89,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         },
       },
       orderBy: { expiryDate: "asc" },
+      take: batchTake,
     });
 
     if (batches.length === 0) {
@@ -236,6 +245,7 @@ Be practical and pharmacy-specific. Return only the JSON array.`;
         { role: "user", content: userContent },
       ],
       thinking: { type: "disabled" },
+      max_tokens: aiConfig.maxOutputTokens,
     });
 
     const response = completion.choices[0]?.message?.content || "";

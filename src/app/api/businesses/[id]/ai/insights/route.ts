@@ -23,6 +23,7 @@ import {
   classifyError,
   classifyRateLimitByType,
 } from "@/lib/ai-fallback";
+import { getAiConfig } from "@/lib/ai-config";
 
 const FEATURE = "insights";
 
@@ -242,12 +243,16 @@ Generate 5-8 insights and 3-5 recommendations. Be specific with numbers from the
 
     const userContent = `Analyze this pharmacy data:\n\n${JSON.stringify(dataSummary, null, 2)}`;
 
+    // ── Call the LLM (with configurable max_tokens cap) ──
+    const aiConfig = await getAiConfig("insights");
+
     const completion = await zai.chat.completions.create({
       messages: [
         { role: "assistant", content: systemPrompt },
         { role: "user", content: userContent },
       ],
       thinking: { type: "disabled" },
+      max_tokens: aiConfig.maxOutputTokens,
     });
 
     const response = completion.choices[0]?.message?.content || "";

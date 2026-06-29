@@ -26,6 +26,7 @@ import {
   classifyError,
   classifyRateLimitByType,
 } from "@/lib/ai-fallback";
+import { getAiConfig } from "@/lib/ai-config";
 
 const MAX_MESSAGE_CHARS = 500;
 
@@ -254,9 +255,13 @@ ${JSON.stringify(contextData, null, 2)}`;
       { role: "user", content: message },
     ];
 
+    // ── 6. Call the LLM (with configurable max_tokens cap) ──
+    const aiConfig = await getAiConfig("chat");
+
     const completion = await zai.chat.completions.create({
       messages,
       thinking: { type: "disabled" },
+      max_tokens: aiConfig.maxOutputTokens,
     });
 
     const aiResponse = completion.choices[0]?.message?.content || "";

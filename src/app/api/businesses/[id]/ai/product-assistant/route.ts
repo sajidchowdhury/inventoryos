@@ -18,6 +18,7 @@ import {
   classifyError,
   classifyRateLimitByType,
 } from "@/lib/ai-fallback";
+import { getAiConfig } from "@/lib/ai-config";
 
 const VALID_ACTIONS = [
   "generate_description",
@@ -81,6 +82,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const ZAI = (await import("z-ai-web-dev-sdk")).default;
     const zai = await ZAI.create();
 
+    // Load configurable AI limits for this feature (max_tokens + maxInputProducts)
+    const aiConfig = await getAiConfig("product-assistant");
+    const maxProducts = aiConfig.maxInputProducts ?? 20;
+
     // ── 2. Dispatch by action — each path makes its own LLM call ──
 
     // ── Action: Generate product description ──
@@ -105,6 +110,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           { role: "user", content: userContent },
         ],
         thinking: { type: "disabled" },
+        max_tokens: aiConfig.maxOutputTokens,
       });
 
       const description = completion.choices[0]?.message?.content || "";
@@ -126,6 +132,20 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
       if (!Array.isArray(products) || products.length === 0) {
         return NextResponse.json({ error: "Products array required" }, { status: 400 });
+      }
+
+      // Cap on medications per request — prevents a single abuser from sending
+      // 100+ meds and burning 6,500+ tokens of input + 3,000+ tokens of output.
+      // Value is configurable from super-admin panel (default 20).
+      if (products.length > maxProducts) {
+        return NextResponse.json(
+          {
+            error: `Too many products in a single request (max ${maxProducts}). Received ${products.length}. Please split the request into smaller batches.`,
+            maxAllowed: maxProducts,
+            received: products.length,
+          },
+          { status: 400 }
+        );
       }
 
       const systemPrompt = `You are a clinical pharmacist. Analyze the provided medications and patient conditions for potential drug interactions, contraindications, and safety concerns.
@@ -159,6 +179,7 @@ If no interactions found, return empty arrays and riskLevel "none". Be thorough 
           { role: "user", content: userContent },
         ],
         thinking: { type: "disabled" },
+        max_tokens: aiConfig.maxOutputTokens,
       });
 
       const response = completion.choices[0]?.message?.content || "";
@@ -203,6 +224,7 @@ Common pharmacy categories: Antibiotics, Pain & Fever, Cold & Flu, Digestive Hea
           { role: "user", content: userContent },
         ],
         thinking: { type: "disabled" },
+        max_tokens: aiConfig.maxOutputTokens,
       });
 
       const response = completion.choices[0]?.message?.content || "";
@@ -247,6 +269,7 @@ Keep it concise and factual. Do not include specific brand recommendations.`;
           { role: "user", content: userContent },
         ],
         thinking: { type: "disabled" },
+        max_tokens: aiConfig.maxOutputTokens,
       });
 
       const response = completion.choices[0]?.message?.content || "";

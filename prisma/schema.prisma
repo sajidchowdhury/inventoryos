@@ -811,3 +811,25 @@ model FefoOverride {
   @@index([saleId])
   @@index([productId])
 }
+
+// ── AI Configuration (Phase 1: configurable cost-control knobs) ──
+// Stores per-feature AI limits that the founder can tune from the super-admin
+// panel without redeploying. Falls back to hardcoded defaults in src/lib/ai-config.ts
+// if the row is missing or the DB is unreachable.
+//
+// Features:
+//   - "chat"             → maxOutputTokens (default 1024)
+//   - "insights"         → maxOutputTokens (default 2048)
+//   - "expiry-optimizer" → maxOutputTokens (default 2048) + maxInputBatches (default 50)
+//   - "product-assistant"→ maxOutputTokens (default 512)  + maxInputProducts (default 20)
+model AiConfig {
+  id               String   @id @default(cuid())
+  feature          String   @unique
+  maxOutputTokens  Int      @default(1024)
+  maxInputBatches  Int?     // only used by expiry-optimizer
+  maxInputProducts Int?     // only used by product-assistant:check_interactions
+  updatedAt        DateTime @updatedAt
+  updatedBy        String?  // super-admin username
+
+  @@map("ai_configs")
+}
