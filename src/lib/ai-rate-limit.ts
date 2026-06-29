@@ -18,6 +18,8 @@
 //   default, so legacy rows that predate the column never block paid traffic).
 
 import { db } from "./db";
+import { getTierConfig } from "./feature-gate";
+import { checkCircuitBreaker } from "./ai-circuit-breaker";
 
 // ── Constants ──
 export const BURST_WINDOW_SECONDS = 60;
@@ -38,6 +40,8 @@ export type AILimitType =
   | "monthly"
   | "tokens"
   | "ai_disabled"
+  | "tier_blocked"
+  | "circuit_open"
   | "subscription"
   | "not_found";
 
@@ -100,6 +104,7 @@ export async function checkAILimit(businessId: string): Promise<AILimitResult> {
     select: {
       aiEnabled: true,
       subscriptionStatus: true,
+      subscriptionTier: true,
       aiDailyLimit: true,
       aiMonthlyLimit: true,
       aiTokenBudget: true,
@@ -134,13 +139,45 @@ export async function checkAILimit(businessId: string): Promise<AILimitResult> {
     };
   }
 
-  // 2. AI enabled flag check
+  // 2. Tier check — Phase 2 P1 fix (Risk #3 in AI Features Report).
+  // The Business.aiEnabled boolean is a manual founder override (set from /admin).
+  // The tier check is the structural gate: only pro_ai tier should reach the LLM.
+  // This closes the "free-tier user can hit AI" gap identified in Section 4.2.
+  const tierConfig = getTierConfig(business.subscriptionTier);
+  if (!tierConfig.limits.aiEnabled) {
+    return {
+      allowed: false,
+      reason: `AI features require the Pro+AI tier. Your current tier is "${business.subscriptionTier || "free"}". Please upgrade at /subscription.`,
+      limitType: "tier_blocked",
+      remaining: fullRemaining,
+    };
+  }
+
+  // 3. AI enabled flag check (manual founder override — separate from tier gate)
   if (!business.aiEnabled) {
     return {
       allowed: false,
       reason: "AI features are not enabled for this business",
       limitType: "ai_disabled",
       remaining: fullRemaining,
+    };
+  }
+
+  // 4. Circuit breaker check — Phase 2 P1 fix.
+  // Trips when 24h token usage exceeds 80% of monthly budget. Blocks the call
+  // with a fallback response so a runaway script or chatty user can't burn the
+  // entire monthly budget in a single day. Auto-recovers as the 24h window slides.
+  const breaker = await checkCircuitBreaker(businessId);
+  if (breaker.open) {
+    return {
+      allowed: false,
+      reason: breaker.reason || "Circuit breaker tripped — daily AI usage limit reached",
+      limitType: "circuit_open",
+      remaining: {
+        daily: dailyLimit,
+        monthly: monthlyLimit,
+        tokens: Math.max(0, breaker.tokensBudget - breaker.tokensUsed24h),
+      },
     };
   }
 

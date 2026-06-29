@@ -19,6 +19,8 @@ export type FallbackReason =
   | "rate_limit_monthly"
   | "rate_limit_tokens"
   | "rate_limit_burst"
+  | "circuit_open"
+  | "tier_blocked"
   | "no_cached_data"
   | "parse_error"
   | "unknown";
@@ -77,6 +79,16 @@ export const MESSAGES: Record<
     en: "You are making AI requests too quickly. Please slow down and try again shortly.",
     bn: "আপনি খুব দ্রুত এআই অনুরোধ করছেন। একটু ধীরে চেষ্টা করুন।",
     retryable: true,
+  },
+  circuit_open: {
+    en: "Daily AI usage limit reached. You have used over 80% of your monthly token budget in the last 24 hours. AI features will be available again soon. Try again tomorrow or upgrade your plan.",
+    bn: "দৈনিক এআই ব্যবহারের সীমা পৌঁছে গেছে। আপনি গত ২৪ ঘন্টায় আপনার মাসিক টোকেন বাজেটের ৮০%-এর বেশি ব্যবহার করেছেন। এআই ফিচার শীঘ্রই আবার উপলব্ধ হবে। আগামীকাল আবার চেষ্টা করুন বা আপনার প্ল্যান আপগ্রেড করুন।",
+    retryable: true,
+  },
+  tier_blocked: {
+    en: "AI features require the Pro+AI subscription tier. Please upgrade your plan to access AI chat, insights, expiry optimizer, and product assistant.",
+    bn: "এআই ফিচারগুলির জন্য Pro+AI সাবস্ক্রিপশন টায়ার প্রয়োজন। এআই চ্যাট, ইনসাইটস, এক্সপায়ারি অপ্টিমাইজার এবং প্রোডাক্ট অ্যাসিস্ট্যান্ট অ্যাক্সেস করতে আপনার প্ল্যান আপগ্রেড করুন।",
+    retryable: false,
   },
   no_cached_data: {
     en: "AI is currently unavailable and no cached response exists for this request.",
@@ -202,6 +214,10 @@ export function classifyRateLimitByType(
       return "rate_limit_monthly";
     case "tokens":
       return "rate_limit_tokens";
+    case "tier_blocked":
+      return "tier_blocked";
+    case "circuit_open":
+      return "circuit_open";
     case "ai_disabled":
     case "subscription":
     case "not_found":
