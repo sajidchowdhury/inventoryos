@@ -1686,3 +1686,38 @@ Stage Summary:
   * Phase 4 — Kill-switch — v1.4.0-ai-killswitch
   * Phase 5 — Operations health — v1.5.0-ai-ops
 - The AI cost-control system is now fully operational end-to-end.
+
+---
+Task ID: report-sched-phase-a
+Agent: Super Z (Main Agent)
+Task: Implement Phase A of the AI Report Scheduling System — data model + occasion/season/epidemic calendar. Added 2 extra models (ReportSeason + EpidemicAlert) per founder's request to "consider session issue like Winter/Summer/Pandemic".
+
+Work Log:
+- Added 7 Prisma models to schema.prisma:
+  1. ReportSchedule — founder's schedule config. Added considerSeasons + considerEpidemics boolean flags per founder's enhancement request.
+  2. ReportOccasion — point events (Eid, Friday, Puja). 14 pre-seeded.
+  3. ReportSeason (NEW) — recurring seasonal periods. 4 pre-seeded: Winter (Dec-Feb, 1.5x respiratory), Summer (Mar-May, 1.3x ORS), Monsoon (Jun-Sep, 2.0x antimalarials), Autumn (Oct-Nov, 1.0x baseline).
+  4. HolidayCalendar — specific occasion dates per year. 24 pre-seeded for 2026-2027. Lunar dates (Eid) marked isConfirmed=false.
+  5. EpidemicAlert (NEW) — active disease outbreaks. 2 templates seeded (Dengue 2026 + COVID historical, both inactive). Founder activates when outbreak detected.
+  6. GeneratedReport — the report itself. Added appliedInfluences JSON to record which occasions/seasons/epidemics were considered.
+  7. ReportDelivery — delivery tracking (email + WhatsApp).
+- Added ownerEmail + ownerWhatsapp fields to Business model for report delivery.
+- Created scripts/seed-report-scheduling.js — idempotent seed with 14 occasions + 4 seasons + 24 holidays + 2 epidemic templates. All lunar dates marked unconfirmed (founder must confirm each year).
+- Created shared auth helper: src/app/api/super-admin/report-scheduling/_shared.ts (verifySuperAdmin, reused across all 7 endpoints).
+- Created 7 CRUD API endpoints:
+  * occasions (GET/POST + GET/PUT/DELETE [id])
+  * seasons (GET/POST + GET/PUT/DELETE [id])
+  * epidemics (GET/POST + GET/PUT/DELETE [id]) — supports ?activeOnly=true for currently-active outbreaks
+  * holiday-calendar (GET/POST) — supports ?year=2026, ?upcoming=true, ?unconfirmed=true filters
+- 9 smoke tests passed: occasions count=14, seasons count=4, 2026 holidays count=12, unconfirmed Eid dates present, epidemics include Dengue+COVID templates, active epidemics=0, POST create custom occasion works, upcoming holidays=16, unauthorized returns 401.
+- TypeScript: zero errors. Next.js build: clean, all 7 routes registered.
+- Resolved git rebase conflict (auto-save commits on remote had added Phase 1-4 models that conflicted with my Phase A additions — merged both sets manually).
+- Committed as 0af025a, pushed to origin/main.
+
+Stage Summary:
+- Phase A of the Report Scheduling System is now COMPLETE.
+- 7 new Prisma models, 7 new API endpoints, 1 seed script (44 seed rows total: 14 occasions + 4 seasons + 24 holidays + 2 epidemics)
+- The 3-layer influence model is now fully modeled: occasions (point events) + seasons (periods) + epidemics (unpredictable overrides)
+- Files added: 9 (1 seed script + 1 shared helper + 7 route files)
+- Files modified: 1 (schema.prisma — added 7 models + 2 Business fields + 1 Business relation)
+- Ready for Phase B (AI prediction algorithm + report generation).
