@@ -23,6 +23,7 @@ export const CRON_JOB_NAMES = {
   NIGHTLY_STATS: "nightly-stats",
   HOURLY_SUBSCRIPTIONS: "hourly-subscriptions",
   DAILY_MAINTENANCE: "daily-maintenance",
+  WEEKLY_AI_HEALTH: "weekly-ai-health",
 } as const;
 
 export type CronJobName = (typeof CRON_JOB_NAMES)[keyof typeof CRON_JOB_NAMES];
@@ -46,6 +47,11 @@ export const CRON_JOB_SCHEDULES: Record<
     schedule: "30 1 * * *", // 01:30 UTC daily
     description:
       "Prune old CronJobLog (>90d), NotificationLog (>30d), expired OTPs, expired Sessions, and expired AIResponseCache entries.",
+  },
+  [CRON_JOB_NAMES.WEEKLY_AI_HEALTH]: {
+    schedule: "0 6 * * 1", // 06:00 UTC every Monday
+    description:
+      "Phase 5: Send weekly AI health summary email to all notification recipients. Includes this week's cost, top spenders, error rate, kill-switch triggers, and any health issues that need attention.",
   },
 };
 
@@ -576,6 +582,205 @@ export async function runDailyMaintenanceJob(): Promise<void> {
   }
 }
 
+// ── runWeeklyAiHealthJob (Phase 5) ──
+// Sends a weekly AI health summary email to all configured notification recipients.
+// Schedule: 06:00 UTC every Monday (external scheduler must trigger POST /api/cron/weekly-ai-health).
+//
+// The email includes:
+//   - This week's total AI cost + comparison to last week
+//   - Top 3 spenders
+//   - Error rate
+//   - Kill-switch triggers this week
+//   - Active kill-switches (if any)
+//   - Health status (healthy / watch / action_needed)
+//
+// If no recipients are configured, the job logs a warning and exits successfully
+// (no email sent, but the cron job still records a successful run).
+export async function runWeeklyAiHealthJob(): Promise<void> {
+  const jobName = CRON_JOB_NAMES.WEEKLY_AI_HEALTH;
+  const log: string[] = [];
+  const startedAt = new Date();
+  log.push(`[${startedAt.toISOString()}] Starting weekly AI health email job`);
+
+  // Insert running status
+  const cronLog = await db.cronJobLog.create({
+    data: {
+      jobName,
+      status: "running",
+      startedAt,
+      log: log.join("\n"),
+    },
+  });
+
+  try {
+    // Dynamic import to avoid circular dependency (email.ts imports db, cron-jobs.ts imports db)
+    const { sendEmail, getActiveRecipientEmails } = await import("./email");
+    const { getActiveKillSwitches } = await import("./ai-kill-switch");
+
+    const recipients = await getActiveRecipientEmails();
+    log.push(`Found ${recipients.length} notification recipient(s)`);
+
+    if (recipients.length === 0) {
+      log.push("No recipients configured — skipping email send. Job completed successfully.");
+      await db.cronJobLog.update({
+        where: { id: cronLog.id },
+        data: {
+          status: "success",
+          durationMs: Date.now() - startedAt.getTime(),
+          log: log.join("\n"),
+        },
+      });
+      return;
+    }
+
+    // ── Gather metrics ──
+    const now = new Date();
+    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const twoWeeksAgo = new Date(weekAgo.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+    const [thisWeekAgg, lastWeekAgg, thisWeekCalls, thisWeekErrors, topSpenders, activeKillSwitches] = await Promise.all([
+      db.aIUsageLog.aggregate({
+        where: { createdAt: { gte: weekAgo } },
+        _sum: { costEstimate: true },
+      }),
+      db.aIUsageLog.aggregate({
+        where: { createdAt: { gte: twoWeeksAgo, lt: weekAgo } },
+        _sum: { costEstimate: true },
+      }),
+      db.aIUsageLog.count({ where: { createdAt: { gte: weekAgo } } }),
+      db.aIUsageLog.count({ where: { createdAt: { gte: weekAgo }, success: false } }),
+      db.aIUsageLog.groupBy({
+        by: ["businessId"],
+        where: { createdAt: { gte: weekAgo } },
+        _sum: { costEstimate: true },
+        _count: true,
+        orderBy: { _sum: { costEstimate: "desc" } },
+        take: 3,
+      }),
+      getActiveKillSwitches(),
+    ]);
+
+    // Fetch business names for top spenders
+    const topSpenderIds = topSpenders.map((s) => s.businessId);
+    const topSpenderBusinesses = topSpenderIds.length > 0
+      ? await db.business.findMany({
+          where: { id: { in: topSpenderIds } },
+          select: { id: true, name: true },
+        })
+      : [];
+    const businessMap = new Map(topSpenderBusinesses.map((b) => [b.id, b.name]));
+
+    const thisWeekCost = thisWeekAgg._sum.costEstimate || 0;
+    const lastWeekCost = lastWeekAgg._sum.costEstimate || 0;
+    const costGrowth = lastWeekCost > 0 ? ((thisWeekCost - lastWeekCost) / lastWeekCost) * 100 : 0;
+    const errorRate = thisWeekCalls > 0 ? (thisWeekErrors / thisWeekCalls) * 100 : 0;
+
+    // ── Determine health status ──
+    let healthStatus = "✅ Healthy";
+    const issues: string[] = [];
+    if (activeKillSwitches.length > 0) {
+      healthStatus = "🚨 Action Needed";
+      issues.push(`${activeKillSwitches.length} active kill-switch(es) — investigate immediately`);
+    }
+    if (errorRate > 5 && thisWeekCalls > 10) {
+      healthStatus = "🚨 Action Needed";
+      issues.push(`Error rate is ${errorRate.toFixed(1)}% (threshold 5%) — check Sentry`);
+    }
+    if (costGrowth > 100 && thisWeekCalls > 20) {
+      if (healthStatus === "✅ Healthy") healthStatus = "⚠️ Watch";
+      issues.push(`Cost grew ${costGrowth.toFixed(0)}% vs last week — check for abusers`);
+    }
+    if (issues.length === 0) {
+      issues.push("All metrics within expected ranges. No action needed this week.");
+    }
+
+    log.push(`Health status: ${healthStatus}`);
+    log.push(`This week cost: ৳${thisWeekCost.toFixed(2)} (last week: ৳${lastWeekCost.toFixed(2)}, growth: ${costGrowth.toFixed(1)}%)`);
+    log.push(`This week calls: ${thisWeekCalls}, errors: ${thisWeekErrors} (${errorRate.toFixed(1)}%)`);
+    log.push(`Active kill-switches: ${activeKillSwitches.length}`);
+
+    // ── Build email HTML ──
+    const topSpendersHtml = topSpenders.map((s, i) => {
+      const name = businessMap.get(s.businessId) || "Unknown";
+      const cost = s._sum.costEstimate || 0;
+      return `<tr><td>${i + 1}</td><td>${name}</td><td>৳${cost.toFixed(2)}</td><td>${s._count}</td></tr>`;
+    }).join("");
+
+    const issuesHtml = issues.map((i) => `<li>${i}</li>`).join("");
+
+    const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h1 style="color: #7c3aed;">📊 Weekly AI Health Report</h1>
+        <p style="color: #6b7280; font-size: 14px;">Generated: ${now.toISOString()}</p>
+
+        <div style="background: #f3f4f6; padding: 16px; border-radius: 8px; margin: 20px 0;">
+          <h2 style="margin: 0 0 8px 0; font-size: 20px;">${healthStatus}</h2>
+          <ul style="margin: 0; padding-left: 20px;">${issuesHtml}</ul>
+        </div>
+
+        <h3>📈 This Week's Metrics</h3>
+        <table style="width: 100%; border-collapse: collapse; margin: 12px 0;">
+          <tr style="background: #f9fafb;"><td style="padding: 8px; border: 1px solid #e5e7eb;"><strong>This Week Cost</strong></td><td style="padding: 8px; border: 1px solid #e5e7eb;">৳${thisWeekCost.toFixed(2)}</td></tr>
+          <tr><td style="padding: 8px; border: 1px solid #e5e7eb;"><strong>Last Week Cost</strong></td><td style="padding: 8px; border: 1px solid #e5e7eb;">৳${lastWeekCost.toFixed(2)}</td></tr>
+          <tr style="background: #f9fafb;"><td style="padding: 8px; border: 1px solid #e5e7eb;"><strong>Growth Rate</strong></td><td style="padding: 8px; border: 1px solid #e5e7eb; ${costGrowth > 100 ? "color: #dc2626; font-weight: bold;" : ""}">${costGrowth > 0 ? "+" : ""}${costGrowth.toFixed(1)}%</td></tr>
+          <tr><td style="padding: 8px; border: 1px solid #e5e7eb;"><strong>Calls This Week</strong></td><td style="padding: 8px; border: 1px solid #e5e7eb;">${thisWeekCalls}</td></tr>
+          <tr style="background: #f9fafb;"><td style="padding: 8px; border: 1px solid #e5e7eb;"><strong>Error Rate</strong></td><td style="padding: 8px; border: 1px solid #e5e7eb; ${errorRate > 5 ? "color: #dc2626; font-weight: bold;" : ""}">${errorRate.toFixed(1)}%</td></tr>
+          <tr><td style="padding: 8px; border: 1px solid #e5e7eb;"><strong>Active Kill-Switches</strong></td><td style="padding: 8px; border: 1px solid #e5e7eb; ${activeKillSwitches.length > 0 ? "color: #dc2626; font-weight: bold;" : ""}">${activeKillSwitches.length}</td></tr>
+        </table>
+
+        ${topSpenders.length > 0 ? `
+        <h3>🏆 Top 3 Spenders This Week</h3>
+        <table style="width: 100%; border-collapse: collapse; margin: 12px 0;">
+          <tr style="background: #f9fafb;"><th style="padding: 8px; border: 1px solid #e5e7eb; text-align: left;">#</th><th style="padding: 8px; border: 1px solid #e5e7eb; text-align: left;">Business</th><th style="padding: 8px; border: 1px solid #e5e7eb; text-align: left;">Cost</th><th style="padding: 8px; border: 1px solid #e5e7eb; text-align: left;">Calls</th></tr>
+          ${topSpendersHtml}
+        </table>
+        ` : ""}
+
+        <hr style="border: 1px solid #e5e7eb; margin: 20px 0;">
+        <p style="font-size: 12px; color: #6b7280;">
+          This is an automated weekly report from InventoryOS Phase 5 Operations.
+          You received this email because you are configured as a notification recipient.
+          <br><br>
+          <a href="${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/admin" style="color: #7c3aed;">Open Super Admin Dashboard</a>
+        </p>
+      </div>
+    `;
+
+    // ── Send email ──
+    const result = await sendEmail({
+      to: recipients,
+      subject: `📊 InventoryOS Weekly AI Health — ${healthStatus} — ${now.toLocaleDateString()}`,
+      html,
+      text: `Weekly AI Health Report\n\nStatus: ${healthStatus}\nThis week cost: ৳${thisWeekCost.toFixed(2)}\nLast week: ৳${lastWeekCost.toFixed(2)}\nGrowth: ${costGrowth.toFixed(1)}%\nCalls: ${thisWeekCalls}\nErrors: ${thisWeekErrors} (${errorRate.toFixed(1)}%)\nActive kill-switches: ${activeKillSwitches.length}\n\nIssues:\n${issues.map((i) => `- ${i}`).join("\n")}`,
+    });
+
+    log.push(`Email send result: sent=${result.sent}, fallbackUsed=${result.fallbackUsed || false}, error=${result.error || "none"}`);
+
+    await db.cronJobLog.update({
+      where: { id: cronLog.id },
+      data: {
+        status: "success",
+        durationMs: Date.now() - startedAt.getTime(),
+        businessesProcessed: recipients.length,
+        recordsWritten: result.sent ? 1 : 0,
+        log: log.join("\n"),
+      },
+    });
+  } catch (err) {
+    log.push(`[ERROR] ${err instanceof Error ? err.message : String(err)}`);
+    await db.cronJobLog.update({
+      where: { id: cronLog.id },
+      data: {
+        status: "failed",
+        durationMs: Date.now() - startedAt.getTime(),
+        errorMessage: err instanceof Error ? err.message : String(err),
+        log: log.join("\n"),
+      },
+    });
+    throw err;
+  }
+}
+
 // ── Status Inspector (used by super-admin UI) ──
 export interface CronJobStatus {
   jobName: CronJobName;
@@ -656,11 +861,13 @@ export async function runAllCronJobs(): Promise<{
   nightlyStats: { ok: boolean; error?: string };
   hourlySubscriptions: { ok: boolean; error?: string };
   dailyMaintenance: { ok: boolean; error?: string };
+  weeklyAiHealth: { ok: boolean; error?: string };
 }> {
   const result = {
     nightlyStats: { ok: true as boolean, error: undefined as string | undefined },
     hourlySubscriptions: { ok: true as boolean, error: undefined as string | undefined },
     dailyMaintenance: { ok: true as boolean, error: undefined as string | undefined },
+    weeklyAiHealth: { ok: true as boolean, error: undefined as string | undefined },
   };
 
   try {
@@ -677,6 +884,11 @@ export async function runAllCronJobs(): Promise<{
     await runDailyMaintenanceJob();
   } catch (e) {
     result.dailyMaintenance = { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+  try {
+    await runWeeklyAiHealthJob();
+  } catch (e) {
+    result.weeklyAiHealth = { ok: false, error: e instanceof Error ? e.message : String(e) };
   }
 
   return result;

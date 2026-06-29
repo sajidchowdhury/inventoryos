@@ -46,6 +46,7 @@ import {
 import { AiConfigCard } from "./AiConfigCard";
 import { KillSwitchCard } from "./KillSwitchCard";
 import { NotificationRecipientsCard } from "./NotificationRecipientsCard";
+import { Phase5OpsCard } from "./Phase5OpsCard";
 import { SuperAdminHelp } from "./SuperAdminHelp";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -1828,6 +1829,9 @@ export default function AdminPage() {
 
         {/* Summary cards */}
         <SummaryCards summary={summary} />
+
+        {/* Phase 5: Operations Health Dashboard (top — most actionable) */}
+        <Phase5OpsCard token={token!} />
 
         {/* Abuse alerts (only if there are flags) */}
         <AbuseAlertsCard

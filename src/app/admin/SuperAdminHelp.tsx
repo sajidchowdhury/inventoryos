@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   ShieldAlert, Settings2, Mail, Activity, AlertTriangle,
   DollarSign, Users, Zap, Clock, CalendarClock, Play,
-  TrendingUp, Building2, Sparkles, HelpCircle,
+  TrendingUp, Building2, Sparkles, HelpCircle, Send,
 } from "lucide-react";
 
 export interface HelpEntry {
@@ -162,6 +162,28 @@ const HELP_ENTRIES: HelpEntry[] = [
     whatHappensIfNotSet: "Defaults: tier=free, status=trial, aiEnabled=false, aiDailyLimit=50, aiMonthlyLimit=1000, aiTokenBudget=500000.",
     whyYouNeedIt: "Use this to upgrade customers to Pro+AI after they pay, extend trial periods, or manually adjust rate limits for Enterprise customers who need higher quotas.",
     howToUse: "Click 'Edit' on any business in the Business List. Changes save immediately. Be careful with aiTokenBudget — setting it to 0 means 'use platform default' (500K), NOT 'disable AI'. To disable AI, uncheck the aiEnabled flag.",
+  },
+
+  // ── Phase 5: Operations Health ──
+  {
+    id: "ops-health",
+    title: "Phase 5: Operations Health Dashboard",
+    icon: Activity,
+    category: "Monitoring",
+    whatItIs: "A consolidated dashboard showing weekly + monthly + quarterly AI cost metrics. Includes health status banner, this week vs last week comparison, top spenders, monthly actual-vs-estimated cost per feature, tier mix, and quarterly reminders.",
+    whatHappensIfNotSet: "Read-only dashboard. No configuration needed — it pulls live data from AIUsageLog, KillSwitch, and Business tables. Always available at /admin.",
+    whyYouNeedIt: "This IS Phase 5 of the AI cost-control roadmap. It surfaces the exact metrics you need to check every Monday (weekly review), on the 1st of each month (monthly comparison), and quarterly (Z.ai pricing re-evaluation). Without it, you'd have to manually query the database to know if AI cost is healthy.",
+    howToUse: "Check the health status banner first — if it says 'Action Needed', read the issues list and address them. Review the weekly metrics every Monday. On the 1st of each month, check the Monthly Comparison table for any feature with 'Investigate' status (>2x cost estimate). Quarterly reminders appear in the first week of each quarter.",
+  },
+  {
+    id: "weekly-ai-health-email",
+    title: "Weekly AI Health Email (Cron Job)",
+    icon: Send,
+    category: "Operations",
+    whatItIs: "Automated email sent every Monday at 06:00 UTC to all configured notification recipients. Includes this week's cost, top 3 spenders, error rate, active kill-switches, and a health status (Healthy / Watch / Action Needed).",
+    whatHappensIfNotSet: "If no external scheduler triggers POST /api/cron/weekly-ai-health, the email never sends. You'd have to manually check /admin every Monday. If no recipients are configured, the job runs but skips the email (logs a warning).",
+    whyYouNeedIt: "This is the 'set it and forget it' layer of Phase 5. Instead of remembering to log into /admin every Monday, you get a summary in your inbox. If everything is healthy, you can skip the dashboard visit. If the email says 'Action Needed', you know to investigate immediately.",
+    howToUse: "1) Configure SMTP env vars (SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS). 2) Add at least 1 notification recipient in the Notification Recipients card. 3) Set up an external scheduler (Vercel Cron, systemd, cron-job.org) to hit POST /api/cron/weekly-ai-health every Monday at 06:00 UTC with the x-cron-secret header. 4) To test immediately, use the Background Jobs card 'Run Now' button or hit the endpoint with your super-admin Bearer token.",
   },
 ];
 
