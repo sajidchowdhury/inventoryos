@@ -24,6 +24,7 @@ export const CRON_JOB_NAMES = {
   HOURLY_SUBSCRIPTIONS: "hourly-subscriptions",
   DAILY_MAINTENANCE: "daily-maintenance",
   WEEKLY_AI_HEALTH: "weekly-ai-health",
+  REPORT_SCHEDULE_CHECKER: "report-schedule-checker",
 } as const;
 
 export type CronJobName = (typeof CRON_JOB_NAMES)[keyof typeof CRON_JOB_NAMES];
@@ -52,6 +53,11 @@ export const CRON_JOB_SCHEDULES: Record<
     schedule: "0 6 * * 1", // 06:00 UTC every Monday
     description:
       "Phase 5: Send weekly AI health summary email to all notification recipients. Includes this week's cost, top spenders, error rate, kill-switch triggers, and any health issues that need attention.",
+  },
+  [CRON_JOB_NAMES.REPORT_SCHEDULE_CHECKER]: {
+    schedule: "*/15 * * * *", // every 15 minutes
+    description:
+      "Phase C: Check all active report schedules. For each schedule where nextRunAt <= now, create GeneratedReport rows (status=pending) for each target business, then update the schedule's lastRunAt and nextRunAt.",
   },
 };
 
@@ -781,6 +787,152 @@ export async function runWeeklyAiHealthJob(): Promise<void> {
   }
 }
 
+// ── runReportScheduleCheckerJob (Phase C) ──
+// Checks all active report schedules. For each schedule where nextRunAt <= now:
+//   1. Determines the target client list
+//   2. Creates GeneratedReport rows (status=pending) for each target business
+//   3. Updates the schedule's lastRunAt and nextRunAt
+//
+// The pending reports are picked up by the report-generator-worker (Phase D)
+// which calls the AI prediction algorithm and generates the actual report content.
+//
+// Schedule: every 15 minutes (external scheduler must trigger POST /api/cron/report-schedule-checker).
+export async function runReportScheduleCheckerJob(): Promise<void> {
+  const jobName = CRON_JOB_NAMES.REPORT_SCHEDULE_CHECKER;
+  const log: string[] = [];
+  const startedAt = new Date();
+  log.push(`[${startedAt.toISOString()}] Starting report schedule checker`);
+
+  const cronLog = await db.cronJobLog.create({
+    data: { jobName, status: "running", startedAt, log: log.join("\n") },
+  });
+
+  try {
+    const now = new Date();
+
+    // Find all active schedules where nextRunAt <= now
+    const dueSchedules = await db.reportSchedule.findMany({
+      where: {
+        isActive: true,
+        nextRunAt: { lte: now },
+      },
+    });
+
+    log.push(`Found ${dueSchedules.length} due schedule(s)`);
+
+    let totalReportsCreated = 0;
+    let businessesProcessed = 0;
+
+    for (const schedule of dueSchedules) {
+      log.push(`Processing schedule: "${schedule.name}" (${schedule.id})`);
+
+      // Determine target businesses
+      let targetBusinessIds: string[] = [];
+      if (schedule.targetClientMode === "all") {
+        const businesses = await db.business.findMany({
+          where: { isActive: true, subscriptionTier: "pro_ai" },
+          select: { id: true },
+        });
+        targetBusinessIds = businesses.map((b) => b.id);
+      } else {
+        targetBusinessIds = JSON.parse(schedule.targetClientIds || "[]");
+      }
+
+      log.push(`  Target businesses: ${targetBusinessIds.length}`);
+
+      // Check for duplicate reports (same schedule + same business + same date)
+      // to avoid creating duplicate reports if the checker runs twice
+      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+      for (const businessId of targetBusinessIds) {
+        const existing = await db.generatedReport.findFirst({
+          where: {
+            scheduleId: schedule.id,
+            businessId,
+            reportDate: { gte: todayStart },
+          },
+        });
+
+        if (existing) {
+          log.push(`  Skipping ${businessId} — report already exists for today`);
+          continue;
+        }
+
+        // Create pending GeneratedReport
+        const periodStart = new Date(now);
+        periodStart.setDate(periodStart.getDate() + 1);
+        const periodEnd = new Date(periodStart);
+        periodEnd.setDate(periodEnd.getDate() + schedule.reportPeriodDays - 1);
+
+        await db.generatedReport.create({
+          data: {
+            scheduleId: schedule.id,
+            businessId,
+            reportDate: now,
+            reportPeriodStart: periodStart,
+            reportPeriodEnd: periodEnd,
+            generationStatus: "pending",
+            predictionConfidence: "medium",
+            appliedInfluences: JSON.stringify({
+              seasons: schedule.considerSeasons ? [] : ["disabled"],
+              occasions: JSON.parse(schedule.occasions || "[]"),
+              epidemics: schedule.considerEpidemics ? [] : ["disabled"],
+            }),
+          },
+        });
+        totalReportsCreated++;
+        businessesProcessed++;
+      }
+
+      // Update schedule's lastRunAt and nextRunAt
+      const { computeNextRunAt } = await import("./schedule-compute");
+      const nextRunAt = computeNextRunAt(
+        schedule.frequency,
+        schedule.dayOfWeek,
+        schedule.dayOfMonth,
+        schedule.startDate,
+        schedule.endDate,
+        now,
+        now
+      );
+
+      await db.reportSchedule.update({
+        where: { id: schedule.id },
+        data: {
+          lastRunAt: now,
+          nextRunAt,
+        },
+      });
+
+      log.push(`  Created ${totalReportsCreated} pending reports. Next run: ${nextRunAt?.toISOString() || "none"}`);
+      totalReportsCreated = 0; // reset per schedule
+    }
+
+    await db.cronJobLog.update({
+      where: { id: cronLog.id },
+      data: {
+        status: "success",
+        durationMs: Date.now() - startedAt.getTime(),
+        businessesProcessed,
+        recordsWritten: totalReportsCreated,
+        log: log.join("\n"),
+      },
+    });
+  } catch (err) {
+    log.push(`[ERROR] ${err instanceof Error ? err.message : String(err)}`);
+    await db.cronJobLog.update({
+      where: { id: cronLog.id },
+      data: {
+        status: "failed",
+        durationMs: Date.now() - startedAt.getTime(),
+        errorMessage: err instanceof Error ? err.message : String(err),
+        log: log.join("\n"),
+      },
+    });
+    throw err;
+  }
+}
+
 // ── Status Inspector (used by super-admin UI) ──
 export interface CronJobStatus {
   jobName: CronJobName;
@@ -862,12 +1014,14 @@ export async function runAllCronJobs(): Promise<{
   hourlySubscriptions: { ok: boolean; error?: string };
   dailyMaintenance: { ok: boolean; error?: string };
   weeklyAiHealth: { ok: boolean; error?: string };
+  reportScheduleChecker: { ok: boolean; error?: string };
 }> {
   const result = {
     nightlyStats: { ok: true as boolean, error: undefined as string | undefined },
     hourlySubscriptions: { ok: true as boolean, error: undefined as string | undefined },
     dailyMaintenance: { ok: true as boolean, error: undefined as string | undefined },
     weeklyAiHealth: { ok: true as boolean, error: undefined as string | undefined },
+    reportScheduleChecker: { ok: true as boolean, error: undefined as string | undefined },
   };
 
   try {
@@ -889,6 +1043,11 @@ export async function runAllCronJobs(): Promise<{
     await runWeeklyAiHealthJob();
   } catch (e) {
     result.weeklyAiHealth = { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+  try {
+    await runReportScheduleCheckerJob();
+  } catch (e) {
+    result.reportScheduleChecker = { ok: false, error: e instanceof Error ? e.message : String(e) };
   }
 
   return result;

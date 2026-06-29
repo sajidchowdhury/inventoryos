@@ -16,6 +16,7 @@ import {
   runHourlySubscriptionsJob,
   runDailyMaintenanceJob,
   runWeeklyAiHealthJob,
+  runReportScheduleCheckerJob,
   CRON_JOB_SCHEDULES,
   CRON_JOB_NAMES,
   type CronJobName,
@@ -26,6 +27,7 @@ const JOB_RUNNERS: Record<CronJobName, () => Promise<void>> = {
   [CRON_JOB_NAMES.HOURLY_SUBSCRIPTIONS]: runHourlySubscriptionsJob,
   [CRON_JOB_NAMES.DAILY_MAINTENANCE]: runDailyMaintenanceJob,
   [CRON_JOB_NAMES.WEEKLY_AI_HEALTH]: runWeeklyAiHealthJob,
+  [CRON_JOB_NAMES.REPORT_SCHEDULE_CHECKER]: runReportScheduleCheckerJob,
 };
 
 /**

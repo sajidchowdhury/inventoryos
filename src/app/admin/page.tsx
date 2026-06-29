@@ -47,6 +47,7 @@ import { AiConfigCard } from "./AiConfigCard";
 import { KillSwitchCard } from "./KillSwitchCard";
 import { NotificationRecipientsCard } from "./NotificationRecipientsCard";
 import { Phase5OpsCard } from "./Phase5OpsCard";
+import { ScheduleManagerCard } from "./ScheduleManagerCard";
 import { GeneratedReportsViewer } from "./GeneratedReportsViewer";
 import { SuperAdminHelp } from "./SuperAdminHelp";
 import { Button } from "@/components/ui/button";
@@ -1870,6 +1871,9 @@ export default function AdminPage() {
           <KillSwitchCard token={token!} />
           <NotificationRecipientsCard token={token!} />
         </div>
+
+        {/* Phase C: Schedule Manager (create/edit/trigger schedules) */}
+        <ScheduleManagerCard token={token!} />
 
         {/* Phase B: Generated Reports Viewer */}
         <GeneratedReportsViewer token={token!} />
