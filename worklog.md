@@ -1598,3 +1598,30 @@ Stage Summary:
   7. Monthly (1000 calls/month → rate_limit_monthly)
   8. Token budget (500K tokens/month → rate_limit_tokens)
 - Ready for Phase 3 (P2 optimizations: product-asst cache, insights prompt refactor, Smart rename for forecast/reorder, AIUsageLog for non-LLM endpoints, client-side cache, overstock alert).
+
+---
+Task ID: phase3-implementation
+Agent: Super Z (Main Agent)
+Task: Implement Phase 3 of the AI Features Report Phased Implementation Plan — P2 optimizations (product-asst cache, insights prompt refactor, Smart rename, AIUsageLog for non-LLM endpoints, client-side cache, overstock alert).
+
+Work Log:
+- Task 3.1: Added 7-day cache to Product Assistant for generate_description and suggest_category actions. Modified src/lib/ai-cache.ts to accept optional ttlHours parameter on setCachedResponse (backward-compatible default 24h). In product-assistant route: cache lookup before LLM call, cache write after, cache key includes all product fields so any edit invalidates. Logs feature='product-assistant-cache' with tokensUsed=0 on hit. check_interactions and suggest_dosage remain uncached (patient-specific).
+- Task 3.2: Refactored AI Insights system prompt from ~500 tokens (multi-line JSON schema with descriptions) to ~165 tokens (compact single-line schema). Preserved exact JSON contract. Added 'Return ONLY JSON' instruction.
+- Task 3.3 + 3.4: Renamed 'Demand Forecast' → 'Smart Forecast' and 'AI Demand Forecasting' → 'Smart Forecast' in AIHub.tsx and DemandForecast.tsx. ReorderSuggestions.tsx already showed 'Smart Reorder' without AI prefix. API route paths unchanged (no breaking change).
+- Task 3.5: Added logAIUsage(businessId, 'forecast', 0, true) and logAIUsage(businessId, 'reorder', 0, true) to the forecast and reorder routes. Zero tokens (no LLM), but makes super-admin dashboard accurate.
+- Task 3.6: Added 30-second client-side cache to ReorderSuggestions.tsx using useRef + lastFetchAt timestamp. fetchData accepts force=false param; Refresh button calls fetchData(true) to bypass.
+- Task 3.7: Added overstockProducts to dashboard API response. Surfaces the previously-unused Product.maxStock column. Updated PharmacyDashboard.tsx: stats grid expanded from 3 to 4 cards (grid-cols-2 sm:grid-cols-4), new Overstock card with indigo accent and Boxes icon. Now fetches from /api/businesses/[id]/dashboard in parallel with /products and /categories for more accurate low-stock/expiring counts too.
+- Fixed 2 bugs during implementation: (1) missing closing brace in dashboard route select clause, (2) used cached.createdAt instead of cached.cachedAt (CachedAIResponse type field name).
+- 4 smoke tests passed: forecast returns success + logs AIUsageLog, reorder returns 5 suggestions + logs AIUsageLog, dashboard returns overstockProducts field, super-admin ai-usage endpoint shows forecast + reorder in feature breakdown.
+- TypeScript check: zero new errors in changed files. Next.js build: clean.
+- Committed as ae21b42, tagged v1.3.0-ai-p2, pushed to origin/main with tag.
+
+Stage Summary:
+- Phase 3 of the Phased Implementation Plan is now COMPLETE.
+- Files modified: 11 (no new files created in Phase 3)
+- Total: 12 files changed (including db/custom.db + tsconfig.tsbuildinfo), 197 insertions, 42 deletions in commit ae21b42
+- AI cost savings from Phase 3: ~0.30 BDT/month per pharmacy (insights prompt) + ~0.04 BDT per cached product-assistant call (could save 2-5 BDT/month per power user who regenerates descriptions)
+- Dashboard UX improvement: 4-card stats grid with accurate low-stock/expiring/overstock counts from the dashboard API (previously the dashboard only fetched from /products with a <=5 estimate)
+- AI brand honesty: UI now correctly labels deterministic features as 'Smart' instead of 'AI'
+- Super-admin dashboard accuracy: forecast + reorder now appear in feature breakdown (previously invisible)
+- Ready for Phase 4 (kill-switch automation with founder email + super-admin controls).
