@@ -34,6 +34,7 @@ import {
   Zap,
   Ban,
   Crown,
+  HelpCircle,
 } from "lucide-react";
 import {
   Card,
@@ -43,6 +44,9 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import { AiConfigCard } from "./AiConfigCard";
+import { KillSwitchCard } from "./KillSwitchCard";
+import { NotificationRecipientsCard } from "./NotificationRecipientsCard";
+import { SuperAdminHelp } from "./SuperAdminHelp";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -1595,6 +1599,7 @@ export default function AdminPage() {
 
   const [loadingAll, setLoadingAll] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [helpOpen, setHelpOpen] = useState(false);
 
   // Toggling / suspending / running job state (keyed by id)
   const [togglingId, setTogglingId] = useState<string | null>(null);
@@ -1779,6 +1784,14 @@ export default function AdminPage() {
             <Button
               variant="outline"
               size="sm"
+              onClick={() => setHelpOpen(true)}
+            >
+              <HelpCircle className="h-4 w-4" />
+              Help
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
               onClick={() => void refreshAll()}
               disabled={loadingAll}
             >
@@ -1847,6 +1860,12 @@ export default function AdminPage() {
         {/* Phase 1: AI Configuration (tunable cost-control knobs) */}
         <AiConfigCard token={token!} />
 
+        {/* Phase 4: Kill-Switch + Notification Recipients */}
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <KillSwitchCard token={token!} />
+          <NotificationRecipientsCard token={token!} />
+        </div>
+
         {/* Business list */}
         {businessesData && (
           <BusinessList
@@ -1889,6 +1908,9 @@ export default function AdminPage() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Phase 4: Super Admin Help off-canvas */}
+      <SuperAdminHelp open={helpOpen} onOpenChange={setHelpOpen} />
     </div>
   );
 }

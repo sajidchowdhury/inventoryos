@@ -20,6 +20,7 @@
 import { db } from "./db";
 import { getTierConfig } from "./feature-gate";
 import { checkCircuitBreaker } from "./ai-circuit-breaker";
+import { checkKillSwitch } from "./ai-kill-switch";
 
 // ── Constants ──
 export const BURST_WINDOW_SECONDS = 60;
@@ -42,6 +43,7 @@ export type AILimitType =
   | "ai_disabled"
   | "tier_blocked"
   | "circuit_open"
+  | "kill_switch_open"
   | "subscription"
   | "not_found";
 
@@ -116,6 +118,20 @@ export async function checkAILimit(businessId: string): Promise<AILimitResult> {
       allowed: false,
       reason: "Business not found",
       limitType: "not_found",
+      remaining: { daily: 0, monthly: 0, tokens: 0 },
+    };
+  }
+
+  // 0. Kill-switch check — Phase 4. The master breaker. Runs FIRST, before
+  // all other checks. If any of the 4 triggers is active for this business
+  // (or platform-wide), block immediately. This is the only check that can
+  // block a paying pro_ai customer with full quota remaining.
+  const killSwitch = await checkKillSwitch(businessId);
+  if (killSwitch.open) {
+    return {
+      allowed: false,
+      reason: killSwitch.reason || "Kill-switch is active",
+      limitType: "kill_switch_open",
       remaining: { daily: 0, monthly: 0, tokens: 0 },
     };
   }

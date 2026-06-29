@@ -21,6 +21,7 @@ export type FallbackReason =
   | "rate_limit_burst"
   | "circuit_open"
   | "tier_blocked"
+  | "kill_switch"
   | "no_cached_data"
   | "parse_error"
   | "unknown";
@@ -88,6 +89,11 @@ export const MESSAGES: Record<
   tier_blocked: {
     en: "AI features require the Pro+AI subscription tier. Please upgrade your plan to access AI chat, insights, expiry optimizer, and product assistant.",
     bn: "এআই ফিচারগুলির জন্য Pro+AI সাবস্ক্রিপশন টায়ার প্রয়োজন। এআই চ্যাট, ইনসাইটস, এক্সপায়ারি অপ্টিমাইজার এবং প্রোডাক্ট অ্যাসিস্ট্যান্ট অ্যাক্সেস করতে আপনার প্ল্যান আপগ্রেড করুন।",
+    retryable: false,
+  },
+  kill_switch: {
+    en: "AI features are temporarily disabled platform-wide. The founder has been notified and will investigate. Please try again later.",
+    bn: "এআই ফিচারগুলি সাময়িকভাবে প্ল্যাটফর্ম-ব্যাপী নিষ্ক্রিয় করা হয়েছে। প্রতিষ্ঠাতাকে জানানো হয়েছে এবং তিনি তদন্ত করবেন। অনুগ্রহ করে পরে আবার চেষ্টা করুন।",
     retryable: false,
   },
   no_cached_data: {
@@ -218,6 +224,8 @@ export function classifyRateLimitByType(
       return "tier_blocked";
     case "circuit_open":
       return "circuit_open";
+    case "kill_switch_open":
+      return "kill_switch";
     case "ai_disabled":
     case "subscription":
     case "not_found":

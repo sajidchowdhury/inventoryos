@@ -833,3 +833,62 @@ model AiConfig {
 
   @@map("ai_configs")
 }
+
+// ── Kill Switch Audit Log (Phase 4) ──
+// Records every time a kill-switch trigger fires. Each row = one trigger event.
+// isActive=true means the kill-switch is currently blocking AI for that scope
+// (per-pharmacy for triggers 1+2, platform-wide for triggers 3+4).
+// Super-admin resets by setting isActive=false via /api/super-admin/kill-switch/[id]/reset.
+model KillSwitch {
+  id             String   @id @default(cuid())
+  trigger        String   // "per_pharmacy_monthly" | "per_pharmacy_24h" | "platform_monthly" | "zai_error_rate"
+  thresholdValue Float    @default(0) // the threshold that was configured at trigger time
+  actualValue    Float    @default(0) // the actual value that triggered it
+  triggeredAt    DateTime @default(now())
+  triggeredBy    String   // businessId for triggers 1+2, "platform" for triggers 3+4
+  isActive       Boolean  @default(true)
+  deactivatedAt  DateTime?
+  deactivatedBy  String?  // super-admin username
+  notes          String?
+
+  @@index([trigger, isActive])
+  @@index([triggeredAt])
+  @@index([triggeredBy])
+  @@map("kill_switches")
+}
+
+// ── Kill Switch Thresholds (Phase 4: dynamic, editable from super admin) ──
+// The founder can tune these from /admin without redeploying. Each trigger has
+// its own row with a configurable threshold value.
+//
+// Triggers:
+//   "per_pharmacy_monthly"  → max BDT per pharmacy per month (default 200)
+//   "per_pharmacy_24h"      → max tokens per pharmacy per 24h (default 50000)
+//   "platform_monthly"      → max BDT platform-wide per month (default 100000)
+//   "zai_error_rate"        → max error rate % in 1 hour (default 10)
+model KillSwitchThreshold {
+  id            String   @id @default(cuid())
+  trigger       String   @unique
+  thresholdValue Float   @default(0)
+  unit          String   @default("") // "BDT", "tokens", "BDT", "%" for display
+  isActive      Boolean  @default(true) // founder can disable a trigger entirely
+  updatedAt     DateTime @updatedAt
+  updatedBy     String?
+
+  @@map("kill_switch_thresholds")
+}
+
+// ── Notification Recipients (Phase 4: up to 3 emails for kill-switch alerts) ──
+// The founder can configure up to 3 email addresses from /admin. When a
+// kill-switch triggers, an email is sent to ALL active recipients.
+// If no recipients are configured, the alert is logged to NotificationLog only.
+model NotificationRecipient {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  label     String?  // e.g., "Founder", "CTO", "On-call engineer"
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("notification_recipients")
+}
