@@ -57,7 +57,7 @@ interface CronStatusData {
 
 // ── Main page ──
 export default function ApiSetupPage() {
-  const { token, notify } = useAdmin();
+  const { token, notify, apiFetch } = useAdmin();
   const [activeTab, setActiveTab] = useState("smtp");
 
   return (
@@ -90,7 +90,7 @@ export default function ApiSetupPage() {
       </TabsList>
 
       <TabsContent value="smtp" className="space-y-4">
-        <SmtpTab token={token!} notify={notify} />
+        <SmtpTab token={token!} notify={notify} apiFetch={apiFetch} />
       </TabsContent>
 
       <TabsContent value="ai" className="space-y-4">
@@ -119,7 +119,7 @@ export default function ApiSetupPage() {
 // ═══════════════════════════════════════════════════
 // SMTP TAB
 // ═══════════════════════════════════════════════════
-function SmtpTab({ token, notify }: { token: string; notify: (kind: "ok" | "err", msg: string) => void }) {
+function SmtpTab({ token, notify, apiFetch }: { token: string; notify: (kind: "ok" | "err", msg: string) => void; apiFetch: (url: string, options?: RequestInit) => Promise<Response> }) {
   const [sending, setSending] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -143,17 +143,16 @@ function SmtpTab({ token, notify }: { token: string; notify: (kind: "ok" | "err"
   const loadSmtpConfig = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/super-admin/smtp-config", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await apiFetch("/api/super-admin/smtp-config");
       const data = await res.json();
+      if (!res.ok) return;
       setSmtpStatus(data);
       if (data.config) {
         setForm({
           host: data.config.host || "",
           port: String(data.config.port || 587),
           user: data.config.user || "",
-          password: data.config.password || "", // masked if already set
+          password: data.config.password || "",
           fromEmail: data.config.fromEmail || "",
           fromName: data.config.fromName || "InventoryOS",
           isActive: data.config.isActive ?? true,
@@ -164,18 +163,16 @@ function SmtpTab({ token, notify }: { token: string; notify: (kind: "ok" | "err"
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [apiFetch]);
 
   useEffect(() => {
     void loadSmtpConfig();
     // Check recipient count
-    fetch("/api/super-admin/kill-switch/recipients", {
-      headers: { Authorization: `Bearer ${token}` },
-    })
+    apiFetch("/api/super-admin/kill-switch/recipients")
       .then((res) => res.json())
       .then((data) => setRecipientCount(data.recipients?.length ?? 0))
       .catch(() => setRecipientCount(0));
-  }, [token, loadSmtpConfig]);
+  }, [loadSmtpConfig, apiFetch]);
 
   const handleSave = async () => {
     if (!form.host || !form.user) {
@@ -184,9 +181,8 @@ function SmtpTab({ token, notify }: { token: string; notify: (kind: "ok" | "err"
     }
     setSaving(true);
     try {
-      const res = await fetch("/api/super-admin/smtp-config", {
+      const res = await apiFetch("/api/super-admin/smtp-config", {
         method: "PUT",
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
         body: JSON.stringify({
           host: form.host,
           port: parseInt(form.port),
@@ -211,9 +207,8 @@ function SmtpTab({ token, notify }: { token: string; notify: (kind: "ok" | "err"
   const handleTestEmail = async () => {
     setSending(true);
     try {
-      const res = await fetch("/api/super-admin/test-email", {
+      const res = await apiFetch("/api/super-admin/test-email", {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
