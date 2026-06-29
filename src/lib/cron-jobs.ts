@@ -1380,15 +1380,14 @@ export async function runReportWorker(): Promise<void> {
           // Create delivery rows for the new report
           if (result.reportId) {
             const channels = JSON.parse(pendingReport.schedule.deliveryChannels || "[\"email\"]");
-            const business = await db.business.findUnique({
-              where: { id: pendingReport.businessId },
-              select: { ownerEmail: true, ownerWhatsapp: true, phone: true, name: true },
-            });
+            // Phase 5: use centralized getBusinessContact helper
+            const { getBusinessContact } = await import("./business-contacts");
+            const contact = await getBusinessContact(pendingReport.businessId);
 
             for (const channel of channels) {
               let recipient: string | null = null;
-              if (channel === "email") recipient = business?.ownerEmail || null;
-              else if (channel === "whatsapp") recipient = business?.ownerWhatsapp || business?.phone || null;
+              if (channel === "email") recipient = contact?.email || null;
+              else if (channel === "whatsapp") recipient = contact?.whatsapp || null;
 
               if (recipient) {
                 await db.reportDelivery.create({
@@ -1396,7 +1395,7 @@ export async function runReportWorker(): Promise<void> {
                 });
                 log.push(`    Created ${channel} delivery to ${recipient}`);
               } else {
-                log.push(`    ⚠ No ${channel} recipient for ${business?.name || pendingReport.businessId}`);
+                log.push(`    ⚠ No ${channel} recipient for ${contact?.businessName || pendingReport.businessId}`);
               }
             }
           }

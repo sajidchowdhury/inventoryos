@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { useAdmin } from "./AdminContext";
 import { Phase5OpsCard } from "./Phase5OpsCard";
+import { ContactsCard } from "./ContactsCard";
 
 // ── Types ──
 interface BusinessesSummary {
@@ -287,6 +288,11 @@ export default function GlobalDashboard() {
       {/* SECTION 4: PHASE 5 OPS HEALTH (platform-wide)        */}
       {/* ═══════════════════════════════════════════════════ */}
       <Phase5OpsCard token={token!} />
+
+      {/* ═══════════════════════════════════════════════════ */}
+      {/* SECTION 4.5: OWNER CONTACTS (dynamic email/WhatsApp) */}
+      {/* ═══════════════════════════════════════════════════ */}
+      <ContactsCard token={token!} />
 
       {/* ═══════════════════════════════════════════════════ */}
       {/* SECTION 5: PROJECT SELECTOR                           */}

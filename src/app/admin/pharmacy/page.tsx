@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/card";
 import { ScheduleManagerCard } from "../ScheduleManagerCard";
 import { GeneratedReportsViewer } from "../GeneratedReportsViewer";
+import { ContactsCard } from "../ContactsCard";
 import { useAdmin } from "../AdminContext";
 import { Pill, Calendar, FileText, TrendingUp } from "lucide-react";
 
@@ -60,6 +61,9 @@ export default function PharmacyDashboard() {
 
       {/* Schedule Manager */}
       <ScheduleManagerCard token={token!} />
+
+      {/* Owner Contacts */}
+      <ContactsCard token={token!} />
 
       {/* Generated Reports Viewer */}
       <GeneratedReportsViewer token={token!} />
