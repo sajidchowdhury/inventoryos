@@ -27,6 +27,10 @@ import {
   Eye,
   EyeOff,
   RefreshCw,
+  Package,
+  Clock,
+  Receipt,
+  Users,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -61,6 +65,14 @@ const smallIconMap: Record<string, React.ReactNode> = {
   Cake: <Cake className="h-5 w-5" />,
 };
 
+// Helper: render a colored icon background with a subtle premium gradient overlay.
+// Works for any color format (hex, rgb, oklch) by layering white→black on top.
+const gradientIconStyle = (color: string): React.CSSProperties => ({
+  backgroundColor: color,
+  backgroundImage:
+    "linear-gradient(135deg, rgba(255,255,255,0.22), rgba(0,0,0,0.18))",
+});
+
 // ── Animation variants ──
 const slideIn = {
   initial: { opacity: 0, x: 40 },
@@ -76,6 +88,52 @@ const fadeIn = {
   transition: { duration: 0.3, ease: "easeOut" },
 };
 
+// ── Feature highlight cards (Landing Step) ──
+const featureCards = [
+  {
+    title: "Smart Inventory",
+    desc: "Track stock in real-time",
+    icon: Package,
+    gradient: "from-emerald-500 to-emerald-600",
+    highlight: false,
+  },
+  {
+    title: "FEFO Dispensing",
+    desc: "First-expiry-first-out logic",
+    icon: ShoppingCart,
+    gradient: "from-blue-500 to-blue-600",
+    highlight: false,
+  },
+  {
+    title: "Expiry Tracking",
+    desc: "Never lose stock to expiry",
+    icon: Clock,
+    gradient: "from-rose-500 to-rose-600",
+    highlight: false,
+  },
+  {
+    title: "AI-Powered Insights",
+    desc: "Smart predictions & alerts",
+    icon: Sparkles,
+    gradient: "from-purple-500 to-purple-600",
+    highlight: true,
+  },
+  {
+    title: "Sales & Reports",
+    desc: "Track revenue & trends",
+    icon: Receipt,
+    gradient: "from-amber-500 to-amber-600",
+    highlight: false,
+  },
+  {
+    title: "Multi-User",
+    desc: "Add staff with role control",
+    icon: Users,
+    gradient: "from-cyan-500 to-cyan-600",
+    highlight: false,
+  },
+];
+
 // ── Step indicator ──
 function StepIndicator({ current, steps }: { current: string; steps: string[] }) {
   const idx = steps.indexOf(current);
@@ -86,7 +144,11 @@ function StepIndicator({ current, steps }: { current: string; steps: string[] })
           key={step}
           className={cn(
             "h-2 rounded-full transition-all duration-500",
-            i === idx ? "w-8 bg-primary" : i < idx ? "w-2 bg-primary/50" : "w-2 bg-muted-foreground/20"
+            i === idx
+              ? "w-8 bg-emerald-500"
+              : i < idx
+                ? "w-2 bg-emerald-400/60"
+                : "w-2 bg-muted-foreground/20"
           )}
           aria-label={`Step ${i + 1}: ${step}`}
         />
@@ -117,12 +179,12 @@ function PasswordInput({
         placeholder={placeholder}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="h-11 pl-9 pr-10"
+        className="h-11 pl-9 pr-10 rounded-xl border-emerald-200/60 focus-visible:ring-emerald-500/30 focus-visible:border-emerald-500"
       />
       <button
         type="button"
         onClick={() => setShow(!show)}
-        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-emerald-600 transition-colors"
         aria-label={show ? "Hide password" : "Show password"}
       >
         {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -146,16 +208,58 @@ function LandingStep() {
     <motion.div {...fadeIn} className="space-y-8">
       {/* Hero */}
       <div className="text-center space-y-4">
-        <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-primary shadow-lg shadow-primary/25">
-          <Box className="h-10 w-10 text-primary-foreground" />
+        <div className="inline-flex items-center justify-center h-20 w-20 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-600 shadow-lg shadow-emerald-500/30">
+          <Box className="h-10 w-10 text-white" />
         </div>
         <h1 className="text-4xl sm:text-5xl font-bold tracking-tight">
-          Inventory<span className="text-primary">OS</span>
+          Inventory<span className="text-emerald-600">OS</span>
         </h1>
         <p className="text-lg text-muted-foreground max-w-md mx-auto leading-relaxed">
           Simple, powerful inventory management built for every business type.
-          One platform, many solutions.
         </p>
+      </div>
+
+      {/* Feature highlight cards — NEW */}
+      <div>
+        <p className="text-sm text-center text-muted-foreground font-medium mb-3">
+          Everything you need to run your business
+        </p>
+        <div className="grid grid-cols-2 gap-3">
+          {featureCards.map((feat) => {
+            const Icon = feat.icon;
+            return (
+              <Card
+                key={feat.title}
+                className={cn(
+                  "card-hover shadow-pharmacy overflow-hidden",
+                  feat.highlight && "border-purple-300 ring-2 ring-purple-200"
+                )}
+              >
+                <CardContent className="p-4 flex flex-col items-start gap-2.5">
+                  <div
+                    className={cn(
+                      "h-10 w-10 rounded-xl bg-gradient-to-br flex items-center justify-center text-white shadow-sm",
+                      feat.gradient
+                    )}
+                  >
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-sm flex items-center gap-1.5">
+                      {feat.title}
+                      {feat.highlight && (
+                        <Badge className="text-[9px] bg-purple-100 text-purple-700 hover:bg-purple-100 px-1.5 py-0">
+                          AI
+                        </Badge>
+                      )}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground leading-snug">{feat.desc}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
       </div>
 
       {/* Business type cards — clickable for active types! */}
@@ -168,17 +272,18 @@ function LandingStep() {
             <Card
               key={mod.slug}
               className={cn(
-                "transition-all",
+                "card-hover shadow-pharmacy overflow-hidden border-l-4 transition-all",
                 mod.isActive
-                  ? "cursor-pointer hover:shadow-md active:scale-[0.98] border-primary/20"
+                  ? "cursor-pointer active:scale-[0.98] border-emerald-100"
                   : "opacity-50 cursor-not-allowed"
               )}
+              style={{ borderLeftColor: mod.isActive ? mod.color : undefined }}
               onClick={() => handleBusinessClick(mod.slug, mod.isActive)}
             >
               <CardContent className="p-3 flex items-center gap-3">
                 <div
-                  className="w-11 h-11 rounded-xl flex items-center justify-center text-white shrink-0"
-                  style={{ backgroundColor: mod.color }}
+                  className="w-11 h-11 rounded-xl flex items-center justify-center text-white shrink-0 shadow-sm"
+                  style={gradientIconStyle(mod.color)}
                 >
                   {smallIconMap[mod.icon] || <Box className="h-5 w-5" />}
                 </div>
@@ -187,7 +292,7 @@ function LandingStep() {
                   <p className="text-[11px] text-muted-foreground truncate">{mod.description}</p>
                 </div>
                 {mod.isActive ? (
-                  <ChevronRight className="h-5 w-5 text-primary shrink-0" />
+                  <ChevronRight className="h-5 w-5 text-emerald-600 shrink-0" />
                 ) : (
                   <Badge variant="secondary" className="text-[10px] shrink-0">Soon</Badge>
                 )}
@@ -197,31 +302,31 @@ function LandingStep() {
         </div>
       </div>
 
-      {/* How it works */}
-      <Card className="border-primary/20 bg-primary/5">
+      {/* How it works — gradient emerald background */}
+      <Card className="border-0 overflow-hidden bg-gradient-to-br from-emerald-500 to-emerald-600 text-white shadow-pharmacy-lg">
         <CardContent className="p-4 space-y-3">
-          <p className="font-semibold text-sm text-primary flex items-center gap-2">
+          <p className="font-semibold text-sm flex items-center gap-2">
             <Sparkles className="h-4 w-4" /> How it works
           </p>
-          <div className="space-y-2 text-sm text-muted-foreground">
-            <div className="flex items-start gap-2">
-              <span className="text-primary font-bold shrink-0">1.</span>
-              <span>Choose your business type above</span>
+          <div className="space-y-2 text-sm text-emerald-50">
+            <div className="flex items-start gap-3">
+              <span className="h-5 w-5 rounded-full bg-white/25 flex items-center justify-center text-xs font-bold shrink-0">1</span>
+              <span className="pt-0.5">Choose your business type above</span>
             </div>
-            <div className="flex items-start gap-2">
-              <span className="text-primary font-bold shrink-0">2.</span>
-              <span>Verify your phone number</span>
+            <div className="flex items-start gap-3">
+              <span className="h-5 w-5 rounded-full bg-white/25 flex items-center justify-center text-xs font-bold shrink-0">2</span>
+              <span className="pt-0.5">Verify your phone number</span>
             </div>
-            <div className="flex items-start gap-2">
-              <span className="text-primary font-bold shrink-0">3.</span>
-              <span>Set up your business and start managing inventory</span>
+            <div className="flex items-start gap-3">
+              <span className="h-5 w-5 rounded-full bg-white/25 flex items-center justify-center text-xs font-bold shrink-0">3</span>
+              <span className="pt-0.5">Set up your business and start managing inventory</span>
             </div>
           </div>
         </CardContent>
       </Card>
 
       <p className="text-xs text-center text-muted-foreground">
-        No credit card needed. Free for small businesses.
+        No credit card needed. <span className="font-semibold text-emerald-600">Free for small businesses.</span>
       </p>
     </motion.div>
   );
@@ -258,9 +363,9 @@ function PhoneStep() {
 
   return (
     <motion.div {...slideIn} className="space-y-6">
-      <div className="text-center space-y-2">
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 text-primary">
-          <Phone className="h-8 w-8" />
+      <div className="text-center space-y-3">
+        <div className="inline-flex items-center justify-center h-16 w-16 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-600 shadow-lg shadow-emerald-500/30">
+          <Phone className="h-8 w-8 text-white" />
         </div>
         <h2 className="text-2xl font-bold">Enter your phone number</h2>
         <p className="text-muted-foreground text-sm">
@@ -273,7 +378,7 @@ function PhoneStep() {
           Phone Number
         </Label>
         <div className="flex gap-2">
-          <div className="flex items-center px-3 rounded-lg border bg-muted/50 text-sm font-medium text-muted-foreground shrink-0">
+          <div className="flex items-center px-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-sm font-semibold text-emerald-700 shrink-0">
             +880
           </div>
           <Input
@@ -286,14 +391,16 @@ function PhoneStep() {
               setLocalPhone(val);
               setError(null);
             }}
-            className="h-12 text-lg"
+            className="h-12 text-lg rounded-2xl shadow-pharmacy border-emerald-200/60 focus-visible:ring-emerald-500/30 focus-visible:border-emerald-500"
             maxLength={11}
             autoFocus
           />
         </div>
-        <p className="text-xs text-muted-foreground">
-          Demo: use <span className="font-mono font-bold text-primary">01787492561</span> to test
-        </p>
+        <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2">
+          <p className="text-xs text-emerald-800">
+            Demo: use <span className="font-mono font-bold text-emerald-700">01787492561</span> to test
+          </p>
+        </div>
       </div>
 
       {error && (
@@ -302,7 +409,7 @@ function PhoneStep() {
 
       <Button
         size="lg"
-        className="w-full h-12 gap-2"
+        className="w-full h-12 gap-2 rounded-2xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 shadow-lg shadow-emerald-500/30 border-0 text-white"
         onClick={handleSendOtp}
         disabled={localPhone.length < 11 || isLoading}
       >
@@ -410,9 +517,9 @@ function OtpStep() {
 
   return (
     <motion.div {...slideIn} className="space-y-6">
-      <div className="text-center space-y-2">
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 text-primary">
-          <ShieldCheck className="h-8 w-8" />
+      <div className="text-center space-y-3">
+        <div className="inline-flex items-center justify-center h-16 w-16 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-600 shadow-lg shadow-emerald-500/30 animate-pulse-soft">
+          <ShieldCheck className="h-8 w-8 text-white" />
         </div>
         <h2 className="text-2xl font-bold">Verify your number</h2>
         <p className="text-muted-foreground text-sm">
@@ -432,15 +539,17 @@ function OtpStep() {
             value={digit}
             onChange={(e) => handleChange(i, e.target.value)}
             onKeyDown={(e) => handleKeyDown(i, e)}
-            className="w-14 h-14 text-center text-2xl font-bold p-0"
+            className="w-14 h-14 text-center text-2xl font-bold p-0 rounded-2xl border-emerald-200/60 focus-visible:ring-emerald-500/30 focus-visible:border-emerald-500 shadow-sm"
             autoFocus={i === 0}
           />
         ))}
       </div>
 
-      <p className="text-xs text-center text-muted-foreground">
-        Demo OTP: <span className="font-mono font-bold text-primary">9999</span>
-      </p>
+      <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2 text-center">
+        <p className="text-xs text-emerald-800">
+          Demo OTP: <span className="font-mono font-bold text-emerald-700">9999</span>
+        </p>
+      </div>
 
       {error && (
         <p className="text-sm text-destructive text-center">{error}</p>
@@ -448,7 +557,7 @@ function OtpStep() {
 
       <Button
         size="lg"
-        className="w-full h-12 gap-2"
+        className="w-full h-12 gap-2 rounded-2xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 shadow-lg shadow-emerald-500/30 border-0 text-white"
         onClick={() => handleVerify()}
         disabled={otp.some((d) => !d) || isLoading}
       >
@@ -482,9 +591,9 @@ function DiscoveryStep() {
 
   return (
     <motion.div {...slideIn} className="space-y-6">
-      <div className="text-center space-y-2">
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 text-primary">
-          <Building2 className="h-8 w-8" />
+      <div className="text-center space-y-3">
+        <div className="inline-flex items-center justify-center h-16 w-16 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-600 shadow-lg shadow-emerald-500/30">
+          <Building2 className="h-8 w-8 text-white" />
         </div>
         <h2 className="text-2xl font-bold">Your Businesses</h2>
         <p className="text-muted-foreground text-sm">
@@ -496,7 +605,7 @@ function DiscoveryStep() {
         {businesses.map((biz) => (
           <Card
             key={biz.id}
-            className="cursor-pointer hover:shadow-md transition-all border-l-4 active:scale-[0.98]"
+            className="card-hover shadow-pharmacy cursor-pointer transition-all border-l-4 active:scale-[0.98] overflow-hidden"
             style={{ borderLeftColor: biz.businessType.color }}
             onClick={() => {
               setSelectedBusiness(biz);
@@ -509,8 +618,8 @@ function DiscoveryStep() {
           >
             <CardContent className="p-4 flex items-center gap-3">
               <div
-                className="w-11 h-11 rounded-xl flex items-center justify-center text-white shrink-0"
-                style={{ backgroundColor: biz.businessType.color }}
+                className="w-11 h-11 rounded-xl flex items-center justify-center text-white shrink-0 shadow-sm"
+                style={gradientIconStyle(biz.businessType.color)}
               >
                 {smallIconMap[biz.businessType.icon] || <Box className="h-5 w-5" />}
               </div>
@@ -520,9 +629,9 @@ function DiscoveryStep() {
               </div>
               <div className="text-right">
                 {biz.hasCredentials ? (
-                  <Badge variant="outline" className="text-[10px]">Login</Badge>
+                  <Badge className="text-[10px] bg-emerald-100 text-emerald-700 hover:bg-emerald-100">Login</Badge>
                 ) : (
-                  <Badge className="text-[10px] text-white bg-orange-500">Set Up</Badge>
+                  <Badge className="text-[10px] bg-amber-100 text-amber-700 hover:bg-amber-100">Set Up</Badge>
                 )}
               </div>
               <ChevronRight className="h-5 w-5 text-muted-foreground shrink-0" />
@@ -537,7 +646,7 @@ function DiscoveryStep() {
       <Button
         variant="outline"
         size="lg"
-        className="w-full h-12 gap-2 border-dashed"
+        className="w-full h-12 gap-2 border-dashed border-emerald-400 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800 rounded-2xl"
         onClick={() => {
           setSelectedBusiness(null);
           setStep("add-business");
@@ -561,18 +670,20 @@ function AddBusinessStep() {
 
   return (
     <motion.div {...slideIn} className="space-y-6">
-      <div className="text-center space-y-2">
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 text-primary">
-          <Plus className="h-8 w-8" />
+      <div className="text-center space-y-3">
+        <div className="inline-flex items-center justify-center h-16 w-16 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-600 shadow-lg shadow-emerald-500/30">
+          <Plus className="h-8 w-8 text-white" />
         </div>
         <h2 className="text-2xl font-bold">Choose your business type</h2>
         <p className="text-muted-foreground text-sm">
           Select the type that matches your business
         </p>
         {!hasExistingBusinesses && (
-          <p className="text-xs text-muted-foreground bg-muted/50 rounded-lg px-3 py-2">
-            No businesses registered yet. Let&apos;s set up your first one!
-          </p>
+          <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2">
+            <p className="text-xs text-emerald-800">
+              No businesses registered yet. Let&apos;s set up your first one!
+            </p>
+          </div>
         )}
       </div>
 
@@ -581,18 +692,19 @@ function AddBusinessStep() {
           <Card
             key={mod.slug}
             className={cn(
-              "transition-all",
+              "card-hover shadow-pharmacy overflow-hidden border-l-4 transition-all",
               mod.isActive
-                ? "cursor-pointer hover:shadow-md active:scale-[0.98]"
+                ? "cursor-pointer active:scale-[0.98]"
                 : "opacity-50 cursor-not-allowed",
-              selectedBusinessTypeSlug === mod.slug && mod.isActive && "ring-2 ring-primary"
+              selectedBusinessTypeSlug === mod.slug && mod.isActive && "ring-2 ring-emerald-500"
             )}
+            style={{ borderLeftColor: mod.isActive ? mod.color : undefined }}
             onClick={() => mod.isActive && setSelectedBusinessTypeSlug(mod.slug)}
           >
             <CardContent className="p-3 flex items-center gap-3">
               <div
-                className="w-10 h-10 rounded-lg flex items-center justify-center text-white shrink-0"
-                style={{ backgroundColor: mod.color }}
+                className="w-10 h-10 rounded-lg flex items-center justify-center text-white shrink-0 shadow-sm"
+                style={gradientIconStyle(mod.color)}
               >
                 {smallIconMap[mod.icon] || <Box className="h-5 w-5" />}
               </div>
@@ -602,7 +714,7 @@ function AddBusinessStep() {
               </div>
               {mod.isActive ? (
                 selectedBusinessTypeSlug === mod.slug ? (
-                  <CheckCircle2 className="h-5 w-5 text-primary shrink-0" />
+                  <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
                 ) : null
               ) : (
                 <Badge variant="secondary" className="text-[10px] shrink-0">Soon</Badge>
@@ -614,7 +726,7 @@ function AddBusinessStep() {
 
       <Button
         size="lg"
-        className="w-full h-12 gap-2"
+        className="w-full h-12 gap-2 rounded-2xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 shadow-lg shadow-emerald-500/30 border-0 text-white"
         onClick={() => setStep("create-login")}
       >
         Continue with {modules.find((m) => m.slug === selectedBusinessTypeSlug)?.name}
@@ -709,10 +821,10 @@ function CreateLoginStep() {
 
   return (
     <motion.div {...slideIn} className="space-y-5">
-      <div className="text-center space-y-2">
+      <div className="text-center space-y-3">
         <div
-          className="inline-flex items-center justify-center w-16 h-16 rounded-2xl text-white"
-          style={{ backgroundColor: selectedType?.color || "#2563EB" }}
+          className="inline-flex items-center justify-center h-16 w-16 rounded-2xl text-white shadow-lg"
+          style={gradientIconStyle(selectedType?.color || "#16a34a")}
         >
           {smallIconMap[selectedType?.icon || ""] || <Plus className="h-8 w-8" />}
         </div>
@@ -722,42 +834,49 @@ function CreateLoginStep() {
         </p>
       </div>
 
-      {/* Business Details */}
+      {/* Business Details — Blue dot indicator */}
       <div className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="bizName" className="text-sm font-medium flex items-center gap-1.5">
-            <Building2 className="h-3.5 w-3.5" /> Business Name *
-          </Label>
-          <Input
-            id="bizName"
-            placeholder="e.g., City Pharmacy"
-            value={newBusinessName}
-            onChange={(e) => { setNewBusinessName(e.target.value); setError(null); }}
-            className="h-11"
-            autoFocus
-          />
+        <div className="flex items-center gap-2">
+          <span className="h-2 w-2 rounded-full bg-blue-500" />
+          <p className="text-sm font-semibold text-blue-700">Business Information</p>
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="bizAddr" className="text-sm font-medium flex items-center gap-1.5">
-            <MapPin className="h-3.5 w-3.5" /> Address (optional)
-          </Label>
-          <Input
-            id="bizAddr"
-            placeholder="e.g., 123 Main Road, Dhaka"
-            value={newBusinessAddress}
-            onChange={(e) => setNewBusinessAddress(e.target.value)}
-            className="h-11"
-          />
+        <div className="space-y-3">
+          <div className="space-y-2">
+            <Label htmlFor="bizName" className="text-sm font-medium flex items-center gap-1.5">
+              <Building2 className="h-3.5 w-3.5" /> Business Name *
+            </Label>
+            <Input
+              id="bizName"
+              placeholder="e.g., City Pharmacy"
+              value={newBusinessName}
+              onChange={(e) => { setNewBusinessName(e.target.value); setError(null); }}
+              className="h-11 rounded-xl border-emerald-200/60 focus-visible:ring-emerald-500/30 focus-visible:border-emerald-500"
+              autoFocus
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="bizAddr" className="text-sm font-medium flex items-center gap-1.5">
+              <MapPin className="h-3.5 w-3.5" /> Address (optional)
+            </Label>
+            <Input
+              id="bizAddr"
+              placeholder="e.g., 123 Main Road, Dhaka"
+              value={newBusinessAddress}
+              onChange={(e) => setNewBusinessAddress(e.target.value)}
+              className="h-11 rounded-xl border-emerald-200/60 focus-visible:ring-emerald-500/30 focus-visible:border-emerald-500"
+            />
+          </div>
         </div>
       </div>
 
       <Separator />
 
-      {/* Create Login Credentials */}
+      {/* Create Login Credentials — Emerald dot indicator */}
       <div className="space-y-3">
-        <p className="text-sm font-semibold flex items-center gap-1.5">
-          <Lock className="h-3.5 w-3.5" /> Create your login credentials
-        </p>
+        <div className="flex items-center gap-2">
+          <span className="h-2 w-2 rounded-full bg-emerald-500" />
+          <p className="text-sm font-semibold text-emerald-700">Create your login credentials</p>
+        </div>
         <p className="text-xs text-muted-foreground">
           These credentials are only for this business. You can create different logins for other businesses.
         </p>
@@ -770,7 +889,7 @@ function CreateLoginStep() {
               placeholder="e.g., admin"
               value={username}
               onChange={(e) => { setUsername(e.target.value); setError(null); }}
-              className="h-11 pl-9"
+              className="h-11 pl-9 rounded-xl border-emerald-200/60 focus-visible:ring-emerald-500/30 focus-visible:border-emerald-500"
             />
           </div>
         </div>
@@ -791,7 +910,7 @@ function CreateLoginStep() {
 
       <Button
         size="lg"
-        className="w-full h-12 gap-2"
+        className="w-full h-12 gap-2 rounded-2xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 shadow-lg shadow-emerald-500/30 border-0 text-white"
         onClick={handleRegister}
         disabled={isLoading}
       >
@@ -847,11 +966,11 @@ function LoginStep() {
 
   return (
     <motion.div {...slideIn} className="space-y-6">
-      <div className="text-center space-y-2">
+      <div className="text-center space-y-3">
         {selectedBusiness && (
           <div
-            className="inline-flex items-center justify-center w-16 h-16 rounded-2xl text-white"
-            style={{ backgroundColor: selectedBusiness.businessType.color }}
+            className="inline-flex items-center justify-center h-16 w-16 rounded-2xl text-white shadow-lg"
+            style={gradientIconStyle(selectedBusiness.businessType.color)}
           >
             {smallIconMap[selectedBusiness.businessType.icon] || <Building2 className="h-8 w-8" />}
           </div>
@@ -872,7 +991,7 @@ function LoginStep() {
               placeholder="Enter your username"
               value={username}
               onChange={(e) => { setUsername(e.target.value); setError(null); }}
-              className="h-11 pl-9"
+              className="h-11 pl-9 rounded-xl border-emerald-200/60 focus-visible:ring-emerald-500/30 focus-visible:border-emerald-500"
               autoFocus
             />
           </div>
@@ -894,7 +1013,7 @@ function LoginStep() {
 
       <Button
         size="lg"
-        className="w-full h-12 gap-2"
+        className="w-full h-12 gap-2 rounded-2xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 shadow-lg shadow-emerald-500/30 border-0 text-white"
         onClick={handleLogin}
         disabled={isLoading}
       >
@@ -953,9 +1072,9 @@ export default function HomePage() {
   // Show nothing until first check is complete to avoid flash of wrong state
   if (!ready) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center animate-pulse">
-          <Box className="h-5 w-5 text-primary-foreground" />
+      <div className="min-h-screen flex items-center justify-center pharmacy-bg">
+        <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center animate-pulse shadow-lg shadow-emerald-500/30">
+          <Box className="h-5 w-5 text-white" />
         </div>
       </div>
     );
@@ -965,16 +1084,16 @@ export default function HomePage() {
   const isDashboard = step === "dashboard";
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-b from-background via-background to-muted/20">
+    <div className="min-h-screen flex flex-col bg-gradient-to-b from-background via-background to-emerald-50/30 pharmacy-bg">
       {!isDashboard && (
         <>
-          {/* Header */}
-          <header className="border-b bg-card/80 backdrop-blur-sm sticky top-0 z-10">
+          {/* Header — glass morphism with gradient emerald logo box */}
+          <header className="glass border-b border-emerald-100/50 sticky top-0 z-10">
             <div className="max-w-md mx-auto px-4 py-3 flex items-center gap-2.5">
-              <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
-                <Box className="h-5 w-5 text-primary-foreground" />
+              <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shadow-md shadow-emerald-500/30">
+                <Box className="h-5 w-5 text-white" />
               </div>
-              <span className="font-bold text-lg">Inventory<span className="text-primary">OS</span></span>
+              <span className="font-bold text-lg">Inventory<span className="text-emerald-600">OS</span></span>
               {step !== "landing" && (
                 <Button variant="ghost" size="sm" className="ml-auto text-xs" onClick={reset}>
                   Start Over
@@ -983,9 +1102,9 @@ export default function HomePage() {
             </div>
           </header>
 
-          {/* Step indicator */}
+          {/* Step indicator — emerald active dots */}
           {stepPath.length > 1 && (
-            <div className="py-3 bg-card/50">
+            <div className="py-3 bg-card/30 backdrop-blur-sm">
               <StepIndicator current={step} steps={stepPath} />
             </div>
           )}
@@ -1011,8 +1130,8 @@ export default function HomePage() {
       </main>
 
       {!isDashboard && (
-        /* Footer */
-        <footer className="border-t bg-card/50 mt-auto">
+        /* Footer — clean with muted text */
+        <footer className="border-t border-emerald-100/50 bg-card/30 mt-auto">
           <div className="max-w-md mx-auto px-4 py-3 text-center text-[11px] text-muted-foreground">
             InventoryOS — Simple inventory for every business
           </div>
