@@ -1100,3 +1100,323 @@ Stage Summary:
   * Gap 11-12 (Phase D): Not yet rebuilt (FEFO audit, Bangla UI)
 - GITHUB_SETUP.md created to prevent future data loss
 - All code committed to git
+
+---
+Task ID: ai-analysis-1
+Agent: Explore (AI feature auditor)
+Task: Comprehensive technical analysis of all InventoryOS AI features for a financial cost-leakage report
+
+Work Log:
+- Read worklog.md (1103 lines) for prior-work context — noted prior phases 0–6 plus a disk-reset rebuild that introduced the AI infrastructure (ai-rate-limit, ai-cache, ai-fallback, sql-router, cron-jobs, feature-gate, AIUsageLog, AIResponseCache).
+- Read all 7 AI API route files in full: chat, forecast, reorder, insights, expiry-optimizer, product-assistant, super-admin/ai-usage.
+- Read all 3 AI infrastructure lib files in full: ai-cache.ts, ai-rate-limit.ts, ai-fallback.ts.
+- Read Prisma schema sections for Business, AIUsageLog, AIResponseCache, SuperAdmin, SuperAdminSession, BusinessDailyStats, CronJobLog (lines 41–89, 663–787).
+- Skimmed all 6 AI UI components for trigger frequency.
+- Read cron-jobs.ts and all 3 cron routes (daily-maintenance, hourly-subscriptions, nightly-stats) to confirm no AI is called from cron.
+- Read .env (only DATABASE_URL — no AI API key configured), confirmed via package.json that the SDK is `z-ai-web-dev-sdk@^0.0.18` (Z.ai GLM-4).
+- Cross-checked feature-gate.ts to confirm tier-gating exists in code but is NOT invoked by any AI route handler.
+
+Stage Summary (findings):
+
+=== CONSOLIDATED AI FEATURE TABLE ===
+
+| # | Feature | Provider | Model | Est. Input Tokens (avg) | Max Output Tokens | Cache TTL | Rate Limit | Fallback |
+|---|---------|----------|-------|-------------------------|-------------------|-----------|------------|----------|
+| 1 | AI Chat Assistant | Z.ai (z-ai-web-dev-sdk) | GLM-4 (UI states "Powered by GLM-4") | ~2,200 (system ~150 + contextData ~1,400 + history up to 8 msgs ~500 + user msg ~125) | UNBOUNDED (no max_tokens set) | 24h, keyed by (businessId, "chat", normalizedQuery, dataHash) | Burst 5/60s · Daily 50 · Monthly 1,000 · Tokens 500K/month | buildFallback() bilingual EN/BN message; returns 500 with retryable flag |
+| 2 | AI Insights (business health) | Z.ai | GLM-4 | ~1,850 (system ~600 + dataSummary ~1,250) | UNBOUNDED | 24h, keyed by (businessId, "insights", "insights", dataHash) | Same 4-tier | buildFallback() |
+| 3 | Expiry Optimizer | Z.ai | GLM-4 | UNBOUNDED — grows with # of expiring batches (~250 tokens/batch × N batches, no row cap) | UNBOUNDED | 24h, keyed by (businessId, "expiry-optimizer", "expiry-optimizer", dataHash) | Same 4-tier | buildFallback(); also has deterministic fallback (dispose/sell_priority) when LLM JSON parse fails |
+| 4 | Product Assistant (4 sub-actions) | Z.ai | GLM-4 | 70–280 system + small user content; check_interactions is UNBOUNDED (no validation on products array length) | UNBOUNDED | NONE (intentionally — "product-specific queries are too varied to cache effectively", per route header comment) | Same 4-tier (logs feature as `product-assistant:<action>`) | buildFallback() |
+| 5 | Demand Forecast | NO LLM CALL — pure deterministic Prisma aggregations + trend math | n/a | n/a (no AI) | n/a | n/a | n/a (no LLM call, no logAIUsage) | n/a |
+| 6 | Smart Reorder Suggestions | NO LLM CALL — pure deterministic Prisma aggregations + urgency heuristics | n/a | n/a (no AI) | n/a | n/a | n/a (no LLM call, no logAIUsage) | n/a |
+| 7 | Super-Admin AI Usage (read-only) | n/a | n/a | n/a (read-only SQL aggregates on AIUsageLog) | n/a | n/a | Bearer super-admin token | 500 on DB error |
+
+KEY OBSERVATION: only 4 of 6 "AI features" actually call the LLM (chat, insights, expiry-optimizer, product-assistant). Forecast and reorder are mislabelled as AI in the UI but are pure deterministic computations — they do not touch the LLM, do not log to AIUsageLog, and are NOT subject to rate limits. This is a UX/marketing concern, not a cost concern.
+
+=== DETAILED PER-ROUTE EXTRACTION ===
+
+--- 1. /api/businesses/[id]/ai/chat (POST) ---
+File: src/app/api/businesses/[id]/ai/chat/route.ts (319 lines)
+- Purpose: Natural-language Q&A about pharmacy inventory/sales/expiry/financials.
+- Provider/Model: Z.ai GLM-4 via `z-ai-web-dev-sdk@^0.0.18`, dynamic import `const ZAI = (await import("z-ai-web-dev-sdk")).default; const zai = await ZAI.create();` (line 233-234).
+- System prompt (lines 236-245): ~600 chars static text + full JSON-serialized `contextData`. Sent as `role: "assistant"` (NOT `role: "system"` — unusual SDK convention).
+  Exact text: "You are an AI assistant for a pharmacy inventory management system called InventoryOS. You help pharmacy owners and staff understand their inventory, sales, and business data.\n\nYou have access to REAL, CURRENT pharmacy data (provided below). Answer questions based on this data. Be helpful, concise, and specific with numbers.\n\nWhen suggesting actions, relate them to the actual data (e.g., \"You have 3 products low on stock: Napa, Amodis, Seclo\").\n\nKeep responses short and actionable. Use bullet points for lists. Include specific numbers from the data.\n\nCURRENT PHARMACY DATA:\n${JSON.stringify(contextData, null, 2)}"
+- User input: free-text `message` (validated: max 500 chars, line 30 MAX_MESSAGE_CHARS) + optional `history` (last 8 messages sent, line 250).
+- Context payload (lines 137-174): 12 aggregate counts (totals/low-stock/out-of-stock/today-sales/month-sales/month-purchases/expiring-batches/expired-batches/customers/suppliers/receivables/payables) + topStockProducts (take:20, capped) + topSelling (take:10, capped). Estimated ~1,400 tokens. Row-capped ✅.
+- Max output tokens: NONE configured (only `messages` and `thinking: { type: "disabled" }` passed to zai.chat.completions.create — line 257-260).
+- Cache: 24h TTL; cache key = (businessId, "chat", normalizedQuery, dataHash). Hit condition: same normalized query (lowercase + strip punctuation + collapse whitespace, capped at 500 chars) AND same SHA-256 hash of contextData (so any new sale/stock change invalidates). Implemented via src/lib/ai-cache.ts. Cache hit logs 0 tokens, success=true, feature="chat-cache" (line 182).
+- Rate limit: 4-tier (burst 5/60s, daily 50, monthly 1000, token budget 500K/month). checkAILimit() called at line 198 BEFORE LLM call (but AFTER SQL router + cache check — both free paths).
+- Fallback: on LLM throw → classifyError() → buildFallback() returns bilingual EN/BN message with `retryable: true` and HTTP 500 (lines 304-317). On rate-limit → 429 with Retry-After header.
+- Trigger frequency: ON-DEMAND only (AIChat.tsx line 53 — `sendMessage` callback fired by Send button or suggested-question click). NO useEffect auto-fetch. NO cron. ✅ well-behaved.
+- SQL Router shortcut: routeQuery() (src/lib/sql-router.ts) intercepts ~20 common natural-language patterns ("low stock", "today's sales", "expiring soon", etc.) and answers with pure Prisma queries — zero LLM tokens. Logged as `sql-router:<pattern>` with 0 tokens (line 56). This is a strong cost-savings feature.
+- Usage logging: logAIUsage() called on success (line 273), cache hit (line 182), SQL-router hit (line 56), rate-limit block (line 206), and LLM failure (line 296). ✅ complete audit trail.
+
+--- 2. /api/businesses/[id]/ai/forecast (POST) ---
+File: src/app/api/businesses/[id]/ai/forecast/route.ts (192 lines)
+- Purpose: Predict N-day sales per product based on 90-day history + trend multipliers + day-of-week pattern.
+- Provider/Model: NO LLM CALL — pure Prisma aggregations + arithmetic. The route file imports nothing from z-ai-web-dev-sdk.
+- System prompt: n/a
+- User input: `body.days || 30` (default 30; accepts 7/30/90 per UI dropdown).
+- Context payload: fetches ALL saleItems for last 90 days (line 18-27, NO `take:` limit — could be large for high-volume pharmacies) + ALL active products (line 73-80). Stays in memory, never sent to LLM. ❗ Note: the query itself is unbounded but the result is not transmitted to an LLM, so no token cost.
+- Max output tokens: n/a (no LLM).
+- Cache: NONE — but the route is deterministic so any caller-side cache would be 100% hit. Currently every page-load of DemandForecast.tsx without data → button click → fresh computation. The result is pure JSON returned to UI.
+- Rate limit: NONE — does not call checkAILimit() (because no LLM call). ❗ However, the computation is heavy (90-day window, all sale items) and could be a CPU/DB cost issue if called rapidly. Not an AI cost issue.
+- Fallback: bare 500 with `{ error: "Failed to generate forecast" }` (line 190) — no buildFallback() use.
+- Trigger frequency: ON-DEMAND only (DemandForecast.tsx line 102 — Forecast button click). ✅
+- Usage logging: NONE — does not call logAIUsage(). ❌ The route is named `ai/forecast` and is shown to users as an "AI Feature" (AIHub.tsx line 51-59) but generates zero AIUsageLog rows. This means super-admin AI usage dashboard undercounts "AI feature" usage. Marketing-vs-reality mismatch.
+
+--- 3. /api/businesses/[id]/ai/reorder (GET) ---
+File: src/app/api/businesses/[id]/ai/reorder/route.ts (150 lines)
+- Purpose: Smart reorder suggestions — urgency (critical/high/medium/low) + suggested order quantity (60-day supply) + estimated cost.
+- Provider/Model: NO LLM CALL — pure Prisma aggregations + deterministic urgency heuristics.
+- System prompt: n/a
+- User input: none (GET request, only businessId from path).
+- Context payload: fetches ALL active products with inventory+batches+category (line 11-21, no row cap) + 30-day saleItems (line 27-33, no row cap). Stays in memory, never sent to LLM.
+- Max output tokens: n/a
+- Cache: NONE.
+- Rate limit: NONE — does not call checkAILimit().
+- Fallback: bare 500 with `{ error: "Failed to generate reorder suggestions" }` (line 148).
+- Trigger frequency: ❗ PER-PAGE-LOAD — ReorderSuggestions.tsx line 85 has `useEffect(() => { fetchData(); }, [fetchData]);` which fires on every component mount. This is NOT an AI cost issue (no LLM call) but is a DB cost issue: full-products+full-saleItems scan on every page render. Worth flagging as a perf/DB cost concern in the broader report.
+- Usage logging: NONE — does not call logAIUsage(). ❌ Same undercounting concern as forecast.
+
+--- 4. /api/businesses/[id]/ai/insights (POST) ---
+File: src/app/api/businesses/[id]/ai/insights/route.ts (327 lines)
+- Purpose: AI-generated business health score (1-100), 5-8 insights, 3-5 recommendations. Returns structured JSON.
+- Provider/Model: Z.ai GLM-4.
+- System prompt (lines 215-241): ~2,400 chars (~600 tokens) — explains JSON schema with required fields (summary, healthScore 1-100, healthLabel enum, insights[] with type/category/title/description/action, recommendations[] with priority/title/description/expectedImpact). Instructs "Generate 5-8 insights and 3-5 recommendations." Sent as `role: "assistant"`. This is the ONLY system prompt clearly exceeding 500 tokens.
+- User input: none from client (POST with no body needed). User content is constructed server-side: `"Analyze this pharmacy data:\n\n${JSON.stringify(dataSummary, null, 2)}"` (line 243).
+- Context payload (lines 124-168 `dataSummary`): month sales agg + today sales agg + topProducts (take:10, capped) + lowStockProducts (take:10, capped) + expiringBatches (take:10, capped) + monthPurchases agg + monthReturns agg + totalCustomers. Estimated ~1,250 tokens. Row-capped ✅.
+- Max output tokens: NONE configured (line 245-251 — only messages + thinking:disabled). ❌ The prompt explicitly asks for "5-8 insights and 3-5 recommendations" — without an output cap, GLM-4 could ramble and return very long JSON.
+- Cache: 24h TTL; key = (businessId, "insights", normalizeQuery("insights"), dataHash). Cache hit re-parses the stored raw LLM response as JSON (line 178-188).
+- Rate limit: 4-tier (same as chat). checkAILimit() called FIRST (line 35) — before cache check. ❗ This means a rate-limited user cannot even hit the cache. Slight UX/cost trade-off issue: cache hits consume zero quota but are blocked if user is already over limit. (Compare: chat checks cache BEFORE rate limit — line 179 vs line 198.)
+- Fallback: buildFallback() bilingual on LLM failure (lines 312-325). On JSON parse failure → degrades to `{ summary: response.substring(0,200), healthScore: 50, ... rawResponse }` (lines 263-271) — semi-graceful but exposes raw LLM text to the UI.
+- Trigger frequency: ON-DEMAND only (AIInsights.tsx line 119 — "Generate AI Insights" button click). ✅
+- Usage logging: logAIUsage() on success (line 281), cache hit (line 190), rate-limit block (line 42), LLM failure (line 304). ✅ complete.
+
+--- 5. /api/businesses/[id]/ai/expiry-optimizer (POST) ---
+File: src/app/api/businesses/[id]/ai/expiry-optimizer/route.ts (337 lines)
+- Purpose: For each batch expiring within 90 days (or already expired) with stock, recommend one action: sell_priority / discount / return_supplier / donate / dispose / quarantine.
+- Provider/Model: Z.ai GLM-4.
+- System prompt (lines 202-229): ~1,800 chars (~450 tokens — borderline but under the 500-token red flag threshold). Lists 6 action types, defines JSON array schema with batchId/action/discountPercent/reason/urgency/estimatedRecovery. Sent as `role: "assistant"`.
+- User input: none from client (POST with no body needed). User content: `"Analyze these expiring batches:\n\n${JSON.stringify(batchData, null, 2)}"` (line 231).
+- Context payload (lines 66-126): ❗ UNBOUNDED — fetches ALL batches with `quantity > 0`, status in ["active","near_expiry","expired"], expiryDate <= now+90d (NO `take:` limit). Each batch is ~200-250 chars (~60 tokens). A pharmacy with 50 expiring batches sends ~3,000 tokens; 200 batches sends ~12,000 tokens. No upper bound. This is the clearest "unbounded context" red flag among the LLM-calling endpoints.
+- Max output tokens: NONE configured (line 233-239). ❌
+- Cache: 24h TTL; key = (businessId, "expiry-optimizer", "expiry-optimizer", dataHash). Cache hit re-merges stored LLM recommendations with fresh batchData (lines 149-160) — smart because batch data may have changed slightly within the same hash bucket.
+- Rate limit: 4-tier. checkAILimit() called first (line 35) — same ordering issue as insights (cache hit blocked if rate-limited).
+- Fallback: buildFallback() bilingual on LLM failure (lines 322-335). Per-batch deterministic fallback (line 257-261): if LLM omits a batch, defaults to `dispose` for expired or `sell_priority` for active. Solid defensive design.
+- Trigger frequency: ON-DEMAND only (ExpiryOptimizer.tsx line 142 — "Analyze Expiry Risk" button click). ✅
+- Usage logging: logAIUsage() on success (line 287), cache hit (line 174), rate-limit block (line 42), LLM failure (line 314). ✅ complete.
+
+--- 6. /api/businesses/[id]/ai/product-assistant (POST) ---
+File: src/app/api/businesses/[id]/ai/product-assistant/route.ts (329 lines)
+- Purpose: 4 sub-actions dispatched via `body.action`:
+  • generate_description — write a <100-word pharmacy catalog description for a product.
+  • check_interactions — analyze medications array + patient conditions array for drug interactions.
+  • suggest_category — categorize a product (medicine/surgical/cosmetic/etc.) with confidence + reason.
+  • suggest_dosage — provide standard adult/pediatric dosage, max daily dose, side effects, warnings, storage advice.
+- Provider/Model: Z.ai GLM-4.
+- System prompts (4 different ones, each small):
+  • generate_description (line 99): ~280 chars (~70 tokens). "You are a pharmaceutical product catalog expert. Generate a concise, professional product description for a pharmacy inventory system. Include: what it treats, common uses, key warnings. Keep it under 100 words. Do not include dosing instructions."
+  • check_interactions (lines 131-153): ~1,100 chars (~280 tokens). Defines JSON schema: riskLevel enum, interactions[] (severity/description/recommendation), conditionWarnings[], generalAdvice.
+  • suggest_category (lines 188-197): ~700 chars (~175 tokens). Defines JSON schema with suggestedCategory/suggestedType/suggestedColor/confidence/reason. Lists 18 common pharmacy categories.
+  • suggest_dosage (lines 232-241): ~600 chars (~150 tokens). Defines JSON schema: adultDose/pediatricDose/maxDailyDose/commonSideEffects[]/keyWarnings[]/storageAdvice.
+- User input: varies by action.
+  • generate_description: `productData` object OR `productId` (server-side lookup). Single product. Bounded.
+  • check_interactions: `products` array + `conditions` array from request body. ❗ NO validation on array length — a caller could send 100 medications + 100 conditions, generating unbounded tokens. Red flag.
+  • suggest_category: `productName` + `genericName` strings. Bounded.
+  • suggest_dosage: `genericName` + `strength` + `dosageForm` strings. Bounded.
+- Max output tokens: NONE configured (any of lines 102, 156, 200, 244). ❌
+- Cache: NONE — explicitly documented in route header (lines 6-8): "No AI cache — product-specific queries (per-product prompts) are too varied to cache effectively, and the cost of a stale description/interaction-check is too high." Reasonable design choice but means every button click is a fresh LLM call. ⚠️
+- Rate limit: 4-tier. checkAILimit() called first (line 54). Feature name is `product-assistant:<action>` (e.g., "product-assistant:check_interactions") — so the super-admin dashboard sees per-action granularity. The catch block logs under the generic "product-assistant" feature name (line 286), slightly muddying per-action stats on failures.
+- Fallback: buildFallback() bilingual on LLM failure (lines 292-305). For check_interactions + suggest_category + suggest_dosage, JSON-parse failures return `{}` or `{ generalAdvice: response }` (lines 167-170, 211-214, 254-258) — semi-graceful.
+- Trigger frequency: ON-DEMAND only (called from ProductForm / QuickDispense components on button click — not auto-fetched). ✅
+- Usage logging: logAIUsage() on each action success (lines 113, 174, 218, 262) + rate-limit block (line 61) + LLM failure (line 284). ✅ complete.
+
+--- 7. /api/super-admin/ai-usage (GET) ---
+File: src/app/api/super-admin/ai-usage/route.ts (371 lines)
+- Purpose: Platform-wide AI usage analytics for the super-admin dashboard. Read-only.
+- Auth: Bearer token in Authorization header → verified against SuperAdminSession table (lines 13-42).
+- Returns: today/thisMonth summary (calls/tokens/cost), byFeature breakdown, byBusiness (top 10), last7Days trend (per-day bucket), topSpendersToday (top 5), abuseFlags (businesses with >20 calls today flagged "high_usage", >40 flagged "possible_abuse"), sqlRouter hit rate (today + month), cache hit rate (today + month).
+- No LLM call. Pure SQL aggregates on AIUsageLog + Business tables.
+- Cost model used: `COST_PER_1K_TOKENS_BDT = 0.03` BDT/1K tokens (src/lib/ai-rate-limit.ts line 32). Estimated cost = (tokensUsed / 1000) × 0.03 BDT. Persisted on every AIUsageLog row as `costEstimate` (line 266).
+- abuseFlag thresholds: 20 calls/day = "high_usage"; 40 calls/day = "possible_abuse" (lines 222-251). These are reporting-only flags — they do NOT trigger automatic throttling (the daily limit is 50 calls/day per business, so a user can hit "possible_abuse" status while still being under their daily quota).
+- Cache hit rate computation (lines 306-350): cache hits = features ending with "-cache"; LLM calls = everything else. So "chat-cache" / "insights-cache" / "expiry-optimizer-cache" are counted as cache hits. SQL-router hits ("sql-router:*") are counted as LLM calls in this metric — slightly misleading because SQL-router is also a "free path" (zero tokens). The SQL-router hit rate is reported separately (lines 257-301).
+
+=== PRISMA SCHEMA EXTRACTION ===
+
+--- AIUsageLog model (schema.prisma lines 665-681) ---
+Fields:
+  - id            String   @id @default(cuid())
+  - businessId    String   (FK to Business)
+  - feature       String   — values used: "chat", "insights", "expiry-optimizer", "product-assistant:<action>", "sql-router:<pattern>", "*-cache" (e.g., "chat-cache", "insights-cache", "expiry-optimizer-cache")
+  - tokensUsed    Int      @default(0)
+  - costEstimate  Float    @default(0)   — in BDT, computed as (tokensUsed/1000) × 0.03
+  - success       Boolean  @default(true)
+  - errorMessage  String?
+  - createdAt     DateTime @default(now())
+Relations: business (Business, onDelete: Cascade)
+Indexes: [businessId], [feature], [createdAt], [businessId, createdAt]
+
+--- AIResponseCache model (schema.prisma lines 770-787) ---
+Fields:
+  - id              String   @id @default(cuid())
+  - businessId      String   (FK to Business)
+  - feature         String   ("chat" / "insights" / "expiry-optimizer")
+  - normalizedQuery String   (lowercase + punctuation-stripped, capped at 500 chars)
+  - dataHash        String   (32-char SHA-256 hex of contextData JSON)
+  - response        String   (raw LLM response text)
+  - tokensUsed      Int      @default(0)
+  - createdAt       DateTime @default(now())
+  - expiresAt       DateTime  (createdAt + 24h)
+Compound unique: [businessId, feature, normalizedQuery, dataHash]
+Indexes: [businessId, feature, normalizedQuery], [expiresAt], [businessId, expiresAt]
+
+--- Business model subscription/AI fields (schema.prisma lines 41-89) ---
+  - subscriptionTier   String   @default("free")    // "free" / "pro" / "pro_ai"
+  - subscriptionStatus String   @default("trial")   // "trial" / "active" / "suspended" / "cancelled"
+  - subscriptionStart  DateTime?
+  - subscriptionEnd    DateTime?
+  - aiEnabled          Boolean  @default(false)     // GATING FLAG — must be true for checkAILimit() to allow
+  - aiDailyLimit       Int      @default(50)
+  - aiMonthlyLimit     Int      @default(1000)
+  - aiTokenBudget      Int      @default(500000)    // ← THIS IS THE monthlyAiTokenBudget equivalent
+
+--- Tier ladder (from src/lib/feature-gate.ts lines 70-160) ---
+  free    → 0 BDT/mo,  100 products,  aiEnabled=false, aiDaily=0,    aiMonthly=0,    aiTokenBudget=0
+  pro     → 500 BDT/mo, unlimited,    aiEnabled=false, aiDaily=0,    aiMonthly=0,    aiTokenBudget=0
+  pro_ai  → 1000 BDT/mo, unlimited,   aiEnabled=true,  aiDaily=50,  aiMonthly=1000, aiTokenBudget=500,000
+
+⚠️ Tier ladder is DEFINED in feature-gate.ts but NEVER imported by any AI route handler. The only tier-adjacent checks in checkAILimit() are `subscriptionStatus` (blocks "suspended"/"cancelled") and `aiEnabled` (must be true). A free-tier business with `aiEnabled=true` (manually toggled) would pass all checks. See RED FLAG #8.
+
+--- BusinessDailyStats model (schema.prisma lines 713-749) ---
+Has AI-tracking columns: aiCalls, aiTokens, aiCost — populated by the nightly-stats cron job from AIUsageLog aggregates. Used for the super-admin dashboard's 7-day trend.
+
+=== ENVIRONMENT CONFIG ===
+
+- /home/z/my-project/.env contains ONLY:
+    DATABASE_URL=file:/home/z/my-project/db/custom.db
+- No OPENAI_API_KEY, ANTHROPIC_API_KEY, GEMINI_API_KEY, or ZAI_API_KEY is present in .env.
+- The z-ai-web-dev-sdk uses AMBIENT credentials (no explicit API key env var required by the application code — the SDK handles auth internally, likely via its own runtime config). This is confirmed by the route handlers: `const zai = await ZAI.create();` is called with NO arguments, no API key passed.
+- package.json declares: `"z-ai-web-dev-sdk": "^0.0.18"` — this is Z.ai's official TypeScript SDK.
+- The UI text in AIHub.tsx (line 171) and ProfileView.tsx (line 183) explicitly states "Powered by GLM-4" — confirming the model.
+- CRON_SECRET env var is referenced by 3 cron route handlers (daily-maintenance, hourly-subscriptions, nightly-stats) but is NOT present in .env — would fail the placeholder check (verifyCronSecret refuses default values).
+
+=== COST LEAKAGE RED FLAGS (10-item checklist) ===
+
+1. **Missing cache** — endpoints that always call the AI even for repeat queries
+   ❌ PRODUCT-ASSISTANT (all 4 sub-actions) — explicitly no cache per route header. Every button click is a fresh LLM call. If a user generates a description for the same product 5 times, that's 5 LLM calls (rate-limited at 5/60s burst, so a 6th click within a minute is blocked). For a stable product (no name change), a 1-hour cache would eliminate ~90% of repeat calls. ⚠️ Medium severity — defensible design choice for descriptions, but check_interactions (which is deterministic given the same med+condition list) really should be cached.
+   ✅ chat, insights, expiry-optimizer all have 24h cache.
+   ✅ forecast, reorder don't need cache (no LLM).
+
+2. **Missing rate limit** — endpoints with no per-user/per-business cap
+   ❌ FORECAST — does not call checkAILimit() (because no LLM call). Heavy DB aggregations on 90-day window can be abused by rapid clicking, but no AI cost.
+   ❌ REORDER — same as forecast.
+   ✅ chat, insights, expiry-optimizer, product-assistant all enforce 4-tier rate limits.
+
+3. **Unbounded context** — endpoints that send "all products" or "all sales" with no row cap
+   ❌ EXPIRY-OPTIMIZER — `db.batch.findMany` (line 66-84) has NO `take:` limit. Every expiring batch within 90 days is JSON-serialized and sent to GLM-4. Worst case: pharmacy with 500 expiring batches × ~250 chars each = ~125KB = ~36K tokens per call. At 0.03 BDT/1K tokens = ~1.08 BDT per single call. Across 50 daily calls = 54 BDT/day per business. HIGH SEVERITY.
+   ❌ PRODUCT-ASSISTANT check_interactions — `products` array from request body has NO length validation (line 124-129). Caller could submit 100+ medications. HIGH SEVERITY (but only triggered by intentional abuse or unusual use case).
+   ⚠️ CHAT — topStockProducts capped at 20, topSelling capped at 10, but aggregate counts are unbounded (12 separate Prisma aggregations). Total context ~1.4K tokens. LOW SEVERITY (capped sufficiently).
+   ⚠️ INSIGHTS — topProducts take:10, lowStockProducts take:10, expiringBatches take:10 — all capped. LOW SEVERITY.
+   ✅ FORECAST — fetches all 90-day saleItems but never sends to LLM. No AI cost.
+   ✅ REORDER — same as forecast.
+
+4. **Large system prompts** — system prompts over 500 tokens
+   ❌ INSIGHTS — system prompt ~600 tokens (lines 215-241, includes full JSON schema explanation). Combined with ~1,250-token dataSummary = ~1,850 input tokens per call. At max daily quota of 50 calls = 92,500 input tokens/day/business just for insights. MEDIUM SEVERITY.
+   ⚠️ EXPIRY-OPTIMIZER — ~450 tokens (borderline, under 500).
+   ✅ chat, product-assistant all under 300 tokens.
+
+5. **No max_tokens on output** — endpoints that let the AI ramble
+   ❌ ALL 4 LLM-CALLING ENDPOINTS (chat, insights, expiry-optimizer, product-assistant × 4 sub-actions). Every `zai.chat.completions.create({ messages, thinking: { type: "disabled" } })` call passes NO `max_tokens` / `max_output_tokens` parameter. GLM-4 has no enforced output cap.
+   - Worst case: insights asks for "5-8 insights and 3-5 recommendations" with no length bound — GLM-4 could return 5,000+ token JSON. At 0.03 BDT/1K = ~0.15 BDT per response just for output. Across 50 calls/day = 7.5 BDT/day/business.
+   - Best fix: add `max_tokens: 1024` (chat) or `max_tokens: 2048` (insights, expiry-optimizer with large batch counts).
+   HIGH SEVERITY — easiest single fix to reduce cost variance.
+
+6. **Cron-triggered AI calls** — any AI feature called automatically
+   ✅ NONE. Verified by reading all 3 cron routes (daily-maintenance, hourly-subscriptions, nightly-stats) and cron-jobs.ts. Cron jobs only:
+     - Snapshot KPIs into BusinessDailyStats (reads AIUsageLog but does NOT call AI)
+     - Auto-suspend expired paid subscriptions (disables aiEnabled when suspending pro_ai tier — actually REDUCES AI cost)
+     - Prune old logs/OTPs/Sessions/AIResponseCache entries
+   No AI endpoint is invoked by any background job.
+
+7. **No usage logging** — endpoints that don't write to AIUsageLog
+   ❌ FORECAST — does not call logAIUsage() (no LLM call, so technically correct, but the endpoint is named `ai/forecast` and presented to users as an AI feature → super-admin dashboard undercounts "AI feature" usage).
+   ❌ REORDER — same as forecast.
+   ✅ chat, insights, expiry-optimizer, product-assistant all log every outcome (success, cache hit, SQL-router hit, rate-limit block, LLM failure) via logAIUsage().
+
+8. **No free-tier guard** — endpoints that don't check subscription tier before calling
+   ⚠️ PARTIAL: checkAILimit() checks `subscriptionStatus` (blocks suspended/cancelled) and `aiEnabled` (must be true), but does NOT check `subscriptionTier` directly. The `subscriptionStatus` defaults to "trial" — which is ALLOWED. So:
+     - A free-tier business (subscriptionTier="free") with `subscriptionStatus="trial"` and `aiEnabled=false` → BLOCKED by aiEnabled check ✅
+     - A free-tier business with `subscriptionStatus="trial"` and `aiEnabled=true` (manually toggled by an admin, or via a bug) → ALLOWED ❌
+   The tier ladder (free/pro/pro_ai) is DEFINED in src/lib/feature-gate.ts (lines 70-160) but NO AI route handler imports or invokes `getTierConfig()` / `isFeatureEnabled()`. The tier enforcement is purely advisory (UI hides AI buttons for non-pro_ai tiers) — server-side, only the `aiEnabled` boolean is enforced.
+   MEDIUM SEVERITY — defensive-in-depth gap. A malicious or buggy admin could grant AI access to free-tier businesses without server-side tier check blocking them. Fix: add `if (business.subscriptionTier !== "pro_ai") return 403;` early in every AI route handler.
+
+9. **Streaming endpoints** — chat endpoints that may loop or retry on failure
+   ⚠️ CHAT — `zai.chat.completions.create` is called in NON-STREAMING mode (no `stream: true` option, line 257-260). The full response is awaited. NO retry logic in the route handler. On failure, buildFallback() is returned with `retryable: true` — the UI (AIChat.tsx line 86-91) catches the error and shows a generic "Sorry, I couldn't process that" message — NO automatic retry. ✅ well-behaved.
+   ⚠️ AIChat.tsx line 71 sends `history: messages.slice(-8)` — meaning each turn re-sends up to 8 prior messages (~500 tokens of history) on every call. Over a long conversation this is a fixed ~500-token overhead per call. Not a leak per se, but a constant cost-per-turn.
+   ✅ No streaming. No retry loops. No exponential backoff that could multiply cost.
+
+10. **Per-page-load triggers** — AI endpoints called from useEffect on every render
+    ❌ REORDER — ReorderSuggestions.tsx line 85: `useEffect(() => { fetchData(); }, [fetchData]);` fires on every component mount. NOT an AI cost issue (no LLM call) but is a DB cost issue (full products + 30-day saleItems scan on every render). If a user navigates to/from the AI Hub → Reorder view 10 times in a session, that's 10 full DB scans.
+    ✅ chat, insights, expiry-optimizer, forecast, product-assistant — all explicitly button-triggered (verified by reading AIChat.tsx line 97 handleSend, AIInsights.tsx line 119 button onClick, DemandForecast.tsx line 102 Forecast button, ExpiryOptimizer.tsx line 142 Analyze button).
+    ⚠️ Note: ReorderSuggestions and DemandForecast are also listed as AI features in AIHub.tsx (lines 51-59) — so users navigating the AI Hub click into "Demand Forecast" expecting an AI experience, get a deterministic calculation instead. This is a product-marketing concern, not a cost concern.
+
+=== ADDITIONAL FINDINGS ===
+
+- Cost model: `COST_PER_1K_TOKENS_BDT = 0.03` BDT per 1,000 tokens (src/lib/ai-rate-limit.ts line 32). At the default pro_ai monthly quota of 500,000 tokens, max monthly cost per business = 500,000 / 1,000 × 0.03 = 15 BDT/month (~$0.14 USD). At the 1,000 calls/month cap with avg ~2,000 input + ~500 output tokens per call = ~2.5M tokens/month = ~75 BDT/month (~$0.68 USD). The token budget (500K) is the binding constraint, not the call count (1,000).
+- The costEstimate is computed from `tokensUsed` (which includes both input + output via `completion.usage.total_tokens` when reported by the SDK, or estimated via `text.length / 3.5` heuristic — src/lib/ai-rate-limit.ts line 79-82). The estimate is rough.
+- Token-estimate heuristic: `Math.ceil(text.length / 3.5)` (line 81) — uses 3.5 chars/token. Industry standard for English is ~4 chars/token; for mixed English/Bangla (as in some user prompts), 3.5 is reasonable.
+- The abuse-flag threshold (>20 calls/day = "high_usage", >40 = "possible_abuse") is BELOW the daily limit (50) — so the super-admin sees abuse warnings BEFORE the rate limiter blocks the user. This is a reporting-only mechanism; no automatic throttling kicks in at the abuse threshold.
+- AIResponseCache TTL: 24 hours (CACHE_TTL_HOURS = 24, src/lib/ai-cache.ts line 24). Lazy expiry on read + bulk prune in daily-maintenance cron. The dataHash mechanism means cache invalidates correctly whenever the underlying business data changes (new sale, new batch, stock change) — so 24h TTL is safe.
+- All 4 LLM routes pass `thinking: { type: "disabled" }` to zai.chat.completions.create — disables GLM-4's "thinking" mode (which would add reasoning tokens). This is a cost-saving measure ✅.
+- The chat route sends system prompt as `role: "assistant"` (line 249) — unusual; most LLM SDKs use `role: "system"`. This works because the z-ai-web-dev-sdk's chat-completions endpoint accepts arbitrary role sequences, but it means the system instructions are NOT given special "system" precedence. Likely a minor behavioral quirk.
+- Per-call token tracking is best-effort: routes check `completion.usage?.total_tokens` first (line 266-270 in chat, similar in others). If the SDK doesn't report usage (some response shapes), falls back to `estimateTokens(systemPrompt) + estimateTokens(message) + estimateTokens(aiResponse)`. This means usage stats are accurate when the SDK reports, heuristic when it doesn't.
+
+=== RECOMMENDED IMMEDIATE FIXES (ordered by cost impact) ===
+
+1. **Add `max_tokens` to all 4 LLM routes.** Single biggest cost-variance reduction. Suggested: chat=1024, insights=2048, expiry-optimizer=2048, product-assistant=512 per sub-action. Implementation: 1 line per `zai.chat.completions.create` call.
+
+2. **Cap batches query in expiry-optimizer.** Add `take: 50` (or 100) to the `db.batch.findMany` call (line 66-84). Process overflow batches in a second LLM call only if needed, or fall back to deterministic recommendations for batches 51+.
+
+3. **Validate `products` array length in product-assistant/check_interactions.** Add `if (products.length > 20) return 400` (line 124-129). 20 medications is well beyond any realistic prescription.
+
+4. **Add tier check in checkAILimit().** After the aiEnabled check, add: `if (business.subscriptionTier !== "pro_ai") return { allowed: false, limitType: "subscription", ... }`. Closes the free-tier-with-aiEnabled-true loophole.
+
+5. **Cache product-assistant/check_interactions.** The same (medications + conditions) tuple always produces the same risk assessment. A 1-hour cache keyed on the sorted medications+conditions hash would eliminate 80%+ of repeat calls during prescription verification workflows.
+
+6. **Reorder endpoint: remove useEffect auto-fetch OR cache the deterministic result for 5 minutes.** Not an AI cost issue but a DB cost issue — full-product scans on every page mount.
+
+7. **Log forecast/reorder as zero-token AIUsageLog entries** (feature="forecast-deterministic" / "reorder-deterministic", tokens=0, success=true). This gives the super-admin dashboard accurate "AI feature" usage counts even for the deterministic features.
+
+8. **Insights: move cache check BEFORE rate-limit check** (currently insights + expiry-optimizer check rate-limit first, blocking cache hits when over quota — compare to chat which checks cache first). This is a UX issue: a user who burned their daily quota on chat should still be able to view cached insights.
+
+No files were modified during this analysis (research-only task). Findings will be consumed by the main agent to write the .docx cost-leakage report.
+
+---
+Task ID: ai-report-final
+Agent: Super Z (Main Agent)
+Task: Generate the InventoryOS AI Features Report (.docx) for the founder covering feature inventory, full cost model, risk & leakage analysis, mitigation plan, and kill-switch criteria.
+
+Work Log:
+- Loaded docx + pdf skills, then read all referenced files: routes/create.md, scenes/report.md, references/common-rules.md, references/docx-js-core.md, references/toc.md, references/design-system.md (R1 cover recipe + helpers).
+- Dispatched parallel exploration agent (Task ID: ai-analysis-1) to read all 6 AI API routes, 3 infrastructure lib files, Prisma schema, 6 UI components, and env config. Agent returned consolidated analysis with per-feature token math, 10 red flags, and cost projections. Findings appended to worklog (lines 1103-1392).
+- Built Outline with 9 sections: Cover, TOC, Executive Summary, AI Feature Inventory, AI Health Dashboard, Full Cost Model, Risk & Leakage Analysis, Mitigation Plan, Final Verdict & Kill Switch Criteria.
+- Generated two matplotlib charts (Emerald Pharmacy palette): cost scaling curve (1 to 1000 pharmacies, 3 usage tiers) + risk severity-vs-likelihood matrix.
+- Wrote modular docx generation scripts under /home/z/my-project/scripts/:
+  * ai-report-helpers.js (palette, table builders, heading/body helpers)
+  * ai-report-cover.js (R1 recipe, dark emerald background)
+  * ai-report-body1.js (Exec Summary + Feature Inventory + Health Dashboard)
+  * ai-report-body2.js (Full Cost Model + Risk Analysis with embedded charts)
+  * ai-report-body3.js (Mitigation Plan + Final Verdict & Kill Switch)
+  * gen-ai-report.js (orchestrator with 3 sections: Cover / TOC / Body)
+- Ran add_toc_placeholders.py — 43 headings auto-extracted, TOC populated.
+- Ran postcheck.py — 0 errors, 2 acceptable warnings (TOC PageBreak separator + table cell line spacing variance).
+- Fixed H1→H3 heading skip in Executive Summary (changed "Three-Line Verdict" from H3 to H2).
+
+Stage Summary:
+- Final deliverable: /home/z/my-project/download/InventoryOS_AI_Features_Report.docx (335 KB)
+- Supporting charts: ai-cost-scaling.png + ai-risk-matrix.png (embedded in docx, also delivered separately)
+- Document structure: 3 sections (Cover, TOC, Body), 43 headings, 8 tables, 2 figures, ~6,500 words
+- Visual style: Emerald Pharmacy palette (dark emerald cover, emerald accent, violet AI highlight) matching InventoryOS brand
+- Key findings reported: 4 LLM + 2 mislabelled features, Z.ai GLM-4 at 0.03 BDT/1K tokens, max 15 BDT/pharmacy/month, 3 P0 fixes (max_tokens, row cap, free-tier guard) — 35 min total effort
+- Kill-switch criteria: 200 BDT/pharmacy/month, 50K tokens/pharmacy/day, 100K BDT/platform/month, 10% Z.ai error rate
+- Recommended pricing: Free=0 BDT, Pro=99 BDT (limited AI), Pro+AI=199 BDT (full AI, 13x margin)
