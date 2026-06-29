@@ -264,3 +264,148 @@
 .stagger-in:nth-child(4) { animation-delay: 0.20s; }
 .stagger-in:nth-child(5) { animation-delay: 0.25s; }
 .stagger-in:nth-child(6) { animation-delay: 0.30s; }
+.stagger-in:nth-child(7) { animation-delay: 0.35s; }
+.stagger-in:nth-child(8) { animation-delay: 0.40s; }
+.stagger-in:nth-child(9) { animation-delay: 0.45s; }
+.stagger-in:nth-child(10) { animation-delay: 0.50s; }
+
+/* ═══════════════════════════════════════════════════════════ */
+/* Phase 10: Micro-Interactions & Polish                        */
+/* ═══════════════════════════════════════════════════════════ */
+
+/* ── Number count-up animation ── */
+@keyframes countUp {
+  0% { opacity: 0; transform: translateY(8px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+.animate-count-up { animation: countUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
+/* ── Success checkmark animation ── */
+@keyframes checkmarkPop {
+  0% { transform: scale(0); opacity: 0; }
+  50% { transform: scale(1.2); }
+  100% { transform: scale(1); opacity: 1; }
+}
+.animate-checkmark { animation: checkmarkPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+
+/* ── Slide-in from right (for toasts, notifications) ── */
+@keyframes slideInRight {
+  0% { transform: translateX(100%); opacity: 0; }
+  100% { transform: translateX(0); opacity: 1; }
+}
+.animate-slide-in-right { animation: slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
+/* ── Slide-in from bottom (for modals, sheets) ── */
+@keyframes slideInBottom {
+  0% { transform: translateY(100%); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+.animate-slide-in-bottom { animation: slideInBottom 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
+/* ── Shimmer text (for AI loading) ── */
+@keyframes shimmerText {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+.shimmer-text {
+  background: linear-gradient(90deg, #8b5cf6 25%, #c4b5fd 50%, #8b5cf6 75%);
+  background-size: 200% auto;
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shimmerText 2s linear infinite;
+}
+
+/* ── Premium button press effect ── */
+.btn-press {
+  transition: transform 0.1s ease, box-shadow 0.2s ease;
+}
+.btn-press:active {
+  transform: scale(0.96);
+}
+
+/* ── Card entrance with blur ── */
+@keyframes cardEntrance {
+  0% { opacity: 0; transform: translateY(16px) scale(0.98); filter: blur(4px); }
+  100% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+}
+.animate-card-entrance {
+  opacity: 0;
+  animation: cardEntrance 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* ── Empty state bounce ── */
+@keyframes emptyBounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+.animate-empty-bounce { animation: emptyBounce 2.5s ease-in-out infinite; }
+
+/* ── Gradient shift (for AI hero cards) ── */
+@keyframes gradientShift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+.animate-gradient-shift {
+  background-size: 200% 200%;
+  animation: gradientShift 4s ease infinite;
+}
+
+/* ── Dot loading (AI thinking) ── */
+@keyframes dotBounce {
+  0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+  40% { transform: scale(1); opacity: 1; }
+}
+.dot-loading span {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  margin: 0 2px;
+  animation: dotBounce 1.4s infinite ease-in-out both;
+}
+.dot-loading span:nth-child(1) { animation-delay: -0.32s; }
+.dot-loading span:nth-child(2) { animation-delay: -0.16s; }
+.dot-loading span:nth-child(3) { animation-delay: 0s; }
+
+/* ── Scroll reveal (intersection observer trigger) ── */
+.scroll-reveal {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.5s ease, transform 0.5s ease;
+}
+.scroll-reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ── Glass card hover (premium hover for important cards) ── */
+.glass-card-hover {
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.glass-card-hover:hover {
+  transform: translateY(-4px);
+  box-shadow:
+    0 8px 32px rgba(6, 95, 70, 0.12),
+    0 16px 48px rgba(6, 95, 70, 0.08);
+  backdrop-filter: blur(16px);
+}
+
+/* ── Focus glow (for inputs) ── */
+.focus-glow:focus-visible {
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
+}
+
+/* ── Premium divider ── */
+.premium-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(16, 185, 129, 0.2), transparent);
+}
+
+/* ── Badge pulse (for live/active indicators) ── */
+@keyframes badgePulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+  50% { box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+}
+.badge-pulse { animation: badgePulse 2s infinite; }
