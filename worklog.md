@@ -1532,3 +1532,34 @@ Stage Summary:
 - Each phase has: Goal, Duration, Blocking Gate, Task Table (with file paths, exact code changes, effort estimates, done-checkboxes), Exit Criteria
 - Total implementation effort across all 4 build phases: ~13 hours of code spread over 90 days + ongoing Phase 5 operations
 - GitHub sync confirmed: 2 commits pushed (c67baae pre-edit + cefa0be post-edit), origin/main up to date
+
+---
+Task ID: phase1-implementation
+Agent: Super Z (Main Agent)
+Task: Implement Phase 1 of the AI Features Report Phased Implementation Plan — P0 critical fixes (max_tokens, batch row cap, products array validation), but with a design improvement: make all values configurable from the super admin panel instead of hardcoded.
+
+Work Log:
+- Added AiConfig Prisma model to prisma/schema.prisma (feature, maxOutputTokens, maxInputBatches, maxInputProducts, updatedAt, updatedBy). Ran prisma db push + prisma generate.
+- Created src/lib/ai-config.ts with 4 functions: getAiConfig (single feature, never throws, falls back to hardcoded defaults), getAllAiConfigs (all 4 features), updateAiConfig (validates ranges: maxOutputTokens 64-8192, maxInputBatches 1-500, maxInputProducts 1-100, uses upsert), seedDefaultAiConfigs (idempotent).
+- Created src/app/api/super-admin/ai-config/route.ts: GET returns all 4 configs + defaults, PUT updates one feature or resets all to defaults. Super-admin Bearer auth via verifySuperAdmin(). Distinguishes validation errors (400) from server errors (500).
+- Updated 4 AI routes to use getAiConfig:
+  * ai/chat/route.ts: import getAiConfig, call before LLM, add max_tokens: aiConfig.maxOutputTokens
+  * ai/insights/route.ts: same pattern
+  * ai/expiry-optimizer/route.ts: load config early, add take: batchTake (default 50) to db.batch.findMany + orderBy expiryDate ASC, add max_tokens to LLM call
+  * ai/product-assistant/route.ts: load config once, add products.length > maxProducts guard (returns 400 with friendly message), add max_tokens: aiConfig.maxOutputTokens to all 4 sub-action LLM calls (generate_description, check_interactions, suggest_category, suggest_dosage) via replace_all
+- Created src/app/admin/AiConfigCard.tsx (403 lines): per-feature editable cards with Input fields for maxOutputTokens + (conditionally) maxInputBatches/maxInputProducts, dirty-state highlighting (amber border when unsaved changes), per-feature Save button, 'Reset all to defaults' button with confirm dialog, Refresh button, last-updated timestamp + updatedBy display, toast notifications, error banner.
+- Updated src/app/admin/page.tsx: imported AiConfigCard, placed <AiConfigCard token={token!} /> between the 'Feature usage + 7-day + Background jobs' row and the Business list.
+- Ran prisma db push (ai_configs table created), prisma generate (client regenerated), npx next build (clean, new /api/super-admin/ai-config route registered).
+- Seeded 4 default config rows via scripts/seed-ai-config.js.
+- Ran 8 smoke tests against live server on :3001: all passed (GET all configs, PUT update chat max_tokens 1024→1500→1024, GET verify, validation rejects maxOutputTokens=50 with 400, validation rejects invalid feature with 400, unauthorized 401, update expiry-opt maxInputBatches 50→100→50).
+- Committed as 310f4c5 with detailed message, pushed to origin/main.
+
+Stage Summary:
+- Phase 1 of the Phased Implementation Plan is now COMPLETE.
+- All 3 P0 fixes shipped: max_tokens cap on 4 LLM routes, take:50 row cap on expiry-optimizer batch query, products.length>20 validation on product-assistant check_interactions.
+- Bonus design improvement: all 6 values (4x maxOutputTokens + 1x maxInputBatches + 1x maxInputProducts) are now editable live from /admin without redeploying.
+- Files added: src/lib/ai-config.ts, src/app/api/super-admin/ai-config/route.ts, src/app/admin/AiConfigCard.tsx, scripts/seed-ai-config.js (4 new files)
+- Files modified: prisma/schema.prisma, 4 AI route files, src/app/admin/page.tsx (7 modified files)
+- Total: 13 files changed, 863 insertions, 4 deletions in commit 310f4c5
+- Default config values: chat=1024 tokens, insights=2048 tokens, expiry-optimizer=2048 tokens + 50 batches, product-assistant=512 tokens + 20 meds
+- Ready for Phase 2 (P1 structural defenses: free-tier guard + circuit breaker).
