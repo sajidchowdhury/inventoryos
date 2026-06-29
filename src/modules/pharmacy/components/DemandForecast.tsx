@@ -89,7 +89,7 @@ export function DemandForecast() {
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <h1 className="text-lg font-bold flex-1 flex items-center gap-1.5">
-          <Sparkles className="h-5 w-5 text-primary" /> Demand Forecast
+          <Sparkles className="h-5 w-5 text-primary" /> Smart Forecast
         </h1>
         <Select value={days} onValueChange={(v) => { setDays(v); }}>
           <SelectTrigger className="h-9 w-24"><SelectValue /></SelectTrigger>
@@ -111,7 +111,7 @@ export function DemandForecast() {
             <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
               <TrendingUp className="h-8 w-8 text-primary" />
             </div>
-            <h2 className="text-base font-bold">AI Demand Forecasting</h2>
+            <h2 className="text-base font-bold">Smart Forecast</h2>
             <p className="text-sm text-muted-foreground">
               Predicts future sales for each product based on 90-day historical data, trend analysis, and day-of-week patterns.
             </p>

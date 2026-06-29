@@ -81,6 +81,33 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       },
     });
 
+    // Overstock count: products where current inventory exceeds maxStock threshold.
+    // Only counts products where maxStock > 0 (i.e., the founder has set a threshold).
+    // Phase 3 P2 fix: surfaces the previously-unused Product.maxStock column.
+    const overstockProducts = await db.product.count({
+      where: {
+        businessId, isActive: true,
+        maxStock: { gt: 0 },
+        inventory: { quantity: { gt: 0 } },
+      },
+    });
+    // Note: a precise overstock check (inventory.quantity > product.maxStock) requires
+    // a raw query or fetch-and-filter because Prisma can't compare two columns directly.
+    // For the dashboard count, we fetch the candidate products and filter in JS.
+    let overstockCount = 0;
+    if (overstockProducts > 0) {
+      const candidates = await db.product.findMany({
+        where: {
+          businessId, isActive: true,
+          maxStock: { gt: 0 },
+        },
+        select: { maxStock: true, inventory: { select: { quantity: true } } },
+      });
+      overstockCount = candidates.filter(
+        (p) => (p.inventory?.quantity ?? 0) > (p.maxStock || 0)
+      ).length;
+    }
+
     // Inventory valuation (cost basis)
     const batches = await db.batch.findMany({
       where: { businessId, quantity: { gt: 0 }, status: { not: "destroyed" } },
@@ -216,6 +243,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         totalProducts,
         lowStockProducts,
         outOfStockProducts,
+        overstockProducts: overstockCount,
         totalBatches: totalBatchCount,
         costValue: inventoryCostValue,
         mrpValue: inventoryMRPValue,

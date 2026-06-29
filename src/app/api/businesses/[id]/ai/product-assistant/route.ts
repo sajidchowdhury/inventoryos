@@ -19,6 +19,19 @@ import {
   classifyRateLimitByType,
 } from "@/lib/ai-fallback";
 import { getAiConfig } from "@/lib/ai-config";
+import {
+  normalizeQuery,
+  computeDataHash,
+  getCachedResponse,
+  setCachedResponse,
+} from "@/lib/ai-cache";
+
+// 7-day cache TTL for deterministic product-assistant actions.
+// generate_description and suggest_category are product-specific and the
+// answers don't change day-to-day, so a longer TTL is safe and saves tokens.
+// check_interactions and suggest_dosage remain uncached (24h default would
+// apply if they used the cache) because they depend on patient-specific inputs.
+const PRODUCT_ASSISTANT_CACHE_TTL_HOURS = 24 * 7; // 7 days
 
 const VALID_ACTIONS = [
   "generate_description",
@@ -101,6 +114,27 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         return NextResponse.json({ error: "Product data required" }, { status: 400 });
       }
 
+      // ── Cache lookup (7-day TTL) ──
+      // Product descriptions are deterministic given the product fields, so we
+      // cache them for 7 days. Key includes the product field hash so any edit
+      // to the product (name, generic, strength, etc.) invalidates the cache.
+      const cacheKey = `${product.name}|${product.genericName || ""}|${product.strength || ""}|${product.dosageForm || ""}|${product.manufacturer || ""}|${product.scheduleType || ""}|${product.isPrescription}`;
+      const cacheQuery = normalizeQuery(`${typedAction}:${product.name}`);
+      const cacheHash = computeDataHash(cacheKey);
+
+      const cached = await getCachedResponse(businessId, feature, cacheQuery, cacheHash);
+      if (cached) {
+        // Log a zero-token cache hit so usage dashboards see the activity.
+        await logAIUsage(businessId, `${feature}-cache`, 0, true);
+        return NextResponse.json({
+          success: true,
+          description: cached.response,
+          tokensUsed: 0,
+          cache: { hit: true, cachedAt: cached.cachedAt },
+          remaining: limitCheck.remaining,
+        });
+      }
+
       const systemPrompt = `You are a pharmaceutical product catalog expert. Generate a concise, professional product description for a pharmacy inventory system. Include: what it treats, common uses, key warnings. Keep it under 100 words. Do not include dosing instructions.`;
       const userContent = `Product: ${product.name}\nGeneric: ${product.genericName || "Unknown"}\nStrength: ${product.strength || "Unknown"}\nForm: ${product.dosageForm || "Unknown"}\nManufacturer: ${product.manufacturer || "Unknown"}\nSchedule: ${product.scheduleType || "OTC"}\nPrescription required: ${product.isPrescription ? "Yes" : "No"}`;
 
@@ -118,10 +152,24 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
       await logAIUsage(businessId, feature, tokens, true);
 
+      // ── Cache write (7-day TTL) ──
+      if (description) {
+        await setCachedResponse(
+          businessId,
+          feature,
+          cacheQuery,
+          cacheHash,
+          description,
+          tokens,
+          PRODUCT_ASSISTANT_CACHE_TTL_HOURS
+        );
+      }
+
       return NextResponse.json({
         success: true,
         description,
         tokensUsed: tokens,
+        cache: { hit: false },
         remaining: limitCheck.remaining,
       });
     }
@@ -206,6 +254,30 @@ If no interactions found, return empty arrays and riskLevel "none". Be thorough 
     if (typedAction === "suggest_category") {
       const { productName, genericName } = body;
 
+      // ── Cache lookup (7-day TTL) ──
+      // Category suggestions are deterministic given (productName, genericName),
+      // so we cache them for 7 days.
+      const cacheKey = `${productName || ""}|${genericName || ""}`;
+      const cacheQuery = normalizeQuery(`${typedAction}:${productName || ""}:${genericName || ""}`);
+      const cacheHash = computeDataHash(cacheKey);
+
+      const cached = await getCachedResponse(businessId, feature, cacheQuery, cacheHash);
+      if (cached) {
+        await logAIUsage(businessId, `${feature}-cache`, 0, true);
+        try {
+          const cachedResult = JSON.parse(cached.response);
+          return NextResponse.json({
+            success: true,
+            suggestion: cachedResult,
+            tokensUsed: 0,
+            cache: { hit: true, cachedAt: cached.cachedAt },
+            remaining: limitCheck.remaining,
+          });
+        } catch {
+          // Cached response wasn't valid JSON — fall through to LLM
+        }
+      }
+
       const systemPrompt = `You are a pharmacy categorization expert. Given a product name and generic name, suggest the most appropriate pharmacy category. Respond in JSON:
 {
   "suggestedCategory": "category name",
@@ -239,10 +311,24 @@ Common pharmacy categories: Antibiotics, Pain & Fever, Cold & Flu, Digestive Hea
       const tokens = extractTokens(completion, systemPrompt, userContent, response);
       await logAIUsage(businessId, feature, tokens, true);
 
+      // ── Cache write (7-day TTL) ──
+      if (response) {
+        await setCachedResponse(
+          businessId,
+          feature,
+          cacheQuery,
+          cacheHash,
+          response, // store the raw LLM response (JSON string)
+          tokens,
+          PRODUCT_ASSISTANT_CACHE_TTL_HOURS
+        );
+      }
+
       return NextResponse.json({
         success: true,
         suggestion: result,
         tokensUsed: tokens,
+        cache: { hit: false },
         remaining: limitCheck.remaining,
       });
     }

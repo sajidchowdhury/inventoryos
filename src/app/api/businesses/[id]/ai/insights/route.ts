@@ -210,36 +210,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
 
     // ── 4. Call LLM for insights ──
+    // System prompt kept lean (~300 tokens) to reduce per-call cost.
+    // The JSON schema contract is preserved so the client parser still works.
     const ZAI = (await import("z-ai-web-dev-sdk")).default;
     const zai = await ZAI.create();
 
-    const systemPrompt = `You are an AI pharmacy business analyst. Analyze the provided pharmacy data and generate actionable insights in JSON format.
+    const systemPrompt = `You are a pharmacy business analyst. Return ONLY JSON:
+{"summary":"2-3 sentence executive summary","healthScore":1-100,"healthLabel":"Excellent"|"Good"|"Fair"|"Needs Attention"|"Critical","insights":[{"type":"success"|"warning"|"danger"|"info"|"tip","category":"Sales"|"Inventory"|"Expiry"|"Customers"|"Purchases"|"Financial","title":"short","description":"with specific numbers","action":"recommended action"}],"recommendations":[{"priority":"high"|"medium"|"low","title":"short","description":"what and why","expectedImpact":"benefit"}]}
 
-Return a JSON object with this exact structure:
-{
-  "summary": "2-3 sentence executive summary of business health",
-  "healthScore": number 1-100,
-  "healthLabel": "Excellent" | "Good" | "Fair" | "Needs Attention" | "Critical",
-  "insights": [
-    {
-      "type": "success" | "warning" | "danger" | "info" | "tip",
-      "category": "Sales" | "Inventory" | "Expiry" | "Customers" | "Purchases" | "Financial",
-      "title": "Short title",
-      "description": "Detailed explanation with specific numbers",
-      "action": "Recommended action to take"
-    }
-  ],
-  "recommendations": [
-    {
-      "priority": "high" | "medium" | "low",
-      "title": "Short title",
-      "description": "What to do and why",
-      "expectedImpact": "What benefit this will bring"
-    }
-  ]
-}
-
-Generate 5-8 insights and 3-5 recommendations. Be specific with numbers from the data. Focus on actionable pharmacy-specific advice.`;
+Generate 5-8 insights and 3-5 recommendations. Use specific numbers from the data. Be actionable and pharmacy-specific.`;
 
     const userContent = `Analyze this pharmacy data:\n\n${JSON.stringify(dataSummary, null, 2)}`;
 

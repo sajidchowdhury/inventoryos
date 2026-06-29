@@ -20,6 +20,7 @@ interface DashboardStats {
   totalProducts: number;
   lowStockCount: number;
   expiringSoonCount: number;
+  overstockCount: number;
   totalCategories: number;
 }
 
@@ -35,7 +36,7 @@ export function PharmacyDashboard() {
   const businessId = session?.business?.id;
 
   const [stats, setStats] = useState<DashboardStats>({
-    totalProducts: 0, lowStockCount: 0, expiringSoonCount: 0, totalCategories: 0,
+    totalProducts: 0, lowStockCount: 0, expiringSoonCount: 0, overstockCount: 0, totalCategories: 0,
   });
   const [recentProducts, setRecentProducts] = useState<Array<{
     id: string; name: string; genericName: string | null; manufacturer: string | null;
@@ -47,22 +48,31 @@ export function PharmacyDashboard() {
   const fetchDashboard = useCallback(async () => {
     if (!businessId) return;
     try {
-      const [prodRes, catRes] = await Promise.all([
+      const [prodRes, catRes, dashRes] = await Promise.all([
         fetch(`/api/businesses/${businessId}/products?limit=5`),
         fetch(`/api/businesses/${businessId}/categories`),
+        fetch(`/api/businesses/${businessId}/dashboard`),
       ]);
       const prodData = await prodRes.json();
       const catData = await catRes.json();
+      const dashData = await dashRes.json().catch(() => null);
 
       if (prodData.success) {
         const products = prodData.products || [];
         const totalProducts = prodData.pagination?.total ?? products.length;
-        const lowStock = products.filter((p: { inventory: { quantity: number } | null }) => (p.inventory?.quantity ?? 0) <= 5).length;
+
+        // Prefer the dashboard API's accurate counts when available; fall back
+        // to the legacy product-list-based estimate otherwise.
+        const lowStock = dashData?.inventory?.lowStockProducts
+          ?? products.filter((p: { inventory: { quantity: number } | null }) => (p.inventory?.quantity ?? 0) <= 5).length;
+        const expiringSoon = dashData?.expiry?.nearExpiryBatches ?? 0;
+        const overstock = dashData?.inventory?.overstockProducts ?? 0;
 
         setStats({
           totalProducts,
           lowStockCount: lowStock,
-          expiringSoonCount: 0,
+          expiringSoonCount: expiringSoon,
+          overstockCount: overstock,
           totalCategories: catData.allCategories?.length ?? 0,
         });
         setRecentProducts(products);
@@ -125,10 +135,10 @@ export function PharmacyDashboard() {
       </div>
 
       {/* ═══════════════════════════════════════════════════════ */}
-      {/* 3-CARD STATS GRID — Products, Low Stock, Expiring Soon   */}
+      {/* 4-CARD STATS GRID — Products, Low Stock, Expiring, Overstock */}
       {/* Colored left borders, card-hover effect, NO financials   */}
       {/* ═══════════════════════════════════════════════════════ */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {/* Total Products — blue accent */}
         <div
           className="card-hover bg-white rounded-2xl p-4 shadow-pharmacy relative overflow-hidden stagger-in"
@@ -184,6 +194,25 @@ export function PharmacyDashboard() {
             {loading ? "—" : stats.expiringSoonCount}
           </p>
           <p className="text-[10px] text-gray-400 mt-0.5">Within 30 days</p>
+        </div>
+
+        {/* Overstock — indigo accent (Phase 3 P2 fix: surfaces Product.maxStock) */}
+        <div
+          className="card-hover bg-white rounded-2xl p-4 shadow-pharmacy relative overflow-hidden stagger-in"
+          style={{ animationDelay: "0.25s" }}
+          onClick={() => setActiveView("products")}
+        >
+          <div className="absolute top-0 left-0 w-1 h-full bg-indigo-500 rounded-l-2xl" />
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center">
+              <Boxes className="h-4 w-4 text-indigo-600" />
+            </div>
+            <span className="text-[10px] text-gray-400 font-medium">Overstock</span>
+          </div>
+          <p className={cn("text-2xl font-bold", stats.overstockCount > 0 ? "text-indigo-600" : "text-gray-900")}>
+            {loading ? "—" : stats.overstockCount}
+          </p>
+          <p className="text-[10px] text-gray-400 mt-0.5">Above max level</p>
         </div>
       </div>
 

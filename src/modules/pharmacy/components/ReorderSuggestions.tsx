@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { motion } from "framer-motion";
 import {
   ArrowLeft, RefreshCw, TrendingUp, AlertTriangle, Clock,
@@ -68,18 +68,32 @@ export function ReorderSuggestions() {
   const [data, setData] = useState<ReorderData | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchData = useCallback(async () => {
+  // Client-side 30-second cache to avoid re-fetching on tab switches.
+  // The reorder endpoint is deterministic (no LLM), so a short cache is safe
+  // and reduces DB load when the user navigates back and forth.
+  const lastFetchAt = useRef<number>(0);
+  const CACHE_TTL_MS = 30 * 1000; // 30 seconds
+
+  const fetchData = useCallback(async (force = false) => {
     if (!businessId) return;
+    // Skip fetch if we have data and it's less than 30 seconds old
+    if (!force && data && Date.now() - lastFetchAt.current < CACHE_TTL_MS) {
+      return;
+    }
     setLoading(true);
     try {
       const res = await fetch(`/api/businesses/${businessId}/ai/reorder`);
       const json = await res.json();
-      if (json.success) setData(json);
+      if (json.success) {
+        setData(json);
+        lastFetchAt.current = Date.now();
+      }
     } catch (err) {
       console.error("Reorder fetch error:", err);
     } finally {
       setLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [businessId]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
@@ -106,7 +120,7 @@ export function ReorderSuggestions() {
         <h1 className="text-lg font-bold flex-1 flex items-center gap-1.5">
           <Sparkles className="h-5 w-5 text-primary" /> Smart Reorder
         </h1>
-        <Button variant="ghost" size="icon" onClick={fetchData}>
+        <Button variant="ghost" size="icon" onClick={() => fetchData(true)}>
           <RefreshCw className="h-4 w-4" />
         </Button>
       </div>

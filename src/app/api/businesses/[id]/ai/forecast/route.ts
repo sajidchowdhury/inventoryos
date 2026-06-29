@@ -1,7 +1,11 @@
 // POST /api/businesses/[id]/ai/forecast
 // Predicts future sales demand per product using historical data + LLM analysis
+// NOTE: This endpoint is deterministic (pure statistical math, no LLM call).
+// We log a zero-token AIUsageLog entry so the super-admin dashboard accurately
+// reflects "Smart Forecast" feature usage.
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { logAIUsage } from "@/lib/ai-rate-limit";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -177,6 +181,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         ? Math.round(forecasts.reduce((s, f) => s + f.confidence, 0) / forecasts.length)
         : 0,
     };
+
+    // Log zero-token usage so the super-admin dashboard sees Smart Forecast activity.
+    // This is a deterministic endpoint (no LLM call), but logging it keeps the
+    // feature-usage breakdown accurate.
+    await logAIUsage(businessId, "forecast", 0, true);
 
     return NextResponse.json({
       success: true,

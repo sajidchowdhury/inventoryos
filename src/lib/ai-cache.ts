@@ -133,14 +133,15 @@ export async function setCachedResponse(
   normalizedQuery: string,
   dataHash: string,
   response: string,
-  tokensUsed: number
+  tokensUsed: number,
+  ttlHours: number = CACHE_TTL_HOURS
 ): Promise<void> {
   // Don't cache empty queries or empty responses — they're either bugs or
   // LLM failures that we don't want to replay.
   if (!normalizedQuery || !response) return;
 
   const now = new Date();
-  const expiresAt = new Date(now.getTime() + CACHE_TTL_HOURS * 60 * 60 * 1000);
+  const expiresAt = new Date(now.getTime() + ttlHours * 60 * 60 * 1000);
   const safeTokens = Math.max(0, Math.floor(tokensUsed));
 
   const compoundKey = {

@@ -1,7 +1,11 @@
 // GET /api/businesses/[id]/ai/reorder
 // Smart reorder suggestions based on sales velocity, stock levels, and lead time
+// NOTE: This endpoint is deterministic (pure statistical math, no LLM call).
+// We log a zero-token AIUsageLog entry so the super-admin dashboard accurately
+// reflects "Smart Reorder" feature usage.
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { logAIUsage } from "@/lib/ai-rate-limit";
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -137,6 +141,11 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       totalEstimatedCost: suggestions.reduce((sum, s) => sum + s.estimatedCost, 0),
       outOfStock: suggestions.filter((s) => s.currentStock <= 0).length,
     };
+
+    // Log zero-token usage so the super-admin dashboard sees Smart Reorder activity.
+    // This is a deterministic endpoint (no LLM call), but logging it keeps the
+    // feature-usage breakdown accurate.
+    await logAIUsage(businessId, "reorder", 0, true);
 
     return NextResponse.json({
       success: true,

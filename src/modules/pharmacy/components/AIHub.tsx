@@ -50,7 +50,7 @@ const aiFeatures: AIFeature[] = [
   },
   {
     view: "ai-forecast",
-    title: "Demand Forecast",
+    title: "Smart Forecast",
     description: "90-day demand predictions with trend analysis and confidence scores",
     icon: CalendarClock,
     gradient: "from-indigo-500 to-blue-500",
