@@ -47,6 +47,7 @@ import { AiConfigCard } from "./AiConfigCard";
 import { KillSwitchCard } from "./KillSwitchCard";
 import { NotificationRecipientsCard } from "./NotificationRecipientsCard";
 import { Phase5OpsCard } from "./Phase5OpsCard";
+import { GeneratedReportsViewer } from "./GeneratedReportsViewer";
 import { SuperAdminHelp } from "./SuperAdminHelp";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -1869,6 +1870,9 @@ export default function AdminPage() {
           <KillSwitchCard token={token!} />
           <NotificationRecipientsCard token={token!} />
         </div>
+
+        {/* Phase B: Generated Reports Viewer */}
+        <GeneratedReportsViewer token={token!} />
 
         {/* Business list */}
         {businessesData && (
