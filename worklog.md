@@ -1625,3 +1625,34 @@ Stage Summary:
 - AI brand honesty: UI now correctly labels deterministic features as 'Smart' instead of 'AI'
 - Super-admin dashboard accuracy: forecast + reorder now appear in feature breakdown (previously invisible)
 - Ready for Phase 4 (kill-switch automation with founder email + super-admin controls).
+
+---
+Task ID: phase4-implementation
+Agent: Super Z (Main Agent)
+Task: Implement Phase 4 of the AI Features Report Phased Implementation Plan — kill-switch automation with 4 triggers, dynamic thresholds, email alerts to up to 3 recipients, and a comprehensive help off-canvas panel explaining all super-admin features.
+
+Work Log:
+- Added 3 Prisma models: KillSwitch (audit log), KillSwitchThreshold (dynamic thresholds), NotificationRecipient (up to 3 emails). Ran prisma db push + generate.
+- Installed nodemailer + @types/nodemailer. Created src/lib/email.ts (170 lines) with lazy SMTP singleton, fail-safe to console.warn if SMTP not configured, getActiveRecipientEmails() helper.
+- Created src/lib/ai-kill-switch.ts (370 lines): checkKillSwitch(businessId) checks all 4 triggers using DYNAMIC thresholds from DB. Triggers: per_pharmacy_monthly (200 BDT default), per_pharmacy_24h (50K tokens), platform_monthly (100K BDT), zai_error_rate (10% in 1h). zai_error_rate auto-recovers when rate < 1% for 30 min. Others require manual reset. Sends email to all recipients on trigger. Idempotent (doesn't duplicate active kill-switches).
+- Wired kill-switch into checkAILimit() as step 0 (before everything else). Added 'kill_switch_open' to AILimitType. Added 'kill_switch' to FallbackReason with bilingual (EN+BN) message + classifyRateLimitByType case.
+- Created 4 API endpoints: thresholds (GET/PUT), recipients (GET/POST/DELETE), kill-switch list (GET), reset (POST). All super-admin Bearer auth.
+- Seeded 4 default threshold rows via scripts/seed-kill-switch-defaults.js.
+- Created KillSwitchCard.tsx (290 lines): red banner when active, 4 threshold editors with value + active toggle, active list with reset buttons, history table.
+- Created NotificationRecipientsCard.tsx (210 lines): manage up to 3 emails, SMTP warning banner, add/remove with confirmation.
+- Created SuperAdminHelp.tsx (260 lines): off-canvas Sheet with 12 help entries covering ALL super-admin features. Each entry: What it is, If not configured, Why you need it, How to use. Categories: Monitoring, Configuration, Operations.
+- Wired into admin/page.tsx: imported 3 new components + HelpCircle icon, added helpOpen state, added Help button to header, placed KillSwitchCard + NotificationRecipientsCard in 2-column grid after AiConfigCard, added SuperAdminHelp Sheet at end.
+- Fixed 3 TypeScript errors: NotificationLog requires businessId + entityType (removed NotificationLog writes from email.ts and ai-kill-switch.ts — KillSwitch table IS the audit trail for platform alerts).
+- 14 smoke tests PASSED: thresholds CRUD, recipients CRUD, threshold update, kill-switch trigger (mock 6 BDT cost exceeded 5 BDT threshold), AI call returned kill_switch fallback (bilingual), kill-switch status showed 1 active, second AI call blocked, reset worked, cleanup.
+- Committed as e585cf3, tagged v1.4.0-ai-killswitch, pushed to origin/main with tag.
+
+Stage Summary:
+- Phase 4 of the Phased Implementation Plan is now COMPLETE.
+- Files added: 8 (email.ts, ai-kill-switch.ts, 4 API routes, 3 UI components, 1 seed script)
+- Files modified: 4 (schema.prisma, ai-rate-limit.ts, ai-fallback.ts, admin/page.tsx) + package.json/lock + tsconfig.tsbuildinfo
+- Total: 18 files changed, ~2,000 insertions in commit e585cf3
+- The 9-tier AI defense stack is now fully operational (kill-switch → subscription → tier → aiEnabled → circuit breaker → burst → daily → monthly → token budget)
+- All 4 kill-switch triggers have DYNAMIC thresholds editable from /admin
+- Up to 3 email addresses configurable from /admin (SMTP env vars required for actual sending)
+- Comprehensive help off-canvas explains every super-admin feature
+- Ready for Phase 5 (ongoing operational monitoring — continuous, no code changes needed).
