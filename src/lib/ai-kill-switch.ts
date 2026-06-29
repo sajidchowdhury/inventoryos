@@ -21,7 +21,7 @@
 // banner in /admin stays accurate across restarts.
 
 import { db } from "./db";
-import { sendEmail, getActiveRecipientEmails, isEmailConfigured } from "./email";
+import { sendEmail, getActiveRecipientEmails } from "./email";
 
 // ── Hardcoded defaults (used only if the KillSwitchThreshold table is empty) ──
 export const KILL_SWITCH_DEFAULTS = {

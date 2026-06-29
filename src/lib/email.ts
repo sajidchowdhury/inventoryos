@@ -1,24 +1,12 @@
 // src/lib/email.ts
-// Phase 4: Email sending infrastructure for kill-switch notifications.
+// Email sending infrastructure for kill-switch notifications + report delivery.
 //
-// Uses nodemailer with SMTP credentials from environment variables:
-//   SMTP_HOST       — e.g., "smtp.gmail.com", "smtp.sendgrid.net"
-//   SMTP_PORT       — e.g., 587 (STARTTLS) or 465 (SSL)
-//   SMTP_USER       — SMTP username (often the email address)
-//   SMTP_PASS       — SMTP password or app-specific password
-//   SMTP_FROM       — From: address (defaults to SMTP_USER)
+// Phase 6: SMTP config is now DYNAMIC — stored in the SmtpConfig DB table and
+// editable from /admin/api-setup → SMTP tab. Falls back to environment variables
+// (SMTP_HOST etc.) if no DB row exists.
 //
-// If SMTP is not configured (SMTP_HOST missing), emails are logged to the
-// console AND written to NotificationLog so nothing is lost. This fail-safe
-// ensures kill-switch alerts are never silently dropped.
-//
-// Usage:
-//   import { sendEmail } from "@/lib/email";
-//   await sendEmail({
-//     to: ["founder@example.com", "cto@example.com"],
-//     subject: "Kill-Switch Triggered",
-//     html: "<h1>Alert</h1><p>Details...</p>",
-//   });
+// If SMTP is not configured (neither DB nor env vars), emails are logged to
+// the console so nothing is lost.
 
 import nodemailer from "nodemailer";
 import { db } from "./db";
@@ -28,66 +16,173 @@ export interface EmailPayload {
   to: string[];
   subject: string;
   html: string;
-  text?: string; // plain-text fallback
+  text?: string;
 }
 
 export interface EmailResult {
   sent: boolean;
   messageIds: string[];
   error?: string;
-  fallbackUsed?: boolean; // true if email was logged instead of sent
+  fallbackUsed?: boolean;
 }
 
-// ── Lazy singleton transporter ──
+// ── Cached SMTP config (refreshed every 5 minutes) ──
+interface SmtpSettings {
+  host: string;
+  port: number;
+  user: string;
+  password: string;
+  fromEmail: string | null;
+  fromName: string;
+  source: "database" | "env" | "none";
+}
+
+let cachedSettings: SmtpSettings | null = null;
+let cacheExpiry: Date | null = null;
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+/**
+ * Load SMTP settings. Checks DB first, then env vars, then returns null.
+ */
+async function getSmtpSettings(): Promise<SmtpSettings | null> {
+  // Check cache
+  if (cachedSettings && cacheExpiry && cacheExpiry > new Date()) {
+    return cachedSettings;
+  }
+
+  try {
+    // Try DB first
+    const dbConfig = await db.smtpConfig.findUnique({
+      where: { id: "default" },
+    });
+
+    if (dbConfig && dbConfig.isActive) {
+      cachedSettings = {
+        host: dbConfig.host,
+        port: dbConfig.port,
+        user: dbConfig.user,
+        password: dbConfig.password,
+        fromEmail: dbConfig.fromEmail,
+        fromName: dbConfig.fromName,
+        source: "database",
+      };
+      cacheExpiry = new Date(Date.now() + CACHE_TTL_MS);
+      return cachedSettings;
+    }
+  } catch (err) {
+    console.error("[email] Failed to load SmtpConfig from DB:", err);
+  }
+
+  // Fall back to environment variables
+  const envHost = process.env.SMTP_HOST;
+  const envUser = process.env.SMTP_USER;
+  const envPass = process.env.SMTP_PASS;
+
+  if (envHost && envUser && envPass) {
+    cachedSettings = {
+      host: envHost,
+      port: process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT, 10) : 587,
+      user: envUser,
+      password: envPass,
+      fromEmail: process.env.SMTP_FROM || null,
+      fromName: "InventoryOS",
+      source: "env",
+    };
+    cacheExpiry = new Date(Date.now() + CACHE_TTL_MS);
+    return cachedSettings;
+  }
+
+  // Not configured
+  cachedSettings = null;
+  cacheExpiry = new Date(Date.now() + CACHE_TTL_MS);
+  return null;
+}
+
+/**
+ * Force refresh the cached SMTP settings (called after admin updates config).
+ */
+export function refreshSmtpCache(): void {
+  cachedSettings = null;
+  cacheExpiry = null;
+}
+
+// ── Transporter (recreated when settings change) ──
 let transporter: nodemailer.Transporter | null = null;
-let smtpConfigured = false;
+let transporterSettingsHash: string | null = null;
 
-function getTransporter(): nodemailer.Transporter | null {
-  if (transporter) return transporter;
+async function getTransporter(): Promise<nodemailer.Transporter | null> {
+  const settings = await getSmtpSettings();
+  if (!settings) return null;
 
-  const host = process.env.SMTP_HOST;
-  const port = process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT, 10) : 587;
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS;
-
-  if (!host || !user || !pass) {
-    // SMTP not configured — caller should use fallback
-    return null;
+  // Recreate transporter if settings changed
+  const hash = `${settings.host}:${settings.port}:${settings.user}`;
+  if (transporter && transporterSettingsHash === hash) {
+    return transporter;
   }
 
   transporter = nodemailer.createTransport({
-    host,
-    port,
-    secure: port === 465, // true for 465, false for 587 (STARTTLS)
-    auth: { user, pass },
+    host: settings.host,
+    port: settings.port,
+    secure: settings.port === 465,
+    auth: { user: settings.user, pass: settings.password },
   });
-
-  smtpConfigured = true;
+  transporterSettingsHash = hash;
   return transporter;
 }
 
 /**
- * Check if SMTP is configured. Used by the UI to show a warning banner
- * if email alerts won't actually be sent.
+ * Check if SMTP is configured (DB or env vars).
  */
-export function isEmailConfigured(): boolean {
-  return !!(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
+export async function isEmailConfigured(): Promise<boolean> {
+  const settings = await getSmtpSettings();
+  return settings !== null;
 }
 
 /**
- * Get the configured From: address. Falls back to SMTP_USER.
+ * Get SMTP config status for UI display.
  */
-export function getFromAddress(): string {
-  return process.env.SMTP_FROM || process.env.SMTP_USER || "noreply@inventoryos.local";
+export async function getSmtpStatus(): Promise<{
+  configured: boolean;
+  source: "database" | "env" | "none";
+  host: string | null;
+  port: number | null;
+  user: string | null;
+  fromEmail: string | null;
+  fromName: string | null;
+}> {
+  const settings = await getSmtpSettings();
+  if (!settings) {
+    return {
+      configured: false,
+      source: "none",
+      host: null, port: null, user: null, fromEmail: null, fromName: null,
+    };
+  }
+  return {
+    configured: true,
+    source: settings.source,
+    host: settings.host,
+    port: settings.port,
+    user: settings.user,
+    fromEmail: settings.fromEmail,
+    fromName: settings.fromName,
+  };
+}
+
+/**
+ * Get the configured From: address.
+ */
+export async function getFromAddress(): Promise<string> {
+  const settings = await getSmtpSettings();
+  if (!settings) return "noreply@inventoryos.local";
+  if (settings.fromEmail) {
+    return `${settings.fromName} <${settings.fromEmail}>`;
+  }
+  return settings.user;
 }
 
 /**
  * Send an email to one or more recipients.
- *
- * If SMTP is not configured, the email content is:
- *   1. Logged to the console (for immediate visibility during development)
- *   2. Written to NotificationLog (for audit trail)
- * This ensures no alert is ever silently dropped.
  */
 export async function sendEmail(payload: EmailPayload): Promise<EmailResult> {
   const { to, subject, html, text } = payload;
@@ -96,39 +191,33 @@ export async function sendEmail(payload: EmailPayload): Promise<EmailResult> {
     return { sent: false, messageIds: [], error: "No recipients provided" };
   }
 
-  const transport = getTransporter();
+  const transport = await getTransporter();
 
   // ── Fallback: SMTP not configured ──
   if (!transport) {
-    console.warn("[email] SMTP not configured — logging email to NotificationLog instead");
+    console.warn("[email] SMTP not configured — logging to console");
     console.warn(`[email] To: ${to.join(", ")}`);
     console.warn(`[email] Subject: ${subject}`);
     console.warn(`[email] Body: ${text || html.substring(0, 500)}...`);
-
-    // Write to NotificationLog so the alert is visible in /admin
-    // Note: NotificationLog requires a businessId + entityType, but kill-switch
-    // alerts are platform-wide. We skip NotificationLog here and rely on the
-    // KillSwitch table + console.log for the audit trail. The KillSwitch table
-    // IS the audit trail for platform-level alerts.
-    console.warn("[email] Alert logged to KillSwitch table (platform-level alert — not written to per-business NotificationLog)");
+    console.warn("[email] Configure SMTP in /admin/api-setup → SMTP tab");
 
     return {
       sent: false,
       messageIds: [],
       fallbackUsed: true,
-      error: "SMTP not configured — email logged to NotificationLog",
+      error: "SMTP not configured. Set SMTP credentials in /admin/api-setup → SMTP tab.",
     };
   }
 
   // ── Send via SMTP ──
   try {
-    const from = getFromAddress();
+    const from = await getFromAddress();
     const info = await transport.sendMail({
       from,
       to: to.join(", "),
       subject,
       html,
-      text: text || html.replace(/<[^>]*>/g, ""), // strip HTML for plain-text fallback
+      text: text || html.replace(/<[^>]*>/g, ""),
     });
 
     return {
@@ -138,9 +227,6 @@ export async function sendEmail(payload: EmailPayload): Promise<EmailResult> {
   } catch (err) {
     const errorMsg = err instanceof Error ? err.message : String(err);
     console.error("[email] SMTP send failed:", errorMsg);
-
-    // Fail-safe: log to console (KillSwitch table is the audit trail for platform alerts)
-    console.error("[email] SMTP send failed — alert recorded in KillSwitch table");
 
     return {
       sent: false,
@@ -153,7 +239,6 @@ export async function sendEmail(payload: EmailPayload): Promise<EmailResult> {
 
 /**
  * Get all active notification recipient email addresses.
- * Returns empty array if none configured.
  */
 export async function getActiveRecipientEmails(): Promise<string[]> {
   try {

@@ -1131,3 +1131,24 @@ model ReportDelivery {
   @@index([channel, status])
   @@map("report_deliveries")
 }
+
+// ── SMTP Configuration (Phase 6: dynamic, editable from super admin panel) ──
+// Stores SMTP credentials in the DB so the founder can configure email delivery
+// from /admin/api-setup → SMTP tab without touching environment variables.
+// Only one row exists (singleton pattern: id = "default").
+// Password is stored as-is (the DB itself should be access-controlled).
+// Falls back to environment variables (SMTP_HOST etc.) if no row exists.
+model SmtpConfig {
+  id        String   @id @default("default")
+  host      String
+  port      Int      @default(587)
+  user      String
+  password  String
+  fromEmail String?
+  fromName  String   @default("InventoryOS")
+  isActive  Boolean  @default(true)
+  updatedAt DateTime @updatedAt
+  updatedBy String?
+
+  @@map("smtp_configs")
+}

@@ -15,11 +15,12 @@ import { useEffect, useState, useCallback } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
   Mail, Activity, Database, Clock, Bell, ShieldAlert,
   CheckCircle2, XCircle, Loader2, Send, AlertCircle, RefreshCw,
-  Settings, Zap,
+  Settings, Zap, Save,
 } from "lucide-react";
 import { useAdmin } from "../AdminContext";
 import { AiConfigCard } from "../AiConfigCard";
@@ -120,9 +121,53 @@ export default function ApiSetupPage() {
 // ═══════════════════════════════════════════════════
 function SmtpTab({ token, notify }: { token: string; notify: (kind: "ok" | "err", msg: string) => void }) {
   const [sending, setSending] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [recipientCount, setRecipientCount] = useState<number | null>(null);
+  const [smtpStatus, setSmtpStatus] = useState<{
+    configured: boolean;
+    source: string;
+    config: any;
+    envFallback: any;
+  } | null>(null);
+  const [form, setForm] = useState({
+    host: "",
+    port: "587",
+    user: "",
+    password: "",
+    fromEmail: "",
+    fromName: "InventoryOS",
+    isActive: true,
+  });
+
+  const loadSmtpConfig = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/super-admin/smtp-config", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      setSmtpStatus(data);
+      if (data.config) {
+        setForm({
+          host: data.config.host || "",
+          port: String(data.config.port || 587),
+          user: data.config.user || "",
+          password: data.config.password || "", // masked if already set
+          fromEmail: data.config.fromEmail || "",
+          fromName: data.config.fromName || "InventoryOS",
+          isActive: data.config.isActive ?? true,
+        });
+      }
+    } catch {
+      // ignore
+    } finally {
+      setLoading(false);
+    }
+  }, [token]);
 
   useEffect(() => {
+    void loadSmtpConfig();
     // Check recipient count
     fetch("/api/super-admin/kill-switch/recipients", {
       headers: { Authorization: `Bearer ${token}` },
@@ -130,7 +175,38 @@ function SmtpTab({ token, notify }: { token: string; notify: (kind: "ok" | "err"
       .then((res) => res.json())
       .then((data) => setRecipientCount(data.recipients?.length ?? 0))
       .catch(() => setRecipientCount(0));
-  }, [token]);
+  }, [token, loadSmtpConfig]);
+
+  const handleSave = async () => {
+    if (!form.host || !form.user) {
+      notify("err", "Host and User are required");
+      return;
+    }
+    setSaving(true);
+    try {
+      const res = await fetch("/api/super-admin/smtp-config", {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          host: form.host,
+          port: parseInt(form.port),
+          user: form.user,
+          password: form.password || undefined, // don't send if empty (keep existing)
+          fromEmail: form.fromEmail || null,
+          fromName: form.fromName,
+          isActive: form.isActive,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+      notify("ok", "SMTP configuration saved. Email delivery is now active.");
+      await loadSmtpConfig(); // reload to show updated state
+    } catch (err) {
+      notify("err", err instanceof Error ? err.message : "Save failed");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const handleTestEmail = async () => {
     setSending(true);
@@ -149,10 +225,6 @@ function SmtpTab({ token, notify }: { token: string; notify: (kind: "ok" | "err"
     }
   };
 
-  const envVars = ["SMTP_HOST", "SMTP_PORT", "SMTP_USER", "SMTP_PASS", "SMTP_FROM"];
-  // Note: env vars are server-side only, so we can't check them directly from the client.
-  // The test-email endpoint will return the actual status.
-
   return (
     <Card className="border-blue-200 dark:border-blue-900">
       <CardHeader>
@@ -161,70 +233,165 @@ function SmtpTab({ token, notify }: { token: string; notify: (kind: "ok" | "err"
           SMTP / Email Configuration
         </CardTitle>
         <CardDescription>
-          SMTP is used for: kill-switch alerts, weekly AI health emails, and scheduled report delivery.
-          Configure these environment variables on your server:
+          Configure SMTP for: kill-switch alerts, weekly AI health emails, and scheduled report delivery.
+          Settings are saved to the database and take effect immediately.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Env var table */}
-        <div className="rounded-lg border border-slate-200 dark:border-slate-800 overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/50">
-              <tr>
-                <th className="text-left p-3 font-medium">Environment Variable</th>
-                <th className="text-left p-3 font-medium">Example Value</th>
-                <th className="text-left p-3 font-medium">Purpose</th>
-              </tr>
-            </thead>
-            <tbody>
-              {[
-                { name: "SMTP_HOST", example: "smtp.gmail.com", purpose: "SMTP server hostname" },
-                { name: "SMTP_PORT", example: "587 (STARTTLS) or 465 (SSL)", purpose: "SMTP port" },
-                { name: "SMTP_USER", example: "noreply@inventoryos.com", purpose: "SMTP username (often the email)" },
-                { name: "SMTP_PASS", example: "your-app-password", purpose: "SMTP password or app-specific password" },
-                { name: "SMTP_FROM", example: "InventoryOS <noreply@inventoryos.com>", purpose: "From: address (optional, defaults to SMTP_USER)" },
-              ].map((v) => (
-                <tr key={v.name} className="border-t border-slate-100 dark:border-slate-800">
-                  <td className="p-3 font-mono text-xs font-bold">{v.name}</td>
-                  <td className="p-3 font-mono text-xs text-muted-foreground">{v.example}</td>
-                  <td className="p-3 text-xs">{v.purpose}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        {loading ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          </div>
+        ) : (
+          <>
+            {/* Status banner */}
+            <div className={`rounded-lg border-2 p-3 ${smtpStatus?.configured ? "border-emerald-300 bg-emerald-50/50 dark:bg-emerald-950/10" : "border-amber-300 bg-amber-50/50 dark:bg-amber-950/10"}`}>
+              <div className="flex items-center gap-2">
+                {smtpStatus?.configured ? (
+                  <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+                ) : (
+                  <AlertCircle className="h-5 w-5 text-amber-600" />
+                )}
+                <span className="font-medium text-sm">
+                  {smtpStatus?.configured
+                    ? `SMTP configured via ${smtpStatus.source === "database" ? "database (editable below)" : "environment variables"}`
+                    : "SMTP NOT configured — emails will be logged to console only"}
+                </span>
+              </div>
+              {smtpStatus?.source === "env" && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Currently using environment variables. Save the form below to switch to database config
+                  (which can be edited from this panel without restarting the server).
+                </p>
+              )}
+            </div>
 
-        {/* Gmail setup guide */}
-        <div className="rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900 p-4">
-          <h4 className="text-sm font-semibold text-blue-700 dark:text-blue-400 mb-2">Gmail Setup Guide (Free SMTP)</h4>
-          <ol className="text-xs text-muted-foreground space-y-1 list-decimal list-inside">
-            <li>Enable 2-Factor Authentication on your Gmail account</li>
-            <li>Go to Google Account → Security → App Passwords</li>
-            <li>Generate a new app password for "Mail"</li>
-            <li>Use that 16-character password as SMTP_PASS (not your Gmail password)</li>
-            <li>Set SMTP_HOST=smtp.gmail.com, SMTP_PORT=587, SMTP_USER=your@gmail.com</li>
-          </ol>
-        </div>
+            {/* SMTP config form */}
+            <div className="space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">SMTP Host *</label>
+                  <Input
+                    value={form.host}
+                    onChange={(e) => setForm({ ...form, host: e.target.value })}
+                    placeholder="smtp.gmail.com"
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">Port *</label>
+                  <Input
+                    type="number"
+                    value={form.port}
+                    onChange={(e) => setForm({ ...form, port: e.target.value })}
+                    placeholder="587"
+                    className="mt-1"
+                  />
+                </div>
+              </div>
 
-        {/* Recipient status */}
-        <div className="flex items-center gap-3">
-          <span className="text-sm">Notification recipients:</span>
-          {recipientCount === null ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : recipientCount > 0 ? (
-            <Badge className="bg-emerald-100 text-emerald-700">{recipientCount} configured</Badge>
-          ) : (
-            <Badge className="bg-red-100 text-red-700">None — add recipients in Alerts tab</Badge>
-          )}
-        </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">Username (Email) *</label>
+                  <Input
+                    type="email"
+                    value={form.user}
+                    onChange={(e) => setForm({ ...form, user: e.target.value })}
+                    placeholder="noreply@inventoryos.com"
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">
+                    Password / App Password {smtpStatus?.config ? "(leave blank to keep current)" : "*"}
+                  </label>
+                  <Input
+                    type="password"
+                    value={form.password}
+                    onChange={(e) => setForm({ ...form, password: e.target.value })}
+                    placeholder={smtpStatus?.config ? "•••••••• (unchanged)" : "Your app password"}
+                    className="mt-1"
+                  />
+                </div>
+              </div>
 
-        {/* Test email button */}
-        <Button onClick={handleTestEmail} disabled={sending || recipientCount === 0}>
-          {sending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
-          Send Test Email
-        </Button>
-        {recipientCount === 0 && (
-          <p className="text-xs text-red-600">Add at least one recipient in the Alerts tab before testing.</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">From Email (optional)</label>
+                  <Input
+                    type="email"
+                    value={form.fromEmail}
+                    onChange={(e) => setForm({ ...form, fromEmail: e.target.value })}
+                    placeholder="Defaults to username"
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">From Name (optional)</label>
+                  <Input
+                    value={form.fromName}
+                    onChange={(e) => setForm({ ...form, fromName: e.target.value })}
+                    placeholder="InventoryOS"
+                    className="mt-1"
+                  />
+                </div>
+              </div>
+
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={form.isActive}
+                  onChange={(e) => setForm({ ...form, isActive: e.target.checked })}
+                />
+                Active (uncheck to disable email delivery)
+              </label>
+            </div>
+
+            {/* Save button */}
+            <div className="flex items-center gap-3">
+              <Button onClick={handleSave} disabled={saving || !form.host || !form.user}>
+                {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+                Save SMTP Configuration
+              </Button>
+            </div>
+
+            {/* Gmail setup guide */}
+            <div className="rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900 p-4">
+              <h4 className="text-sm font-semibold text-blue-700 dark:text-blue-400 mb-2">Gmail Setup Guide (Free SMTP)</h4>
+              <ol className="text-xs text-muted-foreground space-y-1 list-decimal list-inside">
+                <li>Enable 2-Factor Authentication on your Gmail account</li>
+                <li>Go to Google Account → Security → App Passwords</li>
+                <li>Generate a new app password for "Mail"</li>
+                <li>Use that 16-character password as the Password field above (not your Gmail password)</li>
+                <li>Set Host=smtp.gmail.com, Port=587, Username=your@gmail.com</li>
+                <li>Click "Save SMTP Configuration" — email delivery starts immediately</li>
+              </ol>
+            </div>
+
+            {/* Test email section */}
+            <div className="border-t pt-4 space-y-2">
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-medium">Test Email</span>
+                {recipientCount !== null && (
+                  recipientCount > 0 ? (
+                    <Badge className="bg-emerald-100 text-emerald-700">{recipientCount} recipient(s)</Badge>
+                  ) : (
+                    <Badge className="bg-red-100 text-red-700">No recipients — add in Alerts tab</Badge>
+                  )
+                )}
+              </div>
+              <Button onClick={handleTestEmail} disabled={sending || recipientCount === 0 || !smtpStatus?.configured}>
+                {sending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
+                Send Test Email
+              </Button>
+              {recipientCount === 0 && (
+                <p className="text-xs text-red-600">Add at least one recipient in the Alerts tab before testing.</p>
+              )}
+              {!smtpStatus?.configured && (
+                <p className="text-xs text-amber-600">Save SMTP configuration first before sending a test email.</p>
+              )}
+            </div>
+          </>
         )}
       </CardContent>
     </Card>

@@ -35,13 +35,15 @@ export async function POST(req: NextRequest) {
       }, { status: 400 });
     }
 
-    if (!isEmailConfigured()) {
+    if (!await isEmailConfigured()) {
       return NextResponse.json({
         success: false,
-        error: "SMTP not configured. Set SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS environment variables.",
+        error: "SMTP not configured. Go to /admin/api-setup → SMTP tab to set SMTP credentials.",
         smtpConfigured: false,
       }, { status: 400 });
     }
+
+    const fromAddr = await getFromAddress();
 
     const result = await sendEmail({
       to: recipients,
@@ -50,7 +52,7 @@ export async function POST(req: NextRequest) {
         <div style="font-family:Arial,sans-serif;max-width:500px;margin:0 auto;padding:20px;">
           <h1 style="color:#10b981;">\u2705 Test Email Successful</h1>
           <p>This email confirms that SMTP is configured correctly and InventoryOS can send emails.</p>
-          <p><strong>From:</strong> ${getFromAddress()}</p>
+          <p><strong>From:</strong> ${fromAddr}</p>
           <p><strong>To:</strong> ${recipients.join(", ")}</p>
           <p><strong>Sent at:</strong> ${new Date().toISOString()}</p>
           <hr style="border:none;border-top:1px solid #e5e7eb;margin:20px 0;"/>
@@ -59,7 +61,7 @@ export async function POST(req: NextRequest) {
           </p>
         </div>
       `,
-      text: `Test Email Successful\n\nSMTP is configured correctly.\nFrom: ${getFromAddress()}\nTo: ${recipients.join(", ")}\nSent: ${new Date().toISOString()}`,
+      text: `Test Email Successful\n\nSMTP is configured correctly.\nFrom: ${fromAddr}\nTo: ${recipients.join(", ")}\nSent: ${new Date().toISOString()}`,
     });
 
     if (result.sent) {

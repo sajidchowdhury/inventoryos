@@ -42,7 +42,7 @@ export async function GET(req: NextRequest) {
       success: true,
       recipients,
       maxAllowed: MAX_RECIPIENTS,
-      smtpConfigured: isEmailConfigured(),
+      smtpConfigured: await isEmailConfigured(),
     });
   } catch (error) {
     return NextResponse.json({ error: "Failed to load recipients" }, { status: 500 });
