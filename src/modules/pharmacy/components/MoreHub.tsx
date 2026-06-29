@@ -3,10 +3,8 @@
 import { motion } from "framer-motion";
 import {
   Users, Truck, PackagePlus, DollarSign, RotateCcw,
-  Percent, Shield, Bell, Sparkles, MessageSquare,
-  Brain, Zap, LineChart, ChevronRight, LogOut,
-  UserCog, FileText, LayoutDashboard, TrendingUp,
-  Boxes, Receipt, History, Database, User, CreditCard,
+  Percent, Shield, Bell, ChevronRight, LogOut,
+  UserCog, FileText, User, CreditCard,
   Pencil,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -22,13 +20,12 @@ const fadeIn = {
   transition: { duration: 0.3 },
 };
 
-type SectionAccent = "blue" | "emerald" | "amber" | "purple" | "sky" | "gray";
+type SectionAccent = "blue" | "emerald" | "amber" | "sky" | "gray";
 
 const accentMap: Record<SectionAccent, { bar: string; dot: string }> = {
   blue:    { bar: "from-blue-500 to-blue-600",       dot: "bg-blue-500" },
   emerald: { bar: "from-emerald-500 to-emerald-600", dot: "bg-emerald-500" },
   amber:   { bar: "from-amber-500 to-orange-500",    dot: "bg-amber-500" },
-  purple:  { bar: "from-purple-500 to-fuchsia-500",  dot: "bg-purple-500" },
   sky:     { bar: "from-sky-500 to-cyan-500",        dot: "bg-sky-500" },
   gray:    { bar: "from-slate-400 to-slate-500",     dot: "bg-slate-400" },
 };
@@ -40,7 +37,6 @@ interface MoreItem {
   view: PharmacyView;
   gradient: string;
   badge?: string;
-  aiHighlight?: boolean;
 }
 
 interface MoreSection {
@@ -76,26 +72,10 @@ const sections: MoreSection[] = [
     ],
   },
   {
-    title: "AI & Insights",
-    accent: "purple",
-    items: [
-      { icon: Sparkles, label: "AI Insights", desc: "Business health analysis", view: "ai-insights", gradient: "from-violet-500 to-purple-600", aiHighlight: true },
-      { icon: MessageSquare, label: "AI Chat", desc: "Ask questions about your data", view: "ai-chat", gradient: "from-purple-500 to-fuchsia-500", badge: "NEW", aiHighlight: true },
-      { icon: Brain, label: "Smart Reorder", desc: "AI stock predictions", view: "ai-reorder", gradient: "from-fuchsia-500 to-purple-600", aiHighlight: true },
-      { icon: LineChart, label: "Demand Forecast", desc: "Predict future sales", view: "ai-forecast", gradient: "from-indigo-500 to-violet-500", aiHighlight: true },
-      { icon: Zap, label: "Expiry Optimizer", desc: "AI action recommendations", view: "ai-expiry-opt", gradient: "from-purple-500 to-pink-500", aiHighlight: true },
-    ],
-  },
-  {
     title: "Reports",
     accent: "sky",
     items: [
-      { icon: LayoutDashboard, label: "Business Dashboard", desc: "Unified KPIs & position", view: "business-dashboard", gradient: "from-sky-500 to-blue-500" },
-      { icon: TrendingUp, label: "Profit & Loss", desc: "Revenue vs COGS, margins", view: "profit-loss", gradient: "from-emerald-500 to-teal-500" },
-      { icon: Boxes, label: "Inventory Valuation", desc: "Cost & MRP value of stock", view: "inventory-value", gradient: "from-blue-500 to-indigo-500" },
-      { icon: Receipt, label: "Tax Report", desc: "VAT / tax compliance", view: "tax-report", gradient: "from-amber-500 to-orange-500" },
-      { icon: History, label: "Audit Trail", desc: "Transaction history", view: "audit-trail", gradient: "from-cyan-500 to-sky-500" },
-      { icon: Database, label: "Data Export", desc: "Backup your data", view: "data-export", gradient: "from-teal-500 to-cyan-500" },
+      { icon: FileText, label: "Reports Hub", desc: "Business dashboard, P&L, valuation, tax", view: "reports-hub", gradient: "from-sky-500 to-blue-500" },
     ],
   },
   {
@@ -107,7 +87,7 @@ const sections: MoreSection[] = [
       { icon: Bell, label: "Alerts Center", desc: "View all alerts", view: "alerts", gradient: "from-red-500 to-rose-500" },
       { icon: FileText, label: "Expiry Report", desc: "Printable expiry report", view: "report", gradient: "from-cyan-500 to-blue-500" },
       { icon: User, label: "Profile", desc: "Business & account info", view: "profile", gradient: "from-emerald-500 to-emerald-600" },
-      { icon: CreditCard, label: "Subscription", desc: "Plan & AI usage", view: "profile", gradient: "from-violet-500 to-purple-600" },
+      { icon: CreditCard, label: "Subscription", desc: "Plan & AI usage", view: "subscription", gradient: "from-violet-500 to-purple-600" },
     ],
   },
 ];
@@ -181,10 +161,7 @@ export function MoreHub() {
               {section.items.map((item) => (
                 <Card
                   key={`${section.title}-${item.label}`}
-                  className={cn(
-                    "card-hover shadow-pharmacy cursor-pointer border-0 overflow-hidden stagger-in",
-                    item.aiHighlight && "ring-1 ring-purple-100"
-                  )}
+                  className="card-hover shadow-pharmacy cursor-pointer border-0 overflow-hidden stagger-in"
                   onClick={() => setActiveView(item.view)}
                 >
                   <CardContent className="p-3 flex items-center gap-3">

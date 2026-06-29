@@ -2,8 +2,8 @@
 
 import { motion } from "framer-motion";
 import {
-  ArrowLeft, Sparkles, Brain, MessageSquare, TrendingUp,
-  CalendarClock, Zap, Pill, ChevronRight,
+  ArrowLeft, Sparkles, Brain, MessageSquare,
+  CalendarClock, Zap, ChevronRight,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,7 +18,7 @@ const fadeIn = {
 };
 
 interface AIFeature {
-  view: "ai-insights" | "ai-chat" | "ai-reorder" | "ai-forecast" | "ai-expiry-opt" | "ai-chat";
+  view: "ai-insights" | "ai-chat" | "ai-forecast" | "ai-expiry-opt";
   title: string;
   description: string;
   icon: typeof Brain;
@@ -49,15 +49,6 @@ const aiFeatures: AIFeature[] = [
     iconColor: "text-violet-600",
   },
   {
-    view: "ai-reorder",
-    title: "Smart Reorder",
-    description: "AI-analyzed reorder suggestions based on sales velocity and stock levels",
-    icon: TrendingUp,
-    gradient: "from-fuchsia-500 to-purple-500",
-    iconBg: "bg-fuchsia-50",
-    iconColor: "text-fuchsia-600",
-  },
-  {
     view: "ai-forecast",
     title: "Demand Forecast",
     description: "90-day demand predictions with trend analysis and confidence scores",
@@ -74,15 +65,6 @@ const aiFeatures: AIFeature[] = [
     gradient: "from-purple-500 to-pink-500",
     iconBg: "bg-pink-50",
     iconColor: "text-pink-600",
-  },
-  {
-    view: "ai-chat" as "ai-chat", // Product Assistant uses chat
-    title: "Product Assistant",
-    description: "Auto-generate descriptions, check drug interactions, suggest categories & dosage",
-    icon: Pill,
-    gradient: "from-violet-500 to-indigo-500",
-    iconBg: "bg-indigo-50",
-    iconColor: "text-indigo-600",
   },
 ];
 

@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import {
   ShoppingCart, Package, AlertTriangle, TrendingUp,
   Sparkles, ChevronRight, Check, Plus, Boxes, Receipt,
-  Bell, Pill, Clock,
+  Clock, Pill,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -305,97 +305,6 @@ export function PharmacyDashboard() {
       {/* ═══════════════════════════════════════════════════════ */}
       <div className="stagger-in" style={{ animationDelay: "0.45s" }}>
         <ExpiryAlertsWidget />
-      </div>
-
-      {/* ═══════════════════════════════════════════════════════ */}
-      {/* RECENT STOCK UPDATES — Product list with status badges   */}
-      {/* ═══════════════════════════════════════════════════════ */}
-      <div className="stagger-in" style={{ animationDelay: "0.50s" }}>
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-semibold text-gray-900">Recent Products</h3>
-          <button
-            className="text-xs font-medium text-emerald-600 hover:text-emerald-700"
-            onClick={() => setActiveView("products")}
-          >
-            View All →
-          </button>
-        </div>
-
-        {loading ? (
-          <div className="space-y-2">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="bg-white rounded-2xl p-4 shadow-pharmacy">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl skeleton" />
-                  <div className="flex-1 space-y-2">
-                    <div className="h-3 w-1/2 rounded skeleton" />
-                    <div className="h-2 w-1/3 rounded skeleton" />
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : recentProducts.length === 0 ? (
-          <div className="bg-white rounded-2xl p-6 shadow-pharmacy text-center space-y-3">
-            <div className="w-14 h-14 rounded-full bg-gray-50 flex items-center justify-center mx-auto">
-              <Package className="h-7 w-7 text-gray-300" />
-            </div>
-            <p className="text-sm text-gray-500">No products yet</p>
-            <Button size="sm" className="gap-1.5 bg-emerald-600 hover:bg-emerald-700" onClick={() => setActiveView("add-product")}>
-              <Plus className="h-3.5 w-3.5" />
-              Add your first product
-            </Button>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {recentProducts.map((product, idx) => {
-              const qty = product.inventory?.quantity ?? 0;
-              const status = qty <= 0
-                ? { label: "Out of stock", bg: "bg-rose-50", text: "text-rose-700", dot: "bg-rose-500", border: "border-l-rose-400" }
-                : qty <= 5
-                ? { label: `${qty} left`, bg: "bg-amber-50", text: "text-amber-700", dot: "bg-amber-500", border: "border-l-amber-400" }
-                : { label: `${qty} in stock`, bg: "bg-emerald-50", text: "text-emerald-700", dot: "bg-emerald-500", border: "" };
-
-              return (
-                <div
-                  key={product.id}
-                  className={cn(
-                    "card-hover bg-white rounded-2xl p-4 shadow-pharmacy flex items-center gap-3 cursor-pointer",
-                    status.border && `border-l-4 ${status.border}`
-                  )}
-                  onClick={() => { useNavStore.getState().setActiveProductId(product.id); setActiveView("product-detail"); }}
-                >
-                  {/* Category icon */}
-                  <div
-                    className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-                    style={{ backgroundColor: product.category?.color ? `${product.category.color}20` : "#f3f4f6" }}
-                  >
-                    <Pill className="h-5 w-5" style={{ color: product.category?.color || "#6b7280" }} />
-                  </div>
-
-                  {/* Product info */}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-gray-900 truncate">{product.name}</p>
-                    <p className="text-xs text-gray-400 truncate">
-                      {product.genericName || product.manufacturer || "No details"}
-                    </p>
-                  </div>
-
-                  {/* Status badge */}
-                  <div className="shrink-0">
-                    <span className={cn(
-                      "inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold",
-                      status.bg, status.text
-                    )}>
-                      <span className={cn("w-1.5 h-1.5 rounded-full", status.dot)} />
-                      {status.label}
-                    </span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
       </div>
     </motion.div>
   );

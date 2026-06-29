@@ -112,7 +112,7 @@ export function AIChat() {
     <motion.div {...fadeIn} className="space-y-4 pb-4 flex flex-col" style={{ minHeight: "70vh" }}>
       {/* Header */}
       <div className="flex items-center gap-2">
-        <Button variant="ghost" size="icon" className="shrink-0" onClick={() => setActiveView("dashboard")}>
+        <Button variant="ghost" size="icon" className="shrink-0" onClick={() => setActiveView("ai-hub")}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <h1 className="text-lg font-bold flex-1 flex items-center gap-1.5">

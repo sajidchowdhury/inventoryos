@@ -88,7 +88,7 @@ export function ReorderSuggestions() {
     return (
       <motion.div {...fadeIn} className="space-y-4">
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" onClick={() => setActiveView("dashboard")}><ArrowLeft className="h-5 w-5" /></Button>
+          <Button variant="ghost" size="icon" onClick={() => setActiveView("ai-hub")}><ArrowLeft className="h-5 w-5" /></Button>
           <h1 className="text-lg font-bold flex-1">Loading...</h1>
         </div>
         <Card className="animate-pulse"><CardContent className="p-6 h-32" /></Card>
@@ -100,7 +100,7 @@ export function ReorderSuggestions() {
     <motion.div {...fadeIn} className="space-y-4 pb-4">
       {/* Header */}
       <div className="flex items-center gap-2">
-        <Button variant="ghost" size="icon" className="shrink-0" onClick={() => setActiveView("dashboard")}>
+        <Button variant="ghost" size="icon" className="shrink-0" onClick={() => setActiveView("ai-hub")}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <h1 className="text-lg font-bold flex-1 flex items-center gap-1.5">

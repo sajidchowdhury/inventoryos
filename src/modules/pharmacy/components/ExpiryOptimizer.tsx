@@ -107,7 +107,7 @@ export function ExpiryOptimizer() {
     <motion.div {...fadeIn} className="pharmacy-bg min-h-[80vh] space-y-4 p-4 rounded-xl pb-4">
       {/* Header with AI badge */}
       <div className="flex items-center gap-2">
-        <Button variant="ghost" size="icon" className="shrink-0 hover:bg-emerald-50" onClick={() => setActiveView("dashboard")}>
+        <Button variant="ghost" size="icon" className="shrink-0 hover:bg-emerald-50" onClick={() => setActiveView("ai-hub")}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div className="flex-1 min-w-0">
