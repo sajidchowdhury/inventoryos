@@ -8,6 +8,7 @@ import { MoreHub } from "./MoreHub";
 import { ProductList } from "./ProductList";
 import { ProductDetail } from "./ProductDetail";
 import { ProductForm } from "./ProductForm";
+import { CatalogPicker } from "./CatalogPicker";
 import { BatchList } from "./BatchList";
 import { BatchForm } from "./BatchForm";
 import { QuickDispense } from "./QuickDispense";
@@ -72,6 +73,8 @@ export function PharmacyShell() {
         return <ProductDetail />;
       case "add-product":
         return <ProductForm mode="add" />;
+      case "catalog-picker":
+        return <CatalogPicker />;
       case "edit-product":
         return <ProductForm mode="edit" />;
 

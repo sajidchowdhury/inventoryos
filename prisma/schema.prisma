@@ -181,6 +181,10 @@ model Product {
   maxStock     Float   @default(0)     // Overstock warning threshold
   reorderLevel Float   @default(0)     // When to reorder
 
+  // Phase 2: Master Catalog link (null = custom product, backward compatible)
+  masterProductId String?              // FK to MasterProduct. When set, metadata sourced from catalog.
+  sellingPrice  Float?                 // Pharmacy's selling price (may differ from MRP)
+
   isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -198,6 +202,7 @@ model Product {
   @@index([categoryId])
   @@index([genericName])
   @@index([manufacturer])
+  @@index([masterProductId])
 }
 
 // ── Batch ──

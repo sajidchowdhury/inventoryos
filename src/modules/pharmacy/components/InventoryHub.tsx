@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import {
   Package, Boxes, CalendarClock, Tag, Upload, ChevronRight,
-  Plus,
+  Plus, Search,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -42,6 +42,7 @@ const sections = [
     items: [
       { icon: Package, label: "All Products", desc: "View, search, manage products", view: "products" as const, gradient: "from-blue-500 to-blue-600" },
       { icon: Plus, label: "Add Product", desc: "Add a new medicine", view: "add-product" as const, gradient: "from-emerald-500 to-emerald-600" },
+      { icon: Search, label: "Add from Catalog", desc: "Search 14K+ products & add in seconds", view: "catalog-picker" as const, gradient: "from-violet-500 to-purple-600" },
       { icon: Upload, label: "Import CSV", desc: "Bulk import products", view: "import" as const, gradient: "from-cyan-500 to-cyan-600" },
       { icon: Tag, label: "Categories", desc: "Manage product categories", view: "categories" as const, gradient: "from-purple-500 to-purple-600" },
     ],

@@ -11,7 +11,8 @@ export type PharmacyView =
   | "more-hub"        // More hub (More tab)
   | "products"        // Product list with search
   | "product-detail"  // Single product with batches & stock info
-  | "add-product"     // Add new product form
+  | "add-product"     // Add new product form (manual entry)
+  | "catalog-picker"  // Add from master catalog (Phase 2)
   | "edit-product"    // Edit existing product
   | "batches"         // All batches list with filters
   | "add-batch"       // Add batch to a product
