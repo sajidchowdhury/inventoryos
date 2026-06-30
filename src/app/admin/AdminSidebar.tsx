@@ -8,7 +8,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, Settings, Pill, Cctv, MoreHorizontal,
-  ShieldCheck,
+  ShieldCheck, Rocket,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -24,6 +24,12 @@ const NAV_ITEMS = [
     href: "/admin/api-setup",
     icon: Settings,
     description: "SMTP, Z.ai, Database, Cron, Alerts",
+  },
+  {
+    label: "Deploy",
+    href: "/admin/deploy",
+    icon: Rocket,
+    description: "Deployment checklist & Hostinger guide",
   },
   {
     label: "Pharmacy",

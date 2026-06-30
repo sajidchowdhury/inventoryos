@@ -27,6 +27,7 @@ import { SuperAdminHelp } from "./SuperAdminHelp";
 const PAGE_TITLES: Record<string, { title: string; subtitle: string }> = {
   "/admin": { title: "Global Dashboard", subtitle: "Cross-project metrics & platform health" },
   "/admin/api-setup": { title: "API Setup", subtitle: "Configure cross-project infrastructure" },
+  "/admin/deploy": { title: "Deploy", subtitle: "Deployment checklist & Hostinger guide" },
   "/admin/pharmacy": { title: "Pharmacy Dashboard", subtitle: "Pharmacy-specific metrics & configuration" },
   "/admin/cctv": { title: "CC Camera", subtitle: "Coming Soon" },
 };
