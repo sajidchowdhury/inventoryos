@@ -1152,3 +1152,65 @@ model SmtpConfig {
 
   @@map("smtp_configs")
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ── MASTER PRODUCT CATALOG (Phase 1) ──
+// Shared platform-level product catalog. 14,000+ products sourced from
+// MedEx/Kaggle dataset. Pharmacies "subscribe" to products instead of
+// entering them manually.
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ── MasterManufacturer ──
+// Pharmaceutical companies (Square, Beximco, Incepta, etc.)
+model MasterManufacturer {
+  id           String   @id @default(cuid())
+  name         String   @unique
+  shortCode    String?
+  country      String   @default("Bangladesh")
+  isActive     Boolean  @default(true)
+  productCount Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  products MasterProduct[]
+
+  @@map("master_manufacturers")
+}
+
+// ── MasterProduct ──
+// The shared product catalog. ~14,000 products from 232 manufacturers.
+// No businessId — this is platform-level reference data.
+// Pharmacies subscribe to these via Product.masterProductId.
+model MasterProduct {
+  id              String   @id @default(cuid())
+  name            String   // Brand name (e.g., "Napa Extra")
+  genericName     String?  // Generic name (e.g., "Paracetamol + Caffeine")
+  strength        String?  // e.g., "500mg"
+  dosageForm      String?  // Tablet, Capsule, Syrup, Injection, etc.
+  manufacturerId  String?
+  manufacturerStr String?  // Denormalized manufacturer name (for quick search)
+  categoryName    String?  // e.g., "Pain & Fever"
+  scheduleType    String?  // OTC, Schedule_H, Schedule_H1, Schedule_X, Narcotic
+  hsnCode         String?
+  vatRate         Float    @default(0)
+  defaultMrp      Float?   // Default MRP in BDT
+  dgdaRegNo       String?  @unique
+  barcode         String?
+  unit            String   @default("piece") // piece, tablet, ml, g
+  stripSize       Int?
+  boxSize         Int?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  manufacturer MasterManufacturer? @relation(fields: [manufacturerId], references: [id], onDelete: SetNull)
+
+  @@index([name])
+  @@index([genericName])
+  @@index([manufacturerStr])
+  @@index([categoryName])
+  @@index([dosageForm])
+  @@index([barcode])
+  @@index([isActive])
+  @@map("master_products")
+}

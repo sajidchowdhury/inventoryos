@@ -8,7 +8,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, Settings, Pill, Cctv, MoreHorizontal,
-  ShieldCheck, Rocket,
+  ShieldCheck, Rocket, Package,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -30,6 +30,12 @@ const NAV_ITEMS = [
     href: "/admin/deploy",
     icon: Rocket,
     description: "Deployment checklist & Hostinger guide",
+  },
+  {
+    label: "Catalog",
+    href: "/admin/catalog",
+    icon: Package,
+    description: "Master product catalog (14K+ products)",
   },
   {
     label: "Pharmacy",
