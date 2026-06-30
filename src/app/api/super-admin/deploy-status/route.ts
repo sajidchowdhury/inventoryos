@@ -93,7 +93,7 @@ export async function GET(req: NextRequest) {
     // ── Notification Recipients ──
     let recipientCount = 0;
     try {
-      recipientCount = await db.notificationRecipient.count({ where: { isActive: true } });
+      recipientCount = Number(await db.notificationRecipient.count({ where: { isActive: true } }));
     } catch {
       // ignore
     }
@@ -101,7 +101,7 @@ export async function GET(req: NextRequest) {
     // ── Kill-Switch Thresholds ──
     let killSwitchCount = 0;
     try {
-      killSwitchCount = await db.killSwitchThreshold.count();
+      killSwitchCount = Number(await db.killSwitchThreshold.count());
     } catch {
       // ignore
     }
@@ -109,7 +109,7 @@ export async function GET(req: NextRequest) {
     // ── AI Config ──
     let aiConfigCount = 0;
     try {
-      aiConfigCount = await db.aiConfig.count();
+      aiConfigCount = Number(await db.aiConfig.count());
     } catch {
       // ignore
     }
@@ -117,7 +117,7 @@ export async function GET(req: NextRequest) {
     // ── Businesses ──
     let businessCount = 0;
     try {
-      businessCount = await db.business.count();
+      businessCount = Number(await db.business.count());
     } catch {
       // ignore
     }
