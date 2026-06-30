@@ -1,0 +1,16 @@
+{
+  "scrapedAt": "2026-06-30 05:18:09",
+  "totalCompanies": 2,
+  "totalProducts": 0,
+  "companies": [
+    {
+      "id": "14",
+      "name": "Beximco Pharmaceuticals Ltd"
+    },
+    {
+      "id": "1",
+      "name": "Square Pharmaceuticals PLC"
+    }
+  ],
+  "products": []
+}
