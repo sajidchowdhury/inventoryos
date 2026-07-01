@@ -193,141 +193,180 @@ function PasswordInput({
   );
 }
 
-// ── Landing Step ──
+// ── Landing Step — Premium marketing landing page ──
 function LandingStep() {
-  const { setStep, setSelectedBusinessTypeSlug } = useAuthStore();
-  const modules = getAllModules();
+  const { setStep } = useAuthStore();
 
-  const handleBusinessClick = (slug: string, isActive: boolean) => {
-    if (!isActive) return;
-    setSelectedBusinessTypeSlug(slug);
+  const handleGetStarted = () => {
     setStep("phone");
   };
 
   return (
-    <motion.div {...fadeIn} className="space-y-8">
-      {/* Hero */}
-      <div className="text-center space-y-4">
-        <div className="inline-flex items-center justify-center h-20 w-20 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-600 shadow-lg shadow-emerald-500/30">
+    <motion.div {...fadeIn} className="space-y-10 py-2">
+      {/* ═══ HERO SECTION ═══ */}
+      <div className="text-center space-y-6 pt-4">
+        {/* Logo */}
+        <motion.div
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ duration: 0.5, ease: "easeOut" }}
+          className="inline-flex items-center justify-center h-20 w-20 rounded-3xl bg-gradient-to-br from-emerald-500 to-emerald-600 shadow-xl shadow-emerald-500/30"
+        >
           <Box className="h-10 w-10 text-white" />
+        </motion.div>
+
+        {/* Headline */}
+        <div className="space-y-3">
+          <h1 className="text-4xl sm:text-5xl font-bold tracking-tight leading-tight">
+            Inventory<span className="text-emerald-600">OS</span>
+          </h1>
+          <p className="text-xl font-semibold text-foreground leading-snug">
+            Smart Inventory Management
+            <br />
+            <span className="text-emerald-600">Powered by AI</span>
+          </p>
+          <p className="text-base text-muted-foreground max-w-md mx-auto leading-relaxed">
+            Built for Bangladeshi pharmacies. Track stock, manage expiry, get AI-powered
+            demand forecasts — all in one beautiful app.
+          </p>
         </div>
-        <h1 className="text-4xl sm:text-5xl font-bold tracking-tight">
-          Inventory<span className="text-emerald-600">OS</span>
-        </h1>
-        <p className="text-lg text-muted-foreground max-w-md mx-auto leading-relaxed">
-          Simple, powerful inventory management built for every business type.
+
+        {/* CTA Button */}
+        <motion.div
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.3, duration: 0.4 }}
+        >
+          <Button
+            size="lg"
+            className="w-full h-14 gap-2 rounded-2xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 shadow-xl shadow-emerald-500/30 border-0 text-white text-lg font-semibold"
+            onClick={handleGetStarted}
+          >
+            Get Started
+            <ArrowRight className="h-5 w-5" />
+          </Button>
+        </motion.div>
+
+        <p className="text-xs text-muted-foreground">
+          No credit card needed · Free for small businesses
         </p>
       </div>
 
-      {/* Feature highlight cards — NEW */}
-      <div>
-        <p className="text-sm text-center text-muted-foreground font-medium mb-3">
-          Everything you need to run your business
-        </p>
+      {/* ═══ STATS BAR ═══ */}
+      <div className="grid grid-cols-3 gap-2">
+        {[
+          { num: "14K+", label: "Products", icon: Package },
+          { num: "232", label: "Companies", icon: Building2 },
+          { num: "AI", label: "Forecasts", icon: Sparkles },
+        ].map((stat, i) => {
+          const Icon = stat.icon;
+          return (
+            <Card key={i} className="border-emerald-100/50 shadow-sm bg-gradient-to-br from-card to-emerald-50/30">
+              <CardContent className="p-3 text-center space-y-1">
+                <Icon className="h-4 w-4 text-emerald-600 mx-auto" />
+                <p className="text-2xl font-bold text-emerald-600">{stat.num}</p>
+                <p className="text-[10px] text-muted-foreground">{stat.label}</p>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+
+      {/* ═══ WHAT WE PROMISE ═══ */}
+      <div className="space-y-4">
+        <div className="text-center space-y-1">
+          <h2 className="text-2xl font-bold">What we promise</h2>
+          <p className="text-sm text-muted-foreground">Everything you need to run your pharmacy</p>
+        </div>
         <div className="grid grid-cols-2 gap-3">
-          {featureCards.map((feat) => {
+          {featureCards.map((feat, i) => {
             const Icon = feat.icon;
             return (
-              <Card
+              <motion.div
                 key={feat.title}
-                className={cn(
-                  "card-hover shadow-pharmacy overflow-hidden",
-                  feat.highlight && "border-purple-300 ring-2 ring-purple-200"
-                )}
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4 + i * 0.08, duration: 0.4 }}
               >
-                <CardContent className="p-4 flex flex-col items-start gap-2.5">
-                  <div
-                    className={cn(
-                      "h-10 w-10 rounded-xl bg-gradient-to-br flex items-center justify-center text-white shadow-sm",
-                      feat.gradient
-                    )}
-                  >
-                    <Icon className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <p className="font-semibold text-sm flex items-center gap-1.5">
-                      {feat.title}
-                      {feat.highlight && (
-                        <Badge className="text-[9px] bg-purple-100 text-purple-700 hover:bg-purple-100 px-1.5 py-0">
-                          AI
-                        </Badge>
+                <Card
+                  className={cn(
+                    "card-hover shadow-pharmacy overflow-hidden h-full",
+                    feat.highlight && "border-purple-300 ring-2 ring-purple-200"
+                  )}
+                >
+                  <CardContent className="p-4 flex flex-col items-start gap-2.5">
+                    <div
+                      className={cn(
+                        "h-10 w-10 rounded-xl bg-gradient-to-br flex items-center justify-center text-white shadow-sm",
+                        feat.gradient
                       )}
-                    </p>
-                    <p className="text-[11px] text-muted-foreground leading-snug">{feat.desc}</p>
-                  </div>
-                </CardContent>
-              </Card>
+                    >
+                      <Icon className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-sm flex items-center gap-1.5">
+                        {feat.title}
+                        {feat.highlight && (
+                          <Badge className="text-[9px] bg-purple-100 text-purple-700 hover:bg-purple-100 px-1.5 py-0">
+                            AI
+                          </Badge>
+                        )}
+                      </p>
+                      <p className="text-[11px] text-muted-foreground leading-snug">{feat.desc}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
             );
           })}
         </div>
       </div>
 
-      {/* Business type cards — clickable for active types! */}
-      <div className="space-y-3">
-        <p className="text-sm text-center text-muted-foreground font-medium">
-          Choose your business type to get started
-        </p>
-        <div className="space-y-2">
-          {modules.map((mod) => (
-            <Card
-              key={mod.slug}
-              className={cn(
-                "card-hover shadow-pharmacy overflow-hidden border-l-4 transition-all",
-                mod.isActive
-                  ? "cursor-pointer active:scale-[0.98] border-emerald-100"
-                  : "opacity-50 cursor-not-allowed"
-              )}
-              style={{ borderLeftColor: mod.isActive ? mod.color : undefined }}
-              onClick={() => handleBusinessClick(mod.slug, mod.isActive)}
-            >
-              <CardContent className="p-3 flex items-center gap-3">
-                <div
-                  className="w-11 h-11 rounded-xl flex items-center justify-center text-white shrink-0 shadow-sm"
-                  style={gradientIconStyle(mod.color)}
-                >
-                  {smallIconMap[mod.icon] || <Box className="h-5 w-5" />}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-sm">{mod.name}</p>
-                  <p className="text-[11px] text-muted-foreground truncate">{mod.description}</p>
-                </div>
-                {mod.isActive ? (
-                  <ChevronRight className="h-5 w-5 text-emerald-600 shrink-0" />
-                ) : (
-                  <Badge variant="secondary" className="text-[10px] shrink-0">Soon</Badge>
-                )}
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </div>
-
-      {/* How it works — gradient emerald background */}
+      {/* ═══ HOW IT WORKS ═══ */}
       <Card className="border-0 overflow-hidden bg-gradient-to-br from-emerald-500 to-emerald-600 text-white shadow-pharmacy-lg">
-        <CardContent className="p-4 space-y-3">
-          <p className="font-semibold text-sm flex items-center gap-2">
+        <CardContent className="p-5 space-y-4">
+          <p className="font-semibold text-base flex items-center gap-2">
             <Sparkles className="h-4 w-4" /> How it works
           </p>
-          <div className="space-y-2 text-sm text-emerald-50">
+          <div className="space-y-3 text-sm text-emerald-50">
             <div className="flex items-start gap-3">
-              <span className="h-5 w-5 rounded-full bg-white/25 flex items-center justify-center text-xs font-bold shrink-0">1</span>
-              <span className="pt-0.5">Choose your business type above</span>
+              <span className="h-6 w-6 rounded-full bg-white/25 flex items-center justify-center text-xs font-bold shrink-0">1</span>
+              <span className="pt-0.5">Enter your phone number</span>
             </div>
             <div className="flex items-start gap-3">
-              <span className="h-5 w-5 rounded-full bg-white/25 flex items-center justify-center text-xs font-bold shrink-0">2</span>
-              <span className="pt-0.5">Verify your phone number</span>
+              <span className="h-6 w-6 rounded-full bg-white/25 flex items-center justify-center text-xs font-bold shrink-0">2</span>
+              <span className="pt-0.5">Verify with OTP (demo: 9999)</span>
             </div>
             <div className="flex items-start gap-3">
-              <span className="h-5 w-5 rounded-full bg-white/25 flex items-center justify-center text-xs font-bold shrink-0">3</span>
-              <span className="pt-0.5">Set up your business and start managing inventory</span>
+              <span className="h-6 w-6 rounded-full bg-white/25 flex items-center justify-center text-xs font-bold shrink-0">3</span>
+              <span className="pt-0.5">Set up your pharmacy and start managing</span>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      <p className="text-xs text-center text-muted-foreground">
-        No credit card needed. <span className="font-semibold text-emerald-600">Free for small businesses.</span>
-      </p>
+      {/* ═══ FINAL CTA ═══ */}
+      <div className="text-center space-y-4 py-4">
+        <h2 className="text-2xl font-bold">Ready to get started?</h2>
+        <p className="text-sm text-muted-foreground">
+          Join pharmacies across Bangladesh. Start free today.
+        </p>
+        <Button
+          size="lg"
+          className="w-full h-14 gap-2 rounded-2xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 shadow-xl shadow-emerald-500/30 border-0 text-white text-lg font-semibold"
+          onClick={handleGetStarted}
+        >
+          Get Started
+          <ArrowRight className="h-5 w-5" />
+        </Button>
+      </div>
+
+      {/* ═══ FOOTER ═══ */}
+      <div className="text-center space-y-1 pt-4 border-t border-emerald-100/50">
+        <p className="text-xs text-muted-foreground">
+          © 2026 InventoryOS — Built for Bangladesh
+        </p>
+      </div>
     </motion.div>
   );
 }
