@@ -42,14 +42,14 @@ const PROVIDER_META: Record<string, { label: string; description: string; color:
     modelHelp: "Default: gemini-2.0-flash. Also: gemini-1.5-flash, gemini-1.5-pro.",
   },
   zai: {
-    label: "Z.ai (GLM Vision)",
-    description: "Paid Z.ai vision model. ~$0.01/image. OpenAI-compatible API.",
+    label: "Z.ai (GLM-OCR / Vision)",
+    description: "GLM-OCR reads medicine labels (recommended). Vision models: glm-4.6v-flash, glm-5v-turbo.",
     color: "text-purple-600",
     link: "https://api.z.ai",
     defaultBaseUrl: "https://api.z.ai/api/paas/v4",
     baseUrlHelp: "Default: https://api.z.ai/api/paas/v4 (international). Do NOT use open.bigmodel.cn.",
-    defaultModel: "glm-4.6v-flash",
-    modelHelp: "Use glm-4.6v-flash (default). Common mistake: glm-4v-flash is wrong — the correct code is glm-4.6v-flash (with .6). Also: glm-5v-turbo, glm-4.6v, glm-4.6v-flashx, glm-4.5v.",
+    defaultModel: "glm-ocr",
+    modelHelp: "Recommended: glm-ocr (specialized OCR for shelf labels — uses layout_parsing API). Alternatives: glm-4.6v, glm-4.6v-flash, glm-5v-turbo. Do NOT use glm-4v-flash (invalid).",
   },
 };
 

@@ -1,22 +1,20 @@
 // src/lib/vision-provider.ts
 // ── InventoryOS: Swappable vision AI provider ──
 //
-// Reads the active provider from the AiProvider table and routes the image
-// analysis call to the right backend (Gemini, Z.ai, or future OpenAI).
+// Reads the active provider from the AiProvider table and routes shelf images
+// to the right backend (Gemini, Z.ai vision, or Z.ai GLM-OCR).
 //
-// The super-admin panel controls which provider is active + stores the API key.
-// To add a new provider: add a case to analyzeWithProvider() + a row to the
-// AiProvider table.
-//
-// Current providers:
-//   - gemini  → Google Gemini 2.0 Flash (REST API, free tier)
-//   - zai     → Z.ai glm-4.6v (z-ai-web-dev-sdk, paid)
-//
-// Both accept base64 data URLs and return a raw text response that the caller
-// parses into a JSON detections array.
+// Z.ai models:
+//   glm-ocr          → POST /layout_parsing (OCR) + chat structuring step
+//   glm-4.6v-flash   → POST /chat/completions (multimodal vision)
 
 import { db } from "@/lib/db";
-import { normalizeZaiVisionModel, zaiVisionModelHint } from "@/lib/zai-vision-models";
+import {
+  isZaiOcrModel,
+  normalizeZaiVisionModel,
+  ZAI_OCR_STRUCTURE_MODEL,
+  zaiVisionModelHint,
+} from "@/lib/zai-vision-models";
 
 export interface VisionDetection {
   name: string;
@@ -40,10 +38,6 @@ interface ActiveProvider {
   model: string | null;
 }
 
-/**
- * Read the active vision provider from the DB.
- * Returns null if no provider is active or the active one has no API key.
- */
 export async function getActiveVisionProvider(): Promise<ActiveProvider | null> {
   try {
     const row = await db.aiProvider.findFirst({
@@ -62,13 +56,6 @@ export async function getActiveVisionProvider(): Promise<ActiveProvider | null> 
   }
 }
 
-/**
- * Analyze shelf images using the active vision provider.
- * Throws if no provider is configured or the provider's API call fails.
- *
- * @param images    Array of base64 data URLs
- * @param maxTokens Max output tokens (from AiConfig)
- */
 export async function analyzeWithActiveProvider(
   images: string[],
   maxTokens: number,
@@ -92,13 +79,7 @@ export async function analyzeWithActiveProvider(
   }
 }
 
-// ── Gemini (Google AI Studio REST API) ──
-// Free tier: https://aistudio.google.com → get API key
-// Model: gemini-2.0-flash (fast, supports images, generous free quota)
-//
-// The request shape:
-//   POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=KEY
-//   { contents: [{ parts: [{ text }, { inline_data: { mime_type, data } }] }] }
+// ── Gemini ──
 
 async function analyzeWithGemini(
   images: string[],
@@ -108,13 +89,11 @@ async function analyzeWithGemini(
   apiKey: string,
   model: string | null
 ): Promise<VisionAnalysisResult> {
-  // Build the parts array: system prompt + user prompt + images
   const parts: Array<Record<string, unknown>> = [
     { text: `${systemPrompt}\n\n${userPrompt}` },
   ];
 
   for (const dataUrl of images) {
-    // Parse "data:image/jpeg;base64,..." → { mimeType, data }
     const match = dataUrl.match(/^data:(image\/[a-zA-Z]+);base64,(.+)$/);
     if (!match) {
       throw new Error("Invalid image data URL format");
@@ -150,36 +129,18 @@ async function analyzeWithGemini(
   const data = await response.json();
   const rawResponse: string =
     data?.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
-
-  // Gemini reports usage in promptTokenCount + candidatesTokenCount
   const tokensUsed =
     (data?.usageMetadata?.totalTokenCount as number) ?? 0;
 
   return {
-    detections: [], // caller parses rawResponse into detections
+    detections: [],
     rawResponse,
     tokensUsed,
     provider: "gemini",
   };
 }
 
-// ── Z.ai / BigModel (GLM-4V) ──
-// Public API: https://api.z.ai/api/paas/v4/chat/completions
-// The public Z.ai API is OpenAI-compatible — same endpoint for text and
-// vision, just pass a vision-capable model.
-//
-// Valid vision models (per Z.ai docs):
-//   glm-5v-turbo       (recommended, latest)
-//   glm-4.6v           (stable, good accuracy)
-//   glm-4.6v-flash     (faster, cheaper)
-//   glm-4.6v-flashx    (fastest)
-//   glm-4.5v           (older)
-//   autoglm-phone-multilingual (phone screens)
-//
-// NOTE: "glm-4v", "glm-4v-plus", "glm-4" do NOT exist and will return
-// error 1211 ("Model does not exist").
-//
-// The super-admin sets apiKey + baseUrl + model in the admin panel.
+// ── Z.ai ──
 
 const ZAI_DEFAULT_BASE_URL = "https://api.z.ai/api/paas/v4";
 
@@ -192,8 +153,6 @@ async function analyzeWithZai(
   baseUrl: string | null,
   model: string | null
 ): Promise<VisionAnalysisResult> {
-  const base = (baseUrl || ZAI_DEFAULT_BASE_URL).replace(/\/$/, "");
-  const url = `${base}/chat/completions`;
   const visionModel = normalizeZaiVisionModel(model);
   if (visionModel !== (model ?? "").trim().toLowerCase() && model) {
     console.warn(
@@ -201,7 +160,114 @@ async function analyzeWithZai(
     );
   }
 
-  // Build OpenAI-compatible message content (text + images)
+  if (isZaiOcrModel(visionModel)) {
+    return analyzeWithZaiOcr(
+      images,
+      maxTokens,
+      systemPrompt,
+      userPrompt,
+      apiKey,
+      baseUrl
+    );
+  }
+
+  return analyzeWithZaiVision(
+    images,
+    maxTokens,
+    systemPrompt,
+    userPrompt,
+    apiKey,
+    baseUrl,
+    visionModel
+  );
+}
+
+/** GLM-OCR: layout_parsing per image, then text LLM structures medicines. */
+async function analyzeWithZaiOcr(
+  images: string[],
+  maxTokens: number,
+  systemPrompt: string,
+  userPrompt: string,
+  apiKey: string,
+  baseUrl: string | null
+): Promise<VisionAnalysisResult> {
+  const base = (baseUrl || ZAI_DEFAULT_BASE_URL).replace(/\/$/, "");
+  const ocrUrl = `${base}/layout_parsing`;
+
+  const ocrSections: string[] = [];
+  let ocrTokens = 0;
+
+  for (let i = 0; i < images.length; i++) {
+    const response = await fetch(ocrUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: "glm-ocr",
+        file: images[i],
+      }),
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(
+        `Z.ai GLM-OCR error on image ${i + 1} (HTTP ${response.status}): ${errText.substring(0, 300)}`
+      );
+    }
+
+    const data = await response.json();
+    const md = typeof data.md_results === "string" ? data.md_results.trim() : "";
+    const layoutText = extractLayoutText(data.layout_details);
+    const combined = [md, layoutText].filter(Boolean).join("\n");
+    ocrSections.push(`### Photo ${i + 1}\n${combined || "(no text detected)"}`);
+    ocrTokens += data?.usage?.total_tokens ?? 0;
+  }
+
+  const ocrText = ocrSections.join("\n\n");
+  console.log(`[vision-provider] GLM-OCR extracted ${ocrText.length} chars from ${images.length} image(s)`);
+
+  const structurePrompt = [
+    "The following text was extracted by GLM-OCR from pharmacy shelf photos.",
+    "The text may be in English, Bangla (বাংলা), or mixed. Use ONLY this OCR text to identify medicines.",
+    "",
+    "=== OCR TEXT START ===",
+    ocrText,
+    "=== OCR TEXT END ===",
+    "",
+    userPrompt,
+  ].join("\n");
+
+  const structured = await zaiChatCompletion(
+    apiKey,
+    base,
+    ZAI_OCR_STRUCTURE_MODEL,
+    systemPrompt,
+    structurePrompt,
+    maxTokens
+  );
+
+  return {
+    detections: [],
+    rawResponse: structured.content,
+    tokensUsed: ocrTokens + structured.tokensUsed,
+    provider: "zai-glm-ocr",
+  };
+}
+
+/** Standard multimodal vision via /chat/completions. */
+async function analyzeWithZaiVision(
+  images: string[],
+  maxTokens: number,
+  systemPrompt: string,
+  userPrompt: string,
+  apiKey: string,
+  baseUrl: string | null,
+  visionModel: string
+): Promise<VisionAnalysisResult> {
+  const base = (baseUrl || ZAI_DEFAULT_BASE_URL).replace(/\/$/, "");
+
   const content: Array<
     { type: "text"; text: string } | { type: "image_url"; image_url: { url: string } }
   > = [
@@ -209,17 +275,45 @@ async function analyzeWithZai(
     ...images.map((img) => ({ type: "image_url" as const, image_url: { url: img } })),
   ];
 
+  const result = await zaiChatCompletion(apiKey, base, visionModel, systemPrompt, content, maxTokens, true);
+
+  return {
+    detections: [],
+    rawResponse: result.content,
+    tokensUsed: result.tokensUsed,
+    provider: "zai",
+  };
+}
+
+async function zaiChatCompletion(
+  apiKey: string,
+  base: string,
+  model: string,
+  systemPrompt: string,
+  userContent: string | Array<{ type: string; text?: string; image_url?: { url: string } }>,
+  maxTokens: number,
+  multimodal = false
+): Promise<{ content: string; tokensUsed: number }> {
+  const url = `${base}/chat/completions`;
+
   const response = await fetch(url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "Authorization": `Bearer ${apiKey}`,
+      Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: visionModel,
+      model,
       messages: [
         { role: "system", content: systemPrompt },
-        { role: "user", content },
+        {
+          role: "user",
+          content: multimodal && Array.isArray(userContent)
+            ? userContent
+            : typeof userContent === "string"
+              ? userContent
+              : String(userContent),
+        },
       ],
       max_tokens: maxTokens,
       temperature: 0.1,
@@ -231,22 +325,33 @@ async function analyzeWithZai(
     const isUnknownModel =
       response.status === 400 &&
       (errText.includes('"code":"1211"') || errText.includes("Unknown Model"));
-    const hint = isUnknownModel
-      ? ` ${zaiVisionModelHint(model ?? visionModel)}`
-      : "";
+    const hint = isUnknownModel ? ` ${zaiVisionModelHint(model)}` : "";
     throw new Error(
       `Z.ai API error (HTTP ${response.status}): ${errText.substring(0, 300)}${hint}`
     );
   }
 
   const data = await response.json();
-  const rawResponse: string = data?.choices?.[0]?.message?.content ?? "";
-  const tokensUsed: number = data?.usage?.total_tokens ?? 0;
-
   return {
-    detections: [],
-    rawResponse,
-    tokensUsed,
-    provider: "zai",
+    content: data?.choices?.[0]?.message?.content ?? "",
+    tokensUsed: data?.usage?.total_tokens ?? 0,
   };
+}
+
+function extractLayoutText(layoutDetails: unknown): string {
+  if (!Array.isArray(layoutDetails)) return "";
+
+  const lines: string[] = [];
+  for (const page of layoutDetails) {
+    if (!Array.isArray(page)) continue;
+    for (const el of page) {
+      if (!el || typeof el !== "object") continue;
+      const item = el as Record<string, unknown>;
+      if (item.label === "text" && typeof item.content === "string") {
+        const text = item.content.trim();
+        if (text) lines.push(text);
+      }
+    }
+  }
+  return lines.join("\n");
 }
