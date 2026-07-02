@@ -34,7 +34,46 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  businesses Business[]
+  businesses     Business[]
+  trustedDevices TrustedDevice[]
+  phoneTokens    PhoneAuthToken[]
+}
+
+// ── Trusted Devices (skip-OTP for returning owners) ──
+// A long-lived, revocable token that proves a device has previously verified
+// this phone via OTP. Lets an owner return to their business list without
+// re-entering an OTP until the token expires.
+model TrustedDevice {
+  id         String   @id @default(cuid())
+  userId     String
+  token      String   @unique
+  deviceInfo String?
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  lastUsedAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+  @@index([expiresAt])
+}
+
+// ── Phone Auth Tokens (short-lived OTP proof) ──
+// Issued by verify-otp / trusted-device. Proves the holder recently verified
+// ownership of a phone number. Required by owner-login so a raw userId from the
+// client can never be used to enter someone else's shop without OTP.
+model PhoneAuthToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([expiresAt])
 }
 
 // ── Businesses ──
@@ -43,6 +82,10 @@ model Business {
   userId         String
   businessTypeId String
   name           String
+  // Globally-unique human-friendly shop code (e.g. "PHA-XK7T").
+  // Used by the staff login door to unambiguously resolve a business even when
+  // the same username exists across many shops. Nullable only for backfill.
+  shopCode       String?  @unique
   address        String?
   phone          String?
   isActive       Boolean  @default(true)

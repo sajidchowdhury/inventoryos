@@ -1,11 +1,19 @@
 // POST /api/auth/verify-otp
-// Verifies OTP and returns user info + any businesses linked to that phone
+// Verifies OTP and returns user info + any businesses linked to that phone.
+// Also issues a short-lived phone-proof token (used by owner-login) and,
+// optionally, a long-lived trusted-device token so this device can skip OTP
+// on future visits.
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import {
+  listOwnerBusinesses,
+  issuePhoneToken,
+  createTrustedDevice,
+} from "@/lib/phone-auth";
 
 export async function POST(req: NextRequest) {
   try {
-    const { phone, otp } = await req.json();
+    const { phone, otp, trustDevice } = await req.json();
 
     if (!phone || !otp) {
       return NextResponse.json(
@@ -53,35 +61,26 @@ export async function POST(req: NextRequest) {
     }
 
     // Find all businesses for this user
-    const businesses = await db.business.findMany({
-      where: { userId: user.id, isActive: true },
-      include: {
-        businessType: {
-          select: { slug: true, name: true, color: true, icon: true },
-        },
-        businessUsers: {
-          where: { isActive: true },
-          select: {
-            id: true,
-            username: true,
-            role: true,
-          },
-        },
-      },
-      orderBy: { createdAt: "desc" },
-    });
+    const businesses = await listOwnerBusinesses(user.id);
+
+    // Short-lived proof that this phone was just verified (required by owner-login).
+    const phoneToken = await issuePhoneToken(user.id);
+
+    // Optionally remember this device so future visits can skip OTP.
+    let deviceToken: string | null = null;
+    if (trustDevice) {
+      deviceToken = await createTrustedDevice(
+        user.id,
+        req.headers.get("user-agent") || null
+      );
+    }
 
     return NextResponse.json({
       success: true,
       user: { id: user.id, phone: user.phone, name: user.name },
-      businesses: businesses.map((b) => ({
-        id: b.id,
-        name: b.name,
-        address: b.address,
-        businessType: b.businessType,
-        hasCredentials: b.businessUsers.length > 0,
-        businessUsers: b.businessUsers,
-      })),
+      businesses,
+      phoneToken,
+      deviceToken,
     });
   } catch (error) {
     console.error("Verify OTP error:", error);

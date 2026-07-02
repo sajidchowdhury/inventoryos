@@ -24,6 +24,33 @@ export function generateSessionToken(): string {
   return crypto.randomBytes(32).toString("hex");
 }
 
+/** Generate a secure random opaque token (phone-proof / trusted-device). */
+export function generateOpaqueToken(): string {
+  return crypto.randomBytes(32).toString("hex");
+}
+
+// Unambiguous alphabet — no 0/O/1/I/L to keep shop codes easy to read & type.
+const SHOP_CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+
+/**
+ * Generate a human-friendly, globally-unique-ish shop code such as "PHA-XK7T".
+ * The prefix is derived from the business type slug; uniqueness is enforced by
+ * the DB unique constraint (callers should retry on collision).
+ */
+export function generateShopCode(businessTypeSlug?: string): string {
+  const prefix = (businessTypeSlug || "SHP")
+    .replace(/[^a-zA-Z]/g, "")
+    .slice(0, 3)
+    .toUpperCase()
+    .padEnd(3, "X");
+  let suffix = "";
+  const bytes = crypto.randomBytes(4);
+  for (let i = 0; i < 4; i++) {
+    suffix += SHOP_CODE_ALPHABET[bytes[i] % SHOP_CODE_ALPHABET.length];
+  }
+  return `${prefix}-${suffix}`;
+}
+
 /** Generate a 4-digit OTP code */
 export function generateOtp(): string {
   return Math.floor(1000 + Math.random() * 9000).toString();

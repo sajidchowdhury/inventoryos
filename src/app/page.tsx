@@ -31,6 +31,7 @@ import {
   Clock,
   Receipt,
   Users,
+  Hash,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -39,7 +40,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { getAllModules } from "@/lib/modules";
-import { useAuthStore } from "@/lib/auth-store";
+import { useAuthStore, type BusinessInfo } from "@/lib/auth-store";
 import { useNavStore } from "@/lib/nav-store";
 import { PharmacyShell } from "@/modules/pharmacy/components";
 import { cn } from "@/lib/utils";
@@ -195,10 +196,16 @@ function PasswordInput({
 
 // ── Landing Step — Premium marketing landing page ──
 function LandingStep() {
-  const { setStep } = useAuthStore();
+  const { setStep, setAccountType } = useAuthStore();
 
-  const handleGetStarted = () => {
+  const handleOwnerDoor = () => {
+    setAccountType("owner");
     setStep("phone");
+  };
+
+  const handleStaffDoor = () => {
+    setAccountType("staff");
+    setStep("staff-login");
   };
 
   return (
@@ -231,24 +238,35 @@ function LandingStep() {
           </p>
         </div>
 
-        {/* CTA Button */}
+        {/* Two doors: business owner (OTP) vs staff member (shop code) */}
         <motion.div
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.3, duration: 0.4 }}
+          className="space-y-3"
         >
           <Button
             size="lg"
             className="w-full h-14 gap-2 rounded-2xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 shadow-xl shadow-emerald-500/30 border-0 text-white text-lg font-semibold"
-            onClick={handleGetStarted}
+            onClick={handleOwnerDoor}
           >
-            Get Started
+            <Building2 className="h-5 w-5" />
+            I own a business
             <ArrowRight className="h-5 w-5" />
+          </Button>
+          <Button
+            size="lg"
+            variant="outline"
+            className="w-full h-14 gap-2 rounded-2xl border-emerald-300 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800 text-lg font-semibold"
+            onClick={handleStaffDoor}
+          >
+            <User className="h-5 w-5" />
+            I&apos;m a staff member
           </Button>
         </motion.div>
 
         <p className="text-xs text-muted-foreground">
-          No credit card needed · Free for small businesses
+          Owners sign in with their phone · Staff use a shop code
         </p>
       </div>
 
@@ -354,10 +372,20 @@ function LandingStep() {
         <Button
           size="lg"
           className="w-full h-14 gap-2 rounded-2xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 shadow-xl shadow-emerald-500/30 border-0 text-white text-lg font-semibold"
-          onClick={handleGetStarted}
+          onClick={handleOwnerDoor}
         >
-          Get Started
+          <Building2 className="h-5 w-5" />
+          I own a business
           <ArrowRight className="h-5 w-5" />
+        </Button>
+        <Button
+          size="lg"
+          variant="ghost"
+          className="w-full gap-2 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800"
+          onClick={handleStaffDoor}
+        >
+          <User className="h-4 w-4" />
+          I&apos;m a staff member
         </Button>
       </div>
 
@@ -373,7 +401,7 @@ function LandingStep() {
 
 // ── Phone Step ──
 function PhoneStep() {
-  const { phone, setPhone, setStep, setIsLoading, setError, isLoading, error } = useAuthStore();
+  const { phone, setPhone, setStep, setIsLoading, setError, isLoading, error, trustDevice, setTrustDevice } = useAuthStore();
   const [localPhone, setLocalPhone] = useState(phone || "");
 
   const handleSendOtp = async () => {
@@ -442,6 +470,20 @@ function PhoneStep() {
         </div>
       </div>
 
+      {/* Trust this device — skip OTP on future visits */}
+      <label className="flex items-center gap-3 rounded-xl border border-emerald-200/60 bg-card px-3 py-2.5 cursor-pointer select-none">
+        <input
+          type="checkbox"
+          checked={trustDevice}
+          onChange={(e) => setTrustDevice(e.target.checked)}
+          className="h-4 w-4 accent-emerald-600"
+        />
+        <span className="text-sm">
+          Trust this device
+          <span className="block text-[11px] text-muted-foreground">Skip OTP on this device for 30 days</span>
+        </span>
+      </label>
+
       {error && (
         <p className="text-sm text-destructive text-center">{error}</p>
       )}
@@ -465,7 +507,7 @@ function PhoneStep() {
 
 // ── OTP Step ──
 function OtpStep() {
-  const { phone, setStep, setUserId, setUserName, setBusinesses, setIsLoading, setError, isLoading, error } = useAuthStore();
+  const { phone, setStep, setUserId, setUserName, setBusinesses, setIsLoading, setError, isLoading, error, trustDevice, setPhoneToken, setDeviceToken } = useAuthStore();
   const [otp, setOtp] = useState(["", "", "", ""]);
   const [resendCooldown, setResendCooldown] = useState(0);
 
@@ -486,7 +528,7 @@ function OtpStep() {
       const res = await fetch("/api/auth/verify-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone, otp: otpCode }),
+        body: JSON.stringify({ phone, otp: otpCode, trustDevice }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
@@ -494,6 +536,8 @@ function OtpStep() {
       setUserId(data.user.id);
       setUserName(data.user.name);
       setBusinesses(data.businesses);
+      setPhoneToken(data.phoneToken ?? null);
+      if (data.deviceToken) setDeviceToken(data.deviceToken);
 
       // Route based on whether they have businesses
       if (data.businesses.length > 0) {
@@ -626,7 +670,46 @@ function OtpStep() {
 
 // ── Discovery Step (existing businesses) ──
 function DiscoveryStep() {
-  const { businesses, setStep, setSelectedBusiness, phone } = useAuthStore();
+  const {
+    businesses, setStep, setSelectedBusiness, phone, phoneToken,
+    setSession, setError, error,
+  } = useAuthStore();
+  const [enteringId, setEnteringId] = useState<string | null>(null);
+
+  // One-tap entry: the OTP already authenticated the owner, so no password.
+  const enterBusiness = async (biz: BusinessInfo) => {
+    setSelectedBusiness(biz);
+    setError(null);
+
+    // A business with no login account yet still needs credentials created.
+    if (!biz.hasCredentials) {
+      setStep("create-login");
+      return;
+    }
+
+    if (!phoneToken) {
+      setError("Your verification expired. Please verify your phone again.");
+      setStep("phone");
+      return;
+    }
+
+    setEnteringId(biz.id);
+    try {
+      const res = await fetch("/api/auth/owner-login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phoneToken, businessId: biz.id }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setSession(data);
+      setStep("dashboard");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Could not open this business");
+    } finally {
+      setEnteringId(null);
+    }
+  };
 
   return (
     <motion.div {...slideIn} className="space-y-6">
@@ -640,20 +723,20 @@ function DiscoveryStep() {
         </p>
       </div>
 
+      {error && (
+        <p className="text-sm text-destructive text-center">{error}</p>
+      )}
+
       <div className="space-y-3">
         {businesses.map((biz) => (
           <Card
             key={biz.id}
-            className="card-hover shadow-pharmacy cursor-pointer transition-all border-l-4 active:scale-[0.98] overflow-hidden"
+            className={cn(
+              "card-hover shadow-pharmacy cursor-pointer transition-all border-l-4 active:scale-[0.98] overflow-hidden",
+              enteringId && enteringId !== biz.id && "opacity-50 pointer-events-none"
+            )}
             style={{ borderLeftColor: biz.businessType.color }}
-            onClick={() => {
-              setSelectedBusiness(biz);
-              if (biz.hasCredentials) {
-                setStep("login");
-              } else {
-                setStep("create-login");
-              }
-            }}
+            onClick={() => { if (!enteringId) enterBusiness(biz); }}
           >
             <CardContent className="p-4 flex items-center gap-3">
               <div
@@ -664,16 +747,25 @@ function DiscoveryStep() {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-semibold truncate">{biz.name}</p>
-                <p className="text-xs text-muted-foreground">{biz.businessType.name}</p>
+                <p className="text-xs text-muted-foreground">
+                  {biz.businessType.name}
+                  {biz.shopCode && (
+                    <> · <span className="font-mono text-emerald-700">{biz.shopCode}</span></>
+                  )}
+                </p>
               </div>
               <div className="text-right">
                 {biz.hasCredentials ? (
-                  <Badge className="text-[10px] bg-emerald-100 text-emerald-700 hover:bg-emerald-100">Login</Badge>
+                  <Badge className="text-[10px] bg-emerald-100 text-emerald-700 hover:bg-emerald-100">Open</Badge>
                 ) : (
                   <Badge className="text-[10px] bg-amber-100 text-amber-700 hover:bg-amber-100">Set Up</Badge>
                 )}
               </div>
-              <ChevronRight className="h-5 w-5 text-muted-foreground shrink-0" />
+              {enteringId === biz.id ? (
+                <RefreshCw className="h-5 w-5 text-emerald-600 shrink-0 animate-spin" />
+              ) : (
+                <ChevronRight className="h-5 w-5 text-muted-foreground shrink-0" />
+              )}
             </CardContent>
           </Card>
         ))}
@@ -964,6 +1056,133 @@ function CreateLoginStep() {
   );
 }
 
+// ── Staff Login Step ──
+// The "I'm a staff member" door: shop code (or shop phone) + username + password.
+function StaffLoginStep() {
+  const {
+    staffShopKey, setStaffShopKey, username, setUsername, password, setPassword,
+    setStep, setSession, setIsLoading, setError, error, isLoading,
+  } = useAuthStore();
+
+  const handleLogin = async () => {
+    if (!staffShopKey.trim()) {
+      setError("Please enter your shop code");
+      return;
+    }
+    if (!username.trim() || !password) {
+      setError("Please enter your username and password");
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+
+    // A key that is all digits (11+) is treated as the shop's phone number;
+    // otherwise it's a shop code like "PHA-XK7T".
+    const rawKey = staffShopKey.trim();
+    const digits = rawKey.replace(/[\s\-()]/g, "");
+    const isPhone = /^\+?\d{11,}$/.test(digits);
+
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...(isPhone ? { businessPhone: digits } : { shopCode: rawKey }),
+          username: username.trim(),
+          password,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      setSession(data);
+      setStep("dashboard");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Login failed");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <motion.div {...slideIn} className="space-y-6">
+      <div className="text-center space-y-3">
+        <div className="inline-flex items-center justify-center h-16 w-16 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-600 shadow-lg shadow-emerald-500/30">
+          <User className="h-8 w-8 text-white" />
+        </div>
+        <h2 className="text-2xl font-bold">Staff Login</h2>
+        <p className="text-muted-foreground text-sm">
+          Enter your shop code and the login your admin gave you
+        </p>
+      </div>
+
+      <div className="space-y-3">
+        <div className="space-y-2">
+          <Label htmlFor="shopKey" className="text-sm font-medium flex items-center gap-1.5">
+            <Building2 className="h-3.5 w-3.5" /> Shop Code
+          </Label>
+          <div className="relative">
+            <Hash className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              id="shopKey"
+              placeholder="e.g., PHA-XK7T or shop phone"
+              value={staffShopKey}
+              onChange={(e) => { setStaffShopKey(e.target.value); setError(null); }}
+              className="h-11 pl-9 rounded-xl border-emerald-200/60 focus-visible:ring-emerald-500/30 focus-visible:border-emerald-500"
+              autoFocus
+            />
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            Ask your admin for the shop code (shown on the dashboard).
+          </p>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="staffUser" className="text-sm font-medium">Username</Label>
+          <div className="relative">
+            <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              id="staffUser"
+              placeholder="Enter your username"
+              value={username}
+              onChange={(e) => { setUsername(e.target.value); setError(null); }}
+              className="h-11 pl-9 rounded-xl border-emerald-200/60 focus-visible:ring-emerald-500/30 focus-visible:border-emerald-500"
+            />
+          </div>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="staffPass" className="text-sm font-medium">Password</Label>
+          <PasswordInput
+            id="staffPass"
+            value={password}
+            onChange={(val) => { setPassword(val); setError(null); }}
+            placeholder="Enter your password"
+          />
+        </div>
+      </div>
+
+      {error && (
+        <p className="text-sm text-destructive text-center">{error}</p>
+      )}
+
+      <Button
+        size="lg"
+        className="w-full h-12 gap-2 rounded-2xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 shadow-lg shadow-emerald-500/30 border-0 text-white"
+        onClick={handleLogin}
+        disabled={isLoading}
+      >
+        {isLoading ? "Logging in..." : "Log In"}
+        {!isLoading && <ArrowRight className="h-4 w-4" />}
+      </Button>
+
+      <Button variant="ghost" className="w-full gap-2" onClick={() => { useAuthStore.getState().reset(); }}>
+        <ArrowLeft className="h-4 w-4" /> Back
+      </Button>
+    </motion.div>
+  );
+}
+
 // ── Login Step ──
 function LoginStep() {
   const {
@@ -1080,11 +1299,13 @@ function DashboardStep() {
 // ── Dynamic step indicator steps ──
 function getStepPath(step: string, businesses: number): string[] {
   if (step === "landing") return [];
+  // Staff door is a single screen — no multi-step indicator.
+  if (step === "staff-login") return [];
   if (businesses > 0) {
-    // Has businesses path: phone → otp → discovery → (login or add-business → create-login) → dashboard
-    return ["phone", "otp", "discovery", "login", "dashboard"];
+    // Owner path (has businesses): phone → otp → discovery → dashboard (no password)
+    return ["phone", "otp", "discovery", "dashboard"];
   }
-  // No businesses path: phone → otp → add-business → create-login → dashboard
+  // Owner path (new): phone → otp → add-business → create-login → dashboard
   return ["phone", "otp", "add-business", "create-login", "dashboard"];
 }
 
@@ -1099,13 +1320,48 @@ export default function HomePage() {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    // Restore session from persisted state
-    const store = useAuthStore.getState();
-    if (store.session && store.step !== "dashboard") {
-      store.setStep("dashboard");
-    }
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setReady(true);
+    let cancelled = false;
+
+    const hydrate = async () => {
+      const store = useAuthStore.getState();
+
+      // 1. Already logged in → straight to the dashboard.
+      if (store.session) {
+        if (store.step !== "dashboard") store.setStep("dashboard");
+        if (!cancelled) setReady(true);
+        return;
+      }
+
+      // 2. Trusted device (owner) → skip OTP: fetch business list + fresh proof.
+      if (store.deviceToken) {
+        try {
+          const res = await fetch("/api/auth/trusted-device", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ deviceToken: store.deviceToken }),
+          });
+          const data = await res.json();
+          if (res.ok && data.success) {
+            store.setAccountType("owner");
+            store.setUserId(data.user.id);
+            store.setUserName(data.user.name);
+            store.setBusinesses(data.businesses);
+            store.setPhoneToken(data.phoneToken ?? null);
+            store.setStep(data.businesses.length > 0 ? "discovery" : "add-business");
+          } else {
+            // Token expired/revoked — forget it and fall back to the landing.
+            store.setDeviceToken(null);
+          }
+        } catch {
+          // Network error — leave the token in place, just show the landing.
+        }
+      }
+
+      if (!cancelled) setReady(true);
+    };
+
+    hydrate();
+    return () => { cancelled = true; };
   }, []);
 
   // Show nothing until first check is complete to avoid flash of wrong state
@@ -1164,6 +1420,7 @@ export default function HomePage() {
           {step === "add-business" && <AddBusinessStep key="add-business" />}
           {step === "create-login" && <CreateLoginStep key="create-login" />}
           {step === "login" && <LoginStep key="login" />}
+          {step === "staff-login" && <StaffLoginStep key="staff-login" />}
           {step === "dashboard" && <DashboardStep key="dashboard" />}
         </AnimatePresence>
       </main>
