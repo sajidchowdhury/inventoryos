@@ -1317,3 +1317,21 @@ model ShelfScanItem {
   @@index([masterProductId])
   @@map("shelf_scan_items")
 }
+
+// ── AI Provider Configuration ──
+// Controls which vision/LLM provider is active. Only one row should have
+// isActive=true at a time. The super-admin panel lets the founder switch
+// providers (e.g., Gemini free now → Z.ai paid later) without a redeploy.
+// The apiKey is stored plaintext — this is the user's own server, and they
+// control access. For a hosted SaaS, encrypt this field.
+model AiProvider {
+  id        String   @id @default(cuid())
+  provider  String   @unique  // "gemini" | "zai" | "openai"
+  apiKey    String?           // provider API key (plaintext for MVP)
+  baseUrl   String?           // optional override (e.g. for Z.ai internal endpoint)
+  isActive  Boolean  @default(false)
+  updatedAt DateTime @updatedAt
+  updatedBy String?
+
+  @@map("ai_providers")
+}
