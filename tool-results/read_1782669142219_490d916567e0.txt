@@ -1,0 +1,743 @@
+     1→// ── InventoryOS: SQL Query Router (Gap 6 — Fast deterministic AI shortcuts) ──
+     2→//
+     3→// The SQL router intercepts natural-language business questions and answers
+     4→// them directly with a Prisma query + a pre-formatted markdown response,
+     5→// WITHOUT calling the LLM. This saves tokens, latency, and money for the
+     6→// 20 most common questions operators ask.
+     7→//
+     8→// If routeQuery() returns { handled: true }, the AI chat handler should
+     9→// just stream back the response verbatim and skip the LLM call entirely.
+    10→// If it returns { handled: false }, the message goes to the LLM as usual.
+    11→//
+    12→// All currency values are formatted as BDT: ৳1234.56
+    13→
+    14→import { db } from "./db";
+    15→
+    16→// ── Types ──
+    17→export interface RouteResult {
+    18→  handled: boolean;
+    19→  pattern?: string;
+    20→  response?: string;
+    21→  queryMs?: number;
+    22→}
+    23→
+    24→export interface PatternDescriptor {
+    25→  name: string;
+    26→  description: string;
+    27→  keywords: string[];
+    28→  matchMode: "all" | "any";
+    29→  excludeKeywords?: string[];
+    30→}
+    31→
+    32→interface Pattern extends PatternDescriptor {
+    33→  handler: (businessId: string, message: string) => Promise<string>;
+    34→}
+    35→
+    36→// ── Helpers ──
+    37→
+    38→/** Lowercase, strip punctuation, collapse whitespace. */
+    39→function normalizeMessage(s: string): string {
+    40→  return s
+    41→    .toLowerCase()
+    42→    .replace(/[^\w\s]/g, " ")
+    43→    .replace(/\s+/g, " ")
+    44→    .trim();
+    45→}
+    46→
+    47→/** Format a number as BDT currency: ৳1234.56 */
+    48→function bdt(amount: number): string {
+    49→  return `৳${amount.toFixed(2)}`;
+    50→}
+    51→
+    52→/** Format a number with thousands separators. */
+    53→function fmtNum(n: number): string {
+    54→  return n.toLocaleString("en-US");
+    55→}
+    56→
+    57→/** Returns midnight UTC today (start of day in UTC). */
+    58→function startOfTodayUTC(): Date {
+    59→  const d = new Date();
+    60→  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+    61→}
+    62→
+    63→/** Returns midnight UTC for the first day of the current month. */
+    64→function startOfMonthUTC(): Date {
+    65→  const d = new Date();
+    66→  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1));
+    67→}
+    68→
+    69→/** Format a Date for display (YYYY-MM-DD). */
+    70→function fmtDate(d: Date): string {
+    71→  return d.toISOString().slice(0, 10);
+    72→}
+    73→
+    74→/**
+    75→ * Match a normalized message against a pattern.
+    76→ * - excludeKeywords checked first: if ANY present → no match
+    77→ * - matchMode "all": every keyword must be present in the message
+    78→ * - matchMode "any": at least one keyword must be present
+    79→ */
+    80→function matchesPattern(
+    81→  normalizedMessage: string,
+    82→  pattern: { keywords: string[]; matchMode: "all" | "any"; excludeKeywords?: string[] }
+    83→): boolean {
+    84→  // Check exclusions first
+    85→  if (pattern.excludeKeywords && pattern.excludeKeywords.length > 0) {
+    86→    for (const ex of pattern.excludeKeywords) {
+    87→      const exN = normalizeMessage(ex);
+    88→      if (exN && normalizedMessage.includes(exN)) return false;
+    89→    }
+    90→  }
+    91→
+    92→  // Normalize keywords too so apostrophes/punctuation in keywords match the
+    93→  // already-punctuation-stripped message.
+    94→  const keywords = pattern.keywords.map((k) => normalizeMessage(k)).filter(Boolean);
+    95→
+    96→  if (pattern.matchMode === "all") {
+    97→    return keywords.every((k) => normalizedMessage.includes(k));
+    98→  }
+    99→  return keywords.some((k) => normalizedMessage.includes(k));
+   100→}
+   101→
+   102→// ── 20 Patterns ──
+   103→const PATTERNS: Pattern[] = [
+   104→  // 1. low-stock
+   105→  {
+   106→    name: "low-stock",
+   107→    description: "Products with inventory.quantity <= 10 (low stock threshold).",
+   108→    keywords: ["low stock", "low", "running low", "reorder", "restock", "stock low"],
+   109→    matchMode: "any",
+   110→    excludeKeywords: ["out of stock", "out-of-stock"],
+   111→    handler: async (businessId) => {
+   112→      const products = await db.product.findMany({
+   113→        where: {
+   114→          businessId,
+   115→          isActive: true,
+   116→          inventory: { quantity: { lte: 10, gt: 0 } },
+   117→        },
+   118→        select: { id: true, name: true, genericName: true, sku: true },
+   119→        take: 50,
+   120→        orderBy: { name: "asc" },
+   121→      });
+   122→      if (products.length === 0) {
+   123→        return "✅ **Low Stock Check**\n\nNo products are currently below the low-stock threshold (qty ≤ 10). Everything looks healthy.";
+   124→      }
+   125→      const lines = products
+   126→        .map((p, i) => `${i + 1}. **${p.name}**${p.genericName ? ` (${p.genericName})` : ""}${p.sku ? ` — SKU: ${p.sku}` : ""}`)
+   127→        .join("\n");
+   128→      return `⚠️ **Low Stock Alert**\n\nFound **${products.length}** product(s) at or below the low-stock threshold (qty ≤ 10):\n\n${lines}\n\n💡 Consider reordering these items soon.`;
+   129→    },
+   130→  },
+   131→
+   132→  // 2. out-of-stock
+   133→  {
+   134→    name: "out-of-stock",
+   135→    description: "Products with inventory.quantity <= 0 (out of stock).",
+   136→    keywords: ["out of stock", "out-of-stock", "stockout", "out of", "unavailable", "no stock"],
+   137→    matchMode: "any",
+   138→    handler: async (businessId) => {
+   139→      const products = await db.product.findMany({
+   140→        where: {
+   141→          businessId,
+   142→          isActive: true,
+   143→          inventory: { quantity: { lte: 0 } },
+   144→        },
+   145→        select: { id: true, name: true, genericName: true, sku: true },
+   146→        take: 50,
+   147→        orderBy: { name: "asc" },
+   148→      });
+   149→      if (products.length === 0) {
+   150→        return "✅ **Out-of-Stock Check**\n\nNo products are currently out of stock. 🎉";
+   151→      }
+   152→      const lines = products
+   153→        .map((p, i) => `${i + 1}. **${p.name}**${p.genericName ? ` (${p.genericName})` : ""}${p.sku ? ` — SKU: ${p.sku}` : ""}`)
+   154→        .join("\n");
+   155→      return `🚫 **Out-of-Stock Alert**\n\nFound **${products.length}** product(s) with zero or negative stock:\n\n${lines}\n\n⚠️ These items cannot be sold until restocked.`;
+   156→    },
+   157→  },
+   158→
+   159→  // 3. product-count
+   160→  {
+   161→    name: "product-count",
+   162→    description: "Total / active / low / out-of-stock product counts.",
+   163→    keywords: ["how many products", "product count", "number of products", "total products", "products do i have"],
+   164→    matchMode: "any",
+   165→    handler: async (businessId) => {
+   166→      const [total, active, lowStock, outOfStock] = await Promise.all([
+   167→        db.product.count({ where: { businessId } }),
+   168→        db.product.count({ where: { businessId, isActive: true } }),
+   169→        db.product.count({
+   170→          where: { businessId, isActive: true, inventory: { quantity: { lte: 10, gt: 0 } } },
+   171→        }),
+   172→        db.product.count({
+   173→          where: { businessId, isActive: true, inventory: { quantity: { lte: 0 } } },
+   174→        }),
+   175→      ]);
+   176→      return `📦 **Product Inventory Summary**\n\n| Metric | Count |\n|---|---|\n| Total products | ${fmtNum(total)} |\n| Active products | ${fmtNum(active)} |\n| Low stock (≤10) | ${fmtNum(lowStock)} |\n| Out of stock (≤0) | ${fmtNum(outOfStock)} |\n\n${outOfStock > 0 ? "⚠️ You have out-of-stock items — consider reordering." : "✅ No out-of-stock items."}`;
+   177→    },
+   178→  },
+   179→
+   180→  // 4. today-sales
+   181→  {
+   182→    name: "today-sales",
+   183→    description: "Today's revenue, transaction count, items sold, discounts, average sale.",
+   184→    keywords: ["today sales", "todays sales", "sales today", "today revenue", "today s sales"],
+   185→    matchMode: "any",
+   186→    handler: async (businessId) => {
+   187→      const start = startOfTodayUTC();
+   188→      const end = new Date(start.getTime() + 24 * 60 * 60 * 1000 - 1);
+   189→      const agg = await db.sale.aggregate({
+   190→        where: { businessId, status: "completed", createdAt: { gte: start, lte: end } },
+   191→        _sum: { totalAmount: true, discountAmount: true, totalQuantity: true },
+   192→        _count: true,
+   193→      });
+   194→      const count = agg._count;
+   195→      const revenue = agg._sum.totalAmount || 0;
+   196→      const discounts = agg._sum.discountAmount || 0;
+   197→      const items = agg._sum.totalQuantity || 0;
+   198→      const avg = count > 0 ? revenue / count : 0;
+   199→      return `💰 **Today's Sales** (UTC ${fmtDate(start)})\n\n| Metric | Value |\n|---|---|\n| Revenue | ${bdt(revenue)} |\n| Transactions | ${fmtNum(count)} |\n| Items sold | ${fmtNum(items)} |\n| Discounts given | ${bdt(discounts)} |\n| Avg sale | ${bdt(avg)} |\n\n${count > 0 ? "📊 Solid day so far." : "💤 No completed sales yet today."}`;
+   200→    },
+   201→  },
+   202→
+   203→  // 5. top-selling
+   204→  {
+   205→    name: "top-selling",
+   206→    description: "Top 5 products by quantity sold (last 30 days).",
+   207→    keywords: ["top selling", "best selling", "top products", "best sellers", "top 5", "popular products"],
+   208→    matchMode: "any",
+   209→    handler: async (businessId) => {
+   210→      const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+   211→      // Group sale items by productName — note orderBy must use _count.<field>
+   212→      const grouped = await db.saleItem.groupBy({
+   213→        by: ["productName"],
+   214→        where: { businessId, sale: { status: "completed", createdAt: { gte: since } } },
+   215→        _sum: { quantity: true, totalPrice: true },
+   216→        _count: true,
+   217→        orderBy: { _count: { productName: "desc" } },
+   218→        take: 5,
+   219→      });
+   220→      if (grouped.length === 0) {
+   221→        return "📊 **Top Selling Products (last 30 days)**\n\nNo sales recorded in the last 30 days.";
+   222→      }
+   223→      const lines = grouped
+   224→        .map(
+   225→          (g, i) =>
+   226→            `${i + 1}. **${g.productName}** — ${fmtNum(g._sum.quantity || 0)} units sold across ${fmtNum(g._count)} sale(s) • Revenue: ${bdt(g._sum.totalPrice || 0)}`
+   227→        )
+   228→        .join("\n");
+   229→      return `🏆 **Top 5 Selling Products** (last 30 days)\n\n${lines}`;
+   230→    },
+   231→  },
+   232→
+   233→  // 6. expiring-soon
+   234→  {
+   235→    name: "expiring-soon",
+   236→    description: "Batches expiring within 90 days (excluding already-expired status).",
+   237→    keywords: ["expiring soon", "expiry soon", "near expiry", "near expiry", "expire", "expiring", "expiry"],
+   238→    matchMode: "any",
+   239→    excludeKeywords: ["expired", "already expired"],
+   240→    handler: async (businessId) => {
+   241→      const now = new Date();
+   242→      const cutoff = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
+   243→      const batches = await db.batch.findMany({
+   244→        where: {
+   245→          businessId,
+   246→          quantity: { gt: 0 },
+   247→          status: { notIn: ["expired", "destroyed"] },
+   248→          expiryDate: { gte: now, lte: cutoff },
+   249→        },
+   250→        select: {
+   251→          id: true,
+   252→          batchNo: true,
+   253→          expiryDate: true,
+   254→          quantity: true,
+   255→          product: { select: { name: true } },
+   256→        },
+   257→        orderBy: { expiryDate: "asc" },
+   258→        take: 50,
+   259→      });
+   260→      if (batches.length === 0) {
+   261→        return "✅ **Expiring Soon**\n\nNo batches expiring in the next 90 days. 🎉";
+   262→      }
+   263→      const lines = batches
+   264→        .map((b, i) => {
+   265→          const days = Math.ceil((b.expiryDate.getTime() - now.getTime()) / (24 * 60 * 60 * 1000));
+   266→          const urgency = days <= 7 ? "🔴" : days <= 30 ? "🟠" : "🟡";
+   267→          return `${i + 1}. ${urgency} **${b.product.name}** (batch ${b.batchNo}) — expires ${fmtDate(b.expiryDate)} (${days}d) • qty: ${fmtNum(b.quantity)}`;
+   268→        })
+   269→        .join("\n");
+   270→      return `⏰ **Expiring Within 90 Days**\n\nFound **${batches.length}** batch(es) expiring soon:\n\n${lines}\n\n💡 Prioritize selling these (FEFO) or contact suppliers about returns.`;
+   271→    },
+   272→  },
+   273→
+   274→  // 7. expired
+   275→  {
+   276→    name: "expired",
+   277→    description: "Batches with status='expired' and quantity > 0 (still in inventory).",
+   278→    keywords: ["expired", "already expired", "expired batches", "expired stock"],
+   279→    matchMode: "any",
+   280→    handler: async (businessId) => {
+   281→      const batches = await db.batch.findMany({
+   282→        where: {
+   283→          businessId,
+   284→          quantity: { gt: 0 },
+   285→          status: "expired",
+   286→        },
+   287→        select: {
+   288→          id: true,
+   289→          batchNo: true,
+   290→          expiryDate: true,
+   291→          quantity: true,
+   292→          product: { select: { name: true } },
+   293→        },
+   294→        orderBy: { expiryDate: "asc" },
+   295→        take: 50,
+   296→      });
+   297→      if (batches.length === 0) {
+   298→        return "✅ **Expired Stock Check**\n\nNo expired batches with remaining stock. 🎉";
+   299→      }
+   300→      const totalQty = batches.reduce((s, b) => s + b.quantity, 0);
+   301→      const lines = batches
+   302→        .map(
+   303→          (b, i) =>
+   304→            `${i + 1}. 🔴 **${b.product.name}** (batch ${b.batchNo}) — expired ${fmtDate(b.expiryDate)} • qty: ${fmtNum(b.quantity)}`
+   305→        )
+   306→        .join("\n");
+   307→      return `🚨 **Expired Stock in Inventory**\n\nFound **${batches.length}** expired batch(es) still holding stock (total qty: ${fmtNum(totalQty)}):\n\n${lines}\n\n⚠️ These should be disposed or quarantined immediately per regulation.`;
+   308→    },
+   309→  },
+   310→
+   311→  // 8. customers-owe
+   312→  {
+   313→    name: "customers-owe",
+   314→    description: "Outstanding receivables — sales with paymentStatus in [partial, unpaid].",
+   315→    keywords: ["customers owe", "customer owes", "receivables", "outstanding", "who owes", "money owed", "credit", "dues"],
+   316→    matchMode: "any",
+   317→    handler: async (businessId) => {
+   318→      const sales = await db.sale.findMany({
+   319→        where: {
+   320→          businessId,
+   321→          paymentStatus: { in: ["partial", "unpaid"] },
+   322→          status: "completed",
+   323→        },
+   324→        select: {
+   325→          id: true,
+   326→          invoiceNo: true,
+   327→          totalAmount: true,
+   328→          paidAmount: true,
+   329→          createdAt: true,
+   330→          customer: { select: { name: true, phone: true } },
+   331→        },
+   332→        orderBy: { createdAt: "desc" },
+   333→        take: 50,
+   334→      });
+   335→      if (sales.length === 0) {
+   336→        return "✅ **Outstanding Receivables**\n\nNo customers currently owe you money. All receivables cleared! 🎉";
+   337→      }
+   338→      const total = sales.reduce((s, x) => s + (x.totalAmount - x.paidAmount), 0);
+   339→      const lines = sales
+   340→        .map((s, i) => {
+   341→          const due = s.totalAmount - s.paidAmount;
+   342→          const cust = s.customer ? s.customer.name : "Walk-in";
+   343→          return `${i + 1}. **${cust}**${s.customer?.phone ? ` (${s.customer.phone})` : ""} — invoice ${s.invoiceNo} • due: ${bdt(due)} • dated ${fmtDate(s.createdAt)}`;
+   344→        })
+   345→        .join("\n");
+   346→      return `💵 **Outstanding Receivables**\n\nTotal outstanding: **${bdt(total)}** across **${sales.length}** invoice(s):\n\n${lines}\n\n💡 Follow up with these customers to collect payments.`;
+   347→    },
+   348→  },
+   349→
+   350→  // 9. owe-suppliers
+   351→  {
+   352→    name: "owe-suppliers",
+   353→    description: "Outstanding payables — suppliers with balance > 0 (we owe them).",
+   354→    keywords: ["owe suppliers", "owe supplier", "payables", "suppliers owe", "supplier balance", "owe them", "we owe"],
+   355→    matchMode: "any",
+   356→    handler: async (businessId) => {
+   357→      const suppliers = await db.supplier.findMany({
+   358→        where: { businessId, balance: { gt: 0 } },
+   359→        select: { id: true, name: true, phone: true, balance: true, totalPurchased: true, totalPaid: true },
+   360→        orderBy: { balance: "desc" },
+   361→        take: 50,
+   362→      });
+   363→      if (suppliers.length === 0) {
+   364→        return "✅ **Outstanding Payables**\n\nYou don't owe any suppliers money. All payables cleared! 🎉";
+   365→      }
+   366→      const total = suppliers.reduce((s, x) => s + x.balance, 0);
+   367→      const lines = suppliers
+   368→        .map(
+   369→          (s, i) =>
+   370→            `${i + 1}. **${s.name}**${s.phone ? ` (${s.phone})` : ""} — outstanding: ${bdt(s.balance)} • lifetime purchased: ${bdt(s.totalPurchased)} • paid: ${bdt(s.totalPaid)}`
+   371→        )
+   372→        .join("\n");
+   373→      return `💸 **Outstanding Payables (Suppliers)**\n\nTotal payable: **${bdt(total)}** across **${suppliers.length}** supplier(s):\n\n${lines}\n\n💡 Schedule payments to maintain supplier goodwill.`;
+   374→    },
+   375→  },
+   376→
+   377→  // 10. inventory-value
+   378→  {
+   379→    name: "inventory-value",
+   380→    description: "Cost value + MRP value + potential profit from batches with quantity > 0.",
+   381→    keywords: ["inventory value", "valuation", "stock value", "value of inventory", "inventory worth", "worth of stock"],
+   382→    matchMode: "any",
+   383→    handler: async (businessId) => {
+   384→      const batches = await db.batch.findMany({
+   385→        where: { businessId, quantity: { gt: 0 }, status: { not: "destroyed" } },
+   386→        select: { quantity: true, purchasePrice: true, mrp: true },
+   387→      });
+   388→      if (batches.length === 0) {
+   389→        return "📦 **Inventory Valuation**\n\nNo inventory on hand to value.";
+   390→      }
+   391→      const costValue = batches.reduce((s, b) => s + (b.purchasePrice || 0) * b.quantity, 0);
+   392→      const mrpValue = batches.reduce((s, b) => s + (b.mrp || 0) * b.quantity, 0);
+   393→      const potentialProfit = mrpValue - costValue;
+   394→      const marginPct = costValue > 0 ? (potentialProfit / costValue) * 100 : 0;
+   395→      return `📦 **Inventory Valuation**\n\n| Metric | Value |\n|---|---|\n| Active batches | ${fmtNum(batches.length)} |\n| Cost value | ${bdt(costValue)} |\n| MRP value | ${bdt(mrpValue)} |\n| Potential profit | ${bdt(potentialProfit)} |\n| Margin | ${marginPct.toFixed(1)}% |`;
+   396→    },
+   397→  },
+   398→
+   399→  // 11. total-customers
+   400→  {
+   401→    name: "total-customers",
+   402→    description: "Customer count. Uses totalSpent > 0 for 'with purchase history' (NOT balance — Customer has no balance field).",
+   403→    keywords: ["total customers", "how many customers", "customer count", "number of customers", "customers do i have"],
+   404→    matchMode: "any",
+   405→    handler: async (businessId) => {
+   406→      const [total, active, withHistory] = await Promise.all([
+   407→        db.customer.count({ where: { businessId } }),
+   408→        db.customer.count({ where: { businessId, isActive: true } }),
+   409→        // Customer model does NOT have a 'balance' field — use totalSpent instead.
+   410→        db.customer.count({ where: { businessId, totalSpent: { gt: 0 } } }),
+   411→      ]);
+   412→      return `👥 **Customer Summary**\n\n| Metric | Count |\n|---|---|\n| Total customers | ${fmtNum(total)} |\n| Active customers | ${fmtNum(active)} |\n| With purchase history | ${fmtNum(withHistory)} |`;
+   413→    },
+   414→  },
+   415→
+   416→  // 12. total-suppliers
+   417→  {
+   418→    name: "total-suppliers",
+   419→    description: "Supplier count. Uses balance > 0 for 'with outstanding balance'.",
+   420→    keywords: ["total suppliers", "how many suppliers", "supplier count", "number of suppliers", "suppliers do i have"],
+   421→    matchMode: "any",
+   422→    handler: async (businessId) => {
+   423→      const [total, active, withBalance] = await Promise.all([
+   424→        db.supplier.count({ where: { businessId } }),
+   425→        db.supplier.count({ where: { businessId, isActive: true } }),
+   426→        db.supplier.count({ where: { businessId, balance: { gt: 0 } } }),
+   427→      ]);
+   428→      return `🏭 **Supplier Summary**\n\n| Metric | Count |\n|---|---|\n| Total suppliers | ${fmtNum(total)} |\n| Active suppliers | ${fmtNum(active)} |\n| With outstanding balance | ${fmtNum(withBalance)} |`;
+   429→    },
+   430→  },
+   431→
+   432→  // 13. month-sales
+   433→  {
+   434→    name: "month-sales",
+   435→    description: "This month's gross/net sales, returns, and discounts.",
+   436→    keywords: ["month sales", "monthly sales", "this month", "sales this month", "months sales", "month revenue"],
+   437→    matchMode: "any",
+   438→    handler: async (businessId) => {
+   439→      const start = startOfMonthUTC();
+   440→      const end = new Date();
+   441→      const [salesAgg, returnsAgg] = await Promise.all([
+   442→        db.sale.aggregate({
+   443→          where: { businessId, status: "completed", createdAt: { gte: start, lte: end } },
+   444→          _sum: { totalAmount: true, discountAmount: true, subtotal: true },
+   445→          _count: true,
+   446→        }),
+   447→        db.return.aggregate({
+   448→          where: { businessId, createdAt: { gte: start, lte: end } },
+   449→          _sum: { refundAmount: true },
+   450→          _count: true,
+   451→        }),
+   452→      ]);
+   453→      const gross = salesAgg._sum.totalAmount || 0;
+   454→      const discounts = salesAgg._sum.discountAmount || 0;
+   455→      const returns = returnsAgg._sum.refundAmount || 0;
+   456→      const net = gross - returns;
+   457→      return `📅 **This Month's Sales** (since ${fmtDate(start)})\n\n| Metric | Value |\n|---|---|\n| Gross sales | ${bdt(gross)} |\n| Discounts given | ${bdt(discounts)} |\n| Returns / refunds | ${bdt(returns)} (${fmtNum(returnsAgg._count)} return(s)) |\n| **Net sales** | **${bdt(net)}** |\n| Transactions | ${fmtNum(salesAgg._count)} |`;
+   458→    },
+   459→  },
+   460→
+   461→  // 14. week-sales
+   462→  {
+   463→    name: "week-sales",
+   464→    description: "Last 7 days' revenue, transaction count, and daily average.",
+   465→    keywords: ["week sales", "weekly sales", "last week", "last 7 days", "this week", "past week", "weeks sales"],
+   466→    matchMode: "any",
+   467→    handler: async (businessId) => {
+   468→      const end = new Date();
+   469→      const start = new Date(end.getTime() - 7 * 24 * 60 * 60 * 1000);
+   470→      const agg = await db.sale.aggregate({
+   471→        where: { businessId, status: "completed", createdAt: { gte: start, lte: end } },
+   472→        _sum: { totalAmount: true },
+   473→        _count: true,
+   474→      });
+   475→      const revenue = agg._sum.totalAmount || 0;
+   476→      const count = agg._count;
+   477→      const dailyAvg = count > 0 ? revenue / 7 : 0;
+   478→      const avgSale = count > 0 ? revenue / count : 0;
+   479→      return `📈 **Last 7 Days Sales**\n\n| Metric | Value |\n|---|---|\n| Revenue | ${bdt(revenue)} |\n| Transactions | ${fmtNum(count)} |\n| Daily avg revenue | ${bdt(dailyAvg)} |\n| Avg sale value | ${bdt(avgSale)} |\n\n📅 Period: ${fmtDate(start)} → ${fmtDate(end)}`;
+   480→    },
+   481→  },
+   482→
+   483→  // 15. recent-purchases
+   484→  {
+   485→    name: "recent-purchases",
+   486→    description: "Last 5 purchases. Uses 'select' only (can't combine 'include' and 'select' in Prisma).",
+   487→    keywords: ["recent purchases", "latest purchases", "last purchases", "recent po", "recent orders", "last 5 purchases"],
+   488→    matchMode: "any",
+   489→    handler: async (businessId) => {
+   490→      // IMPORTANT: cannot use both 'include' and 'select' — use 'select' only.
+   491→      const purchases = await db.purchase.findMany({
+   492→        where: { businessId, status: { not: "cancelled" } },
+   493→        select: {
+   494→          id: true,
+   495→          purchaseNo: true,
+   496→          totalAmount: true,
+   497→          paidAmount: true,
+   498→          paymentStatus: true,
+   499→          receivedDate: true,
+   500→          createdAt: true,
+   501→          supplier: { select: { name: true } },
+   502→        },
+   503→        orderBy: { createdAt: "desc" },
+   504→        take: 5,
+   505→      });
+   506→      if (purchases.length === 0) {
+   507→        return "🛒 **Recent Purchases**\n\nNo purchases recorded yet.";
+   508→      }
+   509→      const lines = purchases
+   510→        .map((p, i) => {
+   511→          const supplier = p.supplier?.name || "Unknown supplier";
+   512→          const date = p.receivedDate || p.createdAt;
+   513→          return `${i + 1}. **${p.purchaseNo}** — ${supplier} • ${bdt(p.totalAmount)} (paid: ${bdt(p.paidAmount)}, status: ${p.paymentStatus}) • dated ${fmtDate(date)}`;
+   514→        })
+   515→        .join("\n");
+   516→      return `🛒 **Last 5 Purchases**\n\n${lines}`;
+   517→    },
+   518→  },
+   519→
+   520→  // 16. categories
+   521→  {
+   522→    name: "categories",
+   523→    description: "Category list with product count per category.",
+   524→    keywords: ["categories", "category list", "list categories", "all categories", "how many categories"],
+   525→    matchMode: "any",
+   526→    handler: async (businessId) => {
+   527→      const categories = await db.category.findMany({
+   528→        where: { businessId, isActive: true },
+   529→        select: {
+   530→          id: true,
+   531→          name: true,
+   532→          type: true,
+   533→          icon: true,
+   534→          _count: { select: { products: true } },
+   535→        },
+   536→        orderBy: { sortOrder: "asc" },
+   537→      });
+   538→      if (categories.length === 0) {
+   539→        return "🏷️ **Categories**\n\nNo categories defined yet.";
+   540→      }
+   541→      const totalProducts = categories.reduce((s, c) => s + c._count.products, 0);
+   542→      const lines = categories
+   543→        .map(
+   544→          (c, i) =>
+   545→            `${i + 1}. **${c.name}** (${c.type}) — ${fmtNum(c._count.products)} product(s)`
+   546→        )
+   547→        .join("\n");
+   548→      return `🏷️ **Categories**\n\nFound **${categories.length}** active categories with **${fmtNum(totalProducts)}** products total:\n\n${lines}`;
+   549→    },
+   550→  },
+   551→
+   552→  // 17. today-purchases
+   553→  {
+   554→    name: "today-purchases",
+   555→    description: "Today's total spend, purchase count, and average purchase value.",
+   556→    keywords: ["today purchases", "todays purchases", "purchases today", "today spend", "today buying", "today received"],
+   557→    matchMode: "any",
+   558→    handler: async (businessId) => {
+   559→      const start = startOfTodayUTC();
+   560→      const end = new Date(start.getTime() + 24 * 60 * 60 * 1000 - 1);
+   561→      const agg = await db.purchase.aggregate({
+   562→        where: {
+   563→          businessId,
+   564→          status: { not: "cancelled" },
+   565→          createdAt: { gte: start, lte: end },
+   566→        },
+   567→        _sum: { totalAmount: true },
+   568→        _count: true,
+   569→      });
+   570→      const total = agg._sum.totalAmount || 0;
+   571→      const count = agg._count;
+   572→      const avg = count > 0 ? total / count : 0;
+   573→      return `🛍️ **Today's Purchases** (UTC ${fmtDate(start)})\n\n| Metric | Value |\n|---|---|\n| Total spend | ${bdt(total)} |\n| Purchase count | ${fmtNum(count)} |\n| Avg purchase | ${bdt(avg)} |\n\n${count > 0 ? "📦 Stock received today." : "💤 No purchases recorded today."}`;
+   574→    },
+   575→  },
+   576→
+   577→  // 18. returns
+   578→  {
+   579→    name: "returns",
+   580→    description: "This month's refund total, count, and average refund.",
+   581→    keywords: ["returns", "refunds", "this month returns", "returned items", "refund total", "monthly returns"],
+   582→    matchMode: "any",
+   583→    handler: async (businessId) => {
+   584→      const start = startOfMonthUTC();
+   585→      const end = new Date();
+   586→      const agg = await db.return.aggregate({
+   587→        where: { businessId, createdAt: { gte: start, lte: end } },
+   588→        _sum: { refundAmount: true },
+   589→        _count: true,
+   590→      });
+   591→      const total = agg._sum.refundAmount || 0;
+   592→      const count = agg._count;
+   593→      const avg = count > 0 ? total / count : 0;
+   594→      return `↩️ **Returns This Month** (since ${fmtDate(start)})\n\n| Metric | Value |\n|---|---|\n| Refund total | ${bdt(total)} |\n| Return count | ${fmtNum(count)} |\n| Avg refund | ${bdt(avg)} |`;
+   595→    },
+   596→  },
+   597→
+   598→  // 19. payments-received
+   599→  {
+   600→    name: "payments-received",
+   601→    description: "Today's collected payment amount, count, and average.",
+   602→    keywords: ["payments received", "payments today", "today payments", "collected today", "cash collected", "money received", "payment received"],
+   603→    matchMode: "any",
+   604→    handler: async (businessId) => {
+   605→      const start = startOfTodayUTC();
+   606→      const end = new Date(start.getTime() + 24 * 60 * 60 * 1000 - 1);
+   607→      const agg = await db.payment.aggregate({
+   608→        where: { businessId, createdAt: { gte: start, lte: end } },
+   609→        _sum: { amount: true },
+   610→        _count: true,
+   611→      });
+   612→      const total = agg._sum.amount || 0;
+   613→      const count = agg._count;
+   614→      const avg = count > 0 ? total / count : 0;
+   615→      return `💳 **Payments Received Today** (UTC ${fmtDate(start)})\n\n| Metric | Value |\n|---|---|\n| Total collected | ${bdt(total)} |\n| Payment count | ${fmtNum(count)} |\n| Avg payment | ${bdt(avg)} |`;
+   616→    },
+   617→  },
+   618→
+   619→  // 20. dashboard-summary
+   620→  {
+   621→    name: "dashboard-summary",
+   622→    description: "Comprehensive overview: today sales, month sales, product count, low stock, expiring, expired, receivables, payables.",
+   623→    keywords: ["dashboard", "summary", "overview", "snapshot", "kpi", "business summary", "status report"],
+   624→    matchMode: "any",
+   625→    handler: async (businessId) => {
+   626→      const now = new Date();
+   627→      const todayStart = startOfTodayUTC();
+   628→      const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000 - 1);
+   629→      const monthStart = startOfMonthUTC();
+   630→
+   631→      const [
+   632→        todaySales,
+   633→        monthSales,
+   634→        productCount,
+   635→        lowStock,
+   636→        outOfStock,
+   637→        expiringSoon,
+   638→        expired,
+   639→        receivablesAgg,
+   640→        payablesAgg,
+   641→      ] = await Promise.all([
+   642→        db.sale.aggregate({
+   643→          where: { businessId, status: "completed", createdAt: { gte: todayStart, lte: todayEnd } },
+   644→          _sum: { totalAmount: true },
+   645→          _count: true,
+   646→        }),
+   647→        db.sale.aggregate({
+   648→          where: { businessId, status: "completed", createdAt: { gte: monthStart } },
+   649→          _sum: { totalAmount: true },
+   650→          _count: true,
+   651→        }),
+   652→        db.product.count({ where: { businessId, isActive: true } }),
+   653→        db.product.count({
+   654→          where: { businessId, isActive: true, inventory: { quantity: { lte: 10, gt: 0 } } },
+   655→        }),
+   656→        db.product.count({
+   657→          where: { businessId, isActive: true, inventory: { quantity: { lte: 0 } } },
+   658→        }),
+   659→        db.batch.count({
+   660→          where: {
+   661→            businessId,
+   662→            quantity: { gt: 0 },
+   663→            status: { notIn: ["expired", "destroyed"] },
+   664→            expiryDate: {
+   665→              gte: now,
+   666→              lte: new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000),
+   667→            },
+   668→          },
+   669→        }),
+   670→        db.batch.count({
+   671→          where: { businessId, quantity: { gt: 0 }, status: "expired" },
+   672→        }),
+   673→        db.sale.aggregate({
+   674→          where: {
+   675→            businessId,
+   676→            paymentStatus: { in: ["partial", "unpaid"] },
+   677→            status: "completed",
+   678→          },
+   679→          _sum: { totalAmount: true, paidAmount: true },
+   680→        }),
+   681→        db.supplier.aggregate({
+   682→          where: { businessId, balance: { gt: 0 } },
+   683→          _sum: { balance: true },
+   684→        }),
+   685→      ]);
+   686→
+   687→      const todayRevenue = todaySales._sum.totalAmount || 0;
+   688→      const monthRevenue = monthSales._sum.totalAmount || 0;
+   689→      const receivables =
+   690→        (receivablesAgg._sum.totalAmount || 0) - (receivablesAgg._sum.paidAmount || 0);
+   691→      const payables = payablesAgg._sum.balance || 0;
+   692→
+   693→      return `📊 **Business Dashboard Summary**\n\n### 💰 Sales\n| Metric | Value |\n|---|---|\n| Today's revenue | ${bdt(todayRevenue)} (${fmtNum(todaySales._count)} sales) |\n| This month's revenue | ${bdt(monthRevenue)} (${fmtNum(monthSales._count)} sales) |\n\n### 📦 Inventory\n| Metric | Count |\n|---|---|\n| Active products | ${fmtNum(productCount)} |\n| Low stock (≤10) | ${fmtNum(lowStock)} |\n| Out of stock (≤0) | ${fmtNum(outOfStock)} |\n| Expiring (≤90d) | ${fmtNum(expiringSoon)} |\n| Already expired | ${fmtNum(expired)} |\n\n### 💵 Outstanding\n| Metric | Value |\n|---|---|\n| Receivables (customers owe) | ${bdt(receivables)} |\n| Payables (owe suppliers) | ${bdt(payables)} |\n\n${expired > 0 ? "🚨 Action needed: dispose of expired stock." : lowStock > 0 ? "⚠️ Action needed: reorder low-stock items." : "✅ All clear — no critical alerts."}`;
+   694→    },
+   695→  },
+   696→];
+   697→
+   698→// ── Public: route a message ──
+   699→export async function routeQuery(
+   700→  businessId: string,
+   701→  message: string
+   702→): Promise<RouteResult> {
+   703→  if (!message || !message.trim()) {
+   704→    return { handled: false };
+   705→  }
+   706→  const normalized = normalizeMessage(message);
+   707→
+   708→  for (const pattern of PATTERNS) {
+   709→    if (!matchesPattern(normalized, pattern)) continue;
+   710→
+   711→    const startMs = Date.now();
+   712→    try {
+   713→      const response = await pattern.handler(businessId, message);
+   714→      const queryMs = Date.now() - startMs;
+   715→      return {
+   716→        handled: true,
+   717→        pattern: pattern.name,
+   718→        response,
+   719→        queryMs,
+   720→      };
+   721→    } catch (err) {
+   722→      const msg = err instanceof Error ? err.message : String(err);
+   723→      // eslint-disable-next-line no-console
+   724→      console.error(`[sql-router] pattern "${pattern.name}" threw:`, msg);
+   725→      // Don't surface the error to the user — let the LLM try instead.
+   726→      return { handled: false };
+   727→    }
+   728→  }
+   729→
+   730→  return { handled: false };
+   731→}
+   732→
+   733→// ── Public: list registered patterns (for debugging / super-admin UI) ──
+   734→export function getRegisteredPatterns(): PatternDescriptor[] {
+   735→  return PATTERNS.map((p) => ({
+   736→    name: p.name,
+   737→    description: p.description,
+   738→    keywords: p.keywords,
+   739→    matchMode: p.matchMode,
+   740→    excludeKeywords: p.excludeKeywords,
+   741→  }));
+   742→}
+   743→

@@ -1,0 +1,175 @@
+// Main orchestrator for AI Report Scheduling System Implementation Spec
+const H = require("./ai-report-helpers");
+const {
+  P, c,
+  Document, Packer, Paragraph, TextRun, Header, Footer, PageNumber, NumberFormat,
+  AlignmentType, HeadingLevel, WidthType, BorderStyle, ShadingType,
+  PageOrientation, TableOfContents, SectionType,
+} = H;
+const fs = require("fs");
+
+const { buildCover } = require("./report-sched-cover");
+const {
+  buildExecSummary, buildProductVision, buildHighLevelFlow,
+} = require("./report-sched-body1");
+const {
+  buildDataModel, buildOccasionCalendar, buildPredictionAlgorithm, buildReportContent,
+} = require("./report-sched-body2");
+const {
+  buildApiEndpoints, buildSuperAdminUI, buildBackgroundJobs, buildDeliveryIntegration,
+} = require("./report-sched-body3");
+const {
+  buildCostAnalysis, buildRoadmap, buildRisks, buildAppendix,
+} = require("./report-sched-body4");
+
+const pgSize = { width: 11906, height: 16838, orientation: PageOrientation.PORTRAIT };
+const pgMargin = { top: 1440, bottom: 1440, left: 1701, right: 1417 };
+
+function buildHeader() {
+  return new Header({
+    children: [new Paragraph({
+      alignment: AlignmentType.RIGHT,
+      spacing: { line: 240 },
+      border: { bottom: { style: BorderStyle.SINGLE, size: 4, color: c(P.accent), space: 4 } },
+      children: [new TextRun({
+        text: "InventoryOS AI Report Scheduling \u2014 Implementation Spec",
+        size: 18, color: c(P.secondary), italics: true,
+        font: { ascii: "Calibri", eastAsia: "Microsoft YaHei" },
+      })],
+    })],
+  });
+}
+
+function buildFooter() {
+  return new Footer({
+    children: [new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { line: 240 },
+      children: [new TextRun({
+        children: [PageNumber.CURRENT],
+        size: 18, color: c(P.secondary),
+        font: { ascii: "Calibri" },
+      })],
+    })],
+  });
+}
+
+function buildTocSection() {
+  return [
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { before: 480, after: 360, line: 360 },
+      children: [new TextRun({
+        text: "Table of Contents",
+        bold: true, size: 36, color: c(P.primary),
+        font: { ascii: "Calibri", eastAsia: "Microsoft YaHei" },
+      })],
+    }),
+    new TableOfContents("Table of Contents", {
+      hyperlink: true,
+      headingStyleRange: "1-3",
+    }),
+    new Paragraph({
+      spacing: { before: 240, after: 0, line: 312 },
+      children: [new TextRun({
+        text: "Note: This Table of Contents is generated via field codes. To refresh page numbers after editing, right-click the TOC and select \"Update Field.\"",
+        italics: true, size: 18, color: c(P.secondary),
+        font: { ascii: "Calibri", eastAsia: "Microsoft YaHei" },
+      })],
+    }),
+    new Paragraph({ children: [new (require("docx").PageBreak)()] }),
+  ];
+}
+
+function buildBodyContent() {
+  const body = [];
+  body.push(...buildExecSummary());
+  body.push(...buildProductVision());
+  body.push(...buildHighLevelFlow());
+  body.push(...buildDataModel());
+  body.push(...buildOccasionCalendar());
+  body.push(...buildPredictionAlgorithm());
+  body.push(...buildReportContent());
+  body.push(...buildApiEndpoints());
+  body.push(...buildSuperAdminUI());
+  body.push(...buildBackgroundJobs());
+  body.push(...buildDeliveryIntegration());
+  body.push(...buildCostAnalysis());
+  body.push(...buildRoadmap());
+  body.push(...buildRisks());
+  body.push(...buildAppendix());
+  return body;
+}
+
+const doc = new Document({
+  creator: "Super Z (SQA Architect)",
+  title: "InventoryOS AI Report Scheduling System Implementation Specification",
+  description: "The Weekly Client Hook \u2014 Occasion-Aware Sales Prediction Reports",
+  styles: {
+    default: {
+      document: {
+        run: {
+          font: { ascii: "Calibri", eastAsia: "Microsoft YaHei" },
+          size: 22, color: c(P.body),
+        },
+        paragraph: { spacing: { line: 312 } },
+      },
+      heading1: {
+        run: {
+          font: { ascii: "Calibri", eastAsia: "Microsoft YaHei" },
+          size: 32, bold: true, color: c(P.primary),
+        },
+        paragraph: { spacing: { before: 360, after: 200, line: 312 }, outlineLevel: 0 },
+      },
+      heading2: {
+        run: {
+          font: { ascii: "Calibri", eastAsia: "Microsoft YaHei" },
+          size: 28, bold: true, color: c(P.primary),
+        },
+        paragraph: { spacing: { before: 280, after: 140, line: 312 }, outlineLevel: 1 },
+      },
+      heading3: {
+        run: {
+          font: { ascii: "Calibri", eastAsia: "Microsoft YaHei" },
+          size: 24, bold: true, color: c(P.primary),
+        },
+        paragraph: { spacing: { before: 220, after: 100, line: 312 }, outlineLevel: 2 },
+      },
+    },
+  },
+  sections: [
+    {
+      properties: { page: { size: pgSize, margin: { top: 0, bottom: 0, left: 0, right: 0 } } },
+      children: buildCover(),
+    },
+    {
+      properties: {
+        type: SectionType.NEXT_PAGE,
+        page: { size: pgSize, margin: pgMargin, pageNumbers: { start: 1, formatType: NumberFormat.UPPER_ROMAN } },
+      },
+      headers: { default: buildHeader() },
+      footers: { default: buildFooter() },
+      children: buildTocSection(),
+    },
+    {
+      properties: {
+        type: SectionType.NEXT_PAGE,
+        page: { size: pgSize, margin: pgMargin, pageNumbers: { start: 1, formatType: NumberFormat.DECIMAL } },
+      },
+      headers: { default: buildHeader() },
+      footers: { default: buildFooter() },
+      children: buildBodyContent(),
+    },
+  ],
+});
+
+const outputPath = "/home/z/my-project/download/InventoryOS_Report_Scheduling_Spec.docx";
+
+Packer.toBuffer(doc).then((buffer) => {
+  fs.writeFileSync(outputPath, buffer);
+  console.log(`Document generated: ${outputPath}`);
+  console.log(`File size: ${(buffer.length / 1024).toFixed(1)} KB`);
+}).catch((err) => {
+  console.error("Error generating document:", err);
+  process.exit(1);
+});

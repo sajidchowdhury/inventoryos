@@ -1,0 +1,911 @@
+     1→<!DOCTYPE html>
+     2→<html lang="bn" class="scroll-smooth">
+     3→<head>
+     4→<meta charset="UTF-8">
+     5→<meta name="viewport" content="width=device-width, initial-scale=1.0">
+     6→<title>সিটি ফার্মেসি — ইনভেন্টরি ম্যানেজমেন্ট</title>
+     7→
+     8→<!-- Tailwind CSS -->
+     9→<script src="https://cdn.tailwindcss.com"></script>
+    10→<script>
+    11→tailwind.config = {
+    12→  theme: {
+    13→    extend: {
+    14→      fontFamily: {
+    15→        bangla: ['"Hind Siliguri"', '"Noto Sans Bengali"', 'SolaimanLipi', 'Siyamrupali', 'system-ui', 'sans-serif'],
+    16→      },
+    17→      colors: {
+    18→        pharmacy: {
+    19→          50: '#ecfdf5',
+    20→          100: '#d1fae5',
+    21→          200: '#a7f3d0',
+    22→          300: '#6ee7b7',
+    23→          400: '#34d399',
+    24→          500: '#10b981',
+    25→          600: '#059669',
+    26→          700: '#047857',
+    27→          800: '#065f46',
+    28→          900: '#064e3b',
+    29→          950: '#022c22',
+    30→        },
+    31→        surface: {
+    32→          light: '#f8fafb',
+    33→          card: '#ffffff',
+    34→          dark: '#0f172a',
+    35→        },
+    36→        accent: {
+    37→          blue: '#3b82f6',
+    38→          amber: '#f59e0b',
+    39→          rose: '#f43f5e',
+    40→          purple: '#8b5cf6',
+    41→          sky: '#0ea5e9',
+    42→          lime: '#84cc16',
+    43→        }
+    44→      },
+    45→      boxShadow: {
+    46→        'pharmacy': '0 1px 3px rgba(6, 95, 70, 0.06), 0 4px 16px rgba(6, 95, 70, 0.04)',
+    47→        'pharmacy-lg': '0 2px 8px rgba(6, 95, 70, 0.08), 0 8px 32px rgba(6, 95, 70, 0.05)',
+    48→        'pharmacy-xl': '0 4px 16px rgba(6, 95, 70, 0.10), 0 16px 48px rgba(6, 95, 70, 0.06)',
+    49→        'nav': '0 -2px 16px rgba(15, 23, 42, 0.06)',
+    50→      },
+    51→      animation: {
+    52→        'pulse-soft': 'pulseSoft 2s ease-in-out infinite',
+    53→        'float': 'float 3s ease-in-out infinite',
+    54→        'slide-up': 'slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+    55→        'fade-in': 'fadeIn 0.4s ease-out forwards',
+    56→        'scale-in': 'scaleIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards',
+    57→      },
+    58→      keyframes: {
+    59→        pulseSoft: {
+    60→          '0%, 100%': { opacity: '1', transform: 'scale(1)' },
+    61→          '50%': { opacity: '0.85', transform: 'scale(1.02)' },
+    62→        },
+    63→        float: {
+    64→          '0%, 100%': { transform: 'translateY(0)' },
+    65→          '50%': { transform: 'translateY(-4px)' },
+    66→        },
+    67→        slideUp: {
+    68→          '0%': { opacity: '0', transform: 'translateY(24px)' },
+    69→          '100%': { opacity: '1', transform: 'translateY(0)' },
+    70→        },
+    71→        fadeIn: {
+    72→          '0%': { opacity: '0' },
+    73→          '100%': { opacity: '1' },
+    74→        },
+    75→        scaleIn: {
+    76→          '0%': { opacity: '0', transform: 'scale(0.9)' },
+    77→          '100%': { opacity: '1', transform: 'scale(1)' },
+    78→        },
+    79→      }
+    80→    }
+    81→  }
+    82→}
+    83→</script>
+    84→
+    85→<!-- Google Fonts for Bangla -->
+    86→<link rel="preconnect" href="https://fonts.googleapis.com">
+    87→<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    88→<link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    89→
+    90→<style>
+    91→  * { font-family: 'Hind Siliguri', 'Noto Sans Bengali', SolaimanLipi, system-ui, sans-serif; }
+    92→  body { background: #f1f5f9; }
+    93→  
+    94→  /* Custom scrollbar */
+    95→  ::-webkit-scrollbar { width: 4px; }
+    96→  ::-webkit-scrollbar-track { background: transparent; }
+    97→  ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 8px; }
+    98→  
+    99→  /* Page transition */
+   100→  .page { display: none; }
+   101→  .page.active { display: block; }
+   102→  
+   103→  /* Glass card */
+   104→  .glass { background: rgba(255,255,255,0.8); backdrop-filter: blur(10px); }
+   105→  
+   106→  /* Pharmacy cross pattern */
+   107→  .pharmacy-bg {
+   108→    background-image: radial-gradient(circle at 20% 80%, rgba(16, 185, 129, 0.06) 0%, transparent 50%),
+   109→                      radial-gradient(circle at 80% 20%, rgba(5, 150, 105, 0.04) 0%, transparent 50%);
+   110→  }
+   111→
+   112→  /* Active nav indicator */
+   113→  .nav-item { transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
+   114→  .nav-item.active .nav-icon { color: #059669; }
+   115→  .nav-item.active .nav-label { color: #059669; font-weight: 600; }
+   116→  .nav-item.active::after {
+   117→    content: '';
+   118→    position: absolute;
+   119→    top: 0;
+   120→    left: 50%;
+   121→    transform: translateX(-50%);
+   122→    width: 24px;
+   123→    height: 3px;
+   124→    background: #059669;
+   125→    border-radius: 0 0 4px 4px;
+   126→  }
+   127→
+   128→  /* Desktop sidebar */
+   129→  @media (min-width: 768px) {
+   130→    .sidebar { display: flex !important; }
+   131→    .bottom-nav { display: none !important; }
+   132→    .main-content { margin-left: 240px; }
+   133→    .desktop-header { display: flex !important; }
+   134→    .mobile-header { display: none !important; }
+   135→  }
+   136→  
+   137→  /* Expiry pulse */
+   138→  .expiry-dot { animation: pulseSoft 2s ease-in-out infinite; }
+   139→  
+   140→  /* Card hover */
+   141→  .card-hover { transition: all 0.25s ease; }
+   142→  .card-hover:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(6, 95, 70, 0.10), 0 8px 32px rgba(6, 95, 70, 0.06); }
+   143→</style>
+   144→</head>
+   145→<body class="font-bangla antialiased pharmacy-bg min-h-screen">
+   146→
+   147→<!-- ============ DESKTOP SIDEBAR ============ -->
+   148→<aside class="sidebar hidden fixed left-0 top-0 h-full w-[240px] bg-white shadow-pharmacy-lg z-50 flex-col">
+   149→  <!-- Logo -->
+   150→  <div class="px-6 py-6 border-b border-gray-100">
+   151→    <div class="flex items-center gap-3">
+   152→      <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-pharmacy-500 to-pharmacy-700 flex items-center justify-center shadow-lg shadow-pharmacy-500/25">
+   153→        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>
+   154→      </div>
+   155→      <div>
+   156→        <h1 class="text-base font-bold text-gray-900 leading-tight">সিটি ফার্মেসি</h1>
+   157→        <p class="text-xs text-gray-400">City Pharmacy</p>
+   158→      </div>
+   159→    </div>
+   160→  </div>
+   161→
+   162→  <!-- Nav items -->
+   163→  <nav class="flex-1 px-3 py-4 space-y-1">
+   164→    <a href="#" onclick="switchPage('dashboard'); return false" data-nav="dashboard" class="sidebar-link active flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all">
+   165→      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+   166→      <span>ড্যাশবোর্ড</span>
+   167→    </a>
+   168→    <a href="#" onclick="switchPage('inventory'); return false" data-nav="inventory" class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-gray-500 hover:bg-gray-50 hover:text-gray-900 transition-all">
+   169→      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+   170→      <span>ইনভেন্টরি</span>
+   171→    </a>
+   172→    <a href="#" onclick="switchPage('reports'); return false" data-nav="reports" class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-gray-500 hover:bg-gray-50 hover:text-gray-900 transition-all">
+   173→      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+   174→      <span>রিপোর্ট</span>
+   175→    </a>
+   176→    <a href="#" onclick="switchPage('more'); return false" data-nav="more" class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-gray-500 hover:bg-gray-50 hover:text-gray-900 transition-all">
+   177→      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+   178→      <span>আরও</span>
+   179→    </a>
+   180→  </nav>
+   181→
+   182→  <!-- User footer -->
+   183→  <div class="px-4 py-4 border-t border-gray-100">
+   184→    <div class="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-gray-50">
+   185→      <div class="w-9 h-9 rounded-full bg-gradient-to-br from-pharmacy-400 to-pharmacy-600 flex items-center justify-center text-white text-sm font-semibold">A</div>
+   186→      <div>
+   187→        <p class="text-sm font-semibold text-gray-900">অ্যাডমিন</p>
+   188→        <p class="text-xs text-gray-400">সিটি ফার্মেসি</p>
+   189→      </div>
+   190→    </div>
+   191→  </div>
+   192→</aside>
+   193→
+   194→<!-- ============ MAIN CONTENT ============ -->
+   195→<main class="main-content md:ml-0 pb-24 md:pb-8 min-h-screen">
+   196→
+   197→  <!-- Desktop Header -->
+   198→  <header class="desktop-header hidden items-center justify-between px-6 py-4 bg-white/80 backdrop-blur border-b border-gray-100 sticky top-0 z-40">
+   199→    <div>
+   200→      <h2 class="text-lg font-bold text-gray-900 page-title">ড্যাশবোর্ড</h2>
+   201→      <p class="text-xs text-gray-400" id="current-date-bn">রবিবার, ২৮ জুন ২০২৬</p>
+   202→    </div>
+   203→    <div class="flex items-center gap-3">
+   204→      <button class="relative w-10 h-10 rounded-xl bg-gray-50 hover:bg-gray-100 flex items-center justify-center transition-colors">
+   205→        <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+   206→        <span class="absolute top-2 right-2 w-2 h-2 bg-rose-500 rounded-full"></span>
+   207→      </button>
+   208→    </div>
+   209→  </header>
+   210→
+   211→  <!-- Mobile Header -->
+   212→  <header class="mobile-header flex items-center justify-between px-5 py-4 md:hidden">
+   213→    <div>
+   214→      <h1 class="text-xl font-bold text-gray-900">সিটি ফার্মেসি</h1>
+   215→      <p class="text-xs text-gray-400">রবিবার, ২৮ জুন ২০২৬</p>
+   216→    </div>
+   217→    <button class="relative w-10 h-10 rounded-xl bg-white shadow-pharmacy flex items-center justify-center">
+   218→      <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+   219→      <span class="absolute top-2.5 right-2.5 w-2 h-2 bg-rose-500 rounded-full"></span>
+   220→    </button>
+   221→  </header>
+   222→
+   223→  <!-- ============ PAGE: DASHBOARD ============ -->
+   224→  <section id="page-dashboard" class="page active px-4 md:px-6">
+   225→    
+   226→    <!-- Welcome Banner -->
+   227→    <div class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-pharmacy-600 via-pharmacy-500 to-emerald-400 p-5 md:p-6 mb-5 shadow-pharmacy-lg">
+   228→      <div class="absolute top-0 right-0 w-32 h-32 opacity-10">
+   229→        <svg viewBox="0 0 100 100" fill="white"><circle cx="70" cy="30" r="40"/><circle cx="30" cy="70" r="25"/></svg>
+   230→      </div>
+   231→      <div class="relative z-10">
+   232→        <p class="text-white/80 text-sm mb-1">স্বাগতম,</p>
+   233→        <h2 class="text-white text-xl md:text-2xl font-bold mb-3">আপনার ফার্মেসি ইনভেন্টরি</h2>
+   234→        <div class="flex flex-wrap gap-2">
+   235→          <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/20 text-white text-xs font-medium">
+   236→            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+   237→            সব সিস্টেম সচল
+   238→          </span>
+   239→          <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/20 text-white text-xs font-medium">
+   240→            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+   241→            শেষ আপডেট: আজ সকাল ১০:৩০
+   242→          </span>
+   243→        </div>
+   244→      </div>
+   245→    </div>
+   246→
+   247→    <!-- Stats Grid -->
+   248→    <div class="grid grid-cols-3 gap-3 md:gap-4 mb-5">
+   249→      <!-- Total Products -->
+   250→      <div class="card-hover bg-white rounded-2xl p-4 md:p-5 shadow-pharmacy relative overflow-hidden">
+   251→        <div class="absolute top-0 left-0 w-1 h-full bg-accent-blue rounded-l-2xl"></div>
+   252→        <div class="flex items-center gap-2 mb-2">
+   253→          <div class="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
+   254→            <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+   255→          </div>
+   256→          <span class="text-xs text-gray-400 font-medium">মোট পণ্য</span>
+   257→        </div>
+   258→        <p class="text-2xl md:text-3xl font-bold text-gray-900">১,২৪৮</p>
+   259→        <p class="text-xs text-gray-400 mt-1">৪২ টি ক্যাটাগরিতে</p>
+   260→      </div>
+   261→
+   262→      <!-- Low Stock -->
+   263→      <div class="card-hover bg-white rounded-2xl p-4 md:p-5 shadow-pharmacy relative overflow-hidden">
+   264→        <div class="absolute top-0 left-0 w-1 h-full bg-amber-500 rounded-l-2xl"></div>
+   265→        <div class="flex items-center gap-2 mb-2">
+   266→          <div class="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center">
+   267→            <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/></svg>
+   268→          </div>
+   269→          <span class="text-xs text-gray-400 font-medium">কম স্টক</span>
+   270→        </div>
+   271→        <p class="text-2xl md:text-3xl font-bold text-amber-600">২৩</p>
+   272→        <p class="text-xs text-gray-400 mt-1">জরুরি রিস্টক প্রয়োজন</p>
+   273→      </div>
+   274→
+   275→      <!-- Expiring Soon -->
+   276→      <div class="card-hover bg-white rounded-2xl p-4 md:p-5 shadow-pharmacy relative overflow-hidden">
+   277→        <div class="absolute top-0 left-0 w-1 h-full bg-rose-500 rounded-l-2xl"></div>
+   278→        <div class="flex items-center gap-2 mb-2">
+   279→          <div class="w-8 h-8 rounded-lg bg-rose-50 flex items-center justify-center">
+   280→            <svg class="w-4 h-4 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+   281→          </div>
+   282→          <span class="text-xs text-gray-400 font-medium">মেয়াদ আসন্ন</span>
+   283→        </div>
+   284→        <p class="text-2xl md:text-3xl font-bold text-rose-600">৮</p>
+   285→        <p class="text-xs text-gray-400 mt-1">৩০ দিনের মধ্যে</p>
+   286→      </div>
+   287→    </div>
+   288→
+   289→    <!-- Quick Actions -->
+   290→    <div class="mb-5">
+   291→      <h3 class="text-sm font-semibold text-gray-900 mb-3">দ্রুত অ্যাকশন</h3>
+   292→      <div class="grid grid-cols-4 gap-3">
+   293→        <button onclick="switchPage('inventory'); return false" class="card-hover flex flex-col items-center gap-2 p-4 rounded-2xl bg-white shadow-pharmacy">
+   294→          <div class="w-11 h-11 rounded-xl bg-blue-50 flex items-center justify-center">
+   295→            <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
+   296→          </div>
+   297→          <span class="text-xs font-medium text-gray-700">পণ্য যোগ</span>
+   298→        </button>
+   299→        <button onclick="switchPage('inventory'); return false" class="card-hover flex flex-col items-center gap-2 p-4 rounded-2xl bg-white shadow-pharmacy">
+   300→          <div class="w-11 h-11 rounded-xl bg-amber-50 flex items-center justify-center">
+   301→            <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+   302→          </div>
+   303→          <span class="text-xs font-medium text-gray-700">রিস্টক</span>
+   304→        </button>
+   305→        <button class="card-hover flex flex-col items-center gap-2 p-4 rounded-2xl bg-white shadow-pharmacy">
+   306→          <div class="w-11 h-11 rounded-xl bg-purple-50 flex items-center justify-center">
+   307→            <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+   308→          </div>
+   309→          <span class="text-xs font-medium text-gray-700">ইনভয়েস</span>
+   310→        </button>
+   311→        <button onclick="switchPage('more'); return false" class="card-hover flex flex-col items-center gap-2 p-4 rounded-2xl bg-white shadow-pharmacy">
+   312→          <div class="w-11 h-11 rounded-xl bg-emerald-50 flex items-center justify-center">
+   313→            <svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+   314→          </div>
+   315→          <span class="text-xs font-medium text-gray-700">কাস্টমার</span>
+   316→        </button>
+   317→      </div>
+   318→    </div>
+   319→
+   320→    <!-- Health Status Card -->
+   321→    <div class="bg-white rounded-2xl p-5 shadow-pharmacy mb-5 border-l-4 border-emerald-500">
+   322→      <div class="flex items-start gap-3">
+   323→        <div class="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center flex-shrink-0 expiry-dot">
+   324→          <svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+   325→        </div>
+   326→        <div>
+   327→          <h4 class="font-semibold text-gray-900">ইনভেন্টরি স্বাস্থ্য ভালো আছে</h4>
+   328→          <p class="text-sm text-gray-500 mt-0.5">আগামী ৯০ দিনের মধ্যে কোনো ব্যাচের মেয়াদ শেষ হচ্ছে না। সব পণ্যের স্টক লেভেল পর্যাপ্ত আছে।</p>
+   329→        </div>
+   330→      </div>
+   331→    </div>
+   332→
+   333→    <!-- Recent Stock Updates -->
+   334→    <div>
+   335→      <div class="flex items-center justify-between mb-3">
+   336→        <h3 class="text-sm font-semibold text-gray-900">সাম্প্রতিক স্টক আপডেট</h3>
+   337→        <button class="text-xs font-medium text-pharmacy-600 hover:text-pharmacy-700">সব দেখুন →</button>
+   338→      </div>
+   339→      <div class="space-y-2">
+   340→        <div class="card-hover bg-white rounded-2xl p-4 shadow-pharmacy flex items-center gap-3">
+   341→          <div class="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center flex-shrink-0">
+   342→            <svg class="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>
+   343→          </div>
+   344→          <div class="flex-1 min-w-0">
+   345→            <p class="text-sm font-semibold text-gray-900">এসি প্লাস</p>
+   346→            <p class="text-xs text-gray-400">প্যারাসিটামল + ক্যাফেইন</p>
+   347→          </div>
+   348→          <div class="text-right">
+   349→            <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-rose-50 text-rose-700 text-xs font-semibold">
+   350→              <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+   351→              স্টক শেষ
+   352→            </span>
+   353→          </div>
+   354→        </div>
+   355→
+   356→        <div class="card-hover bg-white rounded-2xl p-4 shadow-pharmacy flex items-center gap-3">
+   357→          <div class="w-10 h-10 rounded-xl bg-pink-50 flex items-center justify-center flex-shrink-0">
+   358→            <svg class="w-5 h-5 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>
+   359→          </div>
+   360→          <div class="flex-1 min-w-0">
+   361→            <p class="text-sm font-semibold text-gray-900">অ্যামোডিস</p>
+   362→            <p class="text-xs text-gray-400">মেট্রোনিডাজল ৪০০মি.গ্রা.</p>
+   363→          </div>
+   364→          <div class="text-right">
+   365→            <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 text-xs font-semibold">
+   366→              <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+   367→              ৫০ পিস
+   368→            </span>
+   369→          </div>
+   370→        </div>
+   371→
+   372→        <div class="card-hover bg-white rounded-2xl p-4 shadow-pharmacy flex items-center gap-3">
+   373→          <div class="w-10 h-10 rounded-xl bg-sky-50 flex items-center justify-center flex-shrink-0">
+   374→            <svg class="w-5 h-5 text-sky-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>
+   375→          </div>
+   376→          <div class="flex-1 min-w-0">
+   377→            <p class="text-sm font-semibold text-gray-900">ফেক্সো</p>
+   378→            <p class="text-xs text-gray-400">ফেক্সোফেনাডিন ১২০মি.গ্রা.</p>
+   379→          </div>
+   380→          <div class="text-right">
+   381→            <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-semibold">
+   382→              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+   383→              ২০০ পিস
+   384→            </span>
+   385→          </div>
+   386→        </div>
+   387→      </div>
+   388→    </div>
+   389→  </section>
+   390→
+   391→  <!-- ============ PAGE: INVENTORY ============ -->
+   392→  <section id="page-inventory" class="page px-4 md:px-6">
+   393→    <!-- Search + Add -->
+   394→    <div class="flex gap-3 mb-5">
+   395→      <div class="flex-1 relative">
+   396→        <svg class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+   397→        <input type="text" placeholder="পণ্য, ক্যাটাগরি বা ব্যাচ সার্চ করুন..." class="w-full pl-10 pr-4 py-3 rounded-2xl bg-white border-0 shadow-pharmacy text-sm focus:outline-none focus:ring-2 focus:ring-pharmacy-500/30 transition-all">
+   398→      </div>
+   399→      <button class="flex-shrink-0 flex items-center gap-2 px-5 py-3 rounded-2xl bg-gradient-to-r from-pharmacy-600 to-pharmacy-500 text-white text-sm font-semibold shadow-pharmacy hover:shadow-pharmacy-lg transition-all">
+   400→        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+   401→        যোগ করুন
+   402→      </button>
+   403→    </div>
+   404→
+   405→    <!-- Category Tabs -->
+   406→    <div class="flex gap-2 mb-5 overflow-x-auto pb-1 scrollbar-none">
+   407→      <button class="flex-shrink-0 px-4 py-2 rounded-full bg-pharmacy-600 text-white text-xs font-semibold shadow-md shadow-pharmacy-600/25">সব পণ্য</button>
+   408→      <button class="flex-shrink-0 px-4 py-2 rounded-full bg-white text-gray-600 text-xs font-medium shadow-pharmacy hover:bg-gray-50 transition-colors">ট্যাবলেট</button>
+   409→      <button class="flex-shrink-0 px-4 py-2 rounded-full bg-white text-gray-600 text-xs font-medium shadow-pharmacy hover:bg-gray-50 transition-colors">ক্যাপসুল</button>
+   410→      <button class="flex-shrink-0 px-4 py-2 rounded-full bg-white text-gray-600 text-xs font-medium shadow-pharmacy hover:bg-gray-50 transition-colors">সিরাপ</button>
+   411→      <button class="flex-shrink-0 px-4 py-2 rounded-full bg-white text-gray-600 text-xs font-medium shadow-pharmacy hover:bg-gray-50 transition-colors">ইনজেকশন</button>
+   412→      <button class="flex-shrink-0 px-4 py-2 rounded-full bg-white text-gray-600 text-xs font-medium shadow-pharmacy hover:bg-gray-50 transition-colors">মলম</button>
+   413→    </div>
+   414→
+   415→    <!-- Inventory Cards -->
+   416→    <div class="space-y-2">
+   417→      <!-- Card 1 -->
+   418→      <div class="card-hover bg-white rounded-2xl p-4 shadow-pharmacy">
+   419→        <div class="flex items-center gap-3">
+   420→          <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center flex-shrink-0 shadow-lg shadow-blue-500/20">
+   421→            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>
+   422→          </div>
+   423→          <div class="flex-1 min-w-0">
+   424→            <div class="flex items-center justify-between">
+   425→              <div>
+   426→                <p class="font-semibold text-gray-900">নাপা এক্সট্রা</p>
+   427→                <p class="text-xs text-gray-400">প্যারাসিটামল ৫০০মি.গ্রা. + ক্যাফেইন</p>
+   428→              </div>
+   429→              <span class="text-xs px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 font-medium">ট্যাবলেট</span>
+   430→            </div>
+   431→            <div class="flex items-center gap-4 mt-2 text-xs">
+   432→              <span class="text-gray-400">ব্যাচ: <b class="text-gray-700">B240612</b></span>
+   433→              <span class="text-gray-400">মেয়াদ: <b class="text-gray-700">ডিসে ২০২৭</b></span>
+   434→              <span class="text-gray-400">স্টক: <b class="text-emerald-600">৩৫০ পিস</b></span>
+   435→            </div>
+   436→          </div>
+   437→          <svg class="w-5 h-5 text-gray-300 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+   438→        </div>
+   439→      </div>
+   440→
+   441→      <!-- Card 2 -->
+   442→      <div class="card-hover bg-white rounded-2xl p-4 shadow-pharmacy">
+   443→        <div class="flex items-center gap-3">
+   444→          <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-600 flex items-center justify-center flex-shrink-0 shadow-lg shadow-amber-500/20">
+   445→            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>
+   446→          </div>
+   447→          <div class="flex-1 min-w-0">
+   448→            <div class="flex items-center justify-between">
+   449→              <div>
+   450→                <p class="font-semibold text-gray-900">সেক্লো</p>
+   451→                <p class="text-xs text-gray-400">ওমিপ্রাজল ২০মি.গ্রা.</p>
+   452→              </div>
+   453→              <span class="text-xs px-2.5 py-1 rounded-full bg-purple-50 text-purple-700 font-medium">ক্যাপসুল</span>
+   454→            </div>
+   455→            <div class="flex items-center gap-4 mt-2 text-xs">
+   456→              <span class="text-gray-400">ব্যাচ: <b class="text-gray-700">C240301</b></span>
+   457→              <span class="text-gray-400">মেয়াদ: <b class="text-gray-700">মার্চ ২০২৭</b></span>
+   458→              <span class="text-gray-400">স্টক: <b class="text-emerald-600">১২০ পিস</b></span>
+   459→            </div>
+   460→          </div>
+   461→          <svg class="w-5 h-5 text-gray-300 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+   462→        </div>
+   463→      </div>
+   464→
+   465→      <!-- Card 3 - Low stock warning -->
+   466→      <div class="card-hover bg-white rounded-2xl p-4 shadow-pharmacy border-l-4 border-rose-400">
+   467→        <div class="flex items-center gap-3">
+   468→          <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-rose-400 to-pink-600 flex items-center justify-center flex-shrink-0 shadow-lg shadow-rose-500/20">
+   469→            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>
+   470→          </div>
+   471→          <div class="flex-1 min-w-0">
+   472→            <div class="flex items-center justify-between">
+   473→              <div>
+   474→                <p class="font-semibold text-gray-900">এসি প্লাস</p>
+   475→                <p class="text-xs text-gray-400">প্যারাসিটামল + ক্যাফেইন</p>
+   476→              </div>
+   477→              <span class="text-xs px-2.5 py-1 rounded-full bg-rose-50 text-rose-700 font-semibold">⚠️ স্টক শেষ</span>
+   478→            </div>
+   479→            <div class="flex items-center gap-4 mt-2 text-xs">
+   480→              <span class="text-gray-400">ব্যাচ: <b class="text-gray-700">A240215</b></span>
+   481→              <span class="text-gray-400">মেয়াদ: <b class="text-gray-700">ফেব্রু ২০২৭</b></span>
+   482→              <span class="text-rose-600 font-semibold">স্টক: ০ পিস</span>
+   483→            </div>
+   484→          </div>
+   485→          <button class="flex-shrink-0 px-3 py-2 rounded-xl bg-pharmacy-50 text-pharmacy-700 text-xs font-semibold hover:bg-pharmacy-100 transition-colors">রিস্টক</button>
+   486→        </div>
+   487→      </div>
+   488→
+   489→      <!-- Card 4 -->
+   490→      <div class="card-hover bg-white rounded-2xl p-4 shadow-pharmacy">
+   491→        <div class="flex items-center gap-3">
+   492→          <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center flex-shrink-0 shadow-lg shadow-emerald-500/20">
+   493→            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>
+   494→          </div>
+   495→          <div class="flex-1 min-w-0">
+   496→            <div class="flex items-center justify-between">
+   497→              <div>
+   498→                <p class="font-semibold text-gray-900">হিস্টাসিন</p>
+   499→                <p class="text-xs text-gray-400">ফেক্সোফেনাডিন ১২০মি.গ্রা.</p>
+   500→              </div>
+   501→              <span class="text-xs px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 font-medium">ট্যাবলেট</span>
+   502→            </div>
+   503→            <div class="flex items-center gap-4 mt-2 text-xs">
+   504→              <span class="text-gray-400">ব্যাচ: <b class="text-gray-700">H240920</b></span>
+   505→              <span class="text-gray-400">মেয়াদ: <b class="text-gray-700">সেপ্টে ২০২৭</b></span>
+   506→              <span class="text-gray-400">স্টক: <b class="text-emerald-600">৫০০ পিস</b></span>
+   507→            </div>
+   508→          </div>
+   509→          <svg class="w-5 h-5 text-gray-300 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+   510→        </div>
+   511→      </div>
+   512→    </div>
+   513→
+   514→    <!-- Expiry Management Section -->
+   515→    <div class="mt-6">
+   516→      <div class="flex items-center justify-between mb-3">
+   517→        <h3 class="text-sm font-semibold text-gray-900">মেয়াদ ব্যবস্থাপনা</h3>
+   518→        <button class="text-xs font-medium text-pharmacy-600 hover:text-pharmacy-700">সব দেখুন →</button>
+   519→      </div>
+   520→      <div class="bg-white rounded-2xl p-4 shadow-pharmacy">
+   521→        <div class="flex items-center justify-between pb-3 border-b border-gray-100">
+   522→          <div class="flex items-center gap-3">
+   523→            <div class="w-10 h-10 rounded-xl bg-rose-50 flex items-center justify-center">
+   524→              <svg class="w-5 h-5 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+   525→            </div>
+   526→            <div>
+   527→              <p class="text-sm font-semibold text-gray-900">অ্যামোডিস — ব্যাচ C231201</p>
+   528→              <p class="text-xs text-gray-400">মেট্রোনিডাজল ৪০০মি.গ্রা.</p>
+   529→            </div>
+   530→          </div>
+   531→          <span class="text-xs px-3 py-1.5 rounded-full bg-rose-50 text-rose-700 font-semibold">১৫ দিন বাকি</span>
+   532→        </div>
+   533→        <div class="flex items-center justify-between pt-3">
+   534→          <div class="flex items-center gap-3">
+   535→            <div class="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center">
+   536→              <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+   537→            </div>
+   538→            <div>
+   539→              <p class="text-sm font-semibold text-gray-900">সিপ্রোসিন — ব্যাচ S240405</p>
+   540→              <p class="text-xs text-gray-400">সিপ্রোফ্লক্সাসিন ৫০০মি.গ্রা.</p>
+   541→            </div>
+   542→          </div>
+   543→          <span class="text-xs px-3 py-1.5 rounded-full bg-amber-50 text-amber-700 font-semibold">৪৫ দিন বাকি</span>
+   544→        </div>
+   545→      </div>
+   546→    </div>
+   547→  </section>
+   548→
+   549→  <!-- ============ PAGE: REPORTS ============ -->
+   550→  <section id="page-reports" class="page px-4 md:px-6">
+   551→    <!-- Overview -->
+   552→    <div class="mb-5">
+   553→      <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">সারসংক্ষেপ</h3>
+   554→      <div class="space-y-2">
+   555→        <div class="card-hover bg-white rounded-2xl p-4 shadow-pharmacy flex items-center gap-3">
+   556→          <div class="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
+   557→            <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
+   558→          </div>
+   559→          <div class="flex-1">
+   560→            <p class="text-sm font-semibold text-gray-900">ব্যবসার সারসংক্ষেপ</p>
+   561→            <p class="text-xs text-gray-400">ইনভেন্টরি পরিসংখ্যান, স্টক লেভেল ও সারসংক্ষেপ</p>
+   562→          </div>
+   563→          <svg class="w-5 h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+   564→        </div>
+   565→
+   566→        <div class="card-hover bg-white rounded-2xl p-4 shadow-pharmacy flex items-center gap-3">
+   567→          <div class="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center">
+   568→            <svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+   569→          </div>
+   570→          <div class="flex-1">
+   571→            <p class="text-sm font-semibold text-gray-900">ইনভেন্টরি মূল্যায়ন</p>
+   572→            <p class="text-xs text-gray-400">ক্রয়মূল্য ও এমআরপি ভিত্তিক স্টক মূল্য</p>
+   573→          </div>
+   574→          <svg class="w-5 h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+   575→        </div>
+   576→      </div>
+   577→    </div>
+   578→
+   579→    <!-- Financial Reports -->
+   580→    <div class="mb-5">
+   581→      <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">আর্থিক প্রতিবেদন</h3>
+   582→      <div class="space-y-2">
+   583→        <div class="card-hover bg-white rounded-2xl p-4 shadow-pharmacy flex items-center gap-3">
+   584→          <div class="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center">
+   585→            <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/></svg>
+   586→          </div>
+   587→          <div class="flex-1">
+   588→            <p class="text-sm font-semibold text-gray-900">লাভ-ক্ষতি</p>
+   589→            <p class="text-xs text-gray-400">রাজস্ব বনাম বিক্রীত পণ্যের খরচ, মার্জিন বিশ্লেষণ</p>
+   590→          </div>
+   591→          <svg class="w-5 h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+   592→        </div>
+   593→
+   594→        <div class="card-hover bg-white rounded-2xl p-4 shadow-pharmacy flex items-center gap-3">
+   595→          <div class="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center">
+   596→            <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+   597→          </div>
+   598→          <div class="flex-1">
+   599→            <p class="text-sm font-semibold text-gray-900">ভ্যাট / ট্যাক্স রিপোর্ট</p>
+   600→            <p class="text-xs text-gray-400">বাংলাদেশ ভ্যাট কমপ্লায়েন্স রিপোর্ট</p>
+   601→          </div>
+   602→          <svg class="w-5 h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+   603→        </div>
+   604→      </div>
+   605→    </div>
+   606→
+   607→    <!-- Audit & Compliance -->
+   608→    <div class="mb-5">
+   609→      <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">নিরীক্ষা ও ডেটা</h3>
+   610→      <div class="space-y-2">
+   611→        <div class="card-hover bg-white rounded-2xl p-4 shadow-pharmacy flex items-center gap-3">
+   612→          <div class="w-10 h-10 rounded-xl bg-sky-50 flex items-center justify-center">
+   613→            <svg class="w-5 h-5 text-sky-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+   614→          </div>
+   615→          <div class="flex-1">
+   616→            <p class="text-sm font-semibold text-gray-900">অডিট ট্রেইল</p>
+   617→            <p class="text-xs text-gray-400">সম্পূর্ণ ট্রানজেকশন হিস্টোরি ও লগ</p>
+   618→          </div>
+   619→          <svg class="w-5 h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+   620→        </div>
+   621→
+   622→        <div class="card-hover bg-white rounded-2xl p-4 shadow-pharmacy flex items-center gap-3">
+   623→          <div class="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center">
+   624→            <svg class="w-5 h-5 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"/></svg>
+   625→          </div>
+   626→          <div class="flex-1">
+   627→            <p class="text-sm font-semibold text-gray-900">ডেটা এক্সপোর্ট</p>
+   628→            <p class="text-xs text-gray-400">ডেটা ব্যাকআপ ও এক্সপোর্ট করুন</p>
+   629→          </div>
+   630→          <svg class="w-5 h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+   631→        </div>
+   632→      </div>
+   633→    </div>
+   634→
+   635→    <!-- Printable Report Card -->
+   636→    <div class="bg-gradient-to-br from-pharmacy-50 to-emerald-50 rounded-2xl p-5 border border-pharmacy-100">
+   637→      <div class="flex items-center gap-3 mb-3">
+   638→        <div class="w-10 h-10 rounded-xl bg-pharmacy-100 flex items-center justify-center">
+   639→          <svg class="w-5 h-5 text-pharmacy-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+   640→        </div>
+   641→        <div>
+   642→          <p class="font-semibold text-gray-900">প্রিন্টযোগ্য রিপোর্ট</p>
+   643→          <p class="text-xs text-gray-500">ইনভেন্টরির বিস্তারিত প্রিন্ট রিপোর্ট জেনারেট করুন</p>
+   644→        </div>
+   645→      </div>
+   646→      <button class="w-full py-2.5 rounded-xl bg-pharmacy-600 text-white text-sm font-semibold hover:bg-pharmacy-700 transition-colors shadow-md shadow-pharmacy-600/25">
+   647→        রিপোর্ট জেনারেট করুন
+   648→      </button>
+   649→    </div>
+   650→  </section>
+   651→
+   652→  <!-- ============ PAGE: MORE ============ -->
+   653→  <section id="page-more" class="page px-4 md:px-6">
+   654→    <!-- Profile Card -->
+   655→    <div class="bg-white rounded-2xl p-5 shadow-pharmacy mb-5">
+   656→      <div class="flex items-center gap-4">
+   657→        <div class="w-14 h-14 rounded-full bg-gradient-to-br from-pharmacy-400 to-pharmacy-600 flex items-center justify-center text-white text-xl font-bold shadow-lg shadow-pharmacy-500/25">A</div>
+   658→        <div>
+   659→          <p class="font-semibold text-gray-900 text-lg">অ্যাডমিন</p>
+   660→          <p class="text-sm text-gray-400">অ্যাডমিন · সিটি ফার্মেসি</p>
+   661→        </div>
+   662→        <button class="ml-auto text-xs font-medium text-pharmacy-600 hover:text-pharmacy-700">এডিট</button>
+   663→      </div>
+   664→    </div>
+   665→
+   666→    <!-- People -->
+   667→    <div class="mb-5">
+   668→      <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">জনগণ</h3>
+   669→      <div class="bg-white rounded-2xl shadow-pharmacy overflow-hidden">
+   670→        <a href="#" class="flex items-center gap-3 px-5 py-4 hover:bg-gray-50 transition-colors border-b border-gray-50">
+   671→          <div class="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center">
+   672→            <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+   673→          </div>
+   674→          <div class="flex-1">
+   675→            <p class="text-sm font-semibold text-gray-900">ক্রেতা</p>
+   676→            <p class="text-xs text-gray-400">ক্রেতার প্রোফাইল ও ক্রেডিট</p>
+   677→          </div>
+   678→          <svg class="w-5 h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+   679→        </a>
+   680→        <a href="#" class="flex items-center gap-3 px-5 py-4 hover:bg-gray-50 transition-colors">
+   681→          <div class="w-9 h-9 rounded-xl bg-orange-50 flex items-center justify-center">
+   682→            <svg class="w-4 h-4 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+   683→          </div>
+   684→          <div class="flex-1">
+   685→            <p class="text-sm font-semibold text-gray-900">সরবরাহকারী</p>
+   686→            <p class="text-xs text-gray-400">ভেন্ডর ব্যবস্থাপনা</p>
+   687→          </div>
+   688→          <svg class="w-5 h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+   689→        </a>
+   690→      </div>
+   691→    </div>
+   692→
+   693→    <!-- Purchasing -->
+   694→    <div class="mb-5">
+   695→      <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">ক্রয়</h3>
+   696→      <div class="bg-white rounded-2xl shadow-pharmacy overflow-hidden">
+   697→        <a href="#" class="flex items-center gap-3 px-5 py-4 hover:bg-gray-50 transition-colors border-b border-gray-50">
+   698→          <div class="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center">
+   699→            <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+   700→          </div>
+   701→          <div class="flex-1">
+   702→            <p class="text-sm font-semibold text-gray-900">নতুন ক্রয়</p>
+   703→            <p class="text-xs text-gray-400">স্টক গ্রহণ রেকর্ড করুন</p>
+   704→          </div>
+   705→          <svg class="w-5 h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+   706→        </a>
+   707→        <a href="#" class="flex items-center gap-3 px-5 py-4 hover:bg-gray-50 transition-colors">
+   708→          <div class="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center">
+   709→            <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+   710→          </div>
+   711→          <div class="flex-1">
+   712→            <p class="text-sm font-semibold text-gray-900">ক্রয়ের ইতিহাস</p>
+   713→            <p class="text-xs text-gray-400">সকল ক্রয় অর্ডার</p>
+   714→          </div>
+   715→          <svg class="w-5 h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+   716→        </a>
+   717→      </div>
+   718→    </div>
+   719→
+   720→    <!-- Operations -->
+   721→    <div class="mb-5">
+   722→      <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">পরিচালনা</h3>
+   723→      <div class="bg-white rounded-2xl shadow-pharmacy overflow-hidden">
+   724→        <a href="#" class="flex items-center gap-3 px-5 py-4 hover:bg-gray-50 transition-colors border-b border-gray-50">
+   725→          <div class="w-9 h-9 rounded-xl bg-green-50 flex items-center justify-center">
+   726→            <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+   727→          </div>
+   728→          <div class="flex-1">
+   729→            <p class="text-sm font-semibold text-gray-900">পেমেন্ট</p>
+   730→            <p class="text-xs text-gray-400">পেমেন্ট রেকর্ড ও ট্র্যাক করুন</p>
+   731→          </div>
+   732→          <svg class="w-5 h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+   733→        </a>
+   734→        <a href="#" class="flex items-center gap-3 px-5 py-4 hover:bg-gray-50 transition-colors border-b border-gray-50">
+   735→          <div class="w-9 h-9 rounded-xl bg-rose-50 flex items-center justify-center">
+   736→            <svg class="w-4 h-4 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg>
+   737→          </div>
+   738→          <div class="flex-1">
+   739→            <p class="text-sm font-semibold text-gray-900">রিটার্ন</p>
+   740→            <p class="text-xs text-gray-400">রিটার্ন ও রিফান্ড প্রক্রিয়া</p>
+   741→          </div>
+   742→          <svg class="w-5 h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+   743→        </a>
+   744→        <a href="#" class="flex items-center gap-3 px-5 py-4 hover:bg-gray-50 transition-colors">
+   745→          <div class="w-9 h-9 rounded-xl bg-violet-50 flex items-center justify-center">
+   746→            <svg class="w-4 h-4 text-violet-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/></svg>
+   747→          </div>
+   748→          <div class="flex-1">
+   749→            <p class="text-sm font-semibold text-gray-900">ডিসকাউন্ট নিয়ম</p>
+   750→            <p class="text-xs text-gray-400">স্বয়ংক্রিয় ডিসকাউন্ট সেটিংস</p>
+   751→          </div>
+   752→          <svg class="w-5 h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+   753→        </a>
+   754→      </div>
+   755→    </div>
+   756→
+   757→    <!-- Settings -->
+   758→    <div class="mb-5">
+   759→      <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">সেটিংস</h3>
+   760→      <div class="bg-white rounded-2xl shadow-pharmacy overflow-hidden">
+   761→        <a href="#" class="flex items-center gap-3 px-5 py-4 hover:bg-gray-50 transition-colors border-b border-gray-50">
+   762→          <div class="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center">
+   763→            <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+   764→          </div>
+   765→          <div class="flex-1">
+   766→            <p class="text-sm font-semibold text-gray-900">ইউজার ম্যানেজমেন্ট</p>
+   767→            <p class="text-xs text-gray-400">রোল ও পারমিশন</p>
+   768→          </div>
+   769→          <svg class="w-5 h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+   770→        </a>
+   771→        <a href="#" class="flex items-center gap-3 px-5 py-4 hover:bg-gray-50 transition-colors border-b border-gray-50">
+   772→          <div class="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center">
+   773→            <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+   774→          </div>
+   775→          <div class="flex-1">
+   776→            <p class="text-sm font-semibold text-gray-900">এলার্ট সেটিংস</p>
+   777→            <p class="text-xs text-gray-400">থ্রেশহোল্ড কনফিগার করুন</p>
+   778→          </div>
+   779→          <svg class="w-5 h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+   780→        </a>
+   781→        <a href="#" class="flex items-center gap-3 px-5 py-4 hover:bg-gray-50 transition-colors">
+   782→          <div class="w-9 h-9 rounded-xl bg-rose-50 flex items-center justify-center">
+   783→            <svg class="w-4 h-4 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+   784→          </div>
+   785→          <div class="flex-1">
+   786→            <p class="text-sm font-semibold text-gray-900">মেয়াদ রিপোর্ট</p>
+   787→            <p class="text-xs text-gray-400">প্রিন্টযোগ্য মেয়াদোত্তীর্ণ রিপোর্ট</p>
+   788→          </div>
+   789→          <svg class="w-5 h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+   790→        </a>
+   791→      </div>
+   792→    </div>
+   793→
+   794→    <!-- Logout -->
+   795→    <button class="w-full py-3.5 rounded-2xl bg-rose-500 hover:bg-rose-600 text-white font-semibold text-sm transition-colors shadow-md shadow-rose-500/25 flex items-center justify-center gap-2 mb-8">
+   796→      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+   797→      লগ আউট
+   798→    </button>
+   799→  </section>
+   800→
+   801→</main>
+   802→
+   803→<!-- ============ MOBILE BOTTOM NAV ============ -->
+   804→<nav class="bottom-nav fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-xl border-t border-gray-100 shadow-nav z-50 flex md:hidden">
+   805→  <a href="#" onclick="switchPage('dashboard'); return false" data-nav="dashboard" class="nav-item active relative flex-1 flex flex-col items-center justify-center py-3 px-1">
+   806→    <svg class="nav-icon w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+   807→    <span class="nav-label text-xs text-gray-400 mt-1">ড্যাশবোর্ড</span>
+   808→  </a>
+   809→  <a href="#" onclick="switchPage('inventory'); return false" data-nav="inventory" class="nav-item relative flex-1 flex flex-col items-center justify-center py-3 px-1">
+   810→    <svg class="nav-icon w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+   811→    <span class="nav-label text-xs text-gray-400 mt-1">ইনভেন্টরি</span>
+   812→  </a>
+   813→  <a href="#" onclick="switchPage('reports'); return false" data-nav="reports" class="nav-item relative flex-1 flex flex-col items-center justify-center py-3 px-1">
+   814→    <svg class="nav-icon w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+   815→    <span class="nav-label text-xs text-gray-400 mt-1">রিপোর্ট</span>
+   816→  </a>
+   817→  <a href="#" onclick="switchPage('more'); return false" data-nav="more" class="nav-item relative flex-1 flex flex-col items-center justify-center py-3 px-1">
+   818→    <svg class="nav-icon w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+   819→    <span class="nav-label text-xs text-gray-400 mt-1">আরও</span>
+   820→  </a>
+   821→</nav>
+   822→
+   823→<!-- ============ SCRIPTS ============ -->
+   824→<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+   825→<script>
+   826→// Page switching with GSAP animations
+   827→function switchPage(pageName) {
+   828→  const pages = document.querySelectorAll('.page');
+   829→  const targetPage = document.getElementById('page-' + pageName);
+   830→  if (!targetPage || targetPage.classList.contains('active')) return;
+   831→
+   832→  // Update nav (both mobile and desktop)
+   833→  document.querySelectorAll('[data-nav]').forEach(el => {
+   834→    el.classList.remove('active');
+   835→    // Reset sidebar link styling
+   836→    if (el.classList.contains('sidebar-link')) {
+   837→      el.classList.remove('text-gray-900', 'bg-pharmacy-50');
+   838→      el.classList.add('text-gray-500');
+   839→    }
+   840→  });
+   841→  
+   842→  const navLinks = document.querySelectorAll('[data-nav="' + pageName + '"]');
+   843→  navLinks.forEach(el => {
+   844→    el.classList.add('active');
+   845→    if (el.classList.contains('sidebar-link')) {
+   846→      el.classList.remove('text-gray-500');
+   847→      el.classList.add('text-gray-900', 'bg-pharmacy-50');
+   848→    }
+   849→  });
+   850→
+   851→  // Hide all pages
+   852→  pages.forEach(p => {
+   853→    if (p.classList.contains('active')) {
+   854→      gsap.to(p, { 
+   855→        opacity: 0, 
+   856→        y: 12, 
+   857→        duration: 0.25, 
+   858→        ease: 'power2.in',
+   859→        onComplete: () => {
+   860→          p.classList.remove('active');
+   861→          p.style.display = 'none';
+   862→          
+   863→          // Show target page
+   864→          targetPage.classList.add('active');
+   865→          targetPage.style.display = 'block';
+   866→          gsap.fromTo(targetPage, 
+   867→            { opacity: 0, y: 20 }, 
+   868→            { opacity: 1, y: 0, duration: 0.4, ease: 'power2.out' }
+   869→          );
+   870→        }
+   871→      });
+   872→    }
+   873→  });
+   874→
+   875→  // Animate cards sequentially
+   876→  setTimeout(() => {
+   877→    gsap.fromTo(targetPage.querySelectorAll('.card-hover, .grid > *'), 
+   878→      { opacity: 0, y: 16 },
+   879→      { opacity: 1, y: 0, duration: 0.35, stagger: 0.04, ease: 'power2.out' }
+   880→    );
+   881→  }, 300);
+   882→
+   883→  // Update page title
+   884→  const titles = {
+   885→    dashboard: 'ড্যাশবোর্ড',
+   886→    inventory: 'ইনভেন্টরি',
+   887→    reports: 'রিপোর্ট',
+   888→    more: 'আরও'
+   889→  };
+   890→  const titleEl = document.querySelector('.page-title');
+   891→  if (titleEl) titleEl.textContent = titles[pageName] || pageName;
+   892→}
+   893→
+   894→// Initial page animation
+   895→window.addEventListener('DOMContentLoaded', () => {
+   896→  gsap.fromTo('#page-dashboard .card-hover, #page-dashboard .grid > *',
+   897→    { opacity: 0, y: 20 },
+   898→    { opacity: 1, y: 0, duration: 0.4, stagger: 0.05, ease: 'power2.out' }
+   899→  );
+   900→  
+   901→  // Animate welcome banner independently
+   902→  gsap.fromTo('#page-dashboard > div:first-child',
+   903→    { opacity: 0, scale: 0.98 },
+   904→    { opacity: 1, scale: 1, duration: 0.5, ease: 'power2.out' }
+   905→  );
+   906→});
+   907→</script>
+   908→
+   909→</body>
+   910→</html>
+   911→

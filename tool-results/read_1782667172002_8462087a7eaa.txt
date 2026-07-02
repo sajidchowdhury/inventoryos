@@ -1,0 +1,1014 @@
+     1→---
+     2→Task ID: phase-0
+     3→Agent: Super Z
+     4→Task: Initialize InventoryOS full-stack development environment
+     5→
+     6→Work Log:
+     7→- Initialized Next.js 16 + TypeScript + Tailwind 4 + shadcn/ui project
+     8→- Created Prisma schema with 10 tables (BusinessType, User, Business, BusinessUser, Category, Product, Inventory, Transaction, OtpVerification, Session)
+     9→- Seeded database with 7 business types (Pharmacy active, 6 coming soon)
+    10→- Created module registry with type definitions
+    11→- Created auth utilities (bcryptjs, OTP generation, BD phone validation)
+    12→- Set up project folder structure (modules/, types/, lib/)
+    13→- Built Phase 0 confirmation page
+    14→
+    15→Stage Summary:
+    16→- All 6 system checks pass (Next.js, TypeScript, Tailwind, shadcn/ui, Prisma, Module Architecture)
+    17→- Database seeded and ready
+    18→- Project structure ready for Phase 1
+    19→
+    20→---
+    21→Task ID: phase-1
+    22→Agent: Super Z
+    23→Task: Build Phase 1 - Landing page, authentication flow, and dashboard
+    24→
+    25→Work Log:
+    26→- Created 5 API routes: send-otp, verify-otp, register, login, businesses
+    27→- Created Zustand auth store for multi-step flow state management
+    28→- Built 8-step animated flow: Landing → Phone → OTP → Discovery → Add Business → Create Login → Login → Dashboard
+    29→- Implemented phone-first authentication with demo OTP (01787492561 / 9999)
+    30→- Handled two user paths: no-business (direct to add) and has-business (discovery + login)
+    31→- Auto-login after registration (calls login API to create session)
+    32→- Per-business credentials with username/password login
+    33→- Dashboard shows business name, "You are logged in" badge, stats cards, user info
+    34→- Fixed 2 bugs found by Agent Browser: missing setUserName in store, missing setSession after registration
+    35→- Browser-verified both scenarios: new user registration and returning user login
+    36→
+    37→Stage Summary:
+    38→- Full auth flow working end-to-end for both user types
+    39→- Demo: Phone 01787492561, OTP 9999
+    40→- Mobile-first, animated, colorful UX
+    41→- All API routes return correct responses
+    42→- Lint passes clean
+    43→---
+    44→Task ID: 1a-completion
+    45→Agent: Main Agent
+    46→Task: Complete Phase 1a — Pharmacy Product Master & Categories UI
+    47→
+    48→Work Log:
+    49→- Audited current state: APIs exist but no UI components (dashboard, product list, add/edit form, categories)
+    50→- Created GET/PUT/DELETE /api/businesses/[id]/products/[productId] route for individual product operations
+    51→- Built PharmacyDashboard component with real-time stats, quick actions, and recent products
+    52→- Built ProductList component with search, category chip filters, stock indicators, edit/delete actions
+    53→- Built ProductForm component (add/edit mode) with pharmacy-specific fields (strength, dosage form, schedule type, etc.)
+    54→- Built CategoryManager component with category creation dialog, color picker, hierarchy support
+    55→- Built ProfileView component with business info, user card, settings list, logout
+    56→- Built BottomNav component for mobile-first tab navigation
+    57→- Created PharmacyShell that switches between views using nav-store
+    58→- Replaced placeholder DashboardStep in page.tsx with PharmacyShell integration
+    59→- Modified page.tsx layout to hide header/footer/step-indicator on dashboard step
+    60→- Added 5 demo products (Napa Extra, Amodis, Seclo, Maxpro, Orsaline-N) via API
+    61→- Production build succeeds cleanly, lint passes with zero errors
+    62→- All API endpoints verified: Products CRUD, Categories CRUD, individual product operations
+    63→
+    64→Stage Summary:
+    65→- Phase 1a is now COMPLETE with all UI components
+    66→- 7 new files created in src/modules/pharmacy/components/
+    67→- 1 new API route for individual product operations
+    68→- PharmacyShell integrates all views via nav-store with bottom navigation
+    69→- Full CRUD for products (create, read, update, delete) and categories (create, read)
+    70→- 18 seeded pharmacy categories, 5 demo products in database
+    71→---
+    72→Task ID: 1b-completion
+    73→Agent: Main Agent
+    74→Task: Complete Phase 1b — Category Management & CSV Import
+    75→
+    76→Work Log:
+    77→- Created GET/PUT/DELETE /api/businesses/[id]/categories/[categoryId] route for individual category operations
+    78→  - PUT supports editing name, color, icon, type, parent, sort order
+    79→  - DELETE has safety checks: blocks deletion if category has products or subcategories
+    80→  - Prevents self-parenting (circular hierarchy)
+    81→- Updated CategoryManager with:
+    82→  - Edit category dialog (pre-populates form with existing values)
+    83→  - Delete confirmation dialog showing product/subcategory counts
+    84→  - Parent category dropdown excludes self when editing (prevents circular hierarchy)
+    85→  - "Import" button in header linking to CSV import view
+    86→- Created POST /api/businesses/[id]/products/import endpoint:
+    87→  - Accepts JSON { products: [] } OR { csv: "..." } OR raw CSV text
+    88→  - Robust CSV parser handling quoted values with embedded commas
+    89→  - Flexible header matching (name, productName, brand all map to "name")
+    90→  - Category name resolution (matches by name or slug)
+    91→  - Returns detailed per-row results (success/error with messages)
+    92→  - Auto-creates Inventory record for each imported product
+    93→- Created GET /api/businesses/[id]/products/template endpoint:
+    94→  - Returns CSV template with 21 column headers
+    95→  - Includes 3 sample rows (Napa Extra, Amodis, Seclo)
+    96→  - Includes field guide comments explaining each column
+    97→  - Sets Content-Disposition for file download
+    98→- Built CsvImport component with 4-phase UX:
+    99→  - Phase 1 (Upload): Drag-drop or tap to browse, template download, quick guide
+   100→  - Phase 2 (Preview): Shows file info + first 5 rows in table format
+   101→  - Phase 3 (Importing): Loading state with spinner
+   102→  - Phase 4 (Complete): Summary card with success/error counts, error details, success list
+   103→- Added "import" view to PharmacyView type and PharmacyShell
+   104→- Added Import buttons to ProductList and CategoryManager headers
+   105→- Updated barrel exports to include CsvImport
+   106→
+   107→Stage Summary:
+   108→- Phase 1b is now COMPLETE
+   109→- 4 new files: category detail API, CSV import API, CSV template API, CsvImport component
+   110→- 3 modified files: nav-store.ts (added "import" view), PharmacyShell.tsx, CategoryManager.tsx (edit/delete)
+   111→- All 7 API test scenarios pass:
+   112→  * CSV template download (200, 27 lines)
+   113→  * Category PUT (200, renamed successfully)
+   114→  * Category DELETE with products (400, safety block works)
+   115→  * Category DELETE empty (200, succeeds)
+   116→  * CSV import via JSON (3/3 success)
+   117→  * CSV import via raw CSV (3/3 success)
+   118→  * Product list shows all 11 products (5 from 1a + 6 imported in 1b)
+   119→- Production build clean, lint passes with zero errors
+   120→- 6 new products added to demo data via CSV import test
+   121→---
+   122→Task ID: 2a-completion
+   123→Agent: Main Agent
+   124→Task: Complete Phase 2a — Batch & Stock Management
+   125→
+   126→Work Log:
+   127→- Created GET/POST /api/businesses/[id]/batches route:
+   128→  - GET supports filtering by productId, status, expiringDays (next N days)
+   129→  - GET returns summary with count & quantity grouped by status (active/near_expiry/expired)
+   130→  - GET auto-updates stale "active" batches to "near_expiry"/"expired" on read
+   131→  - POST creates batch with auto-status calculation based on expiry date
+   132→  - POST prevents duplicate batch numbers per product
+   133→  - POST syncs Inventory.quantity (adds batch quantity to total)
+   134→  - POST creates PURCHASE Transaction for audit trail
+   135→- Created GET/PUT/DELETE /api/businesses/[id]/batches/[batchId]:
+   136→  - PUT updates batch fields, recalculates status if expiry changes
+   137→  - PUT computes quantity delta and syncs Inventory
+   138→  - DELETE decrements Inventory by batch quantity
+   139→  - DELETE creates ADJUSTMENT Transaction for audit
+   140→- Created POST /api/businesses/[id]/batches/[batchId]/adjust:
+   141→  - Supports 4 types: STOCK_IN, STOCK_OUT, WASTE, RETURN
+   142→  - Validates positive quantity
+   143→  - Blocks STOCK_OUT/WASTE if insufficient stock
+   144→  - Updates both Batch.quantity and Inventory.quantity
+   145→  - Creates audit Transaction with type, quantity, note
+   146→- Updated nav-store.ts with new views: product-detail, batches, add-batch, edit-batch
+   147→  - Added activeProductId and editingBatchId state
+   148→- Built ProductDetail.tsx component:
+   149→  - Shows full product info (name, generic, strength, schedule, Rx, manufacturer, rack)
+   150→  - Stock summary cards (total stock, batch count, expired count)
+   151→  - Low-stock / out-of-stock warning banners
+   152→  - Storage, MRP, SKU, strip/box, reorder info card
+   153→  - Batch list with expiry severity badges (ok/warning/critical/expired)
+   154→  - Per-batch actions: Stock In, Stock Out, Edit, Delete
+   155→  - StockAdjust dialog integration
+   156→- Built StockAdjust.tsx component (inside ProductDetail dialog):
+   157→  - Reason chips (New purchase, Sold, Damaged, Returned, etc.)
+   158→  - Quick amount buttons (10, 50, 100, All)
+   159→  - Live preview of resulting stock
+   160→  - Insufficient stock validation
+   161→- Built BatchForm.tsx (add/edit):
+   162→  - Batch number, mfg date, expiry date inputs
+   163→  - Live expiry feedback badge (X days left / expired X days ago)
+   164→  - Quantity, purchase price, MRP fields
+   165→  - Edit-mode warning about quantity adjustments
+   166→- Built BatchList.tsx (all batches view):
+   167→  - Summary cards (total, active, expiring, expired)
+   168→  - Filter tabs (All / Active / Expiring / Expired)
+   169→  - Search by batch no, product, manufacturer
+   170→  - Sorted by expiry date ascending (soonest first)
+   171→  - Tap batch → navigate to product detail
+   172→- Updated BottomNav: replaced "Categories" tab with "Stock" (batches)
+   173→- Updated PharmacyDashboard: added "Stock" quick action, expiring-soon stat now links to batches
+   174→- Updated ProductList: added "View" button (navigates to ProductDetail), kept "Edit" button
+   175→- Updated PharmacyShell and barrel exports
+   176→
+   177→Stage Summary:
+   178→- Phase 2a is now COMPLETE
+   179→- 3 new API routes (batches list/create, batch detail, stock adjust)
+   180→- 4 new UI components (ProductDetail, BatchForm, BatchList, StockAdjust)
+   181→- 4 modified components (PharmacyShell, BottomNav, ProductList, PharmacyDashboard)
+   182→- All 16 API test scenarios pass:
+   183→  * Batch creation with auto-status (active/near_expiry/expired)
+   184→  * Duplicate batch prevention (400)
+   185→  * Inventory auto-sync on create (170 = 100+50+20)
+   186→  * Summary grouping by status
+   187→  * Status filter (?status=expired → 1 batch)
+   188→  * Expiring-days filter (?expiringDays=90 → 1 batch)
+   189→  * Stock IN (+30 → 130)
+   190→  * Stock OUT (-50 → 80)
+   191→  * Insufficient stock block (400)
+   192→  * WASTE (-10 → 70)
+   193→  * Inventory reflects all adjustments (170 → 140)
+   194→  * PUT auto-recalculates status on expiry change
+   195→  * DELETE decrements inventory correctly
+   196→  * Cleanup restores inventory to 0
+   197→- Production build clean, lint passes with zero errors
+   198→- Audit trail via Transaction records (PURCHASE, ADJUSTMENT, STOCK_IN/OUT/WASTE/RETURN)
+   199→---
+   200→Task ID: 2b-completion
+   201→Agent: Main Agent
+   202→Task: Complete Phase 2b — FEFO Engine, Batch Sync, Expiry Alerts, Quick Dispense
+   203→
+   204→Work Log:
+   205→- Created POST /api/businesses/[id]/products/[productId]/allocate (FEFO engine):
+   206→  - Accepts { quantity, execute?, type?, note? }
+   207→  - Dry-run mode (default) returns allocation plan without modifying stock
+   208→  - Execute mode (execute=true) performs the allocation in DB
+   209→  - Sorts batches by expiry ASC (FEFO order), skips expired/quarantined
+   210→  - Returns 409 Conflict with shortfall if insufficient stock
+   211→  - Creates SALE/DISPENSE Transaction per batch on execute
+   212→  - Auto-recalculates batch status after quantity change
+   213→  - Syncs Inventory.quantity (decrements by allocated amount)
+   214→- Created POST /api/businesses/[id]/batches/sync-status:
+   215→  - Recalculates status for all batches (or specific batchIds)
+   216→  - Returns summary with count of changes + breakdown by status
+   217→  - Used to automate near_expiry→expired transitions
+   218→- Created GET /api/businesses/[id]/expiry-alerts:
+   219→  - Returns batches with stock > 0 expiring within 90 days
+   220→  - Groups by severity: expired, critical (<30d), warning (30-90d)
+   221→  - Each alert includes suggestedAction ("Dispose", "Sell first", "FEFO priority")
+   222→  - Calculates totalValueAtRisk (sum of quantity × MRP)
+   223→- Created POST /api/businesses/[id]/dispense (multi-item FEFO dispense):
+   224→  - Accepts { items: [{ productId, quantity }], note? }
+   225→  - Processes each item via FEFO allocation
+   226→  - Validates all items first, then executes atomically per-item
+   227→  - Returns per-item results with allocation breakdown
+   228→  - Creates SALE transactions for audit trail
+   229→  - Updates both Batch.quantity and Inventory.quantity
+   230→- Updated nav-store.ts: added "dispense" to PharmacyView type
+   231→- Built QuickDispense.tsx component (3-tap flow):
+   232→  - Tap 1: Search & add products to cart (debounced search)
+   233→  - Tap 2: Enter quantities per item (with stock-exceeds warning)
+   234→  - Tap 3: Preview FEFO allocation → Confirm dispense
+   235→  - Shows per-batch allocation breakdown (which batch contributes how much)
+   236→  - Success screen with total value dispensed
+   237→  - Handles partial failures (some items succeed, others fail with shortfall)
+   238→- Built ExpiryAlertsWidget.tsx for dashboard:
+   239→  - Summary cards (expired / critical / warning counts)
+   240→  - Value-at-risk display
+   241→  - Top 3 most urgent alerts (expired first, then critical)
+   242→  - Tap alert → navigate to product detail
+   243→  - "All clear" state when no alerts
+   244→  - Refresh button
+   245→- Updated BottomNav: replaced "Add" with prominent "Dispense" button (raised, primary color)
+   246→- Updated PharmacyDashboard:
+   247→  - Added prominent "Quick Dispense" CTA button at top (h-14, shadow)
+   248→  - Embedded ExpiryAlertsWidget at bottom of dashboard
+   249→- Updated PharmacyShell and barrel exports to include new views/components
+   250→
+   251→Stage Summary:
+   252→- Phase 2b is now COMPLETE — FEFO engine is fully functional
+   253→- 4 new API routes: allocate, sync-status, expiry-alerts, dispense
+   254→- 2 new UI components: QuickDispense, ExpiryAlertsWidget
+   255→- 3 modified components: BottomNav (Dispense primary CTA), PharmacyDashboard (CTA + alerts widget), PharmacyShell
+   256→- All 8 FEFO test scenarios pass:
+   257→  * Dry-run allocation picks batches in expiry order (C→B→A) ✅
+   258→  * Insufficient stock returns 409 with shortfall ✅
+   259→  * Execute mode reduces stock correctly (180→110 after 70 dispensed) ✅
+   260→  * Batch status sync recalculates correctly ✅
+   261→  * Expiry alerts filtered to batches with stock > 0 ✅
+   262→  * Multi-item dispense processes all items via FEFO ✅
+   263→  * Per-batch allocation breakdown returned ✅
+   264→  * Inventory syncs correctly across all operations ✅
+   265→- Production build clean, lint passes with zero errors
+   266→- FEFO guarantees: oldest-expiring stock is always sold first, preventing waste
+   267→---
+   268→Task ID: 2c-completion
+   269→Agent: Main Agent
+   270→Task: Complete Phase 2c — Quarantine, Disposal, Auto-Sync, Audit Log
+   271→
+   272→Work Log:
+   273→- Created POST/DELETE /api/businesses/[id]/batches/[batchId]/quarantine:
+   274→  - POST: Marks batch as quarantined (removes from FEFO rotation)
+   275→  - 5 reasons: damaged, suspected, recall, quality_issue, other
+   276→  - Prevents double-quarantine (400 error)
+   277→  - Prevents quarantine of zero-quantity batches
+   278→  - Creates QUARANTINE audit transaction
+   279→  - DELETE: Releases batch from quarantine, recalculates status based on expiry
+   280→  - Creates RELEASE audit transaction
+   281→- Created POST /api/businesses/[id]/batches/[batchId]/dispose:
+   282→  - Records disposal/destruction of stock (partial or full)
+   283→  - 5 reasons: expired, damaged, recall, quality_issue, other
+   284→  - 5 disposal methods: landfill, incineration, return_to_supplier, sewer, other
+   285→  - Optional witness field (regulatory requirement)
+   286→  - Calculates value lost (quantity × MRP/purchasePrice)
+   287→  - Full disposal → status changes to "destroyed"
+   288→  - Partial disposal → status recalculated based on expiry
+   289→  - Blocks over-disposal (400 error)
+   290→  - Decrements Inventory.quantity
+   291→  - Creates WASTE audit transaction with full disposal details in note
+   292→- Created GET/POST /api/businesses/[id]/batches/auto-sync:
+   293→  - GET: Check sync status without performing sync (returns batchesNeedingUpdate count)
+   294→  - POST: Recalculate all batch statuses based on current expiry dates
+   295→  - Skips quarantined and destroyed batches (preserves manual states)
+   296→  - Returns summary with status counts and list of changes
+   297→  - Supports X-Cron-Secret header for production cron security
+   298→  - Designed for daily cron job invocation
+   299→- Created GET /api/businesses/[id]/transactions:
+   300→  - Full audit log with filters: productId, batchId, type, date range
+   301→  - Pagination support (default 50 per page)
+   302→  - Summary by type with count and total quantity
+   303→  - Workaround for Transaction model not having Batch relation:
+   304→    fetches batch info separately and enriches transactions
+   305→- Built QuarantineDialog.tsx:
+   306→  - Reason selection with descriptions
+   307→  - Optional notes field
+   308→  - Warning banner showing batch details
+   309→  - Success state with confirmation
+   310→- Built DisposeDialog.tsx:
+   311→  - Quantity input with quick buttons (All, Half)
+   312→  - Reason selection
+   313→  - Disposal method dropdown
+   314→  - Witness name field
+   315→  - Live value-lost preview
+   316→  - Over-disposal validation
+   317→  - Success state showing value lost and remaining quantity
+   318→- Built TransactionLog.tsx:
+   319→  - Summary cards (Stock In, Sales, Disposals)
+   320→  - Search by product, batch, type, note
+   321→  - Filter chips: All, Stock In, Sales, Adjustments, Disposals, Quarantine
+   322→  - Color-coded transaction type icons
+   323→  - Each transaction shows: product, type badge, quantity change (+/-), batch, note, timestamp
+   324→  - Tap transaction → navigate to product detail
+   325→  - Pagination
+   326→- Updated ProductDetail.tsx:
+   327→  - Added 6-button action grid per batch: In, Out, Quarantine, Dispose, Edit, Delete
+   328→  - Quarantined batches show orange border + QUARANTINED badge, action buttons hidden
+   329→  - Destroyed batches show red border + DESTROYED badge, dimmed, action buttons hidden
+   330→  - Integrated QuarantineDialog and DisposeDialog
+   331→- Updated PharmacyDashboard.tsx:
+   332→  - Added "View Activity Log" button at bottom
+   333→- Updated nav-store, PharmacyShell, barrel exports with "transactions" view
+   334→
+   335→Stage Summary:
+   336→- Phase 2c is now COMPLETE — Phase 2 (Batch & Stock Management) fully done
+   337→- 4 new API routes: quarantine (POST+DELETE), dispose, auto-sync (GET+POST), transactions
+   338→- 3 new UI components: QuarantineDialog, DisposeDialog, TransactionLog
+   339→- 2 modified components: ProductDetail (6-action grid + state badges), PharmacyDashboard (activity log link)
+   340→- All 13 API test scenarios pass:
+   341→  * Quarantine changes status to "quarantined" ✅
+   342→  * FEFO excludes quarantined batches (409 with correct shortfall) ✅
+   343→  * FEFO picks only active batches ✅
+   344→  * Double-quarantine blocked (400) ✅
+   345→  * Release recalculates status correctly ✅
+   346→  * Auto-sync GET shows sync status ✅
+   347→  * Auto-sync POST updates statuses ✅
+   348→  * Partial disposal: reduces qty, keeps status, calculates value lost ✅
+   349→  * Full disposal: sets status to "destroyed" ✅
+   350→  * Over-disposal blocked (400) ✅
+   351→  * Transactions audit log returns 39 records with summary ✅
+   352→  * Filter by type=WASTE returns 5 disposal records ✅
+   353→  * Filter by productId returns 27 records ✅
+   354→- Production build clean, lint passes with zero errors
+   355→- Full audit trail: every stock movement creates a Transaction record with type, quantity, note, timestamp
+   356→- Regulatory compliance: witness field for disposals, full disposal method tracking
+   357→- Cron-ready: auto-sync endpoint can be called daily to update batch statuses
+   358→---
+   359→Task ID: 3a-completion
+   360→Agent: Main Agent
+   361→Task: Complete Phase 3a — Full Expiry Management Dashboard with Bulk Actions
+   362→
+   363→Work Log:
+   364→- Created GET /api/businesses/[id]/expiry-stats:
+   365→  - Returns rich aggregations for full-page expiry dashboard
+   366→  - 6 severity buckets: expired, critical_7d, critical_30d, warning_90d, safe, quarantined
+   367→  - Each bucket has count, quantity, and value
+   368→  - 13-week timeline showing upcoming expiries by week
+   369→  - Top 10 manufacturers by value at risk
+   370→  - Category breakdown with colors
+   371→  - Total value at risk + total units at risk summary
+   372→  - Configurable time window (?days=90 default)
+   373→- Created POST /api/businesses/[id]/batches/bulk:
+   374→  - Apply action to up to 50 batches at once
+   375→  - 5 actions: quarantine, dispose, return_to_supplier, release, delete
+   376→  - Per-batch results with success/failure status
+   377→  - Each action creates appropriate audit Transaction
+   378→  - Bulk dispose calculates value lost per batch
+   379→  - Bulk return_to_supplier stores supplier name
+   380→  - Validates action and batchIds
+   381→- Created POST /api/businesses/[id]/batches/[batchId]/return:
+   382→  - Single-batch supplier return with full details
+   383→  - Required: supplierName, reason (5 options)
+   384→  - Optional: quantity (partial returns), creditExpected, notes
+   385→  - Sets batch status to "returned" for full returns
+   386→  - Calculates value returned (purchase price × qty)
+   387→  - Stores supplier name in batch.supplierId field
+   388→  - Creates RETURN audit transaction with full details
+   389→- Updated nav-store.ts: added "expiry" view
+   390→- Built ExpiryDashboard.tsx (full page):
+   391→  - Hero summary card with value-at-risk + units-at-risk
+   392→  - 6 clickable severity bucket cards (filter by tapping)
+   393→  - 13-week expiry timeline chart (gradient bars with hover tooltips)
+   394→  - Top manufacturers bar chart (by value at risk)
+   395→  - Category breakdown chips
+   396→  - Search by product/batch/manufacturer
+   397→  - 7 severity filter tabs with counts
+   398→  - Bulk mode: tap "Bulk" button → select multiple batches → apply action
+   399→  - Color-coded batch cards with severity borders
+   400→- Built ExpiryTimelineChart.tsx:
+   401→  - 13-week visual timeline of upcoming expiries
+   402→  - Gradient bars (orange→red) showing value at risk per week
+   403→  - Blue dots showing units
+   404→  - Hover tooltips with full details
+   405→  - Legend at bottom
+   406→- Built BulkActionBar.tsx:
+   407→  - Fixed bottom bar when batches are selected
+   408→  - 5 action options: Quarantine, Dispose, Return to Supplier, Release, Delete
+   409→  - Dynamic form fields based on action (reason, method, witness, supplier name, notes)
+   410→  - Execution summary with success/failure counts
+   411→  - Communicates with parent via localStorage (selectedBatches)
+   412→- Updated PharmacyDashboard:
+   413→  - Quick actions grid expanded to 3×2 = 6 actions (added Expiry + Activity)
+   414→  - Each action has distinct color and icon
+   415→  - ExpiryAlertsWidget "View all" now links to expiry dashboard
+   416→- Updated PharmacyShell + barrel exports
+   417→
+   418→Stage Summary:
+   419→- Phase 3a is now COMPLETE
+   420→- 3 new API routes: expiry-stats, batches/bulk, batches/[id]/return
+   421→- 3 new UI components: ExpiryDashboard, ExpiryTimelineChart, BulkActionBar
+   422→- 2 modified components: PharmacyDashboard (expanded quick actions), ExpiryAlertsWidget (link to expiry page)
+   423→- All 9 API test scenarios pass:
+   424→  * Expiry stats aggregation (5 batches, 6 buckets, ৳5250 value at risk) ✅
+   425→  * 13-week timeline populated correctly ✅
+   426→  * Manufacturer + category breakdowns ✅
+   427→  * Bulk quarantine (2/2 success) ✅
+   428→  * Buckets update correctly after bulk actions ✅
+   429→  * Bulk release recalculates statuses ✅
+   430→  * Supplier return sets status to "returned" + stores supplier ✅
+   431→  * Bulk dispose with value-lost tracking (৳2250 lost) ✅
+   432→  * Final state verification (correct counts) ✅
+   433→  * Invalid action rejected (400) ✅
+   434→  * Empty batchIds rejected (400) ✅
+   435→- Production build clean, lint passes with zero errors
+   436→- Bulk operations support: quarantine, dispose, return to supplier, release, delete
+   437→- Full audit trail maintained for all bulk operations
+   438→---
+   439→Task ID: 3b-completion
+   440→Agent: Main Agent
+   441→Task: Complete Phase 3b — Alerts, Notifications, Reports System
+   442→
+   443→Work Log:
+   444→- Added 2 new Prisma models:
+   445→  - AlertPreference: per-business notification settings (thresholds, channels, digest freq, quiet hours)
+   446→  - NotificationLog: persistent log of generated alerts (type, severity, read state, dedup)
+   447→  - Added reverse relations on Business model
+   448→  - Applied schema to database via prisma db push
+   449→- Created GET/PUT /api/businesses/[id]/alert-preferences:
+   450→  - GET auto-creates default preferences on first access (lazy initialization)
+   451→  - PUT validates thresholds (critical < warning < notice), validates digest frequency, quiet hours
+   452→  - Supports email/SMS channel configuration for future integration
+   453→- Created GET /api/businesses/[id]/combined-alerts:
+   454→  - Single endpoint returns all active alerts using business's custom thresholds
+   455→  - Combines: low stock alerts + expiry alerts (3 severities) + quarantine alerts
+   456→  - Each alert includes: type, severity, title, message, entity reference, value at risk
+   457→  - Summary with counts by severity + by type + total value at risk
+   458→  - Sorted by severity (critical first) then recency
+   459→- Created GET /api/businesses/[id]/reports/expiry:
+   460→  - Generates printable expiry report (daily/weekly/monthly)
+   461→  - Returns JSON by default, CSV when ?format=csv
+   462→  - CSV includes Content-Disposition header for file download
+   463→  - 6 sections: expired, critical, warning, notice, safe, quarantined
+   464→  - Each batch row includes: product, batch no, expiry, qty, MRP, value, manufacturer, category
+   465→  - Full summary with totals + value at risk
+   466→- Created POST /api/businesses/[id]/alerts/digest:
+   467→  - Cron-ready endpoint for generating alert digests
+   468→  - Respects digest frequency (skips if mismatched)
+   469→  - Creates NotificationLog entries with 24h deduplication (prevents spam)
+   470→  - Returns full digest with sections + delivery targets
+   471→  - Supports X-Cron-Secret header for production security
+   472→- Created GET/PUT/DELETE /api/businesses/[id]/notifications:
+   473→  - GET: list notification logs with filters (unreadOnly, type, limit)
+   474→  - PUT: mark notifications as read (by IDs or all at once)
+   475→  - DELETE: cleanup old read notifications (configurable age threshold)
+   476→- Updated nav-store.ts: added 'alerts', 'alert-settings', 'report' views
+   477→- Built NotificationCenter.tsx:
+   478→  - Bell icon with unread badge count
+   479→  - Popover dropdown showing recent notifications
+   480→  - Auto-polls every 60 seconds for new notifications
+   481→  - Mark all as read button
+   482→  - Click notification → navigate to relevant view (expiry/products)
+   483→  - Time-ago formatting (just now, 5m ago, 2h ago, etc.)
+   484→- Built AlertsCenter.tsx:
+   485→  - Full-page alerts dashboard
+   486→  - Hero summary card with total alerts + value at risk
+   487→  - 3 type breakdown cards (Expiry Critical, Expiry Soon, Low Stock)
+   488→  - Filter tabs (All/Critical/Warning/Info)
+   489→  - Color-coded alert cards with severity borders
+   490→  - Quick links to expiry page, settings, report
+   491→- Built AlertPreferences.tsx:
+   492→  - Settings page with 5 cards:
+   493→    1. Expiry thresholds (3 inputs with validation)
+   494→    2. Low stock alerts (toggle + threshold)
+   495→    3. Quarantine alerts (toggle)
+   496→    4. Notification channels (email + SMS with toggles)
+   497→    5. Digest frequency (daily/weekly/monthly/none)
+   498→    6. Quiet hours (start/end hour selectors)
+   499→  - Live explanation of how thresholds work
+   500→  - Save button with success/error feedback
+   501→- Built ExpiryReport.tsx:
+   502→  - Printable report view with period selector (daily/weekly/monthly)
+   503→  - Download as CSV button
+   504→  - Print button (uses window.print)
+   505→  - Business header with name/address/phone
+   506→  - Summary card with 4 KPIs + section badges
+   507→  - 6 color-coded section tables with all batch details
+   508→  - Print-optimized CSS (hides UI chrome when printing)
+   509→- Updated PharmacyDashboard:
+   510→  - Added NotificationCenter bell icon in header (next to Add button)
+   511→  - Expanded quick actions to 4×2 = 8 grid (added Alerts + Report)
+   512→  - Each action has distinct color and icon
+   513→- Updated PharmacyShell + barrel exports
+   514→
+   515→Stage Summary:
+   516→- Phase 3b is now COMPLETE — Phase 3 (Expiry Management) fully done
+   517→- 2 new Prisma models (AlertPreference, NotificationLog)
+   518→- 5 new API routes: alert-preferences, combined-alerts, reports/expiry, alerts/digest, notifications
+   519→- 4 new UI components: NotificationCenter, AlertsCenter, AlertPreferences, ExpiryReport
+   520→- 1 modified component: PharmacyDashboard (bell icon + expanded quick actions)
+   521→- All 13 API test scenarios pass:
+   522→  * Default preferences auto-created ✅
+   523→  * Custom preferences saved (14/45/120 thresholds, email, weekly digest) ✅
+   524→  * Invalid threshold order rejected (400) ✅
+   525→  * Combined alerts using custom thresholds (13 alerts, ৳7000 value at risk) ✅
+   526→  * Expiry report JSON (4 batches, 6 sections) ✅
+   527→  * Expiry report CSV download ✅
+   528→  * Alert digest creates 11 notifications ✅
+   529→  * Digest frequency mismatch → skipped ✅
+   530→  * Notifications list with unread count ✅
+   531→  * Mark all as read (11 notifications) ✅
+   532→  * Verify unread = 0 ✅
+   533→  * Digest deduplication (0 new on re-run) ✅
+   534→  * Delete old notifications cleanup ✅
+   535→- Production build clean, lint passes with zero errors
+   536→- Cron-ready: digest endpoint can be called daily/weekly/monthly
+   537→- Deduplication prevents notification spam (24h window)
+   538→- Foundation for future email/SMS integration (channels configured but not yet sending)
+   539→---
+   540→Task ID: 4a-completion
+   541→Agent: Main Agent
+   542→Task: Complete Phase 4a — Sales & Invoicing Foundation (POS with FEFO)
+   543→
+   544→Work Log:
+   545→- Added 3 new Prisma models:
+   546→  - Customer: name, phone, email, address, DOB, gender, chronicConditions, allergies, notes, totalSpent, visitCount, lastVisitAt
+   547→  - Sale: invoiceNo (sequential), status, paymentMethod, paymentStatus, subtotal, discountAmount/Percent, taxAmount, totalAmount, paidAmount, itemCount, cancel fields
+   548→  - SaleItem: snapshot of product/batch at sale time (productName, genericName, batchNo, unit, unitPrice), quantity, discountPercent, totalPrice
+   549→  - Added reverse relations on Business and Product models
+   550→  - Applied schema to database via prisma db push
+   551→- Created GET/POST /api/businesses/[id]/customers:
+   552→  - GET with search (name/phone/email), pagination
+   553→  - POST with duplicate phone check (409 conflict)
+   554→  - Includes chronicConditions and allergies (pharmacy-specific fields)
+   555→- Created GET/PUT/DELETE /api/businesses/[id]/customers/[customerId]:
+   556→  - GET includes sales history (last 20) + counts
+   557→  - PUT with duplicate phone check (excluding self)
+   558→  - DELETE is soft-delete (preserves sales history)
+   559→- Created GET/POST /api/businesses/[id]/sales:
+   560→  - GET with filters (customerId, status, paymentStatus, date range), pagination
+   561→  - GET includes summary (today + all-time totals)
+   562→  - POST creates invoice with FEFO allocation per line item
+   563→  - Auto-generates sequential invoice number (INV-YYYY-NNNN)
+   564→  - Atomic transaction: creates Sale + SaleItems + reduces batch/inventory + audit transactions
+   565→  - Supports discount (percent + flat), tax, partial payments
+   566→  - Updates customer stats (totalSpent, visitCount, lastVisitAt)
+   567→  - Returns 409 with clear error if insufficient stock
+   568→- Created GET/PUT /api/businesses/[id]/sales/[saleId]:
+   569→  - GET returns full invoice with items + customer info
+   570→  - PUT action=cancel: reverses all stock movements (restores batches + inventory), creates RETURN audit transactions, reverses customer stats
+   571→  - PUT action=update_payment: updates paidAmount + paymentStatus
+   572→  - Prevents double-cancellation (400 error)
+   573→- Created GET /api/businesses/[id]/sales/stats:
+   574→  - Period aggregations: today, week, month, year (count + total + quantity)
+   575→  - Last 7 days breakdown (for charts)
+   576→  - Top 5 products by revenue (last 30 days)
+   577→  - Payment method breakdown
+   578→  - Outstanding payments (partial + unpaid) with due amount
+   579→  - Cancelled sales count
+   580→- Updated nav-store.ts: added 6 new views (sales, sale-detail, customers, customer-detail, add-customer, edit-customer) + 4 new state fields (activeSaleId, activeCustomerId, editingCustomerId, saleCustomerId)
+   581→- Built CustomerManager.tsx:
+   582→  - List with search, stats (total/active/total spent)
+   583→  - Create/Edit dialog with all fields including chronic conditions + allergies
+   584→  - Delete confirmation (preserves sales history)
+   585→  - Tap customer → navigate to detail
+   586→- Built SalesList.tsx:
+   587→  - Today's + all-time summary cards
+   588→  - Search by invoice/customer/product
+   589→  - Filter tabs: All, Completed, Partial Pay, Unpaid, Cancelled
+   590→  - Each sale shows: invoice no, status badge, payment status, customer, items count, total
+   591→  - Pagination
+   592→  - "New Sale" button → dispense view
+   593→- Built SaleDetail.tsx:
+   594→  - Printable invoice view (window.print support)
+   595→  - Business header + customer info
+   596→  - Items table with batch numbers + discounts
+   597→  - Totals breakdown (subtotal, discounts, tax, total, paid, due)
+   598→  - Cancel sale dialog with reason (restores stock)
+   599→  - Cancelled sale banner with reason + timestamp
+   600→  - Tap customer name → navigate to customer detail
+   601→- Updated QuickDispense.tsx:
+   602→  - Now creates Sale invoices via /sales API (instead of /dispense)
+   603→  - Success screen shows invoice number + "View Invoice" button
+   604→  - Pre-select customer via saleCustomerId (from nav store)
+   605→  - Title changed to "New Sale"
+   606→- Updated PharmacyDashboard:
+   607→  - Primary CTA renamed to "New Sale"
+   608→  - Quick actions expanded to 5×2 = 10 grid (added Sales, Customers)
+   609→  - Each action has distinct color and icon
+   610→- Updated PharmacyShell + barrel exports
+   611→
+   612→Stage Summary:
+   613→- Phase 4a is now COMPLETE — full POS system with invoicing
+   614→- 3 new Prisma models (Customer, Sale, SaleItem)
+   615→- 5 new API routes: customers, customers/[id], sales, sales/[id], sales/stats
+   616→- 3 new UI components: CustomerManager, SalesList, SaleDetail
+   617→- 2 modified components: QuickDispense (creates invoices), PharmacyDashboard (expanded actions)
+   618→- All 18 API test scenarios pass:
+   619→  * Customer CRUD with duplicate phone prevention ✅
+   620→  * Multi-item sale with FEFO allocation (70 units: 50 from NEAR + 20 from FAR) ✅
+   621→  * Sequential invoice numbering (INV-2026-0001) ✅
+   622→  * Inventory correctly reduced (150→80, 80→65) ✅
+   623→  * Customer stats updated (totalSpent, visitCount, lastVisitAt) ✅
+   624→  * Insufficient stock returns 409 with clear error ✅
+   625→  * Sales stats with 7-day breakdown + top products ✅
+   626→  * Sale cancellation restores stock (80→150, batches restored) ✅
+   627→  * Customer stats reversed on cancel (totalSpent→0, visitCount→0) ✅
+   628→  * Double-cancellation blocked (400) ✅
+   629→- Production build clean, lint passes with zero errors
+   630→- Full audit trail: every sale creates SALE transactions per batch
+   631→- Cancellation creates RETURN transactions for traceability
+   632→- Foundation for Phase 4b: payment tracking, customer credit, returns/refunds
+   633→---
+   634→Task ID: 4b-completion
+   635→Agent: Main Agent
+   636→Task: Complete Phase 4b — Payments, Customer Credit, Returns & Refunds
+   637→
+   638→Work Log:
+   639→- Added 2 new Prisma models:
+   640→  - Payment: amount, paymentMethod (cash/card/mobile_banking/credit/cheque), reference, notes, receivedBy
+   641→  - Return: returnNo (sequential), refundAmount, refundMethod, restockItems flag, reason
+   642→  - ReturnItem: links to SaleItem, tracks returned quantity + refund per unit
+   643→  - Added reverse relations on Business, Sale, SaleItem, Customer, Product models
+   644→- Created GET/POST /api/businesses/[id]/payments:
+   645→  - GET with filters (saleId, customerId, method, date range) + summary (today + byMethod breakdown)
+   646→  - POST creates payment + updates sale.paidAmount + paymentStatus atomically
+   647→  - Validates: positive amount, valid method, sale not cancelled
+   648→  - Prevents overpayment (400 error with max allowed amount)
+   649→  - Supports reference field (txn ID, card last 4, cheque no)
+   650→- Created GET /api/businesses/[id]/payments/stats:
+   651→  - Period aggregations (today/week/month) with totals + counts
+   652→  - Last 7 days breakdown (for charts)
+   653→  - By payment method breakdown (sorted by total)
+   654→  - Outstanding receivables (partial + unpaid sales)
+   655→  - Top 5 paying customers (last 30 days)
+   656→- Created GET /api/businesses/[id]/customers/[customerId]/credit:
+   657→  - Returns customer's full credit profile
+   658→  - totalDue, totalInvoiced, totalPaid, outstandingSaleCount
+   659→  - oldestDueDays (age of oldest unpaid invoice)
+   660→  - Outstanding sales list (sorted oldest first — FIFO for credit)
+   661→  - Payment history (last 10)
+   662→  - Returns history (last 5)
+   663→- Created GET/POST /api/businesses/[id]/returns:
+   664→  - GET with filters + summary (today + month refund totals)
+   665→  - POST processes return atomically:
+   666→    * Validates sale not cancelled
+   667→    * Validates return quantity ≤ sold quantity
+   668→    * Checks previously returned quantities (prevents over-return)
+   669→    * Auto-generates sequential return number (RET-YYYY-NNNN)
+   670→    * If restockItems=true: restores batch + inventory quantities
+   671→    * Creates RETURN audit transactions
+   672→    * Updates sale.paidAmount (reduces by refund for cash/store_credit)
+   673→    * Recalculates payment status
+   674→  - 5 refund reasons: defective, wrong_item, expired, customer_changed_mind, other
+   675→  - 3 refund methods: cash, credit (store credit), mobile_banking
+   676→- Updated nav-store.ts: added 3 new views (payments, returns, customer-credit) + customer-detail now shows credit view
+   677→- Built PaymentManager.tsx:
+   678→  - List with search + method icons + summary cards (today + byMethod)
+   679→  - Record payment dialog with sale lookup (auto-fills due amount)
+   680→  - Sale info preview showing total/paid/due
+   681→  - 5 payment methods with distinct icons
+   682→- Built ReturnsManager.tsx:
+   683→  - List with search + reason badges + summary cards
+   684→  - Process return dialog with sale items selection
+   685→  - Per-item quantity input with running refund total
+   686→  - Refund method + restock toggle
+   687→  - 5 return reasons
+   688→- Built CustomerCreditView.tsx:
+   689→  - Customer card with lifetime stats
+   690→  - Outstanding balance hero card with oldest-due-days badge
+   691→  - Outstanding invoices list (tap to view sale)
+   692→  - Payment history (last 10)
+   693→  - Returns history (last 5)
+   694→  - "Record Payment" CTA when balance > 0
+   695→- Updated SaleDetail.tsx:
+   696→  - Added "Pay" button (green) when paymentStatus ≠ paid → navigates to payments
+   697→  - Added "Return" button (orange) → navigates to returns
+   698→  - Both buttons hidden for cancelled sales
+   699→- Updated PharmacyDashboard:
+   700→  - Quick actions expanded to 4×3 = 12 grid (added Payments, Returns)
+   701→  - Each action has distinct color
+   702→- Updated PharmacyShell + barrel exports
+   703→
+   704→Stage Summary:
+   705→- Phase 4b is now COMPLETE — Phase 4 (Sales & Quick Dispensing) fully done
+   706→- 2 new Prisma models (Payment, Return + ReturnItem)
+   707→- 4 new API routes: payments, payments/stats, customers/[id]/credit, returns
+   708→- 3 new UI components: PaymentManager, ReturnsManager, CustomerCreditView
+   709→- 2 modified components: SaleDetail (Pay/Return buttons), PharmacyDashboard (expanded actions)
+   710→- All 12 API test scenarios pass:
+   711→  * Partial payment recording (500→900→1300) ✅
+   712→  * Payment status transitions (partial→paid) ✅
+   713→  * Overpayment prevention (400) ✅
+   714→  * Payment list with method breakdown ✅
+   715→  * Payment stats with top payers ✅
+   716→  * Customer credit summary (totalDue, outstanding sales) ✅
+   717→  * Return processing with sequential RET- numbers ✅
+   718→  * Stock restocking (batch quantity restored) ✅
+   719→  * Refund amount calculation (5×50=250) ✅
+   720→  * Over-return prevention (400) ✅
+   721→  * Returns list with summary ✅
+   722→  * Return on cancelled sale blocked (400) ✅
+   723→- Production build clean, lint passes with zero errors
+   724→- Full financial audit trail: every payment + return creates audit transactions
+   725→- Sale cancellation reverses payments + returns impact
+   726→- Foundation for Phase 5: Purchases & Suppliers, Dashboard analytics
+   727→---
+   728→Task ID: 4c-completion
+   729→Agent: Main Agent
+   730→Task: Complete Phase 4c — Sales Analytics Dashboard, Discount Rules, Receipt Printing
+   731→
+   732→Work Log:
+   733→- Added DiscountRule model to Prisma schema:
+   734→  - Fields: name, type (percent/flat), value, conditionType, conditionValue, scope, scopeValue
+   735→  - Validity: startDate, endDate, isActive, priority
+   736→  - Tracking: timesUsed, totalDiscountGiven
+   737→  - 6 condition types: none, min_quantity, min_amount, customer_tag, schedule_type, time_based
+   738→  - 4 scopes: all, category, product, schedule_type
+   739→  - Applied schema to database
+   740→- Created GET /api/businesses/[id]/sales/analytics:
+   741→  - Comprehensive analytics for 7d/30d/90d/365d periods
+   742→  - KPIs: totalSales, salesCount, avgSaleValue, totalCollected, totalRefunds, netRevenue, totalDiscounts, totalTax
+   743→  - Growth percent vs previous period
+   744→  - Daily trend with weekly buckets for >90d periods
+   745→  - Top 10 products by revenue
+   746→  - Top 5 customers by spending
+   747→  - Payment method breakdown with percentages
+   748→  - Peak hours (top 5 by revenue)
+   749→  - Sales by day of week
+   750→  - Discount rules usage tracking
+   751→- Created GET/POST /api/businesses/[id]/discount-rules:
+   752→  - GET with optional active filter
+   753→  - POST with full validation (type, value, conditionType, scope)
+   754→  - Prevents percent > 100
+   755→  - Supports start/end dates for time-limited promotions
+   756→- Created GET/PUT/DELETE /api/businesses/[id]/discount-rules/[ruleId]:
+   757→  - Full CRUD on individual rules
+   758→  - Toggle isActive without full update
+   759→  - Delete preserves historical usage data in message
+   760→- Updated nav-store.ts: added 'analytics' and 'discount-rules' views
+   761→- Built SalesTrendChart.tsx:
+   762→  - Gradient bar chart (green for sales, red overlay for refunds)
+   763→  - Hover tooltips with date, sales, count, refunds, net
+   764→  - Smart label spacing (shows every Nth label for long periods)
+   765→  - Peak indicator at bottom
+   766→- Built SalesAnalytics.tsx (full-page dashboard):
+   767→  - Period selector (7d/30d/90d/365d)
+   768→  - 4 KPI cards with growth indicators (Total Sales, Net Revenue, Avg Sale, Collected)
+   769→  - 3 summary cards (Discounts, Tax, Refunds)
+   770→  - Sales trend chart
+   771→  - Payment methods with progress bars
+   772→  - Top products ranked list
+   773→  - Top customers ranked list
+   774→  - Peak hours grid
+   775→  - Day of week bar chart
+   776→  - Discount rules used summary
+   777→- Built DiscountRulesManager.tsx:
+   778→  - List with active/inactive toggle, stats (total/active/given)
+   779→  - Create/Edit dialog with all fields
+   780→  - Per-rule: name, description, type, value, condition, scope, dates, priority, active
+   781→  - Delete confirmation with usage warning
+   782→  - Visual badges for type, scope, condition
+   783→- Updated QuickDispense.tsx:
+   784→  - Added discount section with percent + flat inputs
+   785→  - Live subtotal → discount → total breakdown
+   786→  - Passes discountPercent + discountAmount to sale creation
+   787→  - Resets discounts on new sale
+   788→- Updated SaleDetail.tsx:
+   789→  - Cancelled banner hidden when printing (print:hidden)
+   790→  - Print-optimized layout preserved
+   791→- Updated PharmacyDashboard:
+   792→  - Quick actions expanded to 14 buttons (added Analytics + Discounts)
+   793→  - Each action has distinct color
+   794→- Updated PharmacyShell + barrel exports
+   795→
+   796→Stage Summary:
+   797→- Phase 4c is now COMPLETE
+   798→- 1 new Prisma model (DiscountRule)
+   799→- 3 new API routes: sales/analytics, discount-rules, discount-rules/[ruleId]
+   800→- 3 new UI components: SalesAnalytics, SalesTrendChart, DiscountRulesManager
+   801→- 2 modified components: QuickDispense (discount inputs), SaleDetail (print improvements)
+   802→- All 11 API test scenarios pass:
+   803→  * Create percent discount rule (10% bulk) ✅
+   804→  * Create flat discount rule (৳50 senior) ✅
+   805→  * 150% percent blocked (400) ✅
+   806→  * List rules with count ✅
+   807→  * Update rule value (10% → 15%) ✅
+   808→  * Toggle active status ✅
+   809→  * Sales analytics 7d (KPIs, trends, top products, payment methods, peak hours) ✅
+   810→  * Sales analytics 30d (30 data points) ✅
+   811→  * Discount calculations verified ✅
+   812→  * Delete rule ✅
+   813→  * Verify deletion ✅
+   814→- Production build clean, lint passes with zero errors
+   815→- Analytics dashboard provides actionable insights: peak hours, top products, payment method mix
+   816→- Discount rules foundation for auto-applied promotions (UI for manual application in POS)
+   817→---
+   818→Task ID: 5a-completion
+   819→Agent: Main Agent
+   820→Task: Complete Phase 5a — Purchases & Suppliers
+   821→
+   822→Work Log:
+   823→- Added 3 new Prisma models:
+   824→  - Supplier: name, code (auto-generated), contactPerson, phone, email, address, balance, totalPurchased, totalPaid, notes
+   825→  - Purchase: purchaseNo (sequential PO-YYYY-NNNN), supplierId, status, subtotal, discount, tax, total, paidAmount, paymentStatus, invoiceNo/Date, receivedDate
+   826→  - PurchaseItem: productId, batchId (auto-created), quantity, receivedQuantity, unitCost, totalPrice, batchNo, expiryDate, mfgDate, mrp
+   827→  - Added reverse relations on Business, Batch (supplier + purchaseItems), Product
+   828→  - Applied schema to database
+   829→- Created GET/POST /api/businesses/[id]/suppliers:
+   830→  - GET with search (name/phone/email/code), pagination
+   831→  - POST with auto-generated code (SUP-001, SUP-002...) if not provided
+   832→  - Duplicate code prevention (409)
+   833→- Created GET/PUT/DELETE /api/businesses/[id]/suppliers/[supplierId]:
+   834→  - GET includes purchase history (last 20) + counts
+   835→  - PUT with duplicate code check (excluding self)
+   836→  - DELETE is soft-delete (preserves purchase history)
+   837→- Created GET/POST /api/businesses/[id]/purchases:
+   838→  - GET with filters (supplierId, status), pagination, summary (today/month/outstanding)
+   839→  - POST creates purchase with AUTO-BATCH CREATION:
+   840→    * Validates each item has expiry date (pharmacy requirement)
+   841→    * Auto-generates sequential purchase number (PO-2026-0001)
+   842→    * Creates Batch for each item with auto-status calculation
+   843→    * Links batch to supplier
+   844→    * Updates Inventory (increments quantity, sets unitCost)
+   845→    * Creates PURCHASE audit Transaction per item
+   846→    * Updates supplier balance + totalPurchased + totalPaid
+   847→    * Supports discount, tax, partial payments
+   848→    * All operations atomic (db.$transaction)
+   849→- Created GET/PUT /api/businesses/[id]/purchases/[purchaseId]:
+   850→  - GET returns full purchase with supplier + items + batch details
+   851→  - PUT action=cancel: reverses ALL stock movements
+   852→    * Deletes batches created by this purchase
+   853→    * Reduces inventory quantities
+   854→    * Creates ADJUSTMENT audit transactions
+   855→    * Reverses supplier balance + totals
+   856→    * Prevents double-cancellation
+   857→  - PUT action=update_payment: updates paidAmount + paymentStatus + supplier balance
+   858→- Created GET /api/businesses/[id]/purchases/stats:
+   859→  - Period aggregations (today/week/month) with totals + paid amounts
+   860→  - Last 7 days trend
+   861→  - Top 5 suppliers by purchase value
+   862→  - Top 5 purchased products
+   863→  - Outstanding payables (count + due amount)
+   864→- Updated nav-store.ts: added 4 new views (suppliers, purchases, purchase-detail, add-purchase) + activePurchaseId state
+   865→- Built SupplierManager.tsx:
+   866→  - List with search, stats (total/outstanding/purchased)
+   867→  - Create/Edit dialog with all fields
+   868→  - Delete confirmation (preserves purchase history)
+   869→  - Shows balance due badge per supplier
+   870→- Built PurchaseList.tsx:
+   871→  - Summary cards (today/month/outstanding)
+   872→  - Search by PO no/supplier/invoice
+   873→  - Each purchase shows: PO number, status, supplier, items count, total, payment status
+   874→  - Pagination
+   875→- Built PurchaseForm.tsx:
+   876→  - Supplier selection dropdown
+   877→  - Supplier invoice number + date
+   878→  - Product search & add to cart
+   879→  - Per-item: quantity, unit cost, batch number, expiry date, mfg date, MRP
+   880→  - Live line total + subtotal + discount + tax + total calculation
+   881→  - Paid amount input (for partial payments)
+   882→  - Validates expiry date + batch number per item
+   883→  - Success screen on save
+   884→- Built PurchaseDetail.tsx:
+   885→  - Printable purchase view
+   886→  - Supplier info card
+   887→  - Items with batch details (batch no, expiry, status, remaining qty)
+   888→  - Totals breakdown (subtotal, discount, tax, total, paid, due)
+   889→  - Cancel purchase dialog with reason (reverses stock)
+   890→  - Cancelled banner
+   891→- Updated PharmacyDashboard:
+   892→  - Quick actions expanded to 17 buttons (added Suppliers, Purchase, Purchases)
+   893→- Updated PharmacyShell + barrel exports
+   894→
+   895→Stage Summary:
+   896→- Phase 5a is now COMPLETE
+   897→- 3 new Prisma models (Supplier, Purchase, PurchaseItem)
+   898→- 5 new API routes: suppliers, suppliers/[id], purchases, purchases/[id], purchases/stats
+   899→- 4 new UI components: SupplierManager, PurchaseList, PurchaseForm, PurchaseDetail
+   900→- All 16 API test scenarios pass:
+   901→  * Supplier CRUD with auto-code generation ✅
+   902→  * Duplicate code prevention ✅
+   903→  * Purchase with auto-batch creation (2 items → 2 batches) ✅
+   904→  * Inventory auto-updated (0→100) ✅
+   905→  * Batch linked to supplier ✅
+   906→  * Supplier balance tracking (৳45 due on partial payment) ✅
+   907→  * Purchase detail with batch info ✅
+   908→  * Purchase list with summary (today/month/outstanding) ✅
+   909→  * Purchase stats with top suppliers + products ✅
+   910→  * Missing expiry date blocked (pharmacy requirement) ✅
+   911→  * Cancel reverses stock (100→0) + deletes batches ✅
+   912→  * Cancel reverses supplier balance (৳45→৳0) ✅
+   913→  * Double-cancel blocked ✅
+   914→- Production build clean, lint passes with zero errors
+   915→- Full audit trail: every purchase creates PURCHASE transactions per batch
+   916→- Cancellation creates ADJUSTMENT transactions for traceability
+   917→- Supplier financial tracking: balance, totalPurchased, totalPaid auto-maintained
+   918→---
+   919→Task ID: 6a-completion
+   920→Agent: Main Agent
+   921→Task: Complete Phase 6a — Unified Business Dashboard & Reports Center
+   922→
+   923→Work Log:
+   924→- Created GET /api/businesses/[id]/dashboard:
+   925→  - Unified KPIs across ALL modules in one API call
+   926→  - Sales: today/week/month (total, count, quantity)
+   927→  - Purchases: today/month (total, count)
+   928→  - Payments: today/month (total, count)
+   929→  - Returns: month (refund, count)
+   930→  - Inventory: totalProducts, lowStock, outOfStock, totalBatches, costValue, mrpValue, potentialProfit
+   931→  - Expiry: expiredBatches, nearExpiry, quarantined, valueAtRisk
+   932→  - Contacts: totalCustomers, totalSuppliers
+   933→  - Financials: receivables (amount+count), payables (amount+count), cashFlow (inflow+outflow)
+   934→  - Profit: monthRevenue, monthCOGS, monthGrossProfit, monthProfitMargin
+   935→  - 7-day trend: daily sales vs purchases
+   936→  - Fixed: SaleItem has no batch relation — fetch batch prices separately for COGS
+   937→- Created GET /api/businesses/[id]/reports/profit-loss:
+   938→  - Full P&L statement: revenue, COGS, gross profit, expenses, cash flow, net profit
+   939→  - Period selector: today/week/month/quarter/year
+   940→  - Top 10 profitable products with per-product revenue/cost/profit
+   941→  - Loss-making products (negative profit)
+   942→  - CSV export with all sections
+   943→  - Fixed: Same SaleItem batch relation issue — fetch batch prices separately
+   944→- Created GET /api/businesses/[id]/reports/inventory-valuation:
+   945→  - Full inventory valuation by product, category, and batch
+   946→  - Cost value (purchase price × quantity) and MRP value (selling price × quantity)
+   947→  - Potential profit (MRP - cost) and average margin
+   948→  - Category breakdown with product counts
+   949→  - Product list with expandable batch details
+   950→  - CSV export with per-batch line items
+   951→- Created GET /api/businesses/[id]/reports/business:
+   952→  - Comprehensive business report combining all modules
+   953→  - Executive summary: sales, returns, net revenue, COGS, gross profit, purchases, cash flow
+   954→  - Inventory snapshot: cost/MRP values, expired/near-expiry counts
+   955→  - Financial position: receivables, payables
+   956→  - Contacts: customers, suppliers
+   957→  - Top products by revenue
+   958→  - Daily trend data (sales vs purchases)
+   959→  - Fixed: Same SaleItem batch relation issue
+   960→- Updated nav-store.ts: added 4 new views (business-dashboard, profit-loss, inventory-value, business-report)
+   961→- Built BusinessDashboard.tsx (unified overview):
+   962→  - Profit hero card with monthly gross profit + margin
+   963→  - 4 today's KPI cards (sales, purchases, cash in, returns)
+   964→  - 7-day sales vs purchases bar chart
+   965→  - Inventory valuation summary (cost/MRP/profit)
+   966→  - Expiry status grid (active/near-expired/expired/quarantined)
+   967→  - Financial position (receivables vs payables + net position)
+   968→  - Contacts (customers + suppliers)
+   969→  - Quick links to all reports
+   970→- Built ProfitLossReport.tsx:
+   971→  - Period selector (today/week/month/quarter/year)
+   972→  - Net profit hero card with margin
+   973→  - Revenue breakdown (gross sales, returns, net revenue)
+   974→  - COGS section with percentage
+   975→  - Gross profit card
+   976→  - Operating expenses
+   977→  - Cash flow (received, paid, net)
+   978→  - Top profitable products list
+   979→  - Loss-making products warning
+   980→  - CSV download + print support
+   981→- Built InventoryValuationReport.tsx:
+   982→  - Summary cards (cost value, MRP value, potential profit, avg margin)
+   983→  - Category breakdown with progress bars
+   984→  - Product list with expandable batch details (batch no, expiry, status, cost, MRP)
+   985→  - CSV download + print support
+   986→- Built BusinessReportCenter.tsx (comprehensive printable):
+   987→  - Business header with name/address/phone
+   988→  - 4 KPI cards (sales, purchases, gross profit, net cash flow)
+   989→  - Detailed breakdown (revenue, COGS, discounts, tax)
+   990→  - Inventory snapshot
+   991→  - Financial position (receivables vs payables)
+   992→  - Contacts summary
+   993→  - Sales vs purchases trend chart
+   994→  - Top products by revenue
+   995→  - Print-optimized layout
+   996→- Updated PharmacyDashboard: added "Overview" quick action (first card, highlighted with border)
+   997→- Updated PharmacyShell + barrel exports
+   998→
+   999→Stage Summary:
+  1000→- Phase 6a is now COMPLETE
+  1001→- 4 new API routes: dashboard, reports/profit-loss, reports/inventory-valuation, reports/business
+  1002→- 4 new UI components: BusinessDashboard, ProfitLossReport, InventoryValuationReport, BusinessReportCenter
+  1003→- All 6 API test scenarios pass:
+  1004→  * Business dashboard returns unified KPIs (sales, purchases, inventory, expiry, financials, profit) ✅
+  1005→  * P&L report with revenue/COGS/profit breakdown + CSV ✅
+  1006→  * Inventory valuation with category/product breakdown + CSV ✅
+  1007→  * Business report with executive summary + daily trends ✅
+  1008→  * All APIs handle empty data gracefully ✅
+  1009→  * CSV exports work for P&L and inventory valuation ✅
+  1010→- Production build clean, lint passes with zero errors
+  1011→- Fixed Prisma relation issue: SaleItem has batchId as plain field, not a relation — fetch batch prices separately for COGS calculations
+  1012→- Cross-module analytics: single dashboard shows sales + purchases + inventory + expiry + financials + profit in one view
+  1013→- All reports support CSV download and print
+  1014→

@@ -1,0 +1,814 @@
+     1→// ── InventoryOS Database Schema ──
+     2→// Multi-tenant inventory management platform
+     3→// Phase 1a: Pharmacy product master with batch tracking
+     4→
+     5→generator client {
+     6→  provider = "prisma-client-js"
+     7→}
+     8→
+     9→datasource db {
+    10→  provider = "sqlite"
+    11→  url      = env("DATABASE_URL")
+    12→}
+    13→
+    14→// ── Business Types ──
+    15→model BusinessType {
+    16→  id        String   @id @default(cuid())
+    17→  slug      String   @unique
+    18→  name      String
+    19→  icon      String
+    20→  color     String
+    21→  isActive  Boolean  @default(false)
+    22→  sortOrder Int     @default(0)
+    23→  createdAt DateTime @default(now())
+    24→  updatedAt DateTime @updatedAt
+    25→
+    26→  businesses Business[]
+    27→}
+    28→
+    29→// ── Users ──
+    30→model User {
+    31→  id        String   @id @default(cuid())
+    32→  phone     String   @unique
+    33→  name      String?
+    34→  createdAt DateTime @default(now())
+    35→  updatedAt DateTime @updatedAt
+    36→
+    37→  businesses Business[]
+    38→}
+    39→
+    40→// ── Businesses ──
+    41→model Business {
+    42→  id             String   @id @default(cuid())
+    43→  userId         String
+    44→  businessTypeId String
+    45→  name           String
+    46→  address        String?
+    47→  phone          String?
+    48→  isActive       Boolean  @default(true)
+    49→  createdAt      DateTime @default(now())
+    50→  updatedAt      DateTime @updatedAt
+    51→
+    52→  // ── Subscription & AI Control ──
+    53→  subscriptionTier   String   @default("free")    // "free" / "pro" / "pro_ai"
+    54→  subscriptionStatus String   @default("trial")   // "trial" / "active" / "suspended" / "cancelled"
+    55→  subscriptionStart  DateTime?
+    56→  subscriptionEnd    DateTime?
+    57→  aiEnabled          Boolean  @default(false)
+    58→  aiDailyLimit       Int      @default(50)
+    59→  aiMonthlyLimit     Int      @default(1000)
+    60→  aiTokenBudget      Int      @default(500000)
+    61→
+    62→  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+    63→  businessType BusinessType @relation(fields: [businessTypeId], references: [id])
+    64→  businessUsers BusinessUser[]
+    65→  categories    Category[]
+    66→  products      Product[]
+    67→  transactions  Transaction[]
+    68→  inventories   Inventory[]
+    69→  batches       Batch[]
+    70→  alertPreference AlertPreference?
+    71→  notificationLogs NotificationLog[]
+    72→  customers     Customer[]
+    73→  sales         Sale[]
+    74→  saleItems     SaleItem[]
+    75→  payments      Payment[]
+    76→  returns       Return[]
+    77→  returnItems   ReturnItem[]
+    78→  discountRules DiscountRule[]
+    79→  suppliers     Supplier[]
+    80→  purchases     Purchase[]
+    81→  purchaseItems PurchaseItem[]
+    82→  aiUsageLogs   AIUsageLog[]
+    83→  dailyStats    BusinessDailyStats[]
+    84→  aiResponseCache AIResponseCache[]
+    85→  fefoOverrides FefoOverride[]
+    86→
+    87→  @@index([userId])
+    88→  @@index([businessTypeId])
+    89→}
+    90→
+    91→// ── Business Users ──
+    92→model BusinessUser {
+    93→  id           String   @id @default(cuid())
+    94→  businessId   String
+    95→  username     String
+    96→  passwordHash String
+    97→  role         String   @default("admin") // "owner", "admin", "manager", "pharmacist", "cashier", "stock_clerk"
+    98→  fullName     String?
+    99→  phone        String?
+   100→  email        String?
+   101→  permissions  String?  // JSON array of permission strings, null = use role defaults
+   102→  isActive     Boolean  @default(true)
+   103→  lastLoginAt  DateTime?
+   104→  createdAt    DateTime @default(now())
+   105→  updatedAt    DateTime @updatedAt
+   106→
+   107→  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+   108→  sessions Session[]
+   109→
+   110→  @@unique([businessId, username])
+   111→  @@index([businessId])
+   112→  @@index([role])
+   113→}
+   114→
+   115→// ── Categories ──
+   116→// Product categories with color, icon, and hierarchy support
+   117→model Category {
+   118→  id         String   @id @default(cuid())
+   119→  businessId String
+   120→  parentId   String?
+   121→  name       String
+   122→  slug       String              // URL-friendly: "antibiotics", "pain-relief"
+   123→  icon       String   @default("Tag")   // Lucide icon name
+   124→  color      String   @default("#6B7280") // Category brand color
+   125→  type       String   @default("medicine") // "medicine", "surgical", "cosmetic", "supplement", "baby-care", "other"
+   126→  sortOrder  Int      @default(0)
+   127→  isActive   Boolean  @default(true)
+   128→  createdAt  DateTime @default(now())
+   129→  updatedAt  DateTime @updatedAt
+   130→
+   131→  business Business   @relation(fields: [businessId], references: [id], onDelete: Cascade)
+   132→  parent   Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
+   133→  children Category[] @relation("CategoryHierarchy")
+   134→  products Product[]
+   135→
+   136→  @@unique([businessId, slug])
+   137→  @@index([businessId])
+   138→  @@index([parentId])
+   139→}
+   140→
+   141→// ── Products (Base + Pharmacy Extension) ──
+   142→// Unified product model with pharmacy-specific optional fields
+   143→model Product {
+   144→  id           String   @id @default(cuid())
+   145→  businessId   String
+   146→  categoryId   String?
+   147→  name         String              // Brand name (e.g., "Napa Extra")
+   148→  genericName  String?             // Generic name (e.g., "Paracetamol + Caffeine")
+   149→  sku          String?             // Internal SKU code
+   150→  barcode      String?             // Barcode / QR code
+   151→  productType  String   @default("medicine") // "medicine", "surgical", "cosmetic", "supplement", "baby-care", "other"
+   152→
+   153→  // Unit & Conversion
+   154→  unit         String   @default("piece")  // Base unit: "piece", "tablet", "ml", "g"
+   155→  stripSize    Int?              // e.g., 10 tablets per strip
+   156→  boxSize      Int?              // e.g., 10 strips per box
+   157→
+   158→  // Pharmacy-specific
+   159→  strength     String?            // "500mg", "250mg/5ml"
+   160→  dosageForm   String?            // "Tablet", "Capsule", "Syrup", "Injection", "Cream"
+   161→  manufacturer String?            // "Square", "Beximco", "Renata"
+   162→  scheduleType String?            // "OTC", "Schedule_H", "Schedule_H1", "Schedule_X", "Narcotic"
+   163→  hsnCode      String?            // For VAT: "30049099"
+   164→  vatRate      Float   @default(0)    // VAT percentage (medicines have reduced rate)
+   165→  mrp          Float?             // Maximum Retail Price
+   166→  isPrescription Boolean @default(false) // Prescription required?
+   167→  storageCondition String?        // "Room Temp", "Fridge (2-8C)", "Cool & Dry"
+   168→  rackNo       String?            // Shelf location: "A3", "Rack-5"
+   169→
+   170→  // Stock thresholds
+   171→  minStock     Float   @default(0)     // Low stock alert threshold
+   172→  maxStock     Float   @default(0)     // Overstock warning threshold
+   173→  reorderLevel Float   @default(0)     // When to reorder
+   174→
+   175→  isActive     Boolean  @default(true)
+   176→  createdAt    DateTime @default(now())
+   177→  updatedAt    DateTime @updatedAt
+   178→
+   179→  business     Business     @relation(fields: [businessId], references: [id], onDelete: Cascade)
+   180→  category     Category?    @relation(fields: [categoryId], references: [id])
+   181→  inventory    Inventory?
+   182→  transactions Transaction[]
+   183→  batches      Batch[]
+   184→  saleItems    SaleItem[]
+   185→  returnItems  ReturnItem[]
+   186→  purchaseItems PurchaseItem[]
+   187→
+   188→  @@index([businessId])
+   189→  @@index([categoryId])
+   190→  @@index([genericName])
+   191→  @@index([manufacturer])
+   192→}
+   193→
+   194→// ── Batch ──
+   195→// Multi-batch tracking per product with expiry management
+   196→model Batch {
+   197→  id            String   @id @default(cuid())
+   198→  businessId    String
+   199→  productId     String
+   200→  batchNo       String              // Batch number from manufacturer
+   201→  mfgDate       DateTime?           // Manufacturing date
+   202→  expiryDate    DateTime            // Expiry date (CRITICAL)
+   203→  quantity      Float    @default(0)  // Current quantity in this batch
+   204→  purchasePrice Float?              // Cost price per unit for this batch
+   205→  mrp           Float?              // Selling price per unit
+   206→  supplierId    String?             // Supplier reference (Phase 5)
+   207→  status        String   @default("active") // "active", "near_expiry", "expired", "quarantined", "returned", "destroyed"
+   208→  notes         String?             // Optional notes
+   209→  createdAt     DateTime @default(now())
+   210→  updatedAt     DateTime @updatedAt
+   211→
+   212→  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+   213→  product  Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+   214→  supplier Supplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+   215→  purchaseItems PurchaseItem[]
+   216→
+   217→  @@index([businessId])
+   218→  @@index([productId])
+   219→  @@index([expiryDate])
+   220→  @@index([status])
+   221→  @@index([supplierId])
+   222→}
+   223→
+   224→// ── Inventory ──
+   225→// Aggregated stock levels per product (sum of all batches)
+   226→model Inventory {
+   227→  id         String   @id @default(cuid())
+   228→  businessId String
+   229→  productId  String   @unique
+   230→  quantity   Float    @default(0)
+   231→  minStock   Float    @default(0)
+   232→  unitCost   Float?
+   233→  updatedAt  DateTime @updatedAt
+   234→
+   235→  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+   236→  product  Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+   237→
+   238→  @@index([businessId])
+   239→}
+   240→
+   241→// ── Transactions ──
+   242→model Transaction {
+   243→  id         String   @id @default(cuid())
+   244→  businessId String
+   245→  productId  String
+   246→  batchId    String?             // Link to specific batch
+   247→  type       String              // "PURCHASE", "SALE", "ADJUSTMENT", "WASTE", "RETURN"
+   248→  quantity   Float
+   249→  unitPrice  Float?              // Price per unit at transaction time
+   250→  note       String?
+   251→  createdBy  String?             // BusinessUser ID who performed the action
+   252→  createdAt  DateTime @default(now())
+   253→
+   254→  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+   255→  product  Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+   256→
+   257→  @@index([businessId])
+   258→  @@index([productId])
+   259→  @@index([createdAt])
+   260→}
+   261→
+   262→// ── OTP Verification ──
+   263→model OtpVerification {
+   264→  id        String   @id @default(cuid())
+   265→  phone     String
+   266→  otp       String
+   267→  purpose   String
+   268→  expiresAt DateTime
+   269→  isUsed    Boolean  @default(false)
+   270→  createdAt DateTime @default(now())
+   271→
+   272→  @@index([phone, purpose])
+   273→  @@index([expiresAt])
+   274→}
+   275→
+   276→// ── Sessions ──
+   277→model Session {
+   278→  id           String   @id @default(cuid())
+   279→  businessUserId String
+   280→  token        String   @unique
+   281→  deviceInfo   String?
+   282→  expiresAt    DateTime
+   283→  createdAt    DateTime @default(now())
+   284→
+   285→  businessUser BusinessUser @relation(fields: [businessUserId], references: [id], onDelete: Cascade)
+   286→
+   287→  @@index([businessUserId])
+   288→  @@index([token])
+   289→  @@index([expiresAt])
+   290→}
+   291→
+   292→// ── Alert Preferences ──
+   293→// Per-business notification settings (one record per business)
+   294→model AlertPreference {
+   295→  id              String   @id @default(cuid())
+   296→  businessId      String   @unique
+   297→
+   298→  // Expiry alert thresholds (in days before expiry)
+   299→  expiryCriticalDays  Int @default(7)    // Red alert threshold
+   300→  expiryWarningDays   Int @default(30)   // Orange alert threshold
+   301→  expiryNoticeDays    Int @default(90)   // Yellow alert threshold
+   302→
+   303→  // Low stock alert
+   304→  lowStockEnabled   Boolean @default(true)
+   305→  lowStockThreshold Int     @default(10) // Absolute quantity threshold
+   306→
+   307→  // Quarantine alerts
+   308→  quarantineAlerts  Boolean @default(true)
+   309→
+   310→  // Notification channels (for future email/SMS integration)
+   311→  emailEnabled      Boolean @default(false)
+   312→  email             String?
+   313→  smsEnabled        Boolean @default(false)
+   314→  phone             String?
+   315→
+   316→  // Digest frequency
+   317→  digestFrequency   String  @default("daily") // "daily", "weekly", "monthly", "none"
+   318→
+   319→  // Quiet hours (alerts still recorded, just not pushed)
+   320→  quietHoursStart   Int?    // Hour 0-23
+   321→  quietHoursEnd     Int?
+   322→
+   323→  createdAt DateTime @default(now())
+   324→  updatedAt DateTime @updatedAt
+   325→
+   326→  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+   327→
+   328→  @@index([businessId])
+   329→}
+   330→
+   331→// ── Notification Log ──
+   332→// Records each alert generated (for audit + dedup)
+   333→model NotificationLog {
+   334→  id          String   @id @default(cuid())
+   335→  businessId  String
+   336→  type        String   // "expiry_critical", "expiry_warning", "low_stock", "quarantine", "disposed"
+   337→  severity    String   // "critical", "warning", "info"
+   338→  title       String
+   339→  message     String
+   340→  entityType  String   // "batch", "product", "category"
+   341→  entityId    String?  // ID of related batch/product
+   342→  isRead      Boolean  @default(false)
+   343→  isResolved  Boolean  @default(false)
+   344→  createdAt   DateTime @default(now())
+   345→  readAt      DateTime?
+   346→
+   347→  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+   348→
+   349→  @@index([businessId])
+   350→  @@index([type])
+   351→  @@index([isRead])
+   352→  @@index([createdAt])
+   353→}
+   354→
+   355→// ── Customers ──
+   356→// Pharmacy customers (optional — walk-in sales use null customerId)
+   357→model Customer {
+   358→  id          String   @id @default(cuid())
+   359→  businessId  String
+   360→  name        String
+   361→  phone       String?
+   362→  email       String?
+   363→  address     String?
+   364→  dateOfBirth DateTime?
+   365→  gender      String?  // "male", "female", "other"
+   366→  // Chronic condition flags (for pharmacy context)
+   367→  chronicConditions String? // comma-separated: "diabetes,hypertension"
+   368→  allergies         String? // comma-separated: "penicillin,sulfa"
+   369→  notes             String?
+   370→  // Loyalty / credit
+   371→  totalSpent  Float    @default(0)
+   372→  visitCount  Int      @default(0)
+   373→  lastVisitAt DateTime?
+   374→  isActive    Boolean  @default(true)
+   375→  createdAt   DateTime @default(now())
+   376→  updatedAt   DateTime @updatedAt
+   377→
+   378→  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+   379→  sales    Sale[]
+   380→  payments Payment[]
+   381→  returns  Return[]
+   382→
+   383→  @@index([businessId])
+   384→  @@index([phone])
+   385→  @@index([name])
+   386→}
+   387→
+   388→// ── Sales (Invoices) ──
+   389→// Each sale is an invoice with multiple line items
+   390→model Sale {
+   391→  id              String   @id @default(cuid())
+   392→  businessId      String
+   393→  customerId      String?  // null for walk-in customers
+   394→  invoiceNo       String   // human-readable: INV-2026-0001
+   395→  status          String   @default("completed") // "completed", "cancelled", "refunded", "pending"
+   396→  paymentMethod   String   @default("cash") // "cash", "card", "mobile_banking", "credit", "mixed"
+   397→  paymentStatus   String   @default("paid") // "paid", "partial", "unpaid", "refunded"
+   398→
+   399→  // Pricing breakdown
+   400→  subtotal        Float    @default(0)  // sum of (item.price * item.quantity)
+   401→  discountAmount  Float    @default(0)  // flat discount
+   402→  discountPercent Float    @default(0)  // percentage discount (0-100)
+   403→  taxAmount       Float    @default(0)  // VAT/tax
+   404→  totalAmount     Float    @default(0)  // final amount customer pays
+   405→  paidAmount      Float    @default(0)  // amount actually paid (for partial payments)
+   406→
+   407→  // Metadata
+   408→  itemCount       Int      @default(0)
+   409→  totalQuantity   Float    @default(0)
+   410→  notes           String?
+   411→
+   412→  // Audit
+   413→  createdBy       String?  // BusinessUser ID
+   414→  cancelledAt     DateTime?
+   415→  cancelledBy     String?
+   416→  cancelReason    String?
+   417→  createdAt       DateTime @default(now())
+   418→  updatedAt       DateTime @updatedAt
+   419→
+   420→  business Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+   421→  customer Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+   422→  items    SaleItem[]
+   423→  payments Payment[]
+   424→  returns  Return[]
+   425→
+   426→  @@unique([businessId, invoiceNo])
+   427→  @@index([businessId])
+   428→  @@index([customerId])
+   429→  @@index([status])
+   430→  @@index([paymentStatus])
+   431→  @@index([createdAt])
+   432→}
+   433→
+   434→// ── Sale Items (Invoice Line Items) ──
+   435→model SaleItem {
+   436→  id          String   @id @default(cuid())
+   437→  saleId      String
+   438→  businessId  String
+   439→  productId   String
+   440→  batchId     String?  // specific batch that fulfilled this item (FEFO)
+   441→  productName String   // snapshot at time of sale
+   442→  genericName String?  // snapshot
+   443→  batchNo     String?  // snapshot
+   444→  quantity    Float
+   445→  unit        String   // snapshot
+   446→  unitPrice   Float    // price per unit (MRP at time of sale)
+   447→  discountPercent Float @default(0)  // per-line discount
+   448→  totalPrice  Float    // quantity * unitPrice * (1 - discountPercent/100)
+   449→  override    Boolean  @default(false)  // Gap 11: true when staff picked a non-FEFO batch
+   450→
+   451→  sale    Sale    @relation(fields: [saleId], references: [id], onDelete: Cascade)
+   452→  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+   453→  product Product @relation(fields: [productId], references: [id])
+   454→  returnItems ReturnItem[]
+   455→
+   456→  @@index([saleId])
+   457→  @@index([productId])
+   458→  @@index([batchId])
+   459→}
+   460→
+   461→// ── Payments ──
+   462→// Records each payment made against a sale (supports partial payments + multiple methods)
+   463→model Payment {
+   464→  id            String   @id @default(cuid())
+   465→  businessId    String
+   466→  saleId        String
+   467→  customerId    String?  // snapshot for quick lookup
+   468→  amount        Float    // amount paid
+   469→  paymentMethod String   // "cash", "card", "mobile_banking", "credit", "cheque"
+   470→  reference     String?  // transaction ref (card last 4, mobile tx ID, cheque no)
+   471→  notes         String?
+   472→  receivedBy    String?  // BusinessUser ID
+   473→  createdAt     DateTime @default(now())
+   474→
+   475→  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+   476→  sale     Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
+   477→  customer Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+   478→
+   479→  @@index([businessId])
+   480→  @@index([saleId])
+   481→  @@index([customerId])
+   482→  @@index([createdAt])
+   483→}
+   484→
+   485→// ── Returns / Refunds ──
+   486→// Records product returns from customers (post-sale)
+   487→model Return {
+   488→  id            String   @id @default(cuid())
+   489→  businessId    String
+   490→  saleId        String
+   491→  customerId    String?
+   492→  returnNo      String   // human-readable: RET-2026-0001
+   493→  status        String   @default("completed") // "completed", "pending", "rejected"
+   494→  refundAmount  Float    @default(0)
+   495→  refundMethod  String   @default("cash") // "cash", "credit", "store_credit"
+   496→  restockItems  Boolean  @default(true) // whether to add items back to inventory
+   497→  reason        String   // "defective", "wrong_item", "expired", "customer_changed_mind", "other"
+   498→  notes         String?
+   499→  processedBy   String?
+   500→  createdAt     DateTime @default(now())
+   501→
+   502→  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+   503→  sale     Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
+   504→  customer Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+   505→  items    ReturnItem[]
+   506→
+   507→  @@unique([businessId, returnNo])
+   508→  @@index([businessId])
+   509→  @@index([saleId])
+   510→  @@index([customerId])
+   511→  @@index([createdAt])
+   512→}
+   513→
+   514→// ── Return Items ──
+   515→model ReturnItem {
+   516→  id            String   @id @default(cuid())
+   517→  returnId      String
+   518→  saleItemId    String
+   519→  businessId    String
+   520→  productId     String
+   521→  batchId       String?
+   522→  productName   String
+   523→  quantity      Float    // quantity returned
+   524→  unitPrice     Float    // refund per unit
+   525→  refundAmount  Float    // quantity * unitPrice
+   526→
+   527→  return      Return   @relation(fields: [returnId], references: [id], onDelete: Cascade)
+   528→  business    Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+   529→  saleItem    SaleItem @relation(fields: [saleItemId], references: [id])
+   530→  product     Product  @relation(fields: [productId], references: [id])
+   531→
+   532→  @@index([returnId])
+   533→  @@index([saleItemId])
+   534→}
+   535→
+   536→// ── Discount Rules ──
+   537→// Auto-applied discounts based on conditions (e.g., bulk, customer loyalty, time-based)
+   538→model DiscountRule {
+   539→  id              String   @id @default(cuid())
+   540→  businessId      String
+   541→  name            String   // "Bulk 10% off", "Senior Citizen 5%"
+   542→  description     String?
+   543→  type            String   // "percent" or "flat"
+   544→  value           Float    // percentage (0-100) or flat amount in BDT
+   545→  // Condition
+   546→  conditionType   String   // "none", "min_quantity", "min_amount", "customer_tag", "schedule_type", "time_based"
+   547→  conditionValue  String?  // e.g., "10" for min_quantity, "schedule_h" for schedule_type
+   548→  // Scope
+   549→  scope           String   // "all", "category", "product", "schedule_type"
+   550→  scopeValue      String?  // categoryId, productId, or schedule type
+   551→  // Validity
+   552→  startDate       DateTime?
+   553→  endDate         DateTime?
+   554→  isActive        Boolean  @default(true)
+   555→  priority        Int      @default(0)  // higher = applied first
+   556→  // Tracking
+   557→  timesUsed       Int      @default(0)
+   558→  totalDiscountGiven Float @default(0)
+   559→  createdAt       DateTime @default(now())
+   560→  updatedAt       DateTime @updatedAt
+   561→
+   562→  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+   563→
+   564→  @@index([businessId])
+   565→  @@index([isActive])
+   566→  @@index([scope])
+   567→}
+   568→
+   569→// ── Suppliers ──
+   570→// Vendors/manufacturers/distributors that supply products
+   571→model Supplier {
+   572→  id            String   @id @default(cuid())
+   573→  businessId    String
+   574→  name          String
+   575→  code          String?  // internal supplier code: SUP-001
+   576→  contactPerson String?
+   577→  phone         String?
+   578→  email         String?
+   579→  address       String?
+   580→  // Financial
+   581→  balance       Float    @default(0)  // outstanding payable (positive = we owe them)
+   582→  totalPurchased Float   @default(0)  // lifetime purchase value
+   583→  totalPaid     Float    @default(0)  // lifetime payments to supplier
+   584→  // Metadata
+   585→  notes         String?
+   586→  isActive      Boolean  @default(true)
+   587→  createdAt     DateTime @default(now())
+   588→  updatedAt     DateTime @updatedAt
+   589→
+   590→  business  Business   @relation(fields: [businessId], references: [id], onDelete: Cascade)
+   591→  purchases Purchase[]
+   592→  batches   Batch[]
+   593→
+   594→  @@index([businessId])
+   595→  @@index([name])
+   596→  @@index([phone])
+   597→}
+   598→
+   599→// ── Purchases (Goods Receipt / Purchase Invoices) ──
+   600→// Records incoming stock from suppliers with batch creation
+   601→model Purchase {
+   602→  id              String   @id @default(cuid())
+   603→  businessId      String
+   604→  supplierId      String?
+   605→  purchaseNo      String   // human-readable: PO-2026-0001
+   606→  status          String   @default("received") // "draft", "ordered", "received", "cancelled"
+   607→  // Pricing
+   608→  subtotal        Float    @default(0)
+   609→  discountAmount  Float    @default(0)
+   610→  taxAmount       Float    @default(0)
+   611→  totalAmount     Float    @default(0)
+   612→  paidAmount      Float    @default(0)
+   613→  paymentStatus   String   @default("unpaid") // "paid", "partial", "unpaid"
+   614→  // Metadata
+   615→  invoiceNo       String?  // supplier's invoice number
+   616→  invoiceDate     DateTime?
+   617→  receivedDate    DateTime?
+   618→  notes           String?
+   619→  // Audit
+   620→  createdBy       String?
+   621→  createdAt       DateTime @default(now())
+   622→  updatedAt       DateTime @updatedAt
+   623→
+   624→  business  Business   @relation(fields: [businessId], references: [id], onDelete: Cascade)
+   625→  supplier  Supplier?  @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+   626→  items     PurchaseItem[]
+   627→
+   628→  @@unique([businessId, purchaseNo])
+   629→  @@index([businessId])
+   630→  @@index([supplierId])
+   631→  @@index([status])
+   632→  @@index([createdAt])
+   633→}
+   634→
+   635→// ── Purchase Items ──
+   636→model PurchaseItem {
+   637→  id              String   @id @default(cuid())
+   638→  purchaseId      String
+   639→  businessId      String
+   640→  productId       String
+   641→  batchId         String?  // batch created on receipt
+   642→  productName     String   // snapshot
+   643→  quantity        Float    // ordered quantity
+   644→  receivedQuantity Float   @default(0) // actually received
+   645→  unit            String   // snapshot
+   646→  unitCost        Float    // purchase price per unit
+   647→  totalPrice      Float    // quantity * unitCost
+   648→  // Batch details (used when creating batch on receipt)
+   649→  batchNo         String?
+   650→  expiryDate      DateTime?
+   651→  mfgDate         DateTime?
+   652→  mrp             Float?   // selling price (MRP) for the batch
+   653→
+   654→  purchase Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+   655→  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+   656→  product  Product  @relation(fields: [productId], references: [id])
+   657→  batch    Batch?   @relation(fields: [batchId], references: [id])
+   658→
+   659→  @@index([purchaseId])
+   660→  @@index([productId])
+   661→}
+   662→
+   663→// ── AI Usage Log ──
+   664→// Tracks every AI call per business for cost monitoring and rate limiting
+   665→model AIUsageLog {
+   666→  id            String   @id @default(cuid())
+   667→  businessId    String
+   668→  feature       String   // "chat" / "insights" / "expiry-optimizer" / "product-assistant:*" / "sql-router:*" / "*-cache"
+   669→  tokensUsed    Int      @default(0)
+   670→  costEstimate  Float    @default(0)
+   671→  success       Boolean  @default(true)
+   672→  errorMessage  String?
+   673→  createdAt     DateTime @default(now())
+   674→
+   675→  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+   676→
+   677→  @@index([businessId])
+   678→  @@index([feature])
+   679→  @@index([createdAt])
+   680→  @@index([businessId, createdAt])
+   681→}
+   682→
+   683→// ── Super Admin ──
+   684→model SuperAdmin {
+   685→  id           String   @id @default(cuid())
+   686→  username     String   @unique
+   687→  passwordHash String
+   688→  fullName     String?
+   689→  role         String   @default("super_admin")
+   690→  isActive     Boolean  @default(true)
+   691→  lastLoginAt  DateTime?
+   692→  createdAt    DateTime @default(now())
+   693→  updatedAt    DateTime @updatedAt
+   694→
+   695→  sessions SuperAdminSession[]
+   696→}
+   697→
+   698→model SuperAdminSession {
+   699→  id              String   @id @default(cuid())
+   700→  superAdminId    String
+   701→  token           String   @unique
+   702→  expiresAt       DateTime
+   703→  createdAt       DateTime @default(now())
+   704→
+   705→  superAdmin SuperAdmin @relation(fields: [superAdminId], references: [id], onDelete: Cascade)
+   706→
+   707→  @@index([superAdminId])
+   708→  @@index([token])
+   709→  @@index([expiresAt])
+   710→}
+   711→
+   712→// ── Business Daily Stats (Cron pre-computation) ──
+   713→model BusinessDailyStats {
+   714→  id              String   @id @default(cuid())
+   715→  businessId      String
+   716→  date            DateTime
+   717→
+   718→  salesTotal      Float    @default(0)
+   719→  salesCount      Int      @default(0)
+   720→  salesDiscount   Float    @default(0)
+   721→  salesReturns    Float    @default(0)
+   722→  salesReturnsCount Int    @default(0)
+   723→  purchasesTotal  Float    @default(0)
+   724→  purchasesCount  Int      @default(0)
+   725→  paymentsIn      Float    @default(0)
+   726→  paymentsOut     Float    @default(0)
+   727→  productCount    Int      @default(0)
+   728→  lowStockCount   Int      @default(0)
+   729→  outOfStockCount Int      @default(0)
+   730→  batchCount      Int      @default(0)
+   731→  nearExpiryCount Int      @default(0)
+   732→  expiredCount    Int      @default(0)
+   733→  inventoryCostValue Float @default(0)
+   734→  inventoryMrpValue  Float @default(0)
+   735→  customerCount       Int  @default(0)
+   736→  supplierCount       Int  @default(0)
+   737→  receivablesTotal    Float @default(0)
+   738→  payablesTotal       Float @default(0)
+   739→  aiCalls         Int      @default(0)
+   740→  aiTokens        Int      @default(0)
+   741→  aiCost          Float    @default(0)
+   742→  createdAt       DateTime @default(now())
+   743→
+   744→  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+   745→
+   746→  @@unique([businessId, date])
+   747→  @@index([businessId, date])
+   748→  @@index([date])
+   749→}
+   750→
+   751→// ── Cron Job Log ──
+   752→model CronJobLog {
+   753→  id            String   @id @default(cuid())
+   754→  jobName       String
+   755→  status        String   // "running" | "success" | "failed"
+   756→  startedAt     DateTime @default(now())
+   757→  finishedAt    DateTime?
+   758→  durationMs    Int?
+   759→  businessesProcessed Int @default(0)
+   760→  recordsWritten     Int @default(0)
+   761→  errorMessage       String?
+   762→  log           String?
+   763→
+   764→  @@index([jobName, startedAt])
+   765→  @@index([status])
+   766→  @@index([startedAt])
+   767→}
+   768→
+   769→// ── AI Response Cache (Gap 9) ──
+   770→model AIResponseCache {
+   771→  id              String   @id @default(cuid())
+   772→  businessId      String
+   773→  feature         String
+   774→  normalizedQuery String
+   775→  dataHash        String
+   776→  response        String
+   777→  tokensUsed      Int      @default(0)
+   778→  createdAt       DateTime @default(now())
+   779→  expiresAt       DateTime
+   780→
+   781→  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+   782→
+   783→  @@unique([businessId, feature, normalizedQuery, dataHash])
+   784→  @@index([businessId, feature, normalizedQuery])
+   785→  @@index([expiresAt])
+   786→  @@index([businessId, expiresAt])
+   787→}
+   788→
+   789→// ── FEFO Override Audit Trail (Gap 11) ──
+   790→// Records every time staff overrides FEFO (picks a later-expiring batch
+   791→// instead of the soonest-expiring one). Required for DGDA compliance.
+   792→model FefoOverride {
+   793→  id              String   @id @default(cuid())
+   794→  businessId      String
+   795→  saleId          String?
+   796→  saleItemId      String?
+   797→  productId       String
+   798→  productName     String   // snapshot
+   799→  selectedBatchId String   // the batch actually dispensed
+   800→  selectedBatchNo String   // snapshot
+   801→  expectedBatchId String   // the FEFO-first batch that was skipped
+   802→  expectedBatchNo String   // snapshot
+   803→  userId          String?  // who made the override
+   804→  userName        String?  // snapshot
+   805→  reason          String   // required, min 10 chars
+   806→  createdAt       DateTime @default(now())
+   807→
+   808→  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+   809→
+   810→  @@index([businessId, createdAt])
+   811→  @@index([saleId])
+   812→  @@index([productId])
+   813→}
+   814→
