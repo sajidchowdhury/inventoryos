@@ -27,7 +27,8 @@ import {
   classifyRateLimitByType,
 } from "@/lib/ai-fallback";
 import { getAiConfig } from "@/lib/ai-config";
-import { analyzeShelfImages, type DetectedMedicine } from "@/lib/shelf-scan-ai";
+import { analyzeShelfImages } from "@/lib/shelf-scan-ai";
+import { matchDetections } from "@/lib/shelf-scan-match";
 
 const FEATURE = "shelf-scanner";
 
@@ -258,6 +259,7 @@ export async function POST(
       scanId: shelfScan.id,
       detectedCount: detections.length,
       matchedCount,
+      noMedicinesFound: detections.length === 0,
       tokensUsed,
       remaining: limitCheck.remaining,
       note: trimmedNote,
@@ -328,103 +330,4 @@ export async function POST(
   }
 }
 
-// ── Matching pass ──
-//
-// For each detected medicine:
-//   1. Try to find a client Product for THIS business whose name matches
-//      (case-insensitive contains). If found, it's "matched" — show the card
-//      with current stock. Read Inventory.quantity for previousQuantity.
-//   2. If no client Product, search the MasterProduct catalog the same way.
-//      If found, it's "master-only" — UI shows "Add to inventory" button.
-//   3. If neither, it's "unmatched" — UI shows "Quick Add" + "Add Manually".
-//
-// The match is intentionally simple (contains, not fuzzy) for MVP speed —
-// SQLite doesn't have trigram similarity without an extension, and a contains
-// check on name + manufacturer catches the common cases. We can upgrade to a
-// proper fuzzy matcher later without changing the route contract.
 
-interface MatchedItem {
-  productId: string | null;
-  masterProductId: string | null;
-  detectedName: string;
-  detectedStrength: string | null;
-  detectedForm: string | null;
-  detectedManufacturer: string | null;
-  confidence: number;
-  matchedMethod: "ai" | "manual" | "quick-add" | "unmatched";
-  previousQuantity: number;
-}
-
-async function matchDetections(
-  businessId: string,
-  detections: DetectedMedicine[]
-): Promise<MatchedItem[]> {
-  const results: MatchedItem[] = [];
-
-  for (const det of detections) {
-    const lowerName = det.name.toLowerCase();
-
-    // 1. Try client Product match (this business's own products)
-    const clientProduct = await db.product.findFirst({
-      where: {
-        businessId,
-        isActive: true,
-        name: { contains: lowerName },
-      },
-      include: { inventory: { select: { quantity: true } } },
-    });
-
-    if (clientProduct) {
-      results.push({
-        productId: clientProduct.id,
-        masterProductId: clientProduct.masterProductId ?? null,
-        detectedName: det.name,
-        detectedStrength: det.strength ?? null,
-        detectedForm: det.dosageForm ?? null,
-        detectedManufacturer: det.manufacturer ?? null,
-        confidence: det.confidence,
-        matchedMethod: "ai",
-        previousQuantity: clientProduct.inventory?.quantity ?? 0,
-      });
-      continue;
-    }
-
-    // 2. Try MasterProduct catalog match
-    const masterProduct = await db.masterProduct.findFirst({
-      where: {
-        isActive: true,
-        name: { contains: lowerName },
-      },
-    });
-
-    if (masterProduct) {
-      results.push({
-        productId: null,
-        masterProductId: masterProduct.id,
-        detectedName: det.name,
-        detectedStrength: det.strength ?? null,
-        detectedForm: det.dosageForm ?? null,
-        detectedManufacturer: det.manufacturer ?? null,
-        confidence: det.confidence,
-        matchedMethod: "unmatched", // master-only — UI shows "Add to inventory"
-        previousQuantity: 0,
-      });
-      continue;
-    }
-
-    // 3. No match anywhere — truly unmatched
-    results.push({
-      productId: null,
-      masterProductId: null,
-      detectedName: det.name,
-      detectedStrength: det.strength ?? null,
-      detectedForm: det.dosageForm ?? null,
-      detectedManufacturer: det.manufacturer ?? null,
-      confidence: det.confidence,
-      matchedMethod: "unmatched",
-      previousQuantity: 0,
-    });
-  }
-
-  return results;
-}

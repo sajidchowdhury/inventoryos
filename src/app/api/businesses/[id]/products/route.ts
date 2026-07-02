@@ -63,6 +63,48 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const { id: businessId } = await params;
     const body = await req.json();
 
+    // Shelf-scanner quick-add: link to an existing master row, or create one so
+    // the medicine appears in both the national catalog and this pharmacy's list.
+    let masterProductId: string | null = body.masterProductId || null;
+    if (!masterProductId && body.addToMasterCatalog !== false) {
+      const name = String(body.name || "").trim();
+      if (name) {
+        const existingMaster = await db.masterProduct.findFirst({
+          where: {
+            isActive: true,
+            name: { equals: name, mode: "insensitive" },
+          },
+        });
+        if (existingMaster) {
+          masterProductId = existingMaster.id;
+        } else {
+          let manufacturerId: string | null = null;
+          const manufacturer = body.manufacturer ? String(body.manufacturer).trim() : null;
+          if (manufacturer) {
+            const mfr = await db.masterManufacturer.upsert({
+              where: { name: manufacturer },
+              update: {},
+              create: { name: manufacturer },
+            });
+            manufacturerId = mfr.id;
+          }
+          const createdMaster = await db.masterProduct.create({
+            data: {
+              name,
+              genericName: body.genericName || null,
+              strength: body.strength || null,
+              dosageForm: body.dosageForm || null,
+              manufacturerId,
+              manufacturerStr: manufacturer,
+              defaultMrp: body.mrp || body.sellingPrice || null,
+              unit: body.unit || "piece",
+            },
+          });
+          masterProductId = createdMaster.id;
+        }
+      }
+    }
+
     const product = await db.product.create({
       data: {
         businessId,
@@ -82,6 +124,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         hsnCode: body.hsnCode || null,
         vatRate: body.vatRate || 0,
         mrp: body.mrp || null,
+        masterProductId,
+        sellingPrice: body.sellingPrice || body.mrp || null,
         isPrescription: body.isPrescription || false,
         storageCondition: body.storageCondition || null,
         rackNo: body.rackNo || null,

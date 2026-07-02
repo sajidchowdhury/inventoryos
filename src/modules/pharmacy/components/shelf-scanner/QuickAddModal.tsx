@@ -94,14 +94,12 @@ export function QuickAddModal({
         dosageForm: dosageForm.trim() || null,
         manufacturer: manufacturer.trim() || null,
         sellingPrice: sellingPrice ? parseFloat(sellingPrice) : null,
-        // Use mrp field since ProductForm maps sellingPrice→mrp in some paths;
-        // the bulk-update endpoint reads sellingPrice off Product. We set both
-        // to be safe.
         mrp: sellingPrice ? parseFloat(sellingPrice) : null,
         reorderLevel: reorderLevel ? parseFloat(reorderLevel) : 0,
         rackNo: rackNo.trim() || null,
         unit: "piece",
         productType: "medicine",
+        addToMasterCatalog: true,
       };
       const res = await fetch(`/api/businesses/${businessId}/products`, {
         method: "POST",
@@ -138,10 +136,10 @@ export function QuickAddModal({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Plus className="h-4 w-4 text-emerald-600" />
-            Quick add product
+            Add to list
           </DialogTitle>
           <p className="text-xs text-muted-foreground mt-1">
-            Not in your inventory. Create it now — prefilled from the AI detection.
+            This medicine is not in the master catalog or your inventory. Saving adds it to both, then links it here.
           </p>
         </DialogHeader>
 
@@ -234,7 +232,7 @@ export function QuickAddModal({
             onClick={handleSave}
           >
             {saving ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <Plus className="h-4 w-4 mr-1.5" />}
-            Create & link
+            Add to master + inventory
           </Button>
         </div>
       </DialogContent>

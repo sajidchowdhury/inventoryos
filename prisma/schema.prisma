@@ -1302,7 +1302,7 @@ model ShelfScanItem {
   detectedForm         String?
   detectedManufacturer String?
   confidence           Float    @default(0)    // 0.0–1.0 from the vision model
-  matchedMethod        String   @default("ai") // "ai" | "manual" | "quick-add" | "unmatched"
+  matchedMethod        String   @default("ai") // "ai" | "master-catalog" | "manual" | "quick-add" | "unmatched"
   previousQuantity     Float    @default(0)    // Inventory.quantity at match time
   newQuantity          Float?                  // entered by user; null = skipped
   appliedAt            DateTime?               // stamped when bulk-update writes the Transaction

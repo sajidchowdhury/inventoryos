@@ -35,6 +35,20 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     let created = 0;
     let skipped = 0;
     const errors: string[] = [];
+    const products: Array<{
+      id: string;
+      masterProductId: string;
+      name: string;
+      strength: string | null;
+      dosageForm: string | null;
+      manufacturer: string | null;
+      unit: string;
+      rackNo: string | null;
+      reorderLevel: number;
+      sellingPrice: number | null;
+      mrp: number | null;
+      currentStock: number;
+    }> = [];
 
     for (const item of items) {
       try {
@@ -48,6 +62,24 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         });
 
         if (existing) {
+          const inv = await db.inventory.findFirst({
+            where: { businessId, productId: existing.id },
+            select: { quantity: true },
+          });
+          products.push({
+            id: existing.id,
+            masterProductId,
+            name: existing.name,
+            strength: existing.strength,
+            dosageForm: existing.dosageForm,
+            manufacturer: existing.manufacturer,
+            unit: existing.unit,
+            rackNo: existing.rackNo,
+            reorderLevel: existing.reorderLevel,
+            sellingPrice: existing.sellingPrice,
+            mrp: existing.mrp,
+            currentStock: inv?.quantity ?? 0,
+          });
           // Reactivate if was inactive
           if (!existing.isActive) {
             await db.product.update({ where: { id: existing.id }, data: { isActive: true } });
@@ -126,6 +158,20 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           },
         });
 
+        products.push({
+          id: product.id,
+          masterProductId,
+          name: product.name,
+          strength: product.strength,
+          dosageForm: product.dosageForm,
+          manufacturer: product.manufacturer,
+          unit: product.unit,
+          rackNo: product.rackNo,
+          reorderLevel: product.reorderLevel,
+          sellingPrice: product.sellingPrice,
+          mrp: product.mrp,
+          currentStock: stockQty,
+        });
         created++;
       } catch (err) {
         errors.push(`Error: ${err instanceof Error ? err.message : "Unknown"}`);
@@ -138,6 +184,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       message: `${created} products added to your inventory, ${skipped} skipped`,
       created,
       skipped,
+      products,
       errors: errors.slice(0, 10),
     });
   } catch (error) {

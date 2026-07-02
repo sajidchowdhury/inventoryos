@@ -174,6 +174,8 @@ export function ShelfScanner() {
 
   // Review state
   const [items, setItems] = useState<ScanItem[]>([]);
+  const [noMedicinesFound, setNoMedicinesFound] = useState(false);
+  const [addingFromCatalog, setAddingFromCatalog] = useState<string | null>(null);
 
   // Save state
   const [saving, setSaving] = useState(false);
@@ -282,12 +284,17 @@ export function ShelfScanner() {
         throw new Error(data.error || data.fallbackMessage || "Scan failed");
       }
       setScanId(data.scanId);
+      setNoMedicinesFound(Boolean(data.noMedicinesFound) || data.detectedCount === 0);
       setItems(
         (data.items as ScanItem[]).map((it) => ({
           ...it,
           newQuantity: "",
           removed: false,
-          sellingPrice: it.product?.sellingPrice ? String(it.product.sellingPrice) : "",
+          sellingPrice: it.product?.sellingPrice
+            ? String(it.product.sellingPrice)
+            : it.masterProduct?.defaultMrp
+              ? String(it.masterProduct.defaultMrp)
+              : "",
           reorderLevel: it.product?.reorderLevel ? String(it.product.reorderLevel) : "",
           rackNo: it.product?.rackNo || "",
           showDetails: false,
@@ -332,6 +339,57 @@ export function ShelfScanner() {
       rackNo: product.rackNo || "",
     });
     showToast(`Linked to ${product.name}`);
+  };
+
+  const handleAddFromCatalog = async (item: ScanItem) => {
+    if (!businessId || !item.masterProduct) return;
+    setAddingFromCatalog(item.id);
+    try {
+      const res = await fetch(`/api/businesses/${businessId}/catalog/subscribe`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          items: [{ masterProductId: item.masterProduct.id, stockQty: 0 }],
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to add from catalog");
+
+      const linked = (data.products as Array<{
+        id: string; name: string; strength?: string | null; dosageForm?: string | null;
+        manufacturer?: string | null; unit: string; rackNo?: string | null;
+        reorderLevel?: number | null; sellingPrice?: number | null; mrp?: number | null;
+        currentStock: number;
+      }> | undefined)?.find((p) => p.id);
+
+      if (!linked) throw new Error("Product was not created");
+
+      updateItem(item.id, {
+        product: {
+          id: linked.id,
+          name: linked.name,
+          strength: linked.strength,
+          dosageForm: linked.dosageForm,
+          manufacturer: linked.manufacturer,
+          rackNo: linked.rackNo,
+          reorderLevel: linked.reorderLevel,
+          sellingPrice: linked.sellingPrice,
+          mrp: linked.mrp,
+          unit: linked.unit,
+          currentStock: linked.currentStock,
+        },
+        previousQuantity: linked.currentStock,
+        matchedMethod: "ai",
+        sellingPrice: linked.sellingPrice ? String(linked.sellingPrice) : "",
+        reorderLevel: linked.reorderLevel ? String(linked.reorderLevel) : "",
+        rackNo: linked.rackNo || "",
+      });
+      showToast(`Added ${linked.name} to your inventory`);
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Could not add from catalog");
+    } finally {
+      setAddingFromCatalog(null);
+    }
   };
 
   const handleQuickAdd = (item: ScanItem, product: {
@@ -409,6 +467,7 @@ export function ShelfScanner() {
     setNote("");
     setScanId(null);
     setItems([]);
+    setNoMedicinesFound(false);
     setScanError(null);
     setSaveResult(null);
     setUploadError(null);
@@ -441,7 +500,9 @@ export function ShelfScanner() {
   };
 
   const detectedCount = items.filter((it) => !it.removed).length;
-  const matchedCount = items.filter((it) => !it.removed && it.product).length;
+  const inInventoryCount = items.filter((it) => !it.removed && it.product).length;
+  const inCatalogCount = items.filter((it) => !it.removed && !it.product && it.masterProduct).length;
+  const newMedicineCount = items.filter((it) => !it.removed && !it.product && !it.masterProduct).length;
   const readyCount = activeItems.length;
 
   // ════════════════════════════════════════════════════════════
@@ -620,7 +681,7 @@ export function ShelfScanner() {
               <div className="rounded-lg bg-muted/50 p-3 text-xs text-muted-foreground space-y-1">
                 <p className="font-medium text-foreground">How it works</p>
                 <p>1. Take 2–3 photos of your shelf from different angles</p>
-                <p>2. AI detects medicines and matches them to your inventory</p>
+                <p>2. AI detects medicines → your list → master catalog → add new</p>
                 <p>3. Enter counted quantities and save — done!</p>
               </div>
             </motion.div>
@@ -628,12 +689,31 @@ export function ShelfScanner() {
 
           {step === "review" && (
             <motion.div key="review" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-3">
+              {noMedicinesFound ? (
+                <div className="text-center py-10 space-y-3">
+                  <div className="h-14 w-14 mx-auto rounded-2xl bg-amber-100 flex items-center justify-center">
+                    <ImageOff className="h-7 w-7 text-amber-600" />
+                  </div>
+                  <div>
+                    <p className="text-base font-semibold">No medicine found in the image</p>
+                    <p className="text-sm text-muted-foreground mt-1 max-w-xs mx-auto">
+                      The AI could not identify any medicine packaging. Try clearer photos with labels facing the camera.
+                    </p>
+                  </div>
+                  <Button variant="outline" onClick={reset}>
+                    <RefreshCw className="h-4 w-4 mr-1.5" /> Try another scan
+                  </Button>
+                </div>
+              ) : (
+                <>
               {/* Summary bar */}
               <div className="flex items-center justify-between rounded-lg bg-teal-50 border border-teal-200 px-3 py-2">
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="h-4 w-4 text-teal-600" />
                   <span className="text-sm font-medium text-teal-900">
-                    {detectedCount} detected · {matchedCount} matched
+                    {detectedCount} detected · {inInventoryCount} in your list
+                    {inCatalogCount > 0 && ` · ${inCatalogCount} in catalog`}
+                    {newMedicineCount > 0 && ` · ${newMedicineCount} new`}
                   </span>
                 </div>
                 <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={reset}>
@@ -642,7 +722,7 @@ export function ShelfScanner() {
               </div>
 
               <p className="text-xs text-muted-foreground px-1">
-                Enter the counted quantity for each item. Unmatched items can be linked manually or quick-added.
+                Items already in your inventory can go straight to quantity entry. Catalog matches can be added to your list. Brand-new medicines use Add to list.
               </p>
 
               {/* Item cards */}
@@ -651,31 +731,45 @@ export function ShelfScanner() {
                   const cb = confidenceBadge(item.confidence);
                   const hasProduct = !!item.product;
                   const hasMaster = !!item.masterProduct;
+                  const isInInventory = hasProduct;
+                  const isInCatalogOnly = !hasProduct && hasMaster;
+                  const isBrandNew = !hasProduct && !hasMaster;
                   return (
                     <Card key={item.id} className={cn(
                       "overflow-hidden shadow-sm transition-opacity",
-                      !hasProduct && "border-amber-200"
+                      isInInventory && "border-teal-200",
+                      isInCatalogOnly && "border-violet-200",
+                      isBrandNew && "border-amber-200"
                     )}>
                       <CardContent className="p-0">
                         {/* Card header — detected info */}
                         <div className="p-3 flex items-start gap-3">
                           <div className={cn(
                             "h-10 w-10 rounded-xl flex items-center justify-center shrink-0",
-                            hasProduct
+                            isInInventory
                               ? "bg-gradient-to-br from-teal-500 to-emerald-600"
-                              : "bg-gradient-to-br from-amber-400 to-orange-500"
+                              : isInCatalogOnly
+                                ? "bg-gradient-to-br from-violet-500 to-purple-600"
+                                : "bg-gradient-to-br from-amber-400 to-orange-500"
                           )}>
-                            {hasProduct ? (
+                            {isInInventory ? (
                               <CheckCircle2 className="h-5 w-5 text-white" />
+                            ) : isInCatalogOnly ? (
+                              <Search className="h-5 w-5 text-white" />
                             ) : (
-                              <AlertTriangle className="h-5 w-5 text-white" />
+                              <Plus className="h-5 w-5 text-white" />
                             )}
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-start justify-between gap-2">
                               <div className="min-w-0">
                                 <p className="text-sm font-semibold truncate">
-                                  {item.product?.name || item.detectedName}
+                                  {item.product?.name || item.masterProduct?.name || item.detectedName}
+                                </p>
+                                <p className="text-[10px] text-muted-foreground mt-0.5">
+                                  {isInInventory && "In your inventory — enter counted quantity"}
+                                  {isInCatalogOnly && "In master catalog — add to your list to continue"}
+                                  {isBrandNew && "Not in catalog — add to master + your list"}
                                 </p>
                                 <div className="flex flex-wrap items-center gap-1.5 mt-1">
                                   {(item.product?.strength || item.detectedStrength) && (
@@ -708,11 +802,11 @@ export function ShelfScanner() {
                             </div>
 
                             {/* Match status / actions */}
-                            {hasProduct ? (
+                            {isInInventory ? (
                               <div className="flex items-center gap-3 mt-2 text-[11px] text-muted-foreground">
-                                <span>Current: <strong className="text-foreground">{item.product.currentStock} {item.product.unit}</strong></span>
-                                {item.product.rackNo && <span>Rack: {item.product.rackNo}</span>}
-                                {item.product.sellingPrice && <span>৳{item.product.sellingPrice}</span>}
+                                <span>Current: <strong className="text-foreground">{item.product!.currentStock} {item.product!.unit}</strong></span>
+                                {item.product!.rackNo && <span>Rack: {item.product!.rackNo}</span>}
+                                {item.product!.sellingPrice && <span>৳{item.product!.sellingPrice}</span>}
                                 <button
                                   className="text-emerald-600 hover:underline ml-auto flex items-center gap-0.5"
                                   onClick={() => updateItem(item.id, { showDetails: !item.showDetails })}
@@ -721,26 +815,44 @@ export function ShelfScanner() {
                                   {item.showDetails ? "Hide" : "Edit"}
                                 </button>
                               </div>
-                            ) : (
+                            ) : isInCatalogOnly ? (
                               <div className="flex flex-wrap gap-1.5 mt-2">
-                                {hasMaster && (
-                                  <span className="text-[10px] bg-violet-50 text-violet-700 px-2 py-0.5 rounded-full">
-                                    In catalog — add to inventory
-                                  </span>
-                                )}
+                                <Button
+                                  size="sm"
+                                  className="h-7 text-[11px] gap-1 bg-violet-600 hover:bg-violet-700"
+                                  disabled={addingFromCatalog === item.id}
+                                  onClick={() => handleAddFromCatalog(item)}
+                                >
+                                  {addingFromCatalog === item.id ? (
+                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                  ) : (
+                                    <Plus className="h-3 w-3" />
+                                  )}
+                                  Add to your list
+                                </Button>
                                 <Button
                                   size="sm" variant="outline"
                                   className="h-7 text-[11px] gap-1"
                                   onClick={() => setMatchModalItem(item)}
                                 >
-                                  <Search className="h-3 w-3" /> Add Manually
+                                  <Search className="h-3 w-3" /> Link manually
+                                </Button>
+                              </div>
+                            ) : (
+                              <div className="flex flex-wrap gap-1.5 mt-2">
+                                <Button
+                                  size="sm"
+                                  className="h-7 text-[11px] gap-1 bg-amber-600 hover:bg-amber-700"
+                                  onClick={() => setQuickAddModalItem(item)}
+                                >
+                                  <Plus className="h-3 w-3" /> Add to list
                                 </Button>
                                 <Button
                                   size="sm" variant="outline"
                                   className="h-7 text-[11px] gap-1"
-                                  onClick={() => setQuickAddModalItem(item)}
+                                  onClick={() => setMatchModalItem(item)}
                                 >
-                                  <Plus className="h-3 w-3" /> Quick Add
+                                  <Search className="h-3 w-3" /> Link manually
                                 </Button>
                               </div>
                             )}
@@ -815,6 +927,8 @@ export function ShelfScanner() {
                     Start a new scan
                   </Button>
                 </div>
+              )}
+                </>
               )}
             </motion.div>
           )}
