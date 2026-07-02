@@ -245,6 +245,9 @@ export function AiProviderCard({ token }: { token: string }) {
                           {p.apiKeySet && !p.isActive && (
                             <Badge variant="outline" className="text-[10px]">Key set</Badge>
                           )}
+                          {p.model && (
+                            <Badge variant="outline" className="text-[10px] font-mono">{p.model}</Badge>
+                          )}
                         </div>
                         <div className="text-xs text-muted-foreground mt-0.5">{meta.description}</div>
                         {meta.link && (

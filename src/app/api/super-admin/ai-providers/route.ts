@@ -135,6 +135,12 @@ export async function PUT(req: NextRequest) {
     });
   } catch (error) {
     console.error("[super-admin/ai-providers] PUT failed:", error);
-    return NextResponse.json({ error: "Failed to update AI provider" }, { status: 500 });
+    const msg = error instanceof Error ? error.message : "Failed to update AI provider";
+    // Prisma P2003 / column-doesn't-exist errors usually mean the DB schema
+    // is out of date — the founder needs to run `bun run db:push`.
+    const hint = msg.includes("Unknown argument") || msg.includes("column")
+      ? " The database schema may be out of date. Run 'bun run db:push' on the server."
+      : "";
+    return NextResponse.json({ error: msg + hint }, { status: 500 });
   }
 }
