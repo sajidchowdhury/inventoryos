@@ -63,6 +63,12 @@ export async function POST(req: NextRequest) {
             name: businessName,
             address: address || null,
             shopCode: generateShopCode(businessType?.slug),
+            // ── Dev/testing default: grant Pro+AI tier so new businesses can
+            // use all AI features immediately. In production, set this to
+            // "trial" and gate AI behind a paid subscription upgrade flow.
+            subscriptionTier: "pro_ai",
+            subscriptionStatus: "active",
+            aiEnabled: true,
           },
           include: {
             businessType: {
