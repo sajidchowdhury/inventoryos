@@ -36,6 +36,7 @@ interface ActiveProvider {
   provider: string;
   apiKey: string | null;
   baseUrl: string | null;
+  model: string | null;
 }
 
 /**
@@ -52,6 +53,7 @@ export async function getActiveVisionProvider(): Promise<ActiveProvider | null> 
       provider: row.provider,
       apiKey: row.apiKey,
       baseUrl: row.baseUrl,
+      model: row.model,
     };
   } catch (err) {
     console.error("[vision-provider] failed to read active provider:", err);
@@ -81,9 +83,9 @@ export async function analyzeWithActiveProvider(
 
   switch (provider.provider) {
     case "gemini":
-      return analyzeWithGemini(images, maxTokens, systemPrompt, userPrompt, provider.apiKey!);
+      return analyzeWithGemini(images, maxTokens, systemPrompt, userPrompt, provider.apiKey!, provider.model);
     case "zai":
-      return analyzeWithZai(images, maxTokens, systemPrompt, userPrompt, provider.apiKey!, provider.baseUrl);
+      return analyzeWithZai(images, maxTokens, systemPrompt, userPrompt, provider.apiKey!, provider.baseUrl, provider.model);
     default:
       throw new Error(`Unknown vision provider: "${provider.provider}"`);
   }
@@ -102,7 +104,8 @@ async function analyzeWithGemini(
   maxTokens: number,
   systemPrompt: string,
   userPrompt: string,
-  apiKey: string
+  apiKey: string,
+  model: string | null
 ): Promise<VisionAnalysisResult> {
   // Build the parts array: system prompt + user prompt + images
   const parts: Array<Record<string, unknown>> = [
@@ -123,7 +126,8 @@ async function analyzeWithGemini(
     });
   }
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+  const geminiModel = model || "gemini-2.0-flash";
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${apiKey}`;
 
   const response = await fetch(url, {
     method: "POST",
@@ -169,7 +173,7 @@ async function analyzeWithGemini(
 // Default baseUrl: https://open.bigmodel.cn/api/paas/v4
 
 const ZAI_DEFAULT_BASE_URL = "https://open.bigmodel.cn/api/paas/v4";
-const ZAI_VISION_MODEL = "glm-4v-plus"; // public BigModel vision model
+const ZAI_DEFAULT_MODEL = "glm-4v"; // basic public BigModel vision model
 
 async function analyzeWithZai(
   images: string[],
@@ -177,10 +181,12 @@ async function analyzeWithZai(
   systemPrompt: string,
   userPrompt: string,
   apiKey: string,
-  baseUrl: string | null
+  baseUrl: string | null,
+  model: string | null
 ): Promise<VisionAnalysisResult> {
   const base = (baseUrl || ZAI_DEFAULT_BASE_URL).replace(/\/$/, "");
   const url = `${base}/chat/completions`;
+  const visionModel = model || ZAI_DEFAULT_MODEL;
 
   // Build OpenAI-compatible message content (text + images)
   const content: Array<
@@ -197,7 +203,7 @@ async function analyzeWithZai(
       "Authorization": `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: ZAI_VISION_MODEL,
+      model: visionModel,
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content },

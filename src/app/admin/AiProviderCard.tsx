@@ -26,25 +26,30 @@ interface ProviderInfo {
   apiKeySet: boolean;
   apiKeyMasked: string | null;
   baseUrl: string | null;
+  model: string | null;
   isActive: boolean;
   updatedAt?: string;
   updatedBy?: string | null;
 }
 
-const PROVIDER_META: Record<string, { label: string; description: string; color: string; link: string; defaultBaseUrl?: string; baseUrlHelp?: string }> = {
+const PROVIDER_META: Record<string, { label: string; description: string; color: string; link: string; defaultBaseUrl?: string; baseUrlHelp?: string; defaultModel?: string; modelHelp?: string }> = {
   gemini: {
     label: "Google Gemini",
-    description: "Free tier via Google AI Studio. Good for reading medicine labels. Model: gemini-2.0-flash.",
+    description: "Free tier via Google AI Studio. Good for reading medicine labels.",
     color: "text-blue-600",
     link: "https://aistudio.google.com/apikey",
+    defaultModel: "gemini-2.0-flash",
+    modelHelp: "Default: gemini-2.0-flash. Also: gemini-1.5-flash, gemini-1.5-pro.",
   },
   zai: {
     label: "Z.ai / BigModel (GLM-4V)",
-    description: "Paid Z.ai vision model (BigModel). Model: glm-4v-plus. ~$0.01/image. OpenAI-compatible API.",
+    description: "Paid Z.ai vision model (BigModel). ~$0.01/image. OpenAI-compatible API.",
     color: "text-purple-600",
     link: "https://open.bigmodel.cn/usercenter/apikeys",
     defaultBaseUrl: "https://open.bigmodel.cn/api/paas/v4",
     baseUrlHelp: "Default: https://open.bigmodel.cn/api/paas/v4 (China). Use https://api.z.ai/api/paas/v4 for international.",
+    defaultModel: "glm-4v",
+    modelHelp: "Default: glm-4v. Also: glm-4v-plus, glm-4v-flash. Check which models your account has access to.",
   },
 };
 
@@ -55,7 +60,7 @@ export function AiProviderCard({ token }: { token: string }) {
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   // Edit state: map of provider → { apiKey, baseUrl, showKey }
-  const [edits, setEdits] = useState<Record<string, { apiKey: string; baseUrl: string; showKey: boolean }>>({});
+  const [edits, setEdits] = useState<Record<string, { apiKey: string; baseUrl: string; model: string; showKey: boolean }>>({});
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -68,11 +73,12 @@ export function AiProviderCard({ token }: { token: string }) {
       const data = await res.json();
       setProviders(data.providers || []);
       // Initialize edit state
-      const newEdits: Record<string, { apiKey: string; baseUrl: string; showKey: boolean }> = {};
+      const newEdits: Record<string, { apiKey: string; baseUrl: string; model: string; showKey: boolean }> = {};
       for (const p of data.providers || []) {
         newEdits[p.provider] = {
           apiKey: "", // don't prefill the key — user types a new one to replace
           baseUrl: p.baseUrl || "",
+          model: p.model || "",
           showKey: false,
         };
       }
@@ -131,6 +137,28 @@ export function AiProviderCard({ token }: { token: string }) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
       showToast("Base URL saved");
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Save failed");
+    } finally {
+      setSaving(null);
+    }
+  };
+
+  const handleSaveModel = async (provider: string) => {
+    const edit = edits[provider];
+    if (!edit) return;
+    setSaving(provider + "-model");
+    setError(null);
+    try {
+      const res = await fetch("/api/super-admin/ai-providers", {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ provider, model: edit.model.trim() || null }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+      showToast("Model saved");
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Save failed");
@@ -274,6 +302,44 @@ export function AiProviderCard({ token }: { token: string }) {
                       </Button>
                     </div>
                   </div>
+
+                  {/* Model field — shown for all providers */}
+                  {meta.defaultModel && (
+                    <div className="mt-2 space-y-1.5">
+                      <Label className="text-xs">Model</Label>
+                      <Input
+                        type="text"
+                        value={edits[p.provider]?.model ?? ""}
+                        onChange={(e) =>
+                          setEdits((prev) => ({
+                            ...prev,
+                            [p.provider]: { ...prev[p.provider], model: e.target.value },
+                          }))
+                        }
+                        placeholder={meta.defaultModel}
+                        className="h-9 text-sm font-mono"
+                      />
+                      {meta.modelHelp && (
+                        <p className="text-[10px] text-muted-foreground">{meta.modelHelp}</p>
+                      )}
+                      {(edits[p.provider]?.model ?? "") !== (p.model ?? "") && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 text-[11px] gap-1"
+                          disabled={saving === p.provider + "-model"}
+                          onClick={() => handleSaveModel(p.provider)}
+                        >
+                          {saving === p.provider + "-model" ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : (
+                            <Save className="h-3 w-3" />
+                          )}
+                          Save model
+                        </Button>
+                      )}
+                    </div>
+                  )}
 
                   {/* Base URL field (only for providers that support it, e.g. Z.ai) */}
                   {meta.defaultBaseUrl && (

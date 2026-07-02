@@ -1329,6 +1329,7 @@ model AiProvider {
   provider  String   @unique  // "gemini" | "zai" | "openai"
   apiKey    String?           // provider API key (plaintext for MVP)
   baseUrl   String?           // optional override (e.g. for Z.ai internal endpoint)
+  model     String?           // model name (e.g. "glm-4v", "gemini-2.0-flash")
   isActive  Boolean  @default(false)
   updatedAt DateTime @updatedAt
   updatedBy String?

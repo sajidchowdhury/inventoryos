@@ -62,6 +62,7 @@ export async function GET(req: NextRequest) {
         apiKeySet: !!p.apiKey,
         apiKeyMasked: p.apiKey ? `••••••••${p.apiKey.slice(-4)}` : null,
         baseUrl: p.baseUrl,
+        model: p.model,
         isActive: p.isActive,
         updatedAt: p.updatedAt,
         updatedBy: p.updatedBy,
@@ -80,7 +81,7 @@ export async function PUT(req: NextRequest) {
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const body = await req.json();
-    const { provider, apiKey, baseUrl, isActive } = body;
+    const { provider, apiKey, baseUrl, model, isActive } = body;
 
     if (!provider || !["gemini", "zai"].includes(provider)) {
       return NextResponse.json(
@@ -103,6 +104,7 @@ export async function PUT(req: NextRequest) {
     const updateData: Record<string, unknown> = { updatedBy };
     if (apiKey !== undefined) updateData.apiKey = apiKey || null;
     if (baseUrl !== undefined) updateData.baseUrl = baseUrl || null;
+    if (model !== undefined) updateData.model = model || null;
     if (isActive !== undefined) updateData.isActive = isActive;
 
     const row = await db.aiProvider.upsert({
@@ -112,6 +114,7 @@ export async function PUT(req: NextRequest) {
         provider,
         apiKey: apiKey || null,
         baseUrl: baseUrl || null,
+        model: model || null,
         isActive: isActive ?? false,
         updatedBy,
       },
@@ -124,6 +127,7 @@ export async function PUT(req: NextRequest) {
         provider: row.provider,
         apiKeySet: !!row.apiKey,
         baseUrl: row.baseUrl,
+        model: row.model,
         isActive: row.isActive,
         updatedAt: row.updatedAt,
         updatedBy: row.updatedBy,
