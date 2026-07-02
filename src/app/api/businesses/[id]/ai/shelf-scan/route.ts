@@ -65,13 +65,16 @@ export async function POST(
 
     // Validate each image is a string data URL or HTTP URL, within size limits.
     let totalBytes = 0;
-    for (const img of images) {
+    for (let i = 0; i < images.length; i++) {
+      const img = images[i];
       if (typeof img !== "string" || !img) {
         return NextResponse.json(
           { error: "Each image must be a base64 data URL or an HTTP URL string." },
           { status: 400 }
         );
       }
+      // Log each image's size + prefix for debugging VLM format errors
+      console.log(`[shelf-scan] image[${i}]: ${img.length} chars, prefix: ${img.substring(0, 40)}`);
       if (img.length > MAX_IMAGE_BYTES) {
         return NextResponse.json(
           { error: "One or more images exceed the 4 MB limit. Please use smaller photos." },
@@ -151,27 +154,18 @@ export async function POST(
         maxOutputTokens: aiConfig.maxOutputTokens,
       });
     } catch (vlmError) {
-      // Log the failure against the scan row + AIUsageLog, then return a
-      // friendly fallback — mirrors the product-assistant catch block.
-      await logAIUsage(
-        businessId,
-        FEATURE,
-        0,
-        false,
-        vlmError instanceof Error ? vlmError.message : String(vlmError)
-      );
-
-      const reason = classifyError(vlmError);
-      const fallback = buildFallback(reason, {
-        errorMessage: vlmError instanceof Error ? vlmError.message : String(vlmError),
-      });
+      // Log the failure against the scan row + AIUsageLog, then return the
+      // actual error message so the UI can show what went wrong (instead of
+      // a generic "unexpected error" that hides the real cause).
+      const vlmErrMsg = vlmError instanceof Error ? vlmError.message : String(vlmError);
+      console.error("[shelf-scan] VLM call failed:", vlmErrMsg);
+      await logAIUsage(businessId, FEATURE, 0, false, vlmErrMsg);
 
       return NextResponse.json(
         {
           success: false,
           scanId: shelfScan.id,
-          ...fallback,
-          error: fallback.fallbackMessage,
+          error: `AI vision analysis failed: ${vlmErrMsg}`,
           type: "llm_error",
         },
         { status: 500 }

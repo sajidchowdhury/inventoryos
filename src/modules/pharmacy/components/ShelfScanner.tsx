@@ -217,9 +217,20 @@ export function ShelfScanner() {
     setProcessingImages(true);
     try {
       const dataUrl = await resizeImageToDataUrl(file);
+      // Verify we got a valid data URL — if the canvas was tainted or the
+      // image couldn't be decoded, we might get a non-data URL back.
+      if (!dataUrl.startsWith("data:image/")) {
+        throw new Error("Image processing failed — could not convert to data URL");
+      }
+      console.log(`[shelf-scanner] image processed: ${dataUrl.length} chars, prefix: ${dataUrl.substring(0, 40)}`);
       setImages((prev) => [...prev, dataUrl]);
-    } catch {
-      setUploadError("Failed to process image. Please try a different photo.");
+    } catch (err) {
+      console.error("[shelf-scanner] image processing failed:", err);
+      setUploadError(
+        err instanceof Error && err.message.includes("Failed to load image")
+          ? "Could not read this image format. Try a JPG or PNG photo instead."
+          : "Failed to process image. Please try a different photo."
+      );
     } finally {
       setProcessingImages(false);
     }
