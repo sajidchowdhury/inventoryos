@@ -34,6 +34,8 @@ import {
   Clock,
   Package,
   Pill,
+  ScanLine,
+  X,
 } from "lucide-react";
 
 interface AiConfigValue {
@@ -41,6 +43,7 @@ interface AiConfigValue {
   maxOutputTokens: number;
   maxInputBatches: number | null;
   maxInputProducts: number | null;
+  maxInputImages: number | null;
   updatedAt?: string;
   updatedBy?: string | null;
 }
@@ -78,6 +81,12 @@ const FEATURE_META: Record<
     icon: Pill,
     description: "Generate descriptions + check drug interactions. Default 512 tokens + 20 med cap.",
     color: "text-purple-600",
+  },
+  "shelf-scanner": {
+    label: "AI Shelf Scanner",
+    icon: ScanLine,
+    description: "Vision model that detects medicines from shelf photos. Default 2048 tokens + 3 photo cap.",
+    color: "text-teal-600",
   },
 };
 
@@ -121,6 +130,7 @@ export function AiConfigCard({ token }: { token: string }) {
         maxOutputTokens: cfg.maxOutputTokens,
         maxInputBatches: cfg.maxInputBatches,
         maxInputProducts: cfg.maxInputProducts,
+        maxInputImages: cfg.maxInputImages,
       };
     }
     setEdits(newEdits);
@@ -150,6 +160,12 @@ export function AiConfigCard({ token }: { token: string }) {
             updates.maxInputProducts === null || updates.maxInputProducts === ""
               ? null
               : Number(updates.maxInputProducts);
+        }
+        if (updates.maxInputImages !== orig.maxInputImages) {
+          body.maxInputImages =
+            updates.maxInputImages === null || updates.maxInputImages === ""
+              ? null
+              : Number(updates.maxInputImages);
         }
       }
 
@@ -217,7 +233,8 @@ export function AiConfigCard({ token }: { token: string }) {
     return (
       Number(edit.maxOutputTokens) !== orig.maxOutputTokens ||
       Number(edit.maxInputBatches) !== (orig.maxInputBatches ?? null) ||
-      Number(edit.maxInputProducts) !== (orig.maxInputProducts ?? null)
+      Number(edit.maxInputProducts) !== (orig.maxInputProducts ?? null) ||
+      Number(edit.maxInputImages) !== (orig.maxInputImages ?? null)
     );
   };
 
@@ -229,7 +246,7 @@ export function AiConfigCard({ token }: { token: string }) {
           AI Configuration
         </CardTitle>
         <CardDescription>
-          Tunable cost-control knobs for the 4 LLM features. Changes take effect on
+          Tunable cost-control knobs for the 5 LLM features. Changes take effect on
           the next AI call — no redeploy required.
         </CardDescription>
       </CardHeader>
@@ -351,6 +368,26 @@ export function AiConfigCard({ token }: { token: string }) {
                             className="mt-1"
                           />
                           <p className="mt-1 text-xs text-muted-foreground">Range: 1–100</p>
+                        </div>
+                      )}
+
+                      {cfg.feature === "shelf-scanner" && (
+                        <div>
+                          <Label htmlFor={`${cfg.feature}-maxImages`} className="text-xs">
+                            Max Photos per Scan
+                          </Label>
+                          <Input
+                            id={`${cfg.feature}-maxImages`}
+                            type="number"
+                            min={1}
+                            max={10}
+                            value={edits[cfg.feature]?.maxInputImages ?? ""}
+                            onChange={(e) =>
+                              handleFieldChange(cfg.feature, "maxInputImages", e.target.value)
+                            }
+                            className="mt-1"
+                          />
+                          <p className="mt-1 text-xs text-muted-foreground">Range: 1–10</p>
                         </div>
                       )}
                     </div>

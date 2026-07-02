@@ -135,6 +135,7 @@ model Business {
   aiResponseCache AIResponseCache[]
   fefoOverrides FefoOverride[]
   generatedReports GeneratedReport[]
+  shelfScans      ShelfScan[]
 
   @@index([userId])
   @@index([businessTypeId])
@@ -240,6 +241,7 @@ model Product {
   saleItems    SaleItem[]
   returnItems  ReturnItem[]
   purchaseItems PurchaseItem[]
+  shelfScanItems ShelfScanItem[]
 
   @@index([businessId])
   @@index([categoryId])
@@ -885,6 +887,7 @@ model AiConfig {
   maxOutputTokens  Int      @default(1024)
   maxInputBatches  Int?     // only used by expiry-optimizer
   maxInputProducts Int?     // only used by product-assistant:check_interactions
+  maxInputImages   Int?     // only used by shelf-scanner (max photos per scan)
   updatedAt        DateTime @updatedAt
   updatedBy        String?  // super-admin username
 
@@ -1252,6 +1255,7 @@ model MasterProduct {
   updatedAt       DateTime @updatedAt
 
   manufacturer MasterManufacturer? @relation(fields: [manufacturerId], references: [id], onDelete: SetNull)
+  shelfScanItems ShelfScanItem[]
 
   @@index([name])
   @@index([genericName])
@@ -1261,4 +1265,55 @@ model MasterProduct {
   @@index([barcode])
   @@index([isActive])
   @@map("master_products")
+}
+
+// ── Shelf Scanner (AI vision stock counting) ──
+// A ShelfScan is created when a user uploads 2–3 shelf photos. The vision model
+// detects medicines; each detection becomes a ShelfScanItem linked to a client
+// Product (if matched) and/or a MasterProduct (catalog match). Stock updates
+// from a scan are applied via POST /api/businesses/[id]/stock/bulk-update which
+// writes Inventory.quantity + an ADJUSTMENT Transaction — never MasterProduct.
+model ShelfScan {
+  id            String   @id @default(cuid())
+  businessId    String
+  imageCount    Int
+  detectedCount Int      @default(0)
+  matchedCount  Int      @default(0)
+  rawResult     String?  // full LLM JSON output, for debugging/replay
+  tokensUsed    Int      @default(0)
+  createdBy     String?  // BusinessUser ID who initiated the scan
+  createdAt     DateTime @default(now())
+
+  business Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  items    ShelfScanItem[]
+
+  @@index([businessId])
+  @@index([createdAt])
+  @@map("shelf_scans")
+}
+
+model ShelfScanItem {
+  id                   String   @id @default(cuid())
+  shelfScanId          String
+  productId            String?  // matched client Product (null until linked/quick-added)
+  masterProductId      String?  // matched MasterProduct (null if no catalog match)
+  detectedName         String
+  detectedStrength     String?
+  detectedForm         String?
+  detectedManufacturer String?
+  confidence           Float    @default(0)    // 0.0–1.0 from the vision model
+  matchedMethod        String   @default("ai") // "ai" | "manual" | "quick-add" | "unmatched"
+  previousQuantity     Float    @default(0)    // Inventory.quantity at match time
+  newQuantity          Float?                  // entered by user; null = skipped
+  appliedAt            DateTime?               // stamped when bulk-update writes the Transaction
+  createdAt            DateTime @default(now())
+
+  shelfScan      ShelfScan      @relation(fields: [shelfScanId], references: [id], onDelete: Cascade)
+  product        Product?       @relation(fields: [productId], references: [id], onDelete: SetNull)
+  masterProduct  MasterProduct? @relation(fields: [masterProductId], references: [id], onDelete: SetNull)
+
+  @@index([shelfScanId])
+  @@index([productId])
+  @@index([masterProductId])
+  @@map("shelf_scan_items")
 }

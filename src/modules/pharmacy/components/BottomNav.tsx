@@ -19,7 +19,7 @@ const navItems: { view: PharmacyView; label: string; icon: typeof LayoutDashboar
 
 // Views that belong to each hub tab
 const hubGroups: Record<string, PharmacyView[]> = {
-  "inventory-hub": ["products", "product-detail", "add-product", "edit-product", "batches", "add-batch", "edit-batch", "expiry", "categories", "import"],
+  "inventory-hub": ["products", "product-detail", "add-product", "edit-product", "batches", "add-batch", "edit-batch", "expiry", "categories", "import", "shelf-scanner"],
   "ai-hub": ["ai-insights", "ai-chat", "ai-reorder", "ai-forecast", "ai-expiry-opt"],
   "more-hub": ["customers", "customer-detail", "add-customer", "edit-customer", "customer-credit", "suppliers", "supplier-detail", "purchases", "purchase-detail", "add-purchase", "payments", "returns", "discount-rules", "users", "sessions", "login-activity", "alerts", "alert-settings", "reports-hub", "report", "profile", "analytics", "business-dashboard", "profit-loss", "inventory-value", "business-report", "tax-report", "audit-trail", "data-export", "transactions"],
 };

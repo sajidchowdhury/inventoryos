@@ -56,6 +56,7 @@ export type PharmacyView =
   | "ai-reorder"      // Smart reorder suggestions
   | "ai-forecast"     // Demand forecasting
   | "ai-expiry-opt"   // Expiry optimization recommendations
+  | "shelf-scanner"   // AI vision shelf scanner (under Stock)
   | "profile"        // Business profile / settings
   | "subscription";  // Subscription & AI usage status
 

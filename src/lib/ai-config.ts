@@ -1,11 +1,13 @@
 // src/lib/ai-config.ts
 // Phase 1: Configurable AI cost-control knobs.
 //
-// All four LLM routes (chat, insights, expiry-optimizer, product-assistant) read
-// their max_tokens cap, max batch input, and max products input from this module.
-// Values are stored in the AiConfig Prisma table and editable from the super-admin
-// panel. If the DB is unreachable or a row is missing, hardcoded defaults are used
-// so the AI features keep working even if the config table is dropped.
+// All LLM routes (chat, insights, expiry-optimizer, product-assistant,
+// shelf-scanner) read their max_tokens cap, max batch input, max products
+// input, and (for shelf-scanner) max images input from this module. Values
+// are stored in the AiConfig Prisma table and editable from the super-admin
+// panel. If the DB is unreachable or a row is missing, hardcoded defaults
+// are used so the AI features keep working even if the config table is
+// dropped.
 
 import { db } from "@/lib/db";
 
@@ -18,21 +20,31 @@ export const AI_CONFIG_DEFAULTS = {
     maxOutputTokens: 1024,   // ~700-word response, enough for any single Q&A
     maxInputBatches: null as number | null,
     maxInputProducts: null as number | null,
+    maxInputImages: null as number | null,
   },
   insights: {
     maxOutputTokens: 2048,   // covers 5-8 JSON insights + 3-5 recommendations
     maxInputBatches: null as number | null,
     maxInputProducts: null as number | null,
+    maxInputImages: null as number | null,
   },
   "expiry-optimizer": {
     maxOutputTokens: 2048,   // covers per-batch analysis for up to 50 batches
     maxInputBatches: 50,     // cap on db.batch.findMany take:
     maxInputProducts: null as number | null,
+    maxInputImages: null as number | null,
   },
   "product-assistant": {
     maxOutputTokens: 512,    // covers a single description or interaction warning
     maxInputBatches: null as number | null,
     maxInputProducts: 20,    // cap on check_interactions products array length
+    maxInputImages: null as number | null,
+  },
+  "shelf-scanner": {
+    maxOutputTokens: 2048,   // covers ~30 medicine detections in JSON
+    maxInputBatches: null as number | null,
+    maxInputProducts: null as number | null,
+    maxInputImages: 3,       // hard cap on photos per scan
   },
 } as const;
 
@@ -43,6 +55,7 @@ export interface AiConfigValue {
   maxOutputTokens: number;
   maxInputBatches: number | null;
   maxInputProducts: number | null;
+  maxInputImages: number | null;
   updatedAt?: Date;
   updatedBy?: string | null;
 }
@@ -64,6 +77,7 @@ export async function getAiConfig(feature: AiFeatureName): Promise<AiConfigValue
         maxOutputTokens: defaults.maxOutputTokens,
         maxInputBatches: defaults.maxInputBatches,
         maxInputProducts: defaults.maxInputProducts,
+        maxInputImages: defaults.maxInputImages,
       };
     }
     return {
@@ -71,6 +85,7 @@ export async function getAiConfig(feature: AiFeatureName): Promise<AiConfigValue
       maxOutputTokens: row.maxOutputTokens,
       maxInputBatches: row.maxInputBatches,
       maxInputProducts: row.maxInputProducts,
+      maxInputImages: row.maxInputImages,
       updatedAt: row.updatedAt,
       updatedBy: row.updatedBy,
     };
@@ -81,16 +96,17 @@ export async function getAiConfig(feature: AiFeatureName): Promise<AiConfigValue
       maxOutputTokens: defaults.maxOutputTokens,
       maxInputBatches: defaults.maxInputBatches,
       maxInputProducts: defaults.maxInputProducts,
+      maxInputImages: defaults.maxInputImages,
     };
   }
 }
 
 /**
  * Get all AI configs (for super-admin panel).
- * Returns the 4 known features, using defaults for any missing rows.
+ * Returns the 5 known features, using defaults for any missing rows.
  */
 export async function getAllAiConfigs(): Promise<AiConfigValue[]> {
-  const features: AiFeatureName[] = ["chat", "insights", "expiry-optimizer", "product-assistant"];
+  const features: AiFeatureName[] = ["chat", "insights", "expiry-optimizer", "product-assistant", "shelf-scanner"];
   const results = await Promise.all(features.map((f) => getAiConfig(f)));
   return results;
 }
@@ -106,6 +122,7 @@ export async function updateAiConfig(
     maxOutputTokens?: number;
     maxInputBatches?: number | null;
     maxInputProducts?: number | null;
+    maxInputImages?: number | null;
   },
   updatedBy: string
 ): Promise<AiConfigValue> {
@@ -139,12 +156,23 @@ export async function updateAiConfig(
       throw new Error("maxInputProducts must be an integer between 1 and 100, or null");
     }
   }
+  // Validate: maxInputImages must be between 1 and 10 (or null)
+  if (updates.maxInputImages !== undefined && updates.maxInputImages !== null) {
+    if (
+      !Number.isInteger(updates.maxInputImages) ||
+      updates.maxInputImages < 1 ||
+      updates.maxInputImages > 10
+    ) {
+      throw new Error("maxInputImages must be an integer between 1 and 10, or null");
+    }
+  }
 
   const defaults = AI_CONFIG_DEFAULTS[feature];
   const data = {
     maxOutputTokens: updates.maxOutputTokens ?? defaults.maxOutputTokens,
     maxInputBatches: updates.maxInputBatches ?? defaults.maxInputBatches,
     maxInputProducts: updates.maxInputProducts ?? defaults.maxInputProducts,
+    maxInputImages: updates.maxInputImages ?? defaults.maxInputImages,
     updatedBy,
   };
 
@@ -154,6 +182,7 @@ export async function updateAiConfig(
       ...(updates.maxOutputTokens !== undefined && { maxOutputTokens: updates.maxOutputTokens }),
       ...(updates.maxInputBatches !== undefined && { maxInputBatches: updates.maxInputBatches }),
       ...(updates.maxInputProducts !== undefined && { maxInputProducts: updates.maxInputProducts }),
+      ...(updates.maxInputImages !== undefined && { maxInputImages: updates.maxInputImages }),
       updatedBy,
     },
     create: {
@@ -161,6 +190,7 @@ export async function updateAiConfig(
       maxOutputTokens: data.maxOutputTokens,
       maxInputBatches: data.maxInputBatches,
       maxInputProducts: data.maxInputProducts,
+      maxInputImages: data.maxInputImages,
       updatedBy,
     },
   });
@@ -170,6 +200,7 @@ export async function updateAiConfig(
     maxOutputTokens: row.maxOutputTokens,
     maxInputBatches: row.maxInputBatches,
     maxInputProducts: row.maxInputProducts,
+    maxInputImages: row.maxInputImages,
     updatedAt: row.updatedAt,
     updatedBy: row.updatedBy,
   };
@@ -181,7 +212,7 @@ export async function updateAiConfig(
  * on app startup. Idempotent.
  */
 export async function seedDefaultAiConfigs(updatedBy = "system"): Promise<void> {
-  const features: AiFeatureName[] = ["chat", "insights", "expiry-optimizer", "product-assistant"];
+  const features: AiFeatureName[] = ["chat", "insights", "expiry-optimizer", "product-assistant", "shelf-scanner"];
   for (const feature of features) {
     const defaults = AI_CONFIG_DEFAULTS[feature];
     await db.aiConfig.upsert({
@@ -192,6 +223,7 @@ export async function seedDefaultAiConfigs(updatedBy = "system"): Promise<void> 
         maxOutputTokens: defaults.maxOutputTokens,
         maxInputBatches: defaults.maxInputBatches,
         maxInputProducts: defaults.maxInputProducts,
+        maxInputImages: defaults.maxInputImages,
         updatedBy,
       },
     });

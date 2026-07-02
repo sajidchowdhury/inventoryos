@@ -3,6 +3,7 @@
 import { useNavStore } from "@/lib/nav-store";
 import { PharmacyDashboard } from "./PharmacyDashboard";
 import { InventoryHub } from "./InventoryHub";
+import { ShelfScanner } from "./ShelfScanner";
 import { ReportsHub } from "./ReportsHub";
 import { MoreHub } from "./MoreHub";
 import { ProductList } from "./ProductList";
@@ -85,6 +86,10 @@ export function PharmacyShell() {
         return <BatchForm mode="add" />;
       case "edit-batch":
         return <BatchForm mode="edit" />;
+
+      // ── AI VISION ──
+      case "shelf-scanner":
+        return <ShelfScanner />;
 
       // ── SALES ──
       case "dispense":

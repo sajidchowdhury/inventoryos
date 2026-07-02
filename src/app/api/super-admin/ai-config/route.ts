@@ -3,8 +3,8 @@
 //
 // Auth: callers must authenticate via `Authorization: Bearer <superAdminToken>`.
 //
-// GET  → returns all 4 feature configs (with defaults for any missing rows)
-// PUT  → updates one feature's config; body: { feature, maxOutputTokens?, maxInputBatches?, maxInputProducts? }
+// GET  → returns all 5 feature configs (with defaults for any missing rows)
+// PUT  → updates one feature's config; body: { feature, maxOutputTokens?, maxInputBatches?, maxInputProducts?, maxInputImages? }
 //        also supports { reset: true } to reset ALL features to hardcoded defaults
 
 import { NextRequest, NextResponse } from "next/server";
@@ -57,6 +57,7 @@ const VALID_FEATURES: AiFeatureName[] = [
   "insights",
   "expiry-optimizer",
   "product-assistant",
+  "shelf-scanner",
 ];
 
 // ── GET: return all AI configs ──
@@ -106,7 +107,7 @@ export async function PUT(req: NextRequest) {
     }
 
     // ── Update-one-feature mode ──
-    const { feature, maxOutputTokens, maxInputBatches, maxInputProducts } = body;
+    const { feature, maxOutputTokens, maxInputBatches, maxInputProducts, maxInputImages } = body;
 
     if (!feature || !VALID_FEATURES.includes(feature)) {
       return NextResponse.json(
@@ -121,6 +122,7 @@ export async function PUT(req: NextRequest) {
       maxOutputTokens?: number;
       maxInputBatches?: number | null;
       maxInputProducts?: number | null;
+      maxInputImages?: number | null;
     } = {};
 
     if (maxOutputTokens !== undefined) {
@@ -132,10 +134,13 @@ export async function PUT(req: NextRequest) {
     if (maxInputProducts !== undefined) {
       updates.maxInputProducts = maxInputProducts;
     }
+    if (maxInputImages !== undefined) {
+      updates.maxInputImages = maxInputImages;
+    }
 
     if (Object.keys(updates).length === 0) {
       return NextResponse.json(
-        { error: "No update fields provided. Send maxOutputTokens, maxInputBatches, or maxInputProducts." },
+        { error: "No update fields provided. Send maxOutputTokens, maxInputBatches, maxInputProducts, or maxInputImages." },
         { status: 400 }
       );
     }
