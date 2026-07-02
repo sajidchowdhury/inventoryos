@@ -2,10 +2,9 @@
 
 import { motion } from "framer-motion";
 import {
-  Users, DollarSign, RotateCcw, Percent, ChevronRight, LogOut,
-  UserCog, Shield, Bell, User, CreditCard, Pencil,
-  LayoutDashboard, TrendingUp, Boxes, Receipt, History, Database,
-  FileText, Package,
+  ChevronRight, LogOut,
+  Bell, CreditCard, Pencil,
+  Database,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -45,42 +44,23 @@ interface MoreSection {
   items: MoreItem[];
 }
 
-// ── Reorganized: Admin → Operations → Reports (top to bottom) ──
-// Purchasing removed (accessible from Home quick actions)
-// All settings consolidated under Admin section
-// All reports listed individually (not just a hub link)
+// ── Slimmed down: only items not reachable from Home or Admin ──
+// Customers/Payments/Returns/Discount moved to Home dashboard
+// User Management/Profile/Alert Settings accessible via Admin
+// All reports accessible via Business Dashboard (Home → Reports)
 const sections: MoreSection[] = [
   {
     title: "Admin",
     accent: "blue",
     items: [
-      { icon: Users, label: "Customers", desc: "Customer profiles & credit", view: "customers", gradient: "from-blue-500 to-blue-600" },
-      { icon: UserCog, label: "User Management", desc: "Roles & permissions", view: "users", gradient: "from-slate-500 to-slate-600" },
-      { icon: Shield, label: "Alert Settings", desc: "Configure thresholds", view: "alert-settings", gradient: "from-stone-500 to-slate-500" },
       { icon: Bell, label: "Alerts Center", desc: "View all alerts", view: "alerts", gradient: "from-red-500 to-rose-500" },
-      { icon: User, label: "Profile", desc: "Business & account info", view: "profile", gradient: "from-emerald-500 to-emerald-600" },
       { icon: CreditCard, label: "Subscription", desc: "Plan & AI usage", view: "subscription", gradient: "from-violet-500 to-purple-600" },
     ],
   },
   {
-    title: "Operations",
-    accent: "amber",
-    items: [
-      { icon: DollarSign, label: "Payments", desc: "Record & track payments", view: "payments", gradient: "from-amber-500 to-orange-500" },
-      { icon: RotateCcw, label: "Returns", desc: "Process returns & refunds", view: "returns", gradient: "from-rose-500 to-red-500" },
-      { icon: Percent, label: "Discount Rules", desc: "Auto-discount rules", view: "discount-rules", gradient: "from-orange-500 to-amber-500" },
-    ],
-  },
-  {
-    title: "Reports",
+    title: "Data",
     accent: "sky",
     items: [
-      { icon: LayoutDashboard, label: "Business Dashboard", desc: "Unified KPIs & financial position", view: "business-dashboard", gradient: "from-sky-500 to-blue-500" },
-      { icon: TrendingUp, label: "Profit & Loss", desc: "Revenue vs COGS, margin analysis", view: "profit-loss", gradient: "from-emerald-500 to-teal-500" },
-      { icon: Boxes, label: "Inventory Valuation", desc: "Cost & MRP value of stock", view: "inventory-value", gradient: "from-blue-500 to-indigo-500" },
-      { icon: Receipt, label: "Tax Report", desc: "VAT / tax compliance", view: "tax-report", gradient: "from-amber-500 to-orange-500" },
-      { icon: FileText, label: "Expiry Report", desc: "Printable expiry report", view: "report", gradient: "from-cyan-500 to-blue-500" },
-      { icon: History, label: "Audit Trail", desc: "Transaction history & logs", view: "audit-trail", gradient: "from-cyan-500 to-sky-500" },
       { icon: Database, label: "Data Export", desc: "Backup & export your data", view: "data-export", gradient: "from-teal-500 to-cyan-500" },
     ],
   },

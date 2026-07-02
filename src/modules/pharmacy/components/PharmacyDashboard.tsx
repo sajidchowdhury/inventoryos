@@ -4,8 +4,9 @@ import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
   ShoppingCart, Package, AlertTriangle, TrendingUp,
-  Sparkles, ChevronRight, Check, Plus, Boxes, Receipt,
-  Clock, Pill,
+  Check, Boxes, Receipt,
+  Clock, Pill, Users, DollarSign, RotateCcw, Percent, BarChart3,
+  Copy, Store,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -44,6 +45,19 @@ export function PharmacyDashboard() {
     category: { name: string; color: string } | null;
   }>>([]);
   const [loading, setLoading] = useState(true);
+  const [copied, setCopied] = useState(false);
+
+  const copyShopCode = async () => {
+    const code = session?.business?.shopCode;
+    if (!code) return;
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // clipboard unavailable — silent fail
+    }
+  };
 
   const fetchDashboard = useCallback(async () => {
     if (!businessId) return;
@@ -90,57 +104,55 @@ export function PharmacyDashboard() {
     <motion.div {...fadeIn} className="space-y-4 pb-4 pharmacy-bg">
 
       {/* ═══════════════════════════════════════════════════════ */}
-      {/* HEADER — Pharmacy name + date + notification bell        */}
-      {/* ═══════════════════════════════════════════════════════ */}
-      <div className="flex items-center justify-between stagger-in">
-        <div>
-          <h1 className="text-xl font-bold text-gray-900">{session?.business?.name || "Pharmacy"}</h1>
-          <p className="text-xs text-gray-400 flex items-center gap-1">
-            <Clock className="h-3 w-3" />
-            {new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}
-          </p>
-          {session?.business?.shopCode && (
-            <p className="mt-1 text-[11px] text-gray-500">
-              Shop code:{" "}
-              <span className="font-mono font-semibold text-emerald-700">
-                {session.business.shopCode}
-              </span>
-              <span className="text-gray-400"> · share with staff to log in</span>
-            </p>
-          )}
-        </div>
-        <NotificationCenter />
-      </div>
-
-      {/* ═══════════════════════════════════════════════════════ */}
-      {/* WELCOME BANNER — Gradient with status badges             */}
-      {/* NO financial data — only system status                   */}
+      {/* HEADER BANNER — consolidated pharmacy name + shop code   */}
+      {/* + notification bell, all in one full-width gradient     */}
       {/* ═══════════════════════════════════════════════════════ */}
       <div
-        className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-600 via-emerald-500 to-teal-400 p-5 shadow-lg shadow-emerald-500/20 stagger-in"
-        style={{ animationDelay: "0.05s" }}
+        className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-600 via-emerald-500 to-teal-500 shadow-lg shadow-emerald-500/20 stagger-in"
       >
         {/* Decorative circles */}
-        <div className="absolute top-0 right-0 w-32 h-32 opacity-10">
+        <div className="absolute top-0 right-0 w-40 h-40 opacity-10 pointer-events-none">
           <svg viewBox="0 0 100 100" fill="white">
             <circle cx="70" cy="30" r="40" />
             <circle cx="30" cy="70" r="25" />
           </svg>
         </div>
-        <div className="relative z-10">
-          <p className="text-white/80 text-sm mb-1">Welcome back,</p>
-          <h2 className="text-white text-xl font-bold mb-3">Your Pharmacy Inventory</h2>
-          <div className="flex flex-wrap gap-2">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/20 text-white text-xs font-medium">
-              <Check className="h-3.5 w-3.5" />
-              All systems running
-            </span>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/20 text-white text-xs font-medium">
-              <Clock className="h-3.5 w-3.5" />
-              Last updated: {new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
-            </span>
+        <div className="relative z-10 p-5 flex items-center justify-between gap-3">
+          {/* Left: title + shop code badge */}
+          <div className="flex-1 min-w-0">
+            <h1 className="text-white text-xl font-bold leading-tight">
+              {session?.business?.name || "Pharmacy"}{" "}
+              <span className="text-white/90 font-semibold">Inventory</span>
+            </h1>
+            {session?.business?.shopCode && (
+              <button
+                onClick={copyShopCode}
+                className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/20 hover:bg-white/30 backdrop-blur text-white text-xs font-medium transition-colors active:scale-95"
+                title="Tap to copy shop code"
+              >
+                <Store className="h-3.5 w-3.5 shrink-0" />
+                <span className="opacity-80">Shop code:</span>
+                <span className="font-mono font-bold tracking-wider">{session.business.shopCode}</span>
+                <span className="text-white/70 hidden sm:inline">· share with staff to log in</span>
+                {copied ? (
+                  <Check className="h-3 w-3 text-emerald-200 shrink-0" />
+                ) : (
+                  <Copy className="h-3 w-3 opacity-70 shrink-0" />
+                )}
+              </button>
+            )}
+          </div>
+          {/* Right: notification bell */}
+          <div className="shrink-0">
+            <NotificationCenter />
           </div>
         </div>
+        {/* Copied toast */}
+        {copied && (
+          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-20 rounded-full bg-white text-emerald-700 text-[10px] font-semibold px-2.5 py-1 shadow-lg">
+            Copied!
+          </div>
+        )}
       </div>
 
       {/* ═══════════════════════════════════════════════════════ */}
@@ -245,12 +257,12 @@ export function PharmacyDashboard() {
       <div className="grid grid-cols-4 gap-3 stagger-in" style={{ animationDelay: "0.30s" }}>
         <button
           className="card-hover flex flex-col items-center gap-2 p-4 rounded-2xl bg-white shadow-pharmacy"
-          onClick={() => setActiveView("add-product")}
+          onClick={() => setActiveView("products")}
         >
           <div className="w-11 h-11 rounded-xl bg-blue-50 flex items-center justify-center">
-            <Plus className="h-5 w-5 text-blue-600" />
+            <Package className="h-5 w-5 text-blue-600" />
           </div>
-          <span className="text-xs font-medium text-gray-700">Add Product</span>
+          <span className="text-xs font-medium text-gray-700">Products</span>
         </button>
 
         <button
@@ -273,47 +285,61 @@ export function PharmacyDashboard() {
           <span className="text-xs font-medium text-gray-700">Invoices</span>
         </button>
 
-        {/* AI button — special purple gradient */}
+        {/* Reports — goes to Business Dashboard with all reports */}
         <button
-          className="card-hover flex flex-col items-center gap-2 p-4 rounded-2xl bg-gradient-to-br from-purple-50 to-violet-50 shadow-pharmacy border-2 border-purple-200 relative overflow-hidden"
-          onClick={() => setActiveView("ai-hub")}
+          className="card-hover flex flex-col items-center gap-2 p-4 rounded-2xl bg-white shadow-pharmacy"
+          onClick={() => setActiveView("business-dashboard")}
         >
-          <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-purple-500 to-violet-600 flex items-center justify-center shadow-lg shadow-purple-500/25">
-            <Sparkles className="h-5 w-5 text-white" />
+          <div className="w-11 h-11 rounded-xl bg-sky-50 flex items-center justify-center">
+            <BarChart3 className="h-5 w-5 text-sky-600" />
           </div>
-          <span className="text-xs font-bold text-purple-700">AI Hub</span>
-          {/* Sparkle glow */}
-          <div className="absolute top-1 right-1 w-2 h-2 rounded-full bg-purple-400 animate-pulse" />
+          <span className="text-xs font-medium text-gray-700">Reports</span>
         </button>
       </div>
 
       {/* ═══════════════════════════════════════════════════════ */}
-      {/* AI QUICK ACCESS — Premium purple gradient card           */}
+      {/* 2ND ROW — Operations (moved from More hub)               */}
       {/* ═══════════════════════════════════════════════════════ */}
-      <div
-        className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-purple-600 via-violet-600 to-indigo-600 p-4 shadow-lg shadow-purple-500/20 stagger-in"
-        style={{ animationDelay: "0.35s" }}
-      >
-        <div className="absolute top-0 right-0 w-24 h-24 opacity-10">
-          <Sparkles className="w-full h-full text-white" />
-        </div>
-        <div className="relative z-10 flex items-center gap-3">
-          <div className="h-12 w-12 rounded-xl bg-white/20 flex items-center justify-center animate-pulse-soft shrink-0">
-            <Brain className="h-6 w-6 text-white" />
+      <div className="grid grid-cols-4 gap-3 stagger-in" style={{ animationDelay: "0.35s" }}>
+        <button
+          className="card-hover flex flex-col items-center gap-2 p-4 rounded-2xl bg-white shadow-pharmacy"
+          onClick={() => setActiveView("customers")}
+        >
+          <div className="w-11 h-11 rounded-xl bg-blue-50 flex items-center justify-center">
+            <Users className="h-5 w-5 text-blue-600" />
           </div>
-          <div className="flex-1">
-            <h3 className="text-white text-sm font-bold">AI-Powered Insights</h3>
-            <p className="text-white/80 text-xs">Get instant business analysis & recommendations</p>
+          <span className="text-xs font-medium text-gray-700">Customers</span>
+        </button>
+
+        <button
+          className="card-hover flex flex-col items-center gap-2 p-4 rounded-2xl bg-white shadow-pharmacy"
+          onClick={() => setActiveView("payments")}
+        >
+          <div className="w-11 h-11 rounded-xl bg-amber-50 flex items-center justify-center">
+            <DollarSign className="h-5 w-5 text-amber-600" />
           </div>
-          <Button
-            size="sm"
-            className="bg-white text-purple-700 hover:bg-white/90 font-semibold gap-1 shrink-0"
-            onClick={() => setActiveView("ai-insights")}
-          >
-            Launch
-            <ChevronRight className="h-3 w-3" />
-          </Button>
-        </div>
+          <span className="text-xs font-medium text-gray-700">Payments</span>
+        </button>
+
+        <button
+          className="card-hover flex flex-col items-center gap-2 p-4 rounded-2xl bg-white shadow-pharmacy"
+          onClick={() => setActiveView("returns")}
+        >
+          <div className="w-11 h-11 rounded-xl bg-rose-50 flex items-center justify-center">
+            <RotateCcw className="h-5 w-5 text-rose-600" />
+          </div>
+          <span className="text-xs font-medium text-gray-700">Returns</span>
+        </button>
+
+        <button
+          className="card-hover flex flex-col items-center gap-2 p-4 rounded-2xl bg-white shadow-pharmacy"
+          onClick={() => setActiveView("discount-rules")}
+        >
+          <div className="w-11 h-11 rounded-xl bg-orange-50 flex items-center justify-center">
+            <Percent className="h-5 w-5 text-orange-600" />
+          </div>
+          <span className="text-xs font-medium text-gray-700">Discount</span>
+        </button>
       </div>
 
       {/* ═══════════════════════════════════════════════════════ */}

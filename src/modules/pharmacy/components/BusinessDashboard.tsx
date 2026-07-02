@@ -384,6 +384,12 @@ export function BusinessDashboard() {
             </div>
             <span className="text-xs font-semibold">Business Report</span>
           </Button>
+          <Button variant="outline" className="gap-2 h-14 shadow-pharmacy justify-start" onClick={() => setActiveView("report")}>
+            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-rose-500 to-red-500 flex items-center justify-center shrink-0">
+              <CalendarClock className="h-4 w-4 text-white" />
+            </div>
+            <span className="text-xs font-semibold">Expiry Report</span>
+          </Button>
           <Button variant="outline" className="gap-2 h-14 shadow-pharmacy justify-start" onClick={() => setActiveView("tax-report")}>
             <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center shrink-0">
               <FileText className="h-4 w-4 text-white" />
