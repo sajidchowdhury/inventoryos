@@ -39,8 +39,8 @@ const PROVIDER_META: Record<string, { label: string; description: string; color:
     link: "https://aistudio.google.com/apikey",
   },
   zai: {
-    label: "Z.ai (GLM-4.6V)",
-    description: "Paid Z.ai vision model (BigModel). Higher accuracy, costs per token. Model: glm-4.6v. ~$0.01/image.",
+    label: "Z.ai / BigModel (GLM-4V)",
+    description: "Paid Z.ai vision model (BigModel). Model: glm-4v-plus. ~$0.01/image. OpenAI-compatible API.",
     color: "text-purple-600",
     link: "https://open.bigmodel.cn/usercenter/apikeys",
     defaultBaseUrl: "https://open.bigmodel.cn/api/paas/v4",

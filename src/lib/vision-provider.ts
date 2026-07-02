@@ -158,13 +158,18 @@ async function analyzeWithGemini(
   };
 }
 
-// ── Z.ai (GLM-4.6V) ──
-// Public API: https://open.bigmodel.cn/api/paas/v4 (China) or
-//              https://api.z.ai/api/paas/v4 (international)
+// ── Z.ai / BigModel (GLM-4V) ──
+// Public API: https://open.bigmodel.cn/api/paas/v4/chat/completions
+// The public BigModel API is OpenAI-compatible — same endpoint for text and
+// vision, just pass a vision-capable model (glm-4v-plus, glm-4.6v, etc).
+// NOTE: The z-ai-web-dev-sdk uses /chat/completions/vision (sandbox-only) so
+// we can't use it for the public API. We call fetch() directly instead.
+//
 // The super-admin sets apiKey + baseUrl in the admin panel.
-// Default baseUrl if not set: https://open.bigmodel.cn/api/paas/v4
+// Default baseUrl: https://open.bigmodel.cn/api/paas/v4
 
 const ZAI_DEFAULT_BASE_URL = "https://open.bigmodel.cn/api/paas/v4";
+const ZAI_VISION_MODEL = "glm-4v-plus"; // public BigModel vision model
 
 async function analyzeWithZai(
   images: string[],
@@ -174,38 +179,42 @@ async function analyzeWithZai(
   apiKey: string,
   baseUrl: string | null
 ): Promise<VisionAnalysisResult> {
-  // Construct the ZAI instance directly with the key from the admin panel.
-  // This bypasses getZai()/config-file resolution entirely so the user's
-  // own API key + the public endpoint are used.
-  const ZAI = (await import("z-ai-web-dev-sdk")).default;
-  const zai = new ZAI({
-    baseUrl: baseUrl || ZAI_DEFAULT_BASE_URL,
-    apiKey,
-  });
+  const base = (baseUrl || ZAI_DEFAULT_BASE_URL).replace(/\/$/, "");
+  const url = `${base}/chat/completions`;
 
+  // Build OpenAI-compatible message content (text + images)
   const content: Array<
     { type: "text"; text: string } | { type: "image_url"; image_url: { url: string } }
   > = [
     { type: "text", text: userPrompt },
-    ...images.map((url) => ({ type: "image_url" as const, image_url: { url } })),
+    ...images.map((img) => ({ type: "image_url" as const, image_url: { url: img } })),
   ];
 
-  const completion = await zai.chat.completions.createVision({
-    model: "glm-4.6v",
-    messages: [
-      { role: "assistant", content: [{ type: "text", text: systemPrompt }] },
-      { role: "user", content },
-    ],
-    thinking: { type: "disabled" },
-    max_tokens: maxTokens,
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: ZAI_VISION_MODEL,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content },
+      ],
+      max_tokens: maxTokens,
+      temperature: 0.1,
+    }),
   });
 
-  const rawResponse: string =
-    (completion as { choices?: Array<{ message?: { content?: string } }> })
-      .choices?.[0]?.message?.content ?? "";
+  if (!response.ok) {
+    const errText = await response.text();
+    throw new Error(`Z.ai API error (HTTP ${response.status}): ${errText.substring(0, 300)}`);
+  }
 
-  const sdkTokens = (completion as { usage?: { total_tokens?: number } })?.usage?.total_tokens;
-  const tokensUsed = typeof sdkTokens === "number" && sdkTokens > 0 ? sdkTokens : 0;
+  const data = await response.json();
+  const rawResponse: string = data?.choices?.[0]?.message?.content ?? "";
+  const tokensUsed: number = data?.usage?.total_tokens ?? 0;
 
   return {
     detections: [],
