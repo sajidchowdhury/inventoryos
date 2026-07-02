@@ -61,7 +61,25 @@ function LoginScreen() {
         body: JSON.stringify({ username, password }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Login failed");
+      if (!res.ok) {
+        // If login fails with 401, check if any super-admin accounts exist
+        // and show a helpful message pointing to the setup script.
+        if (res.status === 401) {
+          try {
+            const statusRes = await fetch("/api/setup-status");
+            const status = await statusRes.json();
+            if (status?.database?.connected && status?.database?.superAdminCount === 0) {
+              throw new Error("No super-admin account exists on this server. Run this on your server: bunx tsx scripts/create-super-admin.ts admin YourPassword");
+            }
+            if (status?.database?.connected === false) {
+              throw new Error("Database not connected. Check DATABASE_URL in .env, then run: bun run db:push");
+            }
+          } catch {
+            // status check failed — just show the original error
+          }
+        }
+        throw new Error(data.error || "Login failed");
+      }
       setToken(data.token);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");
@@ -109,7 +127,7 @@ function LoginScreen() {
           </Button>
         </form>
         <div className="text-center text-xs text-slate-500">
-          Demo: superadmin / admin123
+          First time? Run: bunx tsx scripts/create-super-admin.ts admin YourPassword
         </div>
       </div>
     </div>

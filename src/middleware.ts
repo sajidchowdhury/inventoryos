@@ -26,6 +26,7 @@ const PUBLIC_ROUTES: string[] = [
   "/api/super-admin/login",
   "/api/health",
   "/api/health/test-error",
+  "/api/setup-status", // public diagnostic — tells you what's configured
 ];
 
 // Routes under these prefixes require an auth token when not in PUBLIC_ROUTES
