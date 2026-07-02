@@ -70,10 +70,10 @@ export async function analyzeShelfImages(
     throw new Error("No images provided for shelf analysis");
   }
 
-  // Lazy import so ioredis / z-ai-web-dev-sdk are only loaded when actually used
-  // (matches the pattern in product-assistant/route.ts).
-  const ZAI = (await import("z-ai-web-dev-sdk")).default;
-  const zai = await ZAI.create();
+  // Use the shared getZai() helper which reads the config file explicitly
+  // (bypasses the SDK's file-resolution which fails in Turbopack dev mode).
+  const { getZai } = await import("@/lib/zai");
+  const zai = await getZai();
 
   // Build a single multimodal user message containing all photos. The vision
   // model sees them in order. One combined call is cheaper than N sequential
