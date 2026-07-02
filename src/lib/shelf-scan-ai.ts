@@ -10,7 +10,7 @@
 
 import type { AiConfigValue } from "@/lib/ai-config";
 import { estimateTokens } from "@/lib/ai-rate-limit";
-import { analyzeWithActiveProvider, type VisionDetection } from "@/lib/vision-provider";
+import { analyzeWithActiveProvider } from "@/lib/vision-provider";
 
 // ── Types ──
 
@@ -30,28 +30,49 @@ export interface ShelfAnalysisResult {
 }
 
 // ── Prompt ──
+// Tuned for high recall: partial/upside-down boxes, English + Bangla labels.
 
-const SYSTEM_PROMPT = `You are a pharmacy inventory assistant specialized in reading medicine packaging from shelf photos.
+const SYSTEM_PROMPT = `You are an expert pharmacy AI assistant specialized in reading medicine boxes from shelf photos.
 
-Look at the shelf image(s) carefully. For EVERY distinct medicine you can identify, return a JSON array. Each element must have exactly these fields:
-- "name": brand name as printed (e.g., "Napa Extra"). If only the generic is visible, use that.
-- "strength": the strength if readable (e.g., "500mg", "250mg/5ml"), else null.
-- "dosageForm": one of "Tablet","Capsule","Syrup","Injection","Cream","Drops","Inhaler","Powder", or null if unclear.
-- "manufacturer": the company name if readable (e.g., "Square","Beximco"), else null.
-- "confidence": a number from 0.0 to 1.0 reflecting how clearly you could read the label.
+### Task:
+Analyze the given image(s) of a pharmacy shelf and extract ALL visible medicine/product names as accurately as possible.
 
-Rules:
-- Return ONLY the JSON array, no markdown fences, no explanation text.
-- Do NOT invent fields. Do NOT include the same medicine twice — if it appears in multiple photos, merge into one entry with your best-read fields and the highest confidence.
-- If the image is not a pharmacy shelf or contains zero identifiable medicines, return [].
-- Be conservative with confidence: 0.9+ only when every field is clearly legible.`;
+### Instructions:
+1. Carefully examine EVERY medicine box in the image, including partially visible ones. Some boxes may be upside down or at an angle.
+2. Labels may be in English, Bangla (বাংলা), or mixed. Read both scripts when visible.
+3. Focus on text on the front face of boxes: brand name + strength + dosage form.
+4. Prioritize reading:
+   - Brand name (e.g., Clovate, Betameson, Fusitop, De-rash, Napa, Seclo)
+   - Strength (e.g., 0.05%, 1%, 10mg, 500mg)
+   - Dosage form (Cream, Ointment, Gel, Tablet, Capsule, Syrup, Injection, Drops, etc.)
+   - Manufacturer if visible on the pack (e.g., Square, Beximco, Incepta)
+5. If text is unclear due to angle, lighting, or overlap, still extract your best guess and set confidence to "low" or "medium".
+6. Do NOT skip any visible box. Even if only partially visible, extract whatever text you can read.
+7. Ignore price tags, shelf labels, barcodes-only strips, and non-medicine items.
+8. If the same medicine appears in multiple photos, merge into one entry (keep the highest confidence).
+9. When in doubt, INCLUDE the detection rather than omit it — false positives are better than missed medicines.
+
+### Output Format (Strict JSON only — no markdown fences, no extra text):
+{
+  "total_medicines_detected": number,
+  "medicines": [
+    {
+      "brand_name": "string",
+      "strength": "string or null",
+      "form": "string or null",
+      "full_name": "string",
+      "manufacturer": "string or null",
+      "confidence": "high | medium | low",
+      "notes": "string or null"
+    }
+  ]
+}
+
+Rules for full_name: combine brand + strength + form when readable (e.g., "Clovate 0.05% Cream").
+If zero medicines are visible, return: { "total_medicines_detected": 0, "medicines": [] }`;
 
 /**
  * Analyze shelf photos and return a deduplicated list of detected medicines.
- *
- * @param images  Array of 1–3 base64 data URLs
- * @param config  AiConfigValue for "shelf-scanner" (provides maxOutputTokens)
- * @throws on provider failure, empty input, or unparseable response.
  */
 export async function analyzeShelfImages(
   images: string[],
@@ -61,9 +82,11 @@ export async function analyzeShelfImages(
     throw new Error("No images provided for shelf analysis");
   }
 
-  const userPrompt = `Identify every medicine visible on this pharmacy shelf. There ${images.length === 1 ? "is 1 photo" : `are ${images.length} photos`}, possibly showing the same shelf from different angles. Return the JSON array as specified.`;
+  const userPrompt =
+    images.length === 1
+      ? "Analyze this pharmacy shelf photo. Extract every visible medicine box — including partial, angled, upside-down, English, and Bangla labels. Return the strict JSON object specified."
+      : `Analyze these ${images.length} pharmacy shelf photos (same shelf, different angles). Extract every visible medicine box from ALL photos — including partial, angled, upside-down, English, and Bangla labels. Merge duplicates across photos. Return the strict JSON object specified.`;
 
-  // Delegate to the active provider (Gemini, Z.ai, etc.)
   const result = await analyzeWithActiveProvider(
     images,
     config.maxOutputTokens,
@@ -71,10 +94,8 @@ export async function analyzeShelfImages(
     userPrompt
   );
 
-  // Parse the raw response into detections (same for all providers)
   const detections = parseDetections(result.rawResponse);
 
-  // Token fallback: if the provider didn't report usage, estimate
   const tokensUsed =
     result.tokensUsed > 0
       ? result.tokensUsed
@@ -90,53 +111,105 @@ export async function analyzeShelfImages(
 
 // ── Helpers ──
 
+/** Map "high" | "medium" | "low" (or numeric) to 0–1 for the UI. */
+function normalizeConfidence(value: unknown): number {
+  if (typeof value === "number" && !isNaN(value)) {
+    return Math.max(0, Math.min(1, value));
+  }
+  if (typeof value === "string") {
+    const v = value.trim().toLowerCase();
+    if (v === "high") return 0.9;
+    if (v === "medium") return 0.65;
+    if (v === "low") return 0.4;
+    const num = parseFloat(v);
+    if (!isNaN(num)) return Math.max(0, Math.min(1, num));
+  }
+  return 0.5;
+}
+
+function itemToDetection(obj: Record<string, unknown>): DetectedMedicine | null {
+  const brandName = typeof obj.brand_name === "string" ? obj.brand_name.trim() : "";
+  const legacyName = typeof obj.name === "string" ? obj.name.trim() : "";
+  const fullName = typeof obj.full_name === "string" ? obj.full_name.trim() : "";
+  const name = fullName || brandName || legacyName;
+  if (!name) return null;
+
+  const strength =
+    (typeof obj.strength === "string" && obj.strength.trim()) ||
+    undefined;
+  const dosageForm =
+    (typeof obj.form === "string" && obj.form.trim()) ||
+    (typeof obj.dosageForm === "string" && obj.dosageForm.trim()) ||
+    undefined;
+  const manufacturer =
+    (typeof obj.manufacturer === "string" && obj.manufacturer.trim()) ||
+    undefined;
+
+  return {
+    name,
+    strength,
+    dosageForm,
+    manufacturer,
+    confidence: normalizeConfidence(obj.confidence),
+  };
+}
+
 /**
- * Parse the model's response into a clean DetectedMedicine[].
- * Strips markdown fences, extracts the first JSON array, dedupes by name+strength.
+ * Parse the model response into DetectedMedicine[].
+ * Supports the new { medicines: [...] } object and legacy JSON arrays.
  */
 function parseDetections(raw: string): DetectedMedicine[] {
   if (!raw) return [];
 
   let text = raw.trim();
-  // Strip ```json ... ``` fences if present
   const fenceMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
   if (fenceMatch) text = fenceMatch[1].trim();
 
-  // Extract the first JSON array block
+  // Try full JSON object first (new format)
+  const objectMatch = text.match(/\{[\s\S]*\}/);
+  if (objectMatch) {
+    try {
+      const parsed = JSON.parse(objectMatch[0]) as Record<string, unknown>;
+      if (Array.isArray(parsed.medicines)) {
+        return dedupeDetections(
+          parsed.medicines
+            .map((item) =>
+              item && typeof item === "object"
+                ? itemToDetection(item as Record<string, unknown>)
+                : null
+            )
+            .filter((d): d is DetectedMedicine => d !== null)
+        );
+      }
+    } catch {
+      // fall through to array parsing
+    }
+  }
+
+  // Legacy: bare JSON array
   const arrayMatch = text.match(/\[[\s\S]*\]/);
   if (!arrayMatch) return [];
 
-  let parsed: unknown;
   try {
-    parsed = JSON.parse(arrayMatch[0]);
+    const parsed = JSON.parse(arrayMatch[0]);
+    if (!Array.isArray(parsed)) return [];
+    return dedupeDetections(
+      parsed
+        .map((item) =>
+          item && typeof item === "object"
+            ? itemToDetection(item as Record<string, unknown>)
+            : null
+        )
+        .filter((d): d is DetectedMedicine => d !== null)
+    );
   } catch {
     return [];
   }
+}
 
-  if (!Array.isArray(parsed)) return [];
-
-  const cleaned: DetectedMedicine[] = [];
-  for (const item of parsed) {
-    if (!item || typeof item !== "object") continue;
-    const obj = item as Record<string, unknown>;
-    const name = typeof obj.name === "string" ? obj.name.trim() : "";
-    if (!name) continue;
-    cleaned.push({
-      name,
-      strength: typeof obj.strength === "string" && obj.strength ? obj.strength.trim() : undefined,
-      dosageForm: typeof obj.dosageForm === "string" && obj.dosageForm ? obj.dosageForm.trim() : undefined,
-      manufacturer:
-        typeof obj.manufacturer === "string" && obj.manufacturer ? obj.manufacturer.trim() : undefined,
-      confidence:
-        typeof obj.confidence === "number" && !isNaN(obj.confidence)
-          ? Math.max(0, Math.min(1, obj.confidence))
-          : 0,
-    });
-  }
-
-  // Dedupe by (name + strength) — keep the highest-confidence entry.
+function dedupeDetections(items: DetectedMedicine[]): DetectedMedicine[] {
   const seen = new Map<string, DetectedMedicine>();
-  for (const d of cleaned) {
+  for (const d of items) {
     const key = `${d.name.toLowerCase()}|${(d.strength || "").toLowerCase()}`;
     const existing = seen.get(key);
     if (!existing || d.confidence > existing.confidence) {
