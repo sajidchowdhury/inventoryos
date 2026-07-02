@@ -375,7 +375,7 @@ async function matchDetections(
       where: {
         businessId,
         isActive: true,
-        name: { contains: lowerName, mode: "insensitive" },
+        name: { contains: lowerName },
       },
       include: { inventory: { select: { quantity: true } } },
     });
@@ -399,7 +399,7 @@ async function matchDetections(
     const masterProduct = await db.masterProduct.findFirst({
       where: {
         isActive: true,
-        name: { contains: lowerName, mode: "insensitive" },
+        name: { contains: lowerName },
       },
     });
 
