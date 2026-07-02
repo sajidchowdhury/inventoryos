@@ -99,6 +99,15 @@ export function PharmacyDashboard() {
             <Clock className="h-3 w-3" />
             {new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}
           </p>
+          {session?.business?.shopCode && (
+            <p className="mt-1 text-[11px] text-gray-500">
+              Shop code:{" "}
+              <span className="font-mono font-semibold text-emerald-700">
+                {session.business.shopCode}
+              </span>
+              <span className="text-gray-400"> · share with staff to log in</span>
+            </p>
+          )}
         </div>
         <NotificationCenter />
       </div>
