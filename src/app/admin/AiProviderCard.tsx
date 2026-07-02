@@ -31,7 +31,7 @@ interface ProviderInfo {
   updatedBy?: string | null;
 }
 
-const PROVIDER_META: Record<string, { label: string; description: string; color: string; link: string }> = {
+const PROVIDER_META: Record<string, { label: string; description: string; color: string; link: string; defaultBaseUrl?: string; baseUrlHelp?: string }> = {
   gemini: {
     label: "Google Gemini",
     description: "Free tier via Google AI Studio. Good for reading medicine labels. Model: gemini-2.0-flash.",
@@ -40,9 +40,11 @@ const PROVIDER_META: Record<string, { label: string; description: string; color:
   },
   zai: {
     label: "Z.ai (GLM-4.6V)",
-    description: "Paid Z.ai vision model. Higher accuracy, costs per token. Uses the z-ai-web-dev-sdk.",
+    description: "Paid Z.ai vision model (BigModel). Higher accuracy, costs per token. Model: glm-4.6v. ~$0.01/image.",
     color: "text-purple-600",
-    link: "https://z.ai",
+    link: "https://open.bigmodel.cn/usercenter/apikeys",
+    defaultBaseUrl: "https://open.bigmodel.cn/api/paas/v4",
+    baseUrlHelp: "Default: https://open.bigmodel.cn/api/paas/v4 (China). Use https://api.z.ai/api/paas/v4 for international.",
   },
 };
 
@@ -107,6 +109,28 @@ export function AiProviderCard({ token }: { token: string }) {
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
       showToast(`${PROVIDER_META[provider]?.label || provider} API key saved`);
       edit.apiKey = ""; // clear the input after save
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Save failed");
+    } finally {
+      setSaving(null);
+    }
+  };
+
+  const handleSaveBaseUrl = async (provider: string) => {
+    const edit = edits[provider];
+    if (!edit) return;
+    setSaving(provider + "-url");
+    setError(null);
+    try {
+      const res = await fetch("/api/super-admin/ai-providers", {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ provider, baseUrl: edit.baseUrl.trim() || null }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+      showToast("Base URL saved");
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Save failed");
@@ -250,6 +274,44 @@ export function AiProviderCard({ token }: { token: string }) {
                       </Button>
                     </div>
                   </div>
+
+                  {/* Base URL field (only for providers that support it, e.g. Z.ai) */}
+                  {meta.defaultBaseUrl && (
+                    <div className="mt-2 space-y-1.5">
+                      <Label className="text-xs">Base URL (optional)</Label>
+                      <Input
+                        type="text"
+                        value={edits[p.provider]?.baseUrl ?? ""}
+                        onChange={(e) =>
+                          setEdits((prev) => ({
+                            ...prev,
+                            [p.provider]: { ...prev[p.provider], baseUrl: e.target.value },
+                          }))
+                        }
+                        placeholder={meta.defaultBaseUrl}
+                        className="h-9 text-sm font-mono"
+                      />
+                      {meta.baseUrlHelp && (
+                        <p className="text-[10px] text-muted-foreground">{meta.baseUrlHelp}</p>
+                      )}
+                      {(edits[p.provider]?.baseUrl ?? "") !== (p.baseUrl ?? "") && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 text-[11px] gap-1"
+                          disabled={saving === p.provider + "-url"}
+                          onClick={() => handleSaveBaseUrl(p.provider)}
+                        >
+                          {saving === p.provider + "-url" ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : (
+                            <Save className="h-3 w-3" />
+                          )}
+                          Save base URL
+                        </Button>
+                      )}
+                    </div>
+                  )}
 
                   {/* Activate button */}
                   <div className="mt-3 flex items-center justify-between">

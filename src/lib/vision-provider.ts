@@ -16,7 +16,6 @@
 // parses into a JSON detections array.
 
 import { db } from "@/lib/db";
-import { getZai } from "@/lib/zai";
 
 export interface VisionDetection {
   name: string;
@@ -84,7 +83,7 @@ export async function analyzeWithActiveProvider(
     case "gemini":
       return analyzeWithGemini(images, maxTokens, systemPrompt, userPrompt, provider.apiKey!);
     case "zai":
-      return analyzeWithZai(images, maxTokens, systemPrompt, userPrompt, provider.baseUrl);
+      return analyzeWithZai(images, maxTokens, systemPrompt, userPrompt, provider.apiKey!, provider.baseUrl);
     default:
       throw new Error(`Unknown vision provider: "${provider.provider}"`);
   }
@@ -159,18 +158,30 @@ async function analyzeWithGemini(
   };
 }
 
-// ── Z.ai (glm-4.6v via z-ai-web-dev-sdk) ──
-// Uses the shared getZai() helper which reads /etc/.z-ai-config or env vars.
-// The baseUrl override is optional (only set if the super-admin entered one).
+// ── Z.ai (GLM-4.6V) ──
+// Public API: https://open.bigmodel.cn/api/paas/v4 (China) or
+//              https://api.z.ai/api/paas/v4 (international)
+// The super-admin sets apiKey + baseUrl in the admin panel.
+// Default baseUrl if not set: https://open.bigmodel.cn/api/paas/v4
+
+const ZAI_DEFAULT_BASE_URL = "https://open.bigmodel.cn/api/paas/v4";
 
 async function analyzeWithZai(
   images: string[],
   maxTokens: number,
   systemPrompt: string,
   userPrompt: string,
-  _baseUrl: string | null
+  apiKey: string,
+  baseUrl: string | null
 ): Promise<VisionAnalysisResult> {
-  const zai = await getZai();
+  // Construct the ZAI instance directly with the key from the admin panel.
+  // This bypasses getZai()/config-file resolution entirely so the user's
+  // own API key + the public endpoint are used.
+  const ZAI = (await import("z-ai-web-dev-sdk")).default;
+  const zai = new ZAI({
+    baseUrl: baseUrl || ZAI_DEFAULT_BASE_URL,
+    apiKey,
+  });
 
   const content: Array<
     { type: "text"; text: string } | { type: "image_url"; image_url: { url: string } }
