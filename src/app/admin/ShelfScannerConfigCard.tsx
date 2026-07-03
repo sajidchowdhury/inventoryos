@@ -241,7 +241,7 @@ export function ShelfScannerConfigCard({ token }: { token: string }) {
                     onChange={(e) => setEdit((p) => ({ ...p, maxOutputTokens: e.target.value }))}
                     className="mt-1"
                   />
-                  <p className="mt-1 text-[10px] text-muted-foreground">4096 recommended for crowded shelves</p>
+                  <p className="mt-1 text-[10px] text-muted-foreground">8192 recommended for dense shelves (40–60 boxes)</p>
                 </div>
                 <div>
                   <Label className="text-xs">Max Photos per Scan</Label>

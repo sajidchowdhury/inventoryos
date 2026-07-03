@@ -100,10 +100,10 @@ const fadeIn = {
 };
 
 const MAX_IMAGES = 3;
-const MIN_IMAGES = 2;
+const MIN_IMAGES = 1;
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024; // 8MB pre-resize (we resize down)
-const RESIZE_MAX_DIMENSION = 1920; // higher res helps read small label text on boxes
-const RESIZE_QUALITY = 0.85; // JPEG quality (0-1)
+const RESIZE_MAX_DIMENSION = 2560; // dense shelves need high res for small box labels
+const RESIZE_QUALITY = 0.88; // JPEG quality (0-1)
 
 /**
  * Resize an image File to a max dimension and compress to JPEG.
@@ -292,6 +292,9 @@ export function ShelfScanner() {
           ? String(data.diagnostic.message)
           : null
       );
+      if (data.detectedCount === 0 && data.diagnostic?.rawPreview) {
+        console.log("[shelf-scanner] AI raw preview:", data.diagnostic.rawPreview);
+      }
       setItems(
         (data.items as ScanItem[]).map((it) => ({
           ...it,
@@ -600,7 +603,7 @@ export function ShelfScanner() {
                     </div>
                     <p className="text-sm font-semibold mb-1">Tap to take/upload shelf photos</p>
                     <p className="text-[11px] text-muted-foreground">
-                      {MIN_IMAGES}–{MAX_IMAGES} photos · auto-resized to 1280px · JPG/PNG
+                      {MIN_IMAGES}–{MAX_IMAGES} photos · auto-resized to 2560px · JPG/PNG
                     </p>
                   </div>
                 </CardContent>
@@ -687,10 +690,11 @@ export function ShelfScanner() {
 
               {/* How it works */}
               <div className="rounded-lg bg-muted/50 p-3 text-xs text-muted-foreground space-y-1">
-                <p className="font-medium text-foreground">How it works</p>
-                <p>1. Take 2–3 photos of your shelf from different angles</p>
-                <p>2. AI detects medicines → your list → master catalog → add new</p>
-                <p>3. Enter counted quantities and save — done!</p>
+                <p className="font-medium text-foreground">Tips for dense topical shelves</p>
+                <p>• One wide photo of the full rack is enough (30–60 boxes per image)</p>
+                <p>• Face labels toward the camera; works with upside-down boxes too</p>
+                <p>• Cream, ointment, gel boxes — English and Bangla labels both read</p>
+                <p>• Add a 2nd photo only if one side of the shelf is cut off</p>
               </div>
             </motion.div>
           )}
@@ -708,9 +712,9 @@ export function ShelfScanner() {
                       The AI could not identify any medicine packaging. Try clearer photos with labels facing the camera.
                     </p>
                     {scanDiagnostic && (
-                      <p className="text-xs text-amber-700 dark:text-amber-400 mt-2 max-w-sm mx-auto rounded-md bg-amber-50 dark:bg-amber-950/30 px-3 py-2 border border-amber-200 dark:border-amber-800">
-                        {scanDiagnostic}
-                      </p>
+                      <div className="text-xs text-amber-700 dark:text-amber-400 mt-2 max-w-sm mx-auto rounded-md bg-amber-50 dark:bg-amber-950/30 px-3 py-2 border border-amber-200 dark:border-amber-800 text-left space-y-1">
+                        <p>{scanDiagnostic}</p>
+                      </div>
                     )}
                     <p className="text-[11px] text-muted-foreground mt-2 max-w-sm mx-auto">
                       Tip: Admin → API Setup → use model <strong className="font-mono">gemini-2.0-flash</strong>, reset prompts to defaults, and keep Disable Thinking ON.

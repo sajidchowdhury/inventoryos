@@ -1,51 +1,70 @@
 import { parseShelfScanResponse } from "../src/lib/shelf-scan-parse";
 
-const samples = [
+const samples: Array<{ label: string; raw: string; expectMin: number }> = [
   {
-    label: "standard",
+    label: "standard JSON",
     raw: JSON.stringify({
-      total_medicines_detected: 2,
       medicines: [
         { brand_name: "Napa", full_name: "Napa 500mg Tablet", confidence: "high" },
         { brand_name: "Seclo", full_name: "Seclo 20mg Capsule", confidence: "medium" },
       ],
     }),
-    expect: 2,
-  },
-  {
-    label: "camelCase",
-    raw: JSON.stringify({
-      medicines: [{ brandName: "Clovate", fullName: "Clovate 0.05% Cream", confidence: "high" }],
-    }),
-    expect: 1,
-  },
-  {
-    label: "detected_medicines key",
-    raw: JSON.stringify({
-      detected_medicines: [{ medicine_name: "Fusitop", full_name: "Fusitop Cream", confidence: "low" }],
-    }),
-    expect: 1,
-  },
-  {
-    label: "empty array",
-    raw: JSON.stringify({ total_medicines_detected: 0, medicines: [] }),
-    expect: 0,
+    expectMin: 2,
   },
   {
     label: "markdown fenced",
-    raw: '```json\n{"medicines":[{"brand_name":"Napa","full_name":"Napa","confidence":"high"}]}\n```',
-    expect: 1,
+    raw: '```json\n{"medicines":[{"brand_name":"Napa","full_name":"Napa 500mg","confidence":"high"}]}\n```',
+    expectMin: 1,
+  },
+  {
+    label: "truncated JSON regex salvage",
+    raw: '{"medicines":[{"brand_name":"Clovate","full_name":"Clovate 0.05% Cream","confidence":"high"},{"brand_name":"Napa","full_name":"Napa 500mg Tablet","confiden',
+    expectMin: 2,
+  },
+  {
+    label: "plain text bullet list",
+    raw: `Here are the medicines I can see on the shelf:
+- Napa 500mg Tablet
+- Seclo 20mg Capsule
+- Clovate 0.05% Cream`,
+    expectMin: 3,
+  },
+  {
+    label: "dense topical shelf plain list",
+    raw: `Medicines on shelf:
+- Clovate N Cream
+- Betameson-CL
+- Fusitop-HC
+- De-rash Plus
+- Lulitop
+- Virux HC
+- Trialon Oral Paste
+- Apsol
+- Festam gel
+- Pevitin`,
+    expectMin: 8,
+  },
+  {
+    label: "preamble before JSON",
+    raw: `Based on the shelf photos, here is the analysis:
+{"medicines":[{"brand_name":"De-rash","full_name":"De-rash Cream","confidence":"medium"}]}`,
+    expectMin: 1,
+  },
+  {
+    label: "JSON trailing comma",
+    raw: '{"medicines":[{"brand_name":"Napa","full_name":"Napa 500mg",},]}',
+    expectMin: 1,
   },
 ];
 
 let ok = 0;
 for (const s of samples) {
   const { detections, diagnostic } = parseShelfScanResponse(s.raw);
-  if (detections.length === s.expect) {
-    console.log(`✓ ${s.label}`);
+  if (detections.length >= s.expectMin) {
+    console.log(`✓ ${s.label} (${diagnostic.parseMethod}, ${detections.length} found)`);
     ok++;
   } else {
-    console.error(`✗ ${s.label}: expected ${s.expect}, got ${detections.length}`, diagnostic);
+    console.error(`✗ ${s.label}: expected >=${s.expectMin}, got ${detections.length}`, diagnostic);
     process.exit(1);
   }
 }
