@@ -6,7 +6,7 @@ const DEFAULTS = {
   "insights":          { maxOutputTokens: 2048, maxInputBatches: null, maxInputProducts: null, maxInputImages: null },
   "expiry-optimizer":  { maxOutputTokens: 2048, maxInputBatches: 50,   maxInputProducts: null, maxInputImages: null },
   "product-assistant": { maxOutputTokens: 512,  maxInputBatches: null, maxInputProducts: 20,   maxInputImages: null },
-  "shelf-scanner":     { maxOutputTokens: 4096, maxInputBatches: null, maxInputProducts: null, maxInputImages: 3, temperature: 0.1, disableThinking: true },
+  "shelf-scanner":     { maxOutputTokens: 8192, maxInputBatches: null, maxInputProducts: null, maxInputImages: 3, temperature: 0.1, disableThinking: true },
 };
 
 (async () => {

@@ -100,10 +100,10 @@ const fadeIn = {
 };
 
 const MAX_IMAGES = 3;
-const MIN_IMAGES = 2;
+const MIN_IMAGES = 1;
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024; // 8MB pre-resize (we resize down)
-const RESIZE_MAX_DIMENSION = 1920; // higher res helps read small label text on boxes
-const RESIZE_QUALITY = 0.85; // JPEG quality (0-1)
+const RESIZE_MAX_DIMENSION = 2560; // dense shelves need high res for small box labels
+const RESIZE_QUALITY = 0.88; // JPEG quality (0-1)
 
 /**
  * Resize an image File to a max dimension and compress to JPEG.
@@ -603,7 +603,7 @@ export function ShelfScanner() {
                     </div>
                     <p className="text-sm font-semibold mb-1">Tap to take/upload shelf photos</p>
                     <p className="text-[11px] text-muted-foreground">
-                      {MIN_IMAGES}–{MAX_IMAGES} photos · auto-resized to 1280px · JPG/PNG
+                      {MIN_IMAGES}–{MAX_IMAGES} photos · auto-resized to 2560px · JPG/PNG
                     </p>
                   </div>
                 </CardContent>
@@ -690,10 +690,11 @@ export function ShelfScanner() {
 
               {/* How it works */}
               <div className="rounded-lg bg-muted/50 p-3 text-xs text-muted-foreground space-y-1">
-                <p className="font-medium text-foreground">How it works</p>
-                <p>1. Take 2–3 photos of your shelf from different angles</p>
-                <p>2. AI detects medicines → your list → master catalog → add new</p>
-                <p>3. Enter counted quantities and save — done!</p>
+                <p className="font-medium text-foreground">Tips for dense topical shelves</p>
+                <p>• One wide photo of the full rack is enough (30–60 boxes per image)</p>
+                <p>• Face labels toward the camera; works with upside-down boxes too</p>
+                <p>• Cream, ointment, gel boxes — English and Bangla labels both read</p>
+                <p>• Add a 2nd photo only if one side of the shelf is cut off</p>
               </div>
             </motion.div>
           )}

@@ -35,7 +35,11 @@ const MEDICINE_ARRAY_KEYS = [
 ] as const;
 
 const MEDICINE_LINE_RE =
-  /\b(\d+\s*mg|\d+\s*ml|\d+\s*gm|\d+\s*%|tablet|capsule|cream|ointment|syrup|gel|drops|injection|suspension)\b/i;
+  /\b(\d+\s*mg|\d+\s*ml|\d+\s*gm|\d+\s*g\b|\d+\s*%|tablet|capsule|cream|ointment|syrup|gel|drops|injection|suspension|paste|lotion|soln|solution|oral\s+paste)\b/i;
+
+/** Short topical brand names: "Fusitop-HC", "Clovate N", "Apsol", "De-rash Plus" */
+const TOPICAL_BRAND_RE =
+  /^[A-Za-z][A-Za-z0-9.\-]*(?:\s+(?:N|Plus|HC|CL|H|gel|cream|ointment))?$/i;
 
 function normalizeConfidence(value: unknown): number {
   if (typeof value === "number" && !isNaN(value)) {
@@ -240,7 +244,10 @@ function parsePlainTextFallback(text: string): DetectedMedicine[] {
 
     const looksLikeMedicine =
       MEDICINE_LINE_RE.test(line) ||
-      (/^[A-Za-z\u0980-\u09FF]/.test(line) && line.split(/\s+/).length <= 12);
+      TOPICAL_BRAND_RE.test(line) ||
+      (/^[A-Za-z\u0980-\u09FF]/.test(line) &&
+        line.split(/\s+/).length <= 8 &&
+        !/^(the|and|or|with|from|this|that|photo|image|shelf)$/i.test(line));
 
     if (looksLikeMedicine) {
       results.push({ name: line, confidence: 0.45 });

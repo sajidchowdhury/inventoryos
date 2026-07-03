@@ -33,10 +33,10 @@ import { matchDetections } from "@/lib/shelf-scan-match";
 const FEATURE = "shelf-scanner";
 
 // ── Limits ──
-const MIN_IMAGES = 2;
+const MIN_IMAGES = 1;
 const MAX_IMAGES = 3; // also enforced by AiConfig.maxInputImages, but hard-cap here too
-const MAX_IMAGE_BYTES = 4 * 1024 * 1024; // 4 MB per image (base64 length)
-const MAX_TOTAL_BYTES = 12 * 1024 * 1024; // 12 MB total payload
+const MAX_IMAGE_BYTES = 6 * 1024 * 1024; // 6 MB per image (base64 length) — dense shelf photos at 2560px
+const MAX_TOTAL_BYTES = 18 * 1024 * 1024; // 18 MB total payload
 
 export async function POST(
   req: NextRequest,

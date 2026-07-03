@@ -41,7 +41,7 @@ export const AI_CONFIG_DEFAULTS = {
     maxInputImages: null as number | null,
   },
   "shelf-scanner": {
-    maxOutputTokens: 4096,   // room for ~30 detections + Gemini thinking headroom
+    maxOutputTokens: 8192,   // dense shelves: 40–60 topical boxes per photo
     maxInputBatches: null as number | null,
     maxInputProducts: null as number | null,
     maxInputImages: 3,

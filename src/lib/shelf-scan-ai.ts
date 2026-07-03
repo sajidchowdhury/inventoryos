@@ -75,7 +75,7 @@ export async function analyzeShelfImages(
       images,
       { ...callOpts, forceJsonOutput: false },
       systemPrompt,
-      userPrompt + "\n\nList every medicine box label you can read. Use a simple bullet list, one medicine per line."
+      userPrompt + "\n\nList every medicine box brand on the shelf, one per line (bullet list). Include creams, ointments, gels — scan all columns left to right. Expect 30+ items on a dense shelf."
     );
     const retryParsed = parseShelfScanResponse(retry.rawResponse);
     if (retryParsed.detections.length > 0) {

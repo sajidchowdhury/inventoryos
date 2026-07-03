@@ -30,11 +30,19 @@ const samples: Array<{ label: string; raw: string; expectMin: number }> = [
     expectMin: 3,
   },
   {
-    label: "numbered list",
-    raw: `Medicines detected:
-1. Betameson 0.1% Cream
-2. Fusitop 2% Ointment`,
-    expectMin: 2,
+    label: "dense topical shelf plain list",
+    raw: `Medicines on shelf:
+- Clovate N Cream
+- Betameson-CL
+- Fusitop-HC
+- De-rash Plus
+- Lulitop
+- Virux HC
+- Trialon Oral Paste
+- Apsol
+- Festam gel
+- Pevitin`,
+    expectMin: 8,
   },
   {
     label: "preamble before JSON",
