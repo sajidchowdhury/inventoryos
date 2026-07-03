@@ -1,0 +1,22 @@
+---
+pid: 5672
+cwd: "D:\InventoryOs"
+command: "cd D:\\InventoryOs; npm install 2>&1 | Select-Object -Last 15"
+started_at: 2026-07-03T06:48:52.310Z
+running_for_ms: 9860015  
+---
+
+added 1010 packages, and audited 1011 packages in 1m
+
+294 packages are looking for funding
+  run `npm fund` for details
+
+25 vulnerabilities (2 low, 11 moderate, 12 high)
+
+To address issues that do not require attention, run:
+  npm audit fix
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.

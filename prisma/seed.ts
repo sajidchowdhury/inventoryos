@@ -1,7 +1,8 @@
 // ── InventoryOS: Database Seed ──
-// Seeds business types + pharmacy categories
+// Seeds business types + pharmacy categories + default super-admin account
 
 import { db } from "../src/lib/db";
+import { hashPassword } from "../src/lib/auth";
 
 async function main() {
   console.log("Seeding database...");
@@ -75,6 +76,30 @@ async function main() {
       }
       console.log(`Seeded ${pharmacyCategories.length} categories for ${pharmacy.name}`);
     }
+  }
+
+  // Seed default super-admin (only on first run — never overwrites an existing password)
+  const superAdminUsername = process.env.SUPER_ADMIN_USERNAME || "superadmin";
+  const superAdminPassword = process.env.SUPER_ADMIN_DEFAULT_PASSWORD || "admin123";
+  const existingSuperAdmin = await db.superAdmin.findFirst({
+    where: { username: { equals: superAdminUsername, mode: "insensitive" } },
+    select: { id: true },
+  });
+
+  if (!existingSuperAdmin) {
+    const passwordHash = await hashPassword(superAdminPassword);
+    await db.superAdmin.create({
+      data: {
+        username: superAdminUsername,
+        passwordHash,
+        fullName: "Super Admin",
+        role: "super_admin",
+        isActive: true,
+      },
+    });
+    console.log(`Seeded super-admin account "${superAdminUsername}"`);
+  } else {
+    console.log(`Super-admin "${superAdminUsername}" already exists — password left unchanged`);
   }
 
   console.log("Done!");

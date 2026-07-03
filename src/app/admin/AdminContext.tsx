@@ -54,9 +54,10 @@ export function AdminProvider({ children }: { children: ReactNode }) {
 
   // ── apiFetch: wraps fetch with auto auth header + 401 handling ──
   const apiFetch = useCallback(async (url: string, options?: RequestInit): Promise<Response> => {
+    const requestToken = token;
     const headers = new Headers(options?.headers);
-    if (token) {
-      headers.set("Authorization", `Bearer ${token}`);
+    if (requestToken) {
+      headers.set("Authorization", `Bearer ${requestToken}`);
     }
     if (options?.body && !headers.has("Content-Type")) {
       headers.set("Content-Type", "application/json");
@@ -64,8 +65,9 @@ export function AdminProvider({ children }: { children: ReactNode }) {
 
     const res = await fetch(url, { ...options, headers });
 
-    // Auto-logout on 401 (expired/invalid token)
-    if (res.status === 401) {
+    // Auto-logout on 401 only when the failed request used the *current* token.
+    // Stale in-flight requests (from an expired session) must not wipe a fresh login.
+    if (res.status === 401 && requestToken && requestToken === token) {
       console.warn("[admin] Token expired or invalid — auto-logging out");
       setToken(null);
       notify("err", "Session expired. Please log in again.");

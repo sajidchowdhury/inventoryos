@@ -58,10 +58,16 @@ function LoginScreen() {
       const res = await fetch("/api/super-admin/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({
+          username: username.trim(),
+          password,
+        }),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
+        if (data.hint) {
+          throw new Error(data.hint);
+        }
         // If login fails with 401, check if any super-admin accounts exist
         // and show a helpful message pointing to the setup script.
         if (res.status === 401) {
@@ -69,16 +75,27 @@ function LoginScreen() {
             const statusRes = await fetch("/api/setup-status");
             const status = await statusRes.json();
             if (status?.database?.connected && status?.database?.superAdminCount === 0) {
-              throw new Error("No super-admin account exists on this server. Run this on your server: bunx tsx scripts/create-super-admin.ts admin YourPassword");
+              throw new Error("No super-admin account exists on this server. Run: npx tsx scripts/create-super-admin.ts admin YourPassword");
             }
             if (status?.database?.connected === false) {
-              throw new Error("Database not connected. Check DATABASE_URL in .env, then run: bun run db:push");
+              throw new Error("Database not connected. Check DATABASE_URL in .env, then run: npm run db:push");
             }
-          } catch {
-            // status check failed — just show the original error
+          } catch (inner) {
+            if (inner instanceof Error && inner.message.startsWith("No super-admin")) {
+              throw inner;
+            }
+            if (inner instanceof Error && inner.message.startsWith("Database not connected")) {
+              throw inner;
+            }
           }
         }
+        if (res.status === 500) {
+          throw new Error("Server error — is the database running? Check DATABASE_URL in .env.");
+        }
         throw new Error(data.error || "Login failed");
+      }
+      if (!data.token) {
+        throw new Error("Login succeeded but no session token was returned. Check server logs.");
       }
       setToken(data.token);
     } catch (err) {
@@ -127,7 +144,9 @@ function LoginScreen() {
           </Button>
         </form>
         <div className="text-center text-xs text-slate-500">
-          First time? Run: bunx tsx scripts/create-super-admin.ts admin YourPassword
+          First time? Default: superadmin / admin123 (after seed), or run:
+          <br />
+          npx tsx scripts/create-super-admin.ts admin YourPassword
         </div>
       </div>
     </div>

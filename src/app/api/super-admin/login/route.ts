@@ -10,8 +10,8 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
-import bcrypt from "bcryptjs";
 import { db } from "@/lib/db";
+import { verifyPassword } from "@/lib/auth";
 
 const SESSION_TTL_DAYS = 7;
 
@@ -21,22 +21,27 @@ export async function POST(req: NextRequest) {
     const body = await req.json().catch(() => ({}));
     const { username, password } = body ?? {};
 
-    if (!username || typeof username !== "string" || !username.trim()) {
+    const normalizedUsername = typeof username === "string" ? username.trim() : "";
+    const normalizedPassword = typeof password === "string" ? password : "";
+
+    if (!normalizedUsername) {
       return NextResponse.json(
         { success: false, error: "Username is required" },
         { status: 400 }
       );
     }
-    if (!password || typeof password !== "string" || !password) {
+    if (!normalizedPassword) {
       return NextResponse.json(
         { success: false, error: "Password is required" },
         { status: 400 }
       );
     }
 
-    // ── Look up the super admin by username ──
-    const superAdmin = await db.superAdmin.findUnique({
-      where: { username: username.trim() },
+    // ── Look up the super admin by username (case-insensitive) ──
+    const superAdmin = await db.superAdmin.findFirst({
+      where: {
+        username: { equals: normalizedUsername, mode: "insensitive" },
+      },
       select: {
         id: true,
         username: true,
@@ -46,16 +51,33 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // Use a constant-time-ish compare failure: even when the user doesn't
-    // exist we still run a bcrypt.compare against a dummy hash to reduce
-    // timing-based user enumeration.
-    const DUMMY_HASH = "$2a$12$000000000000000000000000000000000000000000000000000000";
-    const hashToCheck = superAdmin?.passwordHash ?? DUMMY_HASH;
-    const passwordOk = await bcrypt.compare(password, hashToCheck);
+    let passwordOk = false;
+    if (superAdmin?.passwordHash) {
+      try {
+        passwordOk = await verifyPassword(normalizedPassword, superAdmin.passwordHash);
+      } catch (err) {
+        console.error("[super-admin/login] password verify failed:", err);
+      }
+    }
 
     if (!superAdmin || !superAdmin.isActive || !passwordOk) {
+      let hint: string | undefined;
+      try {
+        const count = await db.superAdmin.count();
+        if (count === 0) {
+          hint =
+            "No super-admin account exists. Run: npx tsx scripts/create-super-admin.ts admin YourPassword";
+        }
+      } catch {
+        // ignore — fall back to generic error
+      }
+
       return NextResponse.json(
-        { success: false, error: "Invalid username or password" },
+        {
+          success: false,
+          error: "Invalid username or password",
+          hint,
+        },
         { status: 401 }
       );
     }

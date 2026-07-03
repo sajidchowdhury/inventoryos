@@ -1,0 +1,7 @@
+---
+pid: 10164
+cwd: "D:\InventoryOs"
+command: "cd D:\\InventoryOs; npx tsc --noEmit --pretty false 2>&1 | Select-String -Pattern \"AdminContext|login/route|seed.ts|layout.tsx\" | Select-Object -First 20"
+started_at: 2026-07-03T06:50:18.145Z
+running_for_ms: 9775012  
+---
