@@ -153,6 +153,10 @@ export async function POST(
     try {
       analysis = await analyzeShelfImages(images as string[], {
         maxOutputTokens: aiConfig.maxOutputTokens,
+        systemPrompt: aiConfig.systemPrompt ?? null,
+        userPromptTemplate: aiConfig.userPromptTemplate ?? null,
+        temperature: aiConfig.temperature ?? 0.1,
+        disableThinking: aiConfig.disableThinking ?? true,
       });
     } catch (vlmError) {
       // Log the failure against the scan row + AIUsageLog, then return the
