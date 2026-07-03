@@ -38,8 +38,8 @@ const PROVIDER_META: Record<string, { label: string; description: string; color:
     description: "Free tier via Google AI Studio. Good for reading medicine labels.",
     color: "text-blue-600",
     link: "https://aistudio.google.com/apikey",
-    defaultModel: "gemini-2.0-flash",
-    modelHelp: "Default: gemini-2.0-flash. Also: gemini-1.5-flash, gemini-1.5-pro.",
+    defaultModel: "gemini-2.5-flash",
+    modelHelp: "Recommended: gemini-2.5-flash (vision + OCR). Also: gemini-2.0-flash, gemini-1.5-flash. Save model after changing.",
   },
   zai: {
     label: "Z.ai (GLM-OCR / Vision)",

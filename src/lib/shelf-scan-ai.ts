@@ -95,6 +95,12 @@ export async function analyzeShelfImages(
   );
 
   const detections = parseDetections(result.rawResponse);
+  if (detections.length === 0 && result.rawResponse.trim()) {
+    console.warn(
+      "[shelf-scan-ai] VLM returned text but no medicines parsed. Raw snippet:",
+      result.rawResponse.substring(0, 500)
+    );
+  }
 
   const tokensUsed =
     result.tokensUsed > 0

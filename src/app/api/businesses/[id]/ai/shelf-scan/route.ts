@@ -175,6 +175,12 @@ export async function POST(
 
     const { detections, rawResponse, tokensUsed } = analysis;
 
+    if (detections.length === 0 && rawResponse.trim()) {
+      console.warn(
+        `[shelf-scan] scan ${shelfScan.id}: 0 medicines parsed from ${rawResponse.length}-char VLM response`
+      );
+    }
+
     // ── 6. DB matching pass ──
     // For each detection, try to find a client Product (this business's
     // inventory) first; if not found, try the MasterProduct catalog. Tag the

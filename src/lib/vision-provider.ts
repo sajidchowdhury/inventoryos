@@ -81,6 +81,29 @@ export async function analyzeWithActiveProvider(
 
 // ── Gemini ──
 
+/** Gemini 2.5+ models spend "thinking" tokens from the same output budget. */
+function isGeminiThinkingModel(model: string): boolean {
+  const m = model.toLowerCase();
+  return /gemini-2\.5|gemini-2-5|gemini-3/.test(m);
+}
+
+/** Collect visible text from all response parts (skip internal thought parts). */
+function extractGeminiText(candidate: unknown): string {
+  const parts = (candidate as { content?: { parts?: unknown[] } })?.content?.parts;
+  if (!Array.isArray(parts)) return "";
+
+  const texts: string[] = [];
+  for (const part of parts) {
+    if (!part || typeof part !== "object") continue;
+    const p = part as { thought?: boolean; text?: string };
+    if (p.thought === true) continue;
+    if (typeof p.text === "string" && p.text.trim()) {
+      texts.push(p.text.trim());
+    }
+  }
+  return texts.join("\n");
+}
+
 async function analyzeWithGemini(
   images: string[],
   maxTokens: number,
@@ -89,18 +112,18 @@ async function analyzeWithGemini(
   apiKey: string,
   model: string | null
 ): Promise<VisionAnalysisResult> {
-  const parts: Array<Record<string, unknown>> = [
-    { text: `${systemPrompt}\n\n${userPrompt}` },
-  ];
+  const parts: Array<Record<string, unknown>> = [{ text: userPrompt }];
 
-  for (const dataUrl of images) {
-    const match = dataUrl.match(/^data:(image\/[a-zA-Z]+);base64,(.+)$/);
+  for (let i = 0; i < images.length; i++) {
+    const dataUrl = images[i];
+    const match = dataUrl.match(/^data:(image\/[a-zA-Z0-9+.-]+);base64,(.+)$/);
     if (!match) {
-      throw new Error("Invalid image data URL format");
+      throw new Error(`Invalid image data URL format for image ${i + 1}`);
     }
+    // REST API requires camelCase — snake_case fields are silently ignored.
     parts.push({
-      inline_data: {
-        mime_type: match[1],
+      inlineData: {
+        mimeType: match[1],
         data: match[2],
       },
     });
@@ -109,15 +132,24 @@ async function analyzeWithGemini(
   const geminiModel = model || "gemini-2.0-flash";
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${apiKey}`;
 
+  const generationConfig: Record<string, unknown> = {
+    maxOutputTokens: maxTokens,
+    temperature: 0.1,
+    responseMimeType: "application/json",
+  };
+  if (isGeminiThinkingModel(geminiModel)) {
+    // Vision/OCR does not need deep reasoning; without this, 2.5 models can
+    // burn the entire output budget on thinking and return empty text.
+    generationConfig.thinkingConfig = { thinkingBudget: 0 };
+  }
+
   const response = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
+      systemInstruction: { parts: [{ text: systemPrompt }] },
       contents: [{ role: "user", parts }],
-      generationConfig: {
-        maxOutputTokens: maxTokens,
-        temperature: 0.1,
-      },
+      generationConfig,
     }),
   });
 
@@ -127,10 +159,39 @@ async function analyzeWithGemini(
   }
 
   const data = await response.json();
-  const rawResponse: string =
-    data?.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
-  const tokensUsed =
-    (data?.usageMetadata?.totalTokenCount as number) ?? 0;
+  const candidate = data?.candidates?.[0];
+  const rawResponse = extractGeminiText(candidate);
+  const tokensUsed = (data?.usageMetadata?.totalTokenCount as number) ?? 0;
+
+  if (!rawResponse) {
+    const finishReason = candidate?.finishReason ?? "unknown";
+    const blockReason = data?.promptFeedback?.blockReason;
+    const thoughtsTokens = data?.usageMetadata?.thoughtsTokenCount;
+    console.error("[vision-provider] Gemini empty response:", {
+      model: geminiModel,
+      finishReason,
+      blockReason,
+      thoughtsTokens,
+      candidatesTokenCount: data?.usageMetadata?.candidatesTokenCount,
+    });
+    const hints: string[] = [];
+    if (finishReason === "MAX_TOKENS") {
+      hints.push("Increase Max Output Tokens for Shelf Scanner in Admin → AI Configuration (try 4096+).");
+    }
+    if (isGeminiThinkingModel(geminiModel) && (thoughtsTokens ?? 0) > 0) {
+      hints.push("Gemini 2.5 thinking consumed the output budget — this is now auto-disabled for shelf scans.");
+    }
+    if (blockReason) {
+      hints.push(`Content blocked by safety filter (${blockReason}).`);
+    }
+    throw new Error(
+      `Gemini returned no text (finishReason=${finishReason}). ${hints.join(" ") || "Check your API key and model name."}`
+    );
+  }
+
+  console.log(
+    `[vision-provider] Gemini ${geminiModel}: ${images.length} image(s), ${rawResponse.length} chars response, ${tokensUsed} tokens`
+  );
 
   return {
     detections: [],
