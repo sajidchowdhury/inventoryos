@@ -102,8 +102,8 @@ const fadeIn = {
 const MAX_IMAGES = 3;
 const MIN_IMAGES = 2;
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024; // 8MB pre-resize (we resize down)
-const RESIZE_MAX_DIMENSION = 1280; // max width/height after resize — plenty for reading labels
-const RESIZE_QUALITY = 0.8; // JPEG quality (0-1)
+const RESIZE_MAX_DIMENSION = 1920; // higher res helps read small label text on boxes
+const RESIZE_QUALITY = 0.85; // JPEG quality (0-1)
 
 /**
  * Resize an image File to a max dimension and compress to JPEG.
@@ -175,6 +175,7 @@ export function ShelfScanner() {
   // Review state
   const [items, setItems] = useState<ScanItem[]>([]);
   const [noMedicinesFound, setNoMedicinesFound] = useState(false);
+  const [scanDiagnostic, setScanDiagnostic] = useState<string | null>(null);
   const [addingFromCatalog, setAddingFromCatalog] = useState<string | null>(null);
 
   // Save state
@@ -257,6 +258,7 @@ export function ShelfScanner() {
     if (!businessId || images.length < MIN_IMAGES) return;
     setAnalyzing(true);
     setScanError(null);
+    setScanDiagnostic(null);
     try {
       const res = await fetch(`/api/businesses/${businessId}/ai/shelf-scan`, {
         method: "POST",
@@ -285,6 +287,11 @@ export function ShelfScanner() {
       }
       setScanId(data.scanId);
       setNoMedicinesFound(Boolean(data.noMedicinesFound) || data.detectedCount === 0);
+      setScanDiagnostic(
+        data.detectedCount === 0 && data.diagnostic?.message
+          ? String(data.diagnostic.message)
+          : null
+      );
       setItems(
         (data.items as ScanItem[]).map((it) => ({
           ...it,
@@ -468,6 +475,7 @@ export function ShelfScanner() {
     setScanId(null);
     setItems([]);
     setNoMedicinesFound(false);
+    setScanDiagnostic(null);
     setScanError(null);
     setSaveResult(null);
     setUploadError(null);
@@ -698,6 +706,14 @@ export function ShelfScanner() {
                     <p className="text-base font-semibold">No medicine found in the image</p>
                     <p className="text-sm text-muted-foreground mt-1 max-w-xs mx-auto">
                       The AI could not identify any medicine packaging. Try clearer photos with labels facing the camera.
+                    </p>
+                    {scanDiagnostic && (
+                      <p className="text-xs text-amber-700 dark:text-amber-400 mt-2 max-w-sm mx-auto rounded-md bg-amber-50 dark:bg-amber-950/30 px-3 py-2 border border-amber-200 dark:border-amber-800">
+                        {scanDiagnostic}
+                      </p>
+                    )}
+                    <p className="text-[11px] text-muted-foreground mt-2 max-w-sm mx-auto">
+                      Tip: Admin → API Setup → use model <strong className="font-mono">gemini-2.0-flash</strong>, reset prompts to defaults, and keep Disable Thinking ON.
                     </p>
                   </div>
                   <Button variant="outline" onClick={reset}>

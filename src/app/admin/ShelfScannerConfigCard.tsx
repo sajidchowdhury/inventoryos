@@ -307,6 +307,13 @@ export function ShelfScannerConfigCard({ token }: { token: string }) {
                 </div>
               </div>
 
+              {edit.useCustomPrompts && (
+                <p className="text-[11px] text-amber-700 dark:text-amber-400 rounded-md bg-amber-50 dark:bg-amber-950/20 px-2 py-1.5 border border-amber-200">
+                  Custom prompts must ask for a JSON <code className="font-mono">medicines</code> array with <code className="font-mono">brand_name</code> and <code className="font-mono">full_name</code> fields.
+                  If scans return empty, turn off custom prompts or click Reset prompts to defaults.
+                </p>
+              )}
+
               <div>
                 <Label className="text-xs">System prompt</Label>
                 <Textarea

@@ -15,6 +15,7 @@ import {
   ZAI_OCR_STRUCTURE_MODEL,
   zaiVisionModelHint,
 } from "@/lib/zai-vision-models";
+import { GEMINI_SHELF_RESPONSE_SCHEMA } from "@/lib/shelf-scan-schema";
 
 export interface VisionDetection {
   name: string;
@@ -109,16 +110,22 @@ function extractGeminiText(candidate: unknown): string {
   const parts = (candidate as { content?: { parts?: unknown[] } })?.content?.parts;
   if (!Array.isArray(parts)) return "";
 
-  const texts: string[] = [];
+  const nonThought: string[] = [];
+  const allText: string[] = [];
+
   for (const part of parts) {
     if (!part || typeof part !== "object") continue;
     const p = part as { thought?: boolean; text?: string };
-    if (p.thought === true) continue;
-    if (typeof p.text === "string" && p.text.trim()) {
-      texts.push(p.text.trim());
+    if (typeof p.text !== "string" || !p.text.trim()) continue;
+    allText.push(p.text.trim());
+    if (p.thought !== true) {
+      nonThought.push(p.text.trim());
     }
   }
-  return texts.join("\n");
+
+  // Prefer non-thought parts; fall back to all text if model didn't flag thoughts
+  const joined = (nonThought.length ? nonThought : allText).join("\n");
+  return joined.trim();
 }
 
 async function analyzeWithGemini(
@@ -130,7 +137,9 @@ async function analyzeWithGemini(
   model: string | null
 ): Promise<VisionAnalysisResult> {
   const { maxTokens, temperature = 0.1, disableThinking = true, forceJsonOutput = true } = options;
-  const parts: Array<Record<string, unknown>> = [{ text: userPrompt }];
+
+  // Images FIRST — multimodal models read labels better when photos precede the instruction.
+  const parts: Array<Record<string, unknown>> = [];
 
   for (let i = 0; i < images.length; i++) {
     const dataUrl = images[i];
@@ -138,7 +147,6 @@ async function analyzeWithGemini(
     if (!match) {
       throw new Error(`Invalid image data URL format for image ${i + 1}`);
     }
-    // REST API requires camelCase — snake_case fields are silently ignored.
     parts.push({
       inlineData: {
         mimeType: match[1],
@@ -146,6 +154,8 @@ async function analyzeWithGemini(
       },
     });
   }
+
+  parts.push({ text: userPrompt });
 
   const geminiModel = model || "gemini-2.0-flash";
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${apiKey}`;
@@ -156,9 +166,11 @@ async function analyzeWithGemini(
   };
   if (forceJsonOutput) {
     generationConfig.responseMimeType = "application/json";
+    generationConfig.responseSchema = GEMINI_SHELF_RESPONSE_SCHEMA;
   }
-  if (isGeminiThinkingModel(geminiModel) && disableThinking) {
-    generationConfig.thinkingConfig = { thinkingBudget: 0 };
+  if (isGeminiThinkingModel(geminiModel)) {
+    // Always disable thinking for shelf OCR — reasoning burns tokens without helping label reading.
+    generationConfig.thinkingConfig = { thinkingBudget: disableThinking ? 0 : 512 };
   }
 
   const response = await fetch(url, {
