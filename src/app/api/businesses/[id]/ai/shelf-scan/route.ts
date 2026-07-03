@@ -177,12 +177,15 @@ export async function POST(
       );
     }
 
-    const { detections, rawResponse, tokensUsed } = analysis;
+    const { detections, rawResponse, tokensUsed, diagnostic, provider } = analysis;
 
-    if (detections.length === 0 && rawResponse.trim()) {
-      console.warn(
-        `[shelf-scan] scan ${shelfScan.id}: 0 medicines parsed from ${rawResponse.length}-char VLM response`
-      );
+    if (detections.length === 0) {
+      console.warn(`[shelf-scan] scan ${shelfScan.id}: zero detections`, {
+        provider,
+        diagnostic,
+        rawLen: rawResponse.length,
+        rawSnippet: rawResponse.substring(0, 400),
+      });
     }
 
     // ── 6. DB matching pass ──
@@ -271,6 +274,8 @@ export async function POST(
       matchedCount,
       noMedicinesFound: detections.length === 0,
       tokensUsed,
+      provider,
+      diagnostic: detections.length === 0 ? diagnostic : undefined,
       remaining: limitCheck.remaining,
       note: trimmedNote,
       items: persistedItems.map((it) => ({

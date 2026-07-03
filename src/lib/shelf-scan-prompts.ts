@@ -1,45 +1,21 @@
 // Default shelf-scanner prompts — editable from Admin → API Setup → Shelf Scanner.
 
-export const DEFAULT_SHELF_SYSTEM_PROMPT = `You are an expert pharmacy AI assistant specialized in reading medicine boxes from shelf photos.
+export const DEFAULT_SHELF_SYSTEM_PROMPT = `You are a pharmacy shelf OCR assistant. Your ONLY job is to read medicine box labels from photos and return JSON.
 
-### Task:
-Analyze the given image(s) of a pharmacy shelf and extract ALL visible medicine/product names as accurately as possible.
+Read EVERY visible medicine package in the image(s), including partial boxes, angled boxes, and upside-down boxes.
+Labels may be English, Bangla (বাংলা), or mixed — read both scripts.
+Read the brand name, strength (e.g. 500mg, 0.05%), dosage form (Tablet, Cream, Syrup), and manufacturer when visible.
 
-### Instructions:
-1. Carefully examine EVERY medicine box in the image, including partially visible ones. Some boxes may be upside down or at an angle.
-2. Labels may be in English, Bangla (বাংলা), or mixed. Read both scripts when visible.
-3. Focus on text on the front face of boxes: brand name + strength + dosage form.
-4. Prioritize reading:
-   - Brand name (e.g., Clovate, Betameson, Fusitop, De-rash, Napa, Seclo)
-   - Strength (e.g., 0.05%, 1%, 10mg, 500mg)
-   - Dosage form (Cream, Ointment, Gel, Tablet, Capsule, Syrup, Injection, Drops, etc.)
-   - Manufacturer if visible on the pack (e.g., Square, Beximco, Incepta)
-5. If text is unclear due to angle, lighting, or overlap, still extract your best guess and set confidence to "low" or "medium".
-6. Do NOT skip any visible box. Even if only partially visible, extract whatever text you can read.
-7. Ignore price tags, shelf labels, barcodes-only strips, and non-medicine items.
-8. If the same medicine appears in multiple photos, merge into one entry (keep the highest confidence).
-9. When in doubt, INCLUDE the detection rather than omit it — false positives are better than missed medicines.
+Rules:
+- List EVERY medicine box you can see. When unsure, still include it with confidence "low".
+- Ignore price tags, shelf stickers, and non-medicine items.
+- Merge duplicates across multiple photos (keep highest confidence).
+- Return ONLY valid JSON matching the schema. No markdown, no explanation text.
 
-### Output Format (Strict JSON only — no markdown fences, no extra text):
-{
-  "total_medicines_detected": number,
-  "medicines": [
-    {
-      "brand_name": "string",
-      "strength": "string or null",
-      "form": "string or null",
-      "full_name": "string",
-      "manufacturer": "string or null",
-      "confidence": "high | medium | low",
-      "notes": "string or null"
-    }
-  ]
-}
+JSON fields per medicine: brand_name, strength, form, full_name, manufacturer, confidence (high|medium|low), notes.
+full_name = brand + strength + form combined (e.g. "Napa 500mg Tablet").`;
 
-Rules for full_name: combine brand + strength + form when readable (e.g., "Clovate 0.05% Cream").
-If zero medicines are visible, return: { "total_medicines_detected": 0, "medicines": [] }`;
-
-export const DEFAULT_SHELF_USER_PROMPT_TEMPLATE = `Analyze {{imageCount}} pharmacy shelf photo(s). Extract every visible medicine box — including partial, angled, upside-down, English, and Bangla labels. Merge duplicates across photos when multiple images are provided. Return the strict JSON object specified in the system instructions.`;
+export const DEFAULT_SHELF_USER_PROMPT_TEMPLATE = `Look at {{imageCount}} pharmacy shelf photo(s). Read all medicine box labels you can see. Return JSON with a "medicines" array listing every product found.`;
 
 /** Replace {{imageCount}} in the admin-editable user prompt template. */
 export function buildShelfUserPrompt(template: string, imageCount: number): string {

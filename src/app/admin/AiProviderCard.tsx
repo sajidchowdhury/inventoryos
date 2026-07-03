@@ -39,7 +39,7 @@ const PROVIDER_META: Record<string, { label: string; description: string; color:
     color: "text-blue-600",
     link: "https://aistudio.google.com/apikey",
     defaultModel: "gemini-2.0-flash",
-    modelHelp: "Recommended: gemini-2.0-flash (fast, cheap, no thinking issues). Also: gemini-2.5-flash (more accurate — keep Disable Thinking ON in Shelf Scanner settings).",
+    modelHelp: "Best for shelf OCR: gemini-2.0-flash (recommended). gemini-2.5-flash works only with Disable Thinking ON in Shelf Scanner settings.",
   },
   zai: {
     label: "Z.ai (GLM-OCR / Vision)",
