@@ -292,6 +292,9 @@ export function ShelfScanner() {
           ? String(data.diagnostic.message)
           : null
       );
+      if (data.detectedCount === 0 && data.diagnostic?.rawPreview) {
+        console.log("[shelf-scanner] AI raw preview:", data.diagnostic.rawPreview);
+      }
       setItems(
         (data.items as ScanItem[]).map((it) => ({
           ...it,
@@ -708,9 +711,9 @@ export function ShelfScanner() {
                       The AI could not identify any medicine packaging. Try clearer photos with labels facing the camera.
                     </p>
                     {scanDiagnostic && (
-                      <p className="text-xs text-amber-700 dark:text-amber-400 mt-2 max-w-sm mx-auto rounded-md bg-amber-50 dark:bg-amber-950/30 px-3 py-2 border border-amber-200 dark:border-amber-800">
-                        {scanDiagnostic}
-                      </p>
+                      <div className="text-xs text-amber-700 dark:text-amber-400 mt-2 max-w-sm mx-auto rounded-md bg-amber-50 dark:bg-amber-950/30 px-3 py-2 border border-amber-200 dark:border-amber-800 text-left space-y-1">
+                        <p>{scanDiagnostic}</p>
+                      </div>
                     )}
                     <p className="text-[11px] text-muted-foreground mt-2 max-w-sm mx-auto">
                       Tip: Admin → API Setup → use model <strong className="font-mono">gemini-2.0-flash</strong>, reset prompts to defaults, and keep Disable Thinking ON.

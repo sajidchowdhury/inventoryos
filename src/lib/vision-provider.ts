@@ -15,7 +15,6 @@ import {
   ZAI_OCR_STRUCTURE_MODEL,
   zaiVisionModelHint,
 } from "@/lib/zai-vision-models";
-import { GEMINI_SHELF_RESPONSE_SCHEMA } from "@/lib/shelf-scan-schema";
 
 export interface VisionDetection {
   name: string;
@@ -165,8 +164,9 @@ async function analyzeWithGemini(
     temperature,
   };
   if (forceJsonOutput) {
+    // JSON mode without responseSchema — schema often produces truncated/invalid JSON
+    // on shelf photos. The parser handles JSON, broken JSON, and plain-text lists.
     generationConfig.responseMimeType = "application/json";
-    generationConfig.responseSchema = GEMINI_SHELF_RESPONSE_SCHEMA;
   }
   if (isGeminiThinkingModel(geminiModel)) {
     // Always disable thinking for shelf OCR — reasoning burns tokens without helping label reading.
