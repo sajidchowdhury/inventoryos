@@ -246,8 +246,8 @@ export function AiConfigCard({ token }: { token: string }) {
           AI Configuration
         </CardTitle>
         <CardDescription>
-          Tunable cost-control knobs for the 5 LLM features. Changes take effect on
-          the next AI call — no redeploy required.
+          Tunable cost-control knobs for chat, insights, expiry optimizer, and product assistant.
+          Shelf scanner settings are in the card above.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -268,7 +268,7 @@ export function AiConfigCard({ token }: { token: string }) {
         ) : (
           <>
             <div className="space-y-4">
-              {configs.map((cfg) => {
+              {configs.filter((cfg) => cfg.feature !== "shelf-scanner").map((cfg) => {
                 const meta = FEATURE_META[cfg.feature] || {
                   label: cfg.feature,
                   icon: Settings2,

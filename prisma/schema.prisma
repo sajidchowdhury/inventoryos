@@ -888,6 +888,10 @@ model AiConfig {
   maxInputBatches  Int?     // only used by expiry-optimizer
   maxInputProducts Int?     // only used by product-assistant:check_interactions
   maxInputImages   Int?     // only used by shelf-scanner (max photos per scan)
+  systemPrompt     String?  @db.Text // shelf-scanner: custom system prompt (null = default)
+  userPromptTemplate String? @db.Text // shelf-scanner: user prompt with {{imageCount}} placeholder
+  temperature      Float?   // shelf-scanner: LLM temperature (null = 0.1)
+  disableThinking  Boolean? // shelf-scanner: disable Gemini 2.5+ internal reasoning (null = true)
   updatedAt        DateTime @updatedAt
   updatedBy        String?  // super-admin username
 

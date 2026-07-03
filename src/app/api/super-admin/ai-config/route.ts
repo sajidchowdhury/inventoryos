@@ -16,6 +16,10 @@ import {
   seedDefaultAiConfigs,
   type AiFeatureName,
 } from "@/lib/ai-config";
+import {
+  DEFAULT_SHELF_SYSTEM_PROMPT,
+  DEFAULT_SHELF_USER_PROMPT_TEMPLATE,
+} from "@/lib/shelf-scan-prompts";
 
 /**
  * Verify the Bearer token belongs to an active, non-expired super-admin session.
@@ -72,7 +76,16 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       success: true,
       configs,
-      defaults: AI_CONFIG_DEFAULTS,
+      defaults: {
+        ...AI_CONFIG_DEFAULTS,
+        "shelf-scanner": {
+          ...AI_CONFIG_DEFAULTS["shelf-scanner"],
+          promptDefaults: {
+            systemPrompt: DEFAULT_SHELF_SYSTEM_PROMPT,
+            userPromptTemplate: DEFAULT_SHELF_USER_PROMPT_TEMPLATE,
+          },
+        },
+      },
     });
   } catch (error) {
     console.error("[super-admin/ai-config] GET failed:", error);
@@ -107,7 +120,7 @@ export async function PUT(req: NextRequest) {
     }
 
     // ── Update-one-feature mode ──
-    const { feature, maxOutputTokens, maxInputBatches, maxInputProducts, maxInputImages } = body;
+    const { feature, maxOutputTokens, maxInputBatches, maxInputProducts, maxInputImages, systemPrompt, userPromptTemplate, temperature, disableThinking, resetPrompts } = body;
 
     if (!feature || !VALID_FEATURES.includes(feature)) {
       return NextResponse.json(
@@ -123,6 +136,10 @@ export async function PUT(req: NextRequest) {
       maxInputBatches?: number | null;
       maxInputProducts?: number | null;
       maxInputImages?: number | null;
+      systemPrompt?: string | null;
+      userPromptTemplate?: string | null;
+      temperature?: number | null;
+      disableThinking?: boolean | null;
     } = {};
 
     if (maxOutputTokens !== undefined) {
@@ -137,10 +154,26 @@ export async function PUT(req: NextRequest) {
     if (maxInputImages !== undefined) {
       updates.maxInputImages = maxInputImages;
     }
+    if (systemPrompt !== undefined) {
+      updates.systemPrompt = systemPrompt;
+    }
+    if (userPromptTemplate !== undefined) {
+      updates.userPromptTemplate = userPromptTemplate;
+    }
+    if (temperature !== undefined) {
+      updates.temperature = temperature;
+    }
+    if (disableThinking !== undefined) {
+      updates.disableThinking = disableThinking;
+    }
+    if (resetPrompts === true && feature === "shelf-scanner") {
+      updates.systemPrompt = null;
+      updates.userPromptTemplate = null;
+    }
 
     if (Object.keys(updates).length === 0) {
       return NextResponse.json(
-        { error: "No update fields provided. Send maxOutputTokens, maxInputBatches, maxInputProducts, or maxInputImages." },
+        { error: "No update fields provided." },
         { status: 400 }
       );
     }

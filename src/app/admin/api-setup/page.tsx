@@ -25,6 +25,7 @@ import {
 import { useAdmin } from "../AdminContext";
 import { AiConfigCard } from "../AiConfigCard";
 import { AiProviderCard } from "../AiProviderCard";
+import { ShelfScannerConfigCard } from "../ShelfScannerConfigCard";
 import { KillSwitchCard } from "../KillSwitchCard";
 import { NotificationRecipientsCard } from "../NotificationRecipientsCard";
 
@@ -96,6 +97,7 @@ export default function ApiSetupPage() {
 
       <TabsContent value="ai" className="space-y-4">
         <AiProviderCard token={token!} />
+        <ShelfScannerConfigCard token={token!} />
         <AiConfigCard token={token!} />
       </TabsContent>
 

@@ -153,6 +153,10 @@ export async function POST(
     try {
       analysis = await analyzeShelfImages(images as string[], {
         maxOutputTokens: aiConfig.maxOutputTokens,
+        systemPrompt: aiConfig.systemPrompt ?? null,
+        userPromptTemplate: aiConfig.userPromptTemplate ?? null,
+        temperature: aiConfig.temperature ?? 0.1,
+        disableThinking: aiConfig.disableThinking ?? true,
       });
     } catch (vlmError) {
       // Log the failure against the scan row + AIUsageLog, then return the
@@ -174,6 +178,12 @@ export async function POST(
     }
 
     const { detections, rawResponse, tokensUsed } = analysis;
+
+    if (detections.length === 0 && rawResponse.trim()) {
+      console.warn(
+        `[shelf-scan] scan ${shelfScan.id}: 0 medicines parsed from ${rawResponse.length}-char VLM response`
+      );
+    }
 
     // ── 6. DB matching pass ──
     // For each detection, try to find a client Product (this business's

@@ -31,6 +31,16 @@ export interface VisionAnalysisResult {
   provider: string;
 }
 
+/** Tunable per-scan options (from Admin → Shelf Scanner config). */
+export interface VisionCallOptions {
+  maxTokens: number;
+  temperature?: number;
+  /** Disable Gemini 2.5+ internal reasoning (default true for shelf scans). */
+  disableThinking?: boolean;
+  /** Request JSON output from providers that support it (default true). */
+  forceJsonOutput?: boolean;
+}
+
 interface ActiveProvider {
   provider: string;
   apiKey: string | null;
@@ -58,7 +68,7 @@ export async function getActiveVisionProvider(): Promise<ActiveProvider | null> 
 
 export async function analyzeWithActiveProvider(
   images: string[],
-  maxTokens: number,
+  options: VisionCallOptions,
   systemPrompt: string,
   userPrompt: string
 ): Promise<VisionAnalysisResult> {
@@ -69,11 +79,18 @@ export async function analyzeWithActiveProvider(
     );
   }
 
+  const callOpts: VisionCallOptions = {
+    temperature: 0.1,
+    disableThinking: true,
+    forceJsonOutput: true,
+    ...options,
+  };
+
   switch (provider.provider) {
     case "gemini":
-      return analyzeWithGemini(images, maxTokens, systemPrompt, userPrompt, provider.apiKey!, provider.model);
+      return analyzeWithGemini(images, callOpts, systemPrompt, userPrompt, provider.apiKey!, provider.model);
     case "zai":
-      return analyzeWithZai(images, maxTokens, systemPrompt, userPrompt, provider.apiKey!, provider.baseUrl, provider.model);
+      return analyzeWithZai(images, callOpts, systemPrompt, userPrompt, provider.apiKey!, provider.baseUrl, provider.model);
     default:
       throw new Error(`Unknown vision provider: "${provider.provider}"`);
   }
@@ -81,26 +98,50 @@ export async function analyzeWithActiveProvider(
 
 // ── Gemini ──
 
+/** Gemini 2.5+ models spend "thinking" tokens from the same output budget. */
+function isGeminiThinkingModel(model: string): boolean {
+  const m = model.toLowerCase();
+  return /gemini-2\.5|gemini-2-5|gemini-3/.test(m);
+}
+
+/** Collect visible text from all response parts (skip internal thought parts). */
+function extractGeminiText(candidate: unknown): string {
+  const parts = (candidate as { content?: { parts?: unknown[] } })?.content?.parts;
+  if (!Array.isArray(parts)) return "";
+
+  const texts: string[] = [];
+  for (const part of parts) {
+    if (!part || typeof part !== "object") continue;
+    const p = part as { thought?: boolean; text?: string };
+    if (p.thought === true) continue;
+    if (typeof p.text === "string" && p.text.trim()) {
+      texts.push(p.text.trim());
+    }
+  }
+  return texts.join("\n");
+}
+
 async function analyzeWithGemini(
   images: string[],
-  maxTokens: number,
+  options: VisionCallOptions,
   systemPrompt: string,
   userPrompt: string,
   apiKey: string,
   model: string | null
 ): Promise<VisionAnalysisResult> {
-  const parts: Array<Record<string, unknown>> = [
-    { text: `${systemPrompt}\n\n${userPrompt}` },
-  ];
+  const { maxTokens, temperature = 0.1, disableThinking = true, forceJsonOutput = true } = options;
+  const parts: Array<Record<string, unknown>> = [{ text: userPrompt }];
 
-  for (const dataUrl of images) {
-    const match = dataUrl.match(/^data:(image\/[a-zA-Z]+);base64,(.+)$/);
+  for (let i = 0; i < images.length; i++) {
+    const dataUrl = images[i];
+    const match = dataUrl.match(/^data:(image\/[a-zA-Z0-9+.-]+);base64,(.+)$/);
     if (!match) {
-      throw new Error("Invalid image data URL format");
+      throw new Error(`Invalid image data URL format for image ${i + 1}`);
     }
+    // REST API requires camelCase — snake_case fields are silently ignored.
     parts.push({
-      inline_data: {
-        mime_type: match[1],
+      inlineData: {
+        mimeType: match[1],
         data: match[2],
       },
     });
@@ -109,15 +150,24 @@ async function analyzeWithGemini(
   const geminiModel = model || "gemini-2.0-flash";
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${apiKey}`;
 
+  const generationConfig: Record<string, unknown> = {
+    maxOutputTokens: maxTokens,
+    temperature,
+  };
+  if (forceJsonOutput) {
+    generationConfig.responseMimeType = "application/json";
+  }
+  if (isGeminiThinkingModel(geminiModel) && disableThinking) {
+    generationConfig.thinkingConfig = { thinkingBudget: 0 };
+  }
+
   const response = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
+      systemInstruction: { parts: [{ text: systemPrompt }] },
       contents: [{ role: "user", parts }],
-      generationConfig: {
-        maxOutputTokens: maxTokens,
-        temperature: 0.1,
-      },
+      generationConfig,
     }),
   });
 
@@ -127,10 +177,39 @@ async function analyzeWithGemini(
   }
 
   const data = await response.json();
-  const rawResponse: string =
-    data?.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
-  const tokensUsed =
-    (data?.usageMetadata?.totalTokenCount as number) ?? 0;
+  const candidate = data?.candidates?.[0];
+  const rawResponse = extractGeminiText(candidate);
+  const tokensUsed = (data?.usageMetadata?.totalTokenCount as number) ?? 0;
+
+  if (!rawResponse) {
+    const finishReason = candidate?.finishReason ?? "unknown";
+    const blockReason = data?.promptFeedback?.blockReason;
+    const thoughtsTokens = data?.usageMetadata?.thoughtsTokenCount;
+    console.error("[vision-provider] Gemini empty response:", {
+      model: geminiModel,
+      finishReason,
+      blockReason,
+      thoughtsTokens,
+      candidatesTokenCount: data?.usageMetadata?.candidatesTokenCount,
+    });
+    const hints: string[] = [];
+    if (finishReason === "MAX_TOKENS") {
+      hints.push("Increase Max Output Tokens for Shelf Scanner in Admin → AI Configuration (try 4096+).");
+    }
+    if (isGeminiThinkingModel(geminiModel) && (thoughtsTokens ?? 0) > 0) {
+      hints.push("Gemini 2.5 thinking consumed the output budget — this is now auto-disabled for shelf scans.");
+    }
+    if (blockReason) {
+      hints.push(`Content blocked by safety filter (${blockReason}).`);
+    }
+    throw new Error(
+      `Gemini returned no text (finishReason=${finishReason}). ${hints.join(" ") || "Check your API key and model name."}`
+    );
+  }
+
+  console.log(
+    `[vision-provider] Gemini ${geminiModel}: ${images.length} image(s), ${rawResponse.length} chars response, ${tokensUsed} tokens`
+  );
 
   return {
     detections: [],
@@ -146,7 +225,7 @@ const ZAI_DEFAULT_BASE_URL = "https://api.z.ai/api/paas/v4";
 
 async function analyzeWithZai(
   images: string[],
-  maxTokens: number,
+  options: VisionCallOptions,
   systemPrompt: string,
   userPrompt: string,
   apiKey: string,
@@ -163,7 +242,7 @@ async function analyzeWithZai(
   if (isZaiOcrModel(visionModel)) {
     return analyzeWithZaiOcr(
       images,
-      maxTokens,
+      options,
       systemPrompt,
       userPrompt,
       apiKey,
@@ -173,7 +252,7 @@ async function analyzeWithZai(
 
   return analyzeWithZaiVision(
     images,
-    maxTokens,
+    options,
     systemPrompt,
     userPrompt,
     apiKey,
@@ -185,7 +264,7 @@ async function analyzeWithZai(
 /** GLM-OCR: layout_parsing per image, then text LLM structures medicines. */
 async function analyzeWithZaiOcr(
   images: string[],
-  maxTokens: number,
+  options: VisionCallOptions,
   systemPrompt: string,
   userPrompt: string,
   apiKey: string,
@@ -245,8 +324,14 @@ async function analyzeWithZaiOcr(
     ZAI_OCR_STRUCTURE_MODEL,
     systemPrompt,
     structurePrompt,
-    maxTokens
+    options
   );
+
+  if (!structured.content.trim()) {
+    throw new Error(
+      "Z.ai GLM-OCR structuring step returned empty text. Try increasing Max Output Tokens or simplifying the prompt."
+    );
+  }
 
   return {
     detections: [],
@@ -259,7 +344,7 @@ async function analyzeWithZaiOcr(
 /** Standard multimodal vision via /chat/completions. */
 async function analyzeWithZaiVision(
   images: string[],
-  maxTokens: number,
+  options: VisionCallOptions,
   systemPrompt: string,
   userPrompt: string,
   apiKey: string,
@@ -275,7 +360,14 @@ async function analyzeWithZaiVision(
     ...images.map((img) => ({ type: "image_url" as const, image_url: { url: img } })),
   ];
 
-  const result = await zaiChatCompletion(apiKey, base, visionModel, systemPrompt, content, maxTokens, true);
+  const result = await zaiChatCompletion(apiKey, base, visionModel, systemPrompt, content, options, true);
+
+  if (!result.content.trim()) {
+    const reason = result.finishReason ?? "unknown";
+    throw new Error(
+      `Z.ai vision returned empty text (finish_reason=${reason}). Increase Max Output Tokens or disable reasoning on the model.`
+    );
+  }
 
   return {
     detections: [],
@@ -291,10 +383,31 @@ async function zaiChatCompletion(
   model: string,
   systemPrompt: string,
   userContent: string | Array<{ type: string; text?: string; image_url?: { url: string } }>,
-  maxTokens: number,
+  options: VisionCallOptions,
   multimodal = false
-): Promise<{ content: string; tokensUsed: number }> {
+): Promise<{ content: string; tokensUsed: number; finishReason?: string }> {
+  const { maxTokens, temperature = 0.1, forceJsonOutput = true } = options;
   const url = `${base}/chat/completions`;
+
+  const body: Record<string, unknown> = {
+    model,
+    messages: [
+      { role: "system", content: systemPrompt },
+      {
+        role: "user",
+        content: multimodal && Array.isArray(userContent)
+          ? userContent
+          : typeof userContent === "string"
+            ? userContent
+            : String(userContent),
+      },
+    ],
+    max_tokens: maxTokens,
+    temperature,
+  };
+  if (forceJsonOutput) {
+    body.response_format = { type: "json_object" };
+  }
 
   const response = await fetch(url, {
     method: "POST",
@@ -302,22 +415,7 @@ async function zaiChatCompletion(
       "Content-Type": "application/json",
       Authorization: `Bearer ${apiKey}`,
     },
-    body: JSON.stringify({
-      model,
-      messages: [
-        { role: "system", content: systemPrompt },
-        {
-          role: "user",
-          content: multimodal && Array.isArray(userContent)
-            ? userContent
-            : typeof userContent === "string"
-              ? userContent
-              : String(userContent),
-        },
-      ],
-      max_tokens: maxTokens,
-      temperature: 0.1,
-    }),
+    body: JSON.stringify(body),
   });
 
   if (!response.ok) {
@@ -335,6 +433,7 @@ async function zaiChatCompletion(
   return {
     content: data?.choices?.[0]?.message?.content ?? "",
     tokensUsed: data?.usage?.total_tokens ?? 0,
+    finishReason: data?.choices?.[0]?.finish_reason,
   };
 }
 

@@ -41,10 +41,14 @@ export const AI_CONFIG_DEFAULTS = {
     maxInputImages: null as number | null,
   },
   "shelf-scanner": {
-    maxOutputTokens: 2048,   // covers ~30 medicine detections in JSON
+    maxOutputTokens: 4096,   // room for ~30 detections + Gemini thinking headroom
     maxInputBatches: null as number | null,
     maxInputProducts: null as number | null,
-    maxInputImages: 3,       // hard cap on photos per scan
+    maxInputImages: 3,
+    systemPrompt: null as string | null,
+    userPromptTemplate: null as string | null,
+    temperature: 0.1,
+    disableThinking: true,   // Gemini 2.5+ must not burn output budget on reasoning
   },
 } as const;
 
@@ -56,8 +60,20 @@ export interface AiConfigValue {
   maxInputBatches: number | null;
   maxInputProducts: number | null;
   maxInputImages: number | null;
+  systemPrompt?: string | null;
+  userPromptTemplate?: string | null;
+  temperature?: number | null;
+  disableThinking?: boolean | null;
   updatedAt?: Date;
   updatedBy?: string | null;
+}
+
+export interface ShelfScannerConfig extends AiConfigValue {
+  feature: "shelf-scanner";
+  systemPrompt: string | null;
+  userPromptTemplate: string | null;
+  temperature: number;
+  disableThinking: boolean;
 }
 
 /**
@@ -78,6 +94,12 @@ export async function getAiConfig(feature: AiFeatureName): Promise<AiConfigValue
         maxInputBatches: defaults.maxInputBatches,
         maxInputProducts: defaults.maxInputProducts,
         maxInputImages: defaults.maxInputImages,
+        ...(feature === "shelf-scanner" && {
+          systemPrompt: (defaults as typeof AI_CONFIG_DEFAULTS["shelf-scanner"]).systemPrompt,
+          userPromptTemplate: (defaults as typeof AI_CONFIG_DEFAULTS["shelf-scanner"]).userPromptTemplate,
+          temperature: (defaults as typeof AI_CONFIG_DEFAULTS["shelf-scanner"]).temperature,
+          disableThinking: (defaults as typeof AI_CONFIG_DEFAULTS["shelf-scanner"]).disableThinking,
+        }),
       };
     }
     return {
@@ -86,6 +108,12 @@ export async function getAiConfig(feature: AiFeatureName): Promise<AiConfigValue
       maxInputBatches: row.maxInputBatches,
       maxInputProducts: row.maxInputProducts,
       maxInputImages: row.maxInputImages,
+      ...(feature === "shelf-scanner" && {
+        systemPrompt: row.systemPrompt ?? null,
+        userPromptTemplate: row.userPromptTemplate ?? null,
+        temperature: row.temperature ?? (defaults as typeof AI_CONFIG_DEFAULTS["shelf-scanner"]).temperature,
+        disableThinking: row.disableThinking ?? (defaults as typeof AI_CONFIG_DEFAULTS["shelf-scanner"]).disableThinking,
+      }),
       updatedAt: row.updatedAt,
       updatedBy: row.updatedBy,
     };
@@ -97,6 +125,12 @@ export async function getAiConfig(feature: AiFeatureName): Promise<AiConfigValue
       maxInputBatches: defaults.maxInputBatches,
       maxInputProducts: defaults.maxInputProducts,
       maxInputImages: defaults.maxInputImages,
+      ...(feature === "shelf-scanner" && {
+        systemPrompt: (defaults as typeof AI_CONFIG_DEFAULTS["shelf-scanner"]).systemPrompt,
+        userPromptTemplate: (defaults as typeof AI_CONFIG_DEFAULTS["shelf-scanner"]).userPromptTemplate,
+        temperature: (defaults as typeof AI_CONFIG_DEFAULTS["shelf-scanner"]).temperature,
+        disableThinking: (defaults as typeof AI_CONFIG_DEFAULTS["shelf-scanner"]).disableThinking,
+      }),
     };
   }
 }
@@ -123,6 +157,10 @@ export async function updateAiConfig(
     maxInputBatches?: number | null;
     maxInputProducts?: number | null;
     maxInputImages?: number | null;
+    systemPrompt?: string | null;
+    userPromptTemplate?: string | null;
+    temperature?: number | null;
+    disableThinking?: boolean | null;
   },
   updatedBy: string
 ): Promise<AiConfigValue> {
@@ -166,6 +204,22 @@ export async function updateAiConfig(
       throw new Error("maxInputImages must be an integer between 1 and 10, or null");
     }
   }
+  // Shelf-scanner prompt + performance fields
+  if (updates.systemPrompt !== undefined && updates.systemPrompt !== null) {
+    if (updates.systemPrompt.length > 12000) {
+      throw new Error("systemPrompt must be 12000 characters or fewer");
+    }
+  }
+  if (updates.userPromptTemplate !== undefined && updates.userPromptTemplate !== null) {
+    if (updates.userPromptTemplate.length > 4000) {
+      throw new Error("userPromptTemplate must be 4000 characters or fewer");
+    }
+  }
+  if (updates.temperature !== undefined && updates.temperature !== null) {
+    if (updates.temperature < 0 || updates.temperature > 1) {
+      throw new Error("temperature must be between 0 and 1, or null");
+    }
+  }
 
   const defaults = AI_CONFIG_DEFAULTS[feature];
   const data = {
@@ -183,6 +237,10 @@ export async function updateAiConfig(
       ...(updates.maxInputBatches !== undefined && { maxInputBatches: updates.maxInputBatches }),
       ...(updates.maxInputProducts !== undefined && { maxInputProducts: updates.maxInputProducts }),
       ...(updates.maxInputImages !== undefined && { maxInputImages: updates.maxInputImages }),
+      ...(updates.systemPrompt !== undefined && { systemPrompt: updates.systemPrompt }),
+      ...(updates.userPromptTemplate !== undefined && { userPromptTemplate: updates.userPromptTemplate }),
+      ...(updates.temperature !== undefined && { temperature: updates.temperature }),
+      ...(updates.disableThinking !== undefined && { disableThinking: updates.disableThinking }),
       updatedBy,
     },
     create: {
@@ -191,6 +249,12 @@ export async function updateAiConfig(
       maxInputBatches: data.maxInputBatches,
       maxInputProducts: data.maxInputProducts,
       maxInputImages: data.maxInputImages,
+      ...(feature === "shelf-scanner" && {
+        systemPrompt: updates.systemPrompt ?? (defaults as typeof AI_CONFIG_DEFAULTS["shelf-scanner"]).systemPrompt,
+        userPromptTemplate: updates.userPromptTemplate ?? (defaults as typeof AI_CONFIG_DEFAULTS["shelf-scanner"]).userPromptTemplate,
+        temperature: updates.temperature ?? (defaults as typeof AI_CONFIG_DEFAULTS["shelf-scanner"]).temperature,
+        disableThinking: updates.disableThinking ?? (defaults as typeof AI_CONFIG_DEFAULTS["shelf-scanner"]).disableThinking,
+      }),
       updatedBy,
     },
   });
@@ -201,6 +265,12 @@ export async function updateAiConfig(
     maxInputBatches: row.maxInputBatches,
     maxInputProducts: row.maxInputProducts,
     maxInputImages: row.maxInputImages,
+    ...(feature === "shelf-scanner" && {
+      systemPrompt: row.systemPrompt ?? null,
+      userPromptTemplate: row.userPromptTemplate ?? null,
+      temperature: row.temperature ?? (defaults as typeof AI_CONFIG_DEFAULTS["shelf-scanner"]).temperature,
+      disableThinking: row.disableThinking ?? (defaults as typeof AI_CONFIG_DEFAULTS["shelf-scanner"]).disableThinking,
+    }),
     updatedAt: row.updatedAt,
     updatedBy: row.updatedBy,
   };
@@ -224,6 +294,12 @@ export async function seedDefaultAiConfigs(updatedBy = "system"): Promise<void> 
         maxInputBatches: defaults.maxInputBatches,
         maxInputProducts: defaults.maxInputProducts,
         maxInputImages: defaults.maxInputImages,
+        ...(feature === "shelf-scanner" && {
+          systemPrompt: (defaults as typeof AI_CONFIG_DEFAULTS["shelf-scanner"]).systemPrompt,
+          userPromptTemplate: (defaults as typeof AI_CONFIG_DEFAULTS["shelf-scanner"]).userPromptTemplate,
+          temperature: (defaults as typeof AI_CONFIG_DEFAULTS["shelf-scanner"]).temperature,
+          disableThinking: (defaults as typeof AI_CONFIG_DEFAULTS["shelf-scanner"]).disableThinking,
+        }),
         updatedBy,
       },
     });

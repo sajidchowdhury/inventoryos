@@ -35,21 +35,21 @@ interface ProviderInfo {
 const PROVIDER_META: Record<string, { label: string; description: string; color: string; link: string; defaultBaseUrl?: string; baseUrlHelp?: string; defaultModel?: string; modelHelp?: string }> = {
   gemini: {
     label: "Google Gemini",
-    description: "Free tier via Google AI Studio. Good for reading medicine labels.",
+    description: "Vision OCR for medicine labels. gemini-2.0-flash = best cost/speed; gemini-2.5-flash = higher accuracy.",
     color: "text-blue-600",
     link: "https://aistudio.google.com/apikey",
     defaultModel: "gemini-2.0-flash",
-    modelHelp: "Default: gemini-2.0-flash. Also: gemini-1.5-flash, gemini-1.5-pro.",
+    modelHelp: "Recommended: gemini-2.0-flash (fast, cheap, no thinking issues). Also: gemini-2.5-flash (more accurate — keep Disable Thinking ON in Shelf Scanner settings).",
   },
   zai: {
     label: "Z.ai (GLM-OCR / Vision)",
-    description: "GLM-OCR reads medicine labels (recommended). Vision models: glm-4.6v-flash, glm-5v-turbo.",
+    description: "glm-ocr is best for small label text (English + Bangla). glm-4.6v-flash for single-call vision.",
     color: "text-purple-600",
     link: "https://api.z.ai",
     defaultBaseUrl: "https://api.z.ai/api/paas/v4",
     baseUrlHelp: "Default: https://api.z.ai/api/paas/v4 (international). Do NOT use open.bigmodel.cn.",
     defaultModel: "glm-ocr",
-    modelHelp: "Recommended: glm-ocr (specialized OCR for shelf labels — uses layout_parsing API). Alternatives: glm-4.6v, glm-4.6v-flash, glm-5v-turbo. Do NOT use glm-4v-flash (invalid).",
+    modelHelp: "Best value for labels: glm-ocr (OCR API). Fast vision: glm-4.6v-flash. Alternatives: glm-5v-turbo, glm-4.6v.",
   },
 };
 
