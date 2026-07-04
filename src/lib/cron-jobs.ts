@@ -28,6 +28,7 @@ export const CRON_JOB_NAMES = {
   REPORT_GENERATOR_WORKER: "report-generator-worker", // @deprecated — use REPORT_WORKER
   REPORT_DELIVERY_WORKER: "report-delivery-worker",   // @deprecated — use REPORT_WORKER
   REPORT_WORKER: "report-worker", // Phase 4: merged generator + delivery
+  SCD_MONTHLY_REMINDER: "scd-monthly-reminder", // P5: nudge businesses that haven't run SCD this month
 } as const;
 
 export type CronJobName = (typeof CRON_JOB_NAMES)[keyof typeof CRON_JOB_NAMES];
@@ -76,6 +77,11 @@ export const CRON_JOB_SCHEDULES: Record<
     schedule: "*/2 * * * *", // every 2 minutes (Phase 4: replaces generator + delivery)
     description:
       "Phase 4: Merged report-generator-worker + report-delivery-worker into a single job. First processes pending reports (calls AI prediction algorithm), then processes queued deliveries (sends emails). Reduces cron triggers by 58% vs the two separate workers.",
+  },
+  [CRON_JOB_NAMES.SCD_MONTHLY_REMINDER]: {
+    schedule: "0 4 25 * *", // 04:00 UTC on the 25th of every month = 09:00 Asia/Dhaka (BST)
+    description:
+      "P5: Nudge businesses that haven't run a Stock Count Day this calendar month. Creates a NotificationLog entry (type=scd_reminder, severity=info) for each. If the business has ownerEmail + SMTP configured, also sends an email. Sent on the 25th to give a week before month-end.",
   },
 };
 
@@ -798,6 +804,213 @@ export async function runWeeklyAiHealthJob(): Promise<void> {
         status: "failed",
         durationMs: Date.now() - startedAt.getTime(),
         errorMessage: err instanceof Error ? err.message : String(err),
+        log: log.join("\n"),
+      },
+    });
+    throw err;
+  }
+}
+
+// ── runScdMonthlyReminderJob (P5) ──
+// Nudges businesses that haven't run a Stock Count Day this calendar month.
+// For each qualifying business:
+//   1. Creates a NotificationLog entry (type=scd_reminder, severity=info)
+//      — deduped per business per calendar month (won't spam if already reminded)
+//   2. If business.ownerEmail is set AND SMTP is configured, sends an email
+//
+// Schedule: 09:00 Asia/Dhaka (04:00 UTC) on the 25th of every month.
+// The 25th gives the pharmacy a week to act before month-end book-closing.
+export async function runScdMonthlyReminderJob(): Promise<void> {
+  const jobName = CRON_JOB_NAMES.SCD_MONTHLY_REMINDER;
+  const log: string[] = [];
+  const startedAt = new Date();
+  log.push(`[${startedAt.toISOString()}] Starting SCD monthly reminder job`);
+
+  const cronLog = await db.cronJobLog.create({
+    data: {
+      jobName,
+      status: "running",
+      startedAt,
+      log: log.join("\n"),
+    },
+  });
+
+  try {
+    // ── Determine the current calendar-month window ──
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+
+    // ── Find businesses that have NOT run an SCD this calendar month ──
+    // An SCD "run" = any StockCountDay created in this month (regardless of status —
+    // even a draft counts as "they remembered to start").
+    const businessesWithScdThisMonth = await db.stockCountDay.findMany({
+      where: {
+        createdAt: { gte: monthStart, lt: monthEnd },
+      },
+      select: { businessId: true },
+      distinct: ["businessId"],
+    });
+    const excludedBusinessIds = new Set(businessesWithScdThisMonth.map((s) => s.businessId));
+
+    // Active businesses (not suspended/cancelled) — only nudge paying-attention customers
+    const businesses = await db.business.findMany({
+      where: {
+        isActive: true,
+        subscriptionStatus: { in: ["trial", "active"] },
+        ...(excludedBusinessIds.size > 0
+          ? { id: { notIn: Array.from(excludedBusinessIds) } }
+          : {}),
+      },
+      select: {
+        id: true,
+        name: true,
+        ownerEmail: true,
+        shopCode: true,
+      },
+    });
+
+    log.push(`Found ${businessesWithScdThisMonth.length} business(es) that already ran SCD this month — excluded`);
+    log.push(`Reminding ${businesses.length} business(es) that haven't run SCD yet`);
+
+    if (businesses.length === 0) {
+      log.push("No businesses to remind — job completed successfully");
+      await db.cronJobLog.update({
+        where: { id: cronLog.id },
+        data: {
+          status: "success",
+          durationMs: Date.now() - startedAt.getTime(),
+          log: log.join("\n"),
+        },
+      });
+      return;
+    }
+
+    // ── Dedup: skip businesses that already have an scd_reminder this month ──
+    const existingReminders = await db.notificationLog.findMany({
+      where: {
+        type: "scd_reminder",
+        createdAt: { gte: monthStart, lt: monthEnd },
+      },
+      select: { businessId: true },
+      distinct: ["businessId"],
+    });
+    const alreadyReminded = new Set(existingReminders.map((r) => r.businessId));
+
+    const toRemind = businesses.filter((b) => !alreadyReminded.has(b.id));
+    log.push(`After dedup: ${toRemind.length} business(es) to remind (${alreadyReminded.size} already reminded this month)`);
+
+    if (toRemind.length === 0) {
+      log.push("All eligible businesses already reminded — job completed successfully");
+      await db.cronJobLog.update({
+        where: { id: cronLog.id },
+        data: {
+          status: "success",
+          durationMs: Date.now() - startedAt.getTime(),
+          log: log.join("\n"),
+        },
+      });
+      return;
+    }
+
+    // ── Create NotificationLog entries + send emails ──
+    let notificationsCreated = 0;
+    let emailsSent = 0;
+    let emailErrors = 0;
+
+    // Try to load email module (optional — fails silently if SMTP not configured)
+    let sendEmail: ((payload: { to: string[]; subject: string; html: string }) => Promise<{ sent: boolean; error?: string }>) | null = null;
+    try {
+      const emailMod = await import("./email");
+      if (typeof emailMod.sendEmail === "function") {
+        sendEmail = emailMod.sendEmail;
+      }
+    } catch {
+      log.push("Email module not available — skipping email sends");
+    }
+
+    const monthName = now.toLocaleString("en-US", { month: "long" });
+
+    for (const business of toRemind) {
+      try {
+        // Create in-app notification
+        await db.notificationLog.create({
+          data: {
+            businessId: business.id,
+            type: "scd_reminder",
+            severity: "info",
+            title: "Monthly stock count reminder",
+            message: `It's ${monthName} and you haven't run a Stock Count Day yet. Count your stock to catch shrinkage early and stay audit-ready.`,
+            entityType: "stock_count_day",
+            entityId: null,
+          },
+        });
+        notificationsCreated++;
+
+        // Send email if ownerEmail + SMTP configured
+        if (business.ownerEmail && sendEmail) {
+          try {
+            const subject = `Monthly stock count reminder — ${business.name}`;
+            const html = `
+              <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; max-width: 560px; margin: 0 auto; padding: 24px;">
+                <div style="background: linear-gradient(135deg, #0d9488, #10b981); padding: 20px; border-radius: 12px 12px 0 0;">
+                  <h1 style="color: white; margin: 0; font-size: 20px;">Stock Count Day reminder</h1>
+                  <p style="color: #a7f3d0; margin: 4px 0 0 0; font-size: 13px;">${monthName} ${now.getFullYear()}</p>
+                </div>
+                <div style="padding: 24px; background: white; border: 1px solid #e5e7eb; border-top: 0; border-radius: 0 0 12px 12px;">
+                  <p style="margin: 0 0 12px 0; color: #1f2937; font-size: 14px;">Hi ${business.name} team,</p>
+                  <p style="margin: 0 0 12px 0; color: #1f2937; font-size: 14px; line-height: 1.5;">
+                    It's <strong>${monthName}</strong> and you haven't run a Stock Count Day yet this month. A monthly count helps you:
+                  </p>
+                  <ul style="margin: 0 0 16px 0; padding-left: 20px; color: #1f2937; font-size: 14px; line-height: 1.7;">
+                    <li>Catch theft and shrinkage before it adds up</li>
+                    <li>Find expired stock that the system missed</li>
+                    <li>Stay audit-ready for regulators</li>
+                  </ul>
+                  <p style="margin: 0 0 16px 0; color: #1f2937; font-size: 14px; line-height: 1.5;">
+                    It takes about 30 minutes. Your sales keep running during the count.
+                  </p>
+                  <div style="text-align: center; margin: 24px 0;">
+                    <a href="${process.env.NEXT_PUBLIC_APP_URL || "https://inventoryos.app"}/?shop=${business.shopCode || ""}"
+                       style="background: #0d9488; color: white; padding: 12px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block; font-size: 14px;">
+                      Start your stock count
+                    </a>
+                  </div>
+                  <p style="margin: 16px 0 0 0; color: #6b7280; font-size: 12px;">
+                    — InventoryOS · Pharmacy inventory management
+                  </p>
+                </div>
+              </div>
+            `;
+            await sendEmail({ to: [business.ownerEmail], subject, html });
+            emailsSent++;
+          } catch (emailErr) {
+            emailErrors++;
+            log.push(`  ⚠️ Email failed for ${business.name} (${business.ownerEmail}): ${emailErr instanceof Error ? emailErr.message : String(emailErr)}`);
+          }
+        }
+      } catch (notifErr) {
+        log.push(`  ⚠️ Notification creation failed for ${business.name}: ${notifErr instanceof Error ? notifErr.message : String(notifErr)}`);
+      }
+    }
+
+    log.push(`Created ${notificationsCreated} notification(s), sent ${emailsSent} email(s), ${emailErrors} email error(s)`);
+
+    await db.cronJobLog.update({
+      where: { id: cronLog.id },
+      data: {
+        status: "success",
+        durationMs: Date.now() - startedAt.getTime(),
+        log: log.join("\n"),
+      },
+    });
+  } catch (err) {
+    log.push(`❌ Job failed: ${err instanceof Error ? err.message : String(err)}`);
+    await db.cronJobLog.update({
+      where: { id: cronLog.id },
+      data: {
+        status: "error",
+        durationMs: Date.now() - startedAt.getTime(),
         log: log.join("\n"),
       },
     });
@@ -1641,6 +1854,7 @@ export async function runAllCronJobs(): Promise<{
   weeklyAiHealth: { ok: boolean; error?: string };
   reportScheduleChecker: { ok: boolean; error?: string };
   reportWorker: { ok: boolean; error?: string };
+  scdMonthlyReminder: { ok: boolean; error?: string };
 }> {
   const result = {
     nightlyStats: { ok: true as boolean, error: undefined as string | undefined },
@@ -1649,6 +1863,7 @@ export async function runAllCronJobs(): Promise<{
     weeklyAiHealth: { ok: true as boolean, error: undefined as string | undefined },
     reportScheduleChecker: { ok: true as boolean, error: undefined as string | undefined },
     reportWorker: { ok: true as boolean, error: undefined as string | undefined },
+    scdMonthlyReminder: { ok: true as boolean, error: undefined as string | undefined },
   };
 
   try { await runNightlyStatsJob(); } catch (e) { result.nightlyStats = { ok: false, error: e instanceof Error ? e.message : String(e) }; }
@@ -1657,6 +1872,7 @@ export async function runAllCronJobs(): Promise<{
   try { await runWeeklyAiHealthJob(); } catch (e) { result.weeklyAiHealth = { ok: false, error: e instanceof Error ? e.message : String(e) }; }
   try { await runReportScheduleCheckerJob(); } catch (e) { result.reportScheduleChecker = { ok: false, error: e instanceof Error ? e.message : String(e) }; }
   try { await runReportWorker(); } catch (e) { result.reportWorker = { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  try { await runScdMonthlyReminderJob(); } catch (e) { result.scdMonthlyReminder = { ok: false, error: e instanceof Error ? e.message : String(e) }; }
 
   return result;
 }

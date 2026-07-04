@@ -14,7 +14,7 @@ import {
   ShieldAlert, Settings2, Mail, Activity, AlertTriangle,
   DollarSign, Users, Zap, Clock, CalendarClock, Play,
   TrendingUp, Building2, Sparkles, HelpCircle, Send,
-  LayoutDashboard, Pill,
+  LayoutDashboard, Pill, ClipboardList,
 } from "lucide-react";
 
 export interface HelpEntry {
@@ -143,6 +143,16 @@ const HELP_ENTRIES: HelpEntry[] = [
     whatHappensIfNotSet: "The cron endpoints exist but require an EXTERNAL scheduler (Vercel Cron, systemd timer, or cron-job.org) to actually trigger them. Without a scheduler, the jobs never run and the database grows unbounded.",
     whyYouNeedIt: "Without nightly-stats, the 7-day trend chart is empty. Without hourly-subscriptions, expired trials keep using AI indefinitely. Without daily-maintenance, the database grows by ~1MB/month from stale logs. All 3 are essential for platform health.",
     howToUse: "Click 'Run Now' to trigger any job manually (useful for testing). In production, configure an external cron to hit POST /api/cron/{jobName} with the x-cron-secret header. Schedule: nightly-stats at 01:00 UTC, hourly-subscriptions at :00 every hour, daily-maintenance at 01:30 UTC.",
+  },
+  {
+    id: "scd-monthly-reminder",
+    title: "SCD Monthly Reminder (Cron Job)",
+    icon: ClipboardList,
+    category: "Operations",
+    whatItIs: "A monthly cron job (04:00 UTC on the 25th = 09:00 Asia/Dhaka) that nudges businesses who haven't run a Stock Count Day this calendar month. Creates an in-app notification (type=scd_reminder) and optionally sends an email if the business has ownerEmail set and SMTP is configured.",
+    whatHappensIfNotSet: "The endpoint exists but requires an external scheduler to trigger it. Without scheduling, pharmacies won't get monthly count reminders — they'll forget to run SCD and miss shrinkage/expiry issues until quarter-end.",
+    whyYouNeedIt: "Monthly stock counts are the #1 way pharmacies catch theft and spoilage. The 25th gives them a week before month-end book-closing. Deduped per business per month so re-running the job won't spam.",
+    howToUse: "Click 'Run Now' on the trigger-cron card with job name 'scd-monthly-reminder' to test manually. In production, configure an external scheduler to hit POST /api/cron/scd-monthly-reminder with the x-cron-secret header at 04:00 UTC on the 25th of every month. Businesses see a teal 'Count' notification with a 'Run count' CTA that navigates to the SCD hub.",
   },
   {
     id: "business-list",

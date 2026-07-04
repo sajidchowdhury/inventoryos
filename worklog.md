@@ -2093,3 +2093,64 @@ Stage Summary:
 - Dependency added: exceljs 4.4.0 (for .xlsx generation)
 - PDF approach: print-friendly HTML (no library, works everywhere, browser handles actual PDF rendering)
 - Ready for P5 (Monthly Reminders — the final phase).
+
+---
+Task ID: scd-enhance-p5
+Agent: Super Z (Main Agent)
+Task: Implement Phase 5 of the SCD Enhancement Plan — monthly SCD reminder cron job (closes gap #6, the final phase).
+
+Work Log:
+- Added SCD_MONTHLY_REMINDER to CRON_JOB_NAMES in src/lib/cron-jobs.ts:
+  * Key: SCD_MONTHLY_REMINDER: "scd-monthly-reminder"
+- Added schedule entry to CRON_JOB_SCHEDULES:
+  * schedule: "0 4 25 * *" (04:00 UTC on the 25th = 09:00 Asia/Dhaka)
+  * description: nudge businesses that haven't run SCD this calendar month, sent on the 25th to give a week before month-end
+- Implemented runScdMonthlyReminderJob() in src/lib/cron-jobs.ts (~200 lines):
+  * Creates CronJobLog entry with "running" status at start
+  * Determines current calendar-month window (monthStart, monthEnd)
+  * Queries StockCountDay created this month (distinct businessId) to build exclusion set
+  * Queries active businesses (isActive=true, subscriptionStatus in trial/active) NOT in exclusion set
+  * Dedup: queries existing scd_reminder NotificationLog entries this month, filters out already-reminded businesses
+  * For each business to remind:
+    1. Creates NotificationLog (type=scd_reminder, severity=info, entityType=stock_count_day) with month-aware message
+    2. If business.ownerEmail set + SMTP configured: sends branded HTML email with teal gradient header, 3-bullet value prop, "Start your stock count" CTA button linking to app with shopCode
+  * Dynamic import of email module (fails silently if not available)
+  * Logs counts: notifications created, emails sent, email errors
+  * Updates CronJobLog to "success" or "error" with full log + durationMs
+  * Fixed TypeScript error: sendEmail signature is (payload: {to: string[], subject, html}) => Promise<{sent: boolean}>, not (to, subject, html) => Promise<boolean>
+- Added runScdMonthlyReminderJob to runAllCronJobs():
+  * Added scdMonthlyReminder to return type + result object
+  * Added try/catch block calling runScdMonthlyReminderJob
+- Created POST /api/cron/scd-monthly-reminder endpoint (~115 lines, mirrors weekly-ai-health pattern):
+  * DUAL auth: x-cron-secret header (external schedulers) OR Authorization: Bearer <superAdminToken> (manual trigger from /admin)
+  * POST: runs the job, returns { success, job, startedAt, finishedAt, schedule, message }
+  * GET: returns schedule info (no auth — purely informational)
+- Updated src/app/api/super-admin/trigger-cron/[jobName]/route.ts:
+  * Added runScdMonthlyReminderJob to imports
+  * Added [CRON_JOB_NAMES.SCD_MONTHLY_REMINDER]: runScdMonthlyReminderJob to JOB_RUNNERS map
+  * Fixed duplicate entry bug (old REPORT_DELIVERY_WORKER + REPORT_WORKER lines were left behind during edit — cleaned up)
+- Modified src/modules/pharmacy/components/NotificationCenter.tsx:
+  * Added scd_reminder to typeStyles: ClipboardList icon, teal bg/text/ring, label "Count"
+  * Added ClipboardList to lucide imports
+  * Added navigation handler: notif.type === "scd_reminder" → setActiveView("stock-count-day") (the "Run count" CTA navigates to SCD hub)
+- Updated src/app/admin/SuperAdminHelp.tsx:
+  * Added ClipboardList to lucide imports
+  * Added "SCD Monthly Reminder (Cron Job)" help entry in Operations category with full whatItIs / whatHappensIfNotSet / whyYouNeedIt / howToUse fields
+- TypeScript: 0 errors in changed files
+- Pre-push guardrail: PASS
+- Acceptance criteria verification (all 7 met):
+  1. ✅ Cron job scd-monthly-reminder is registered in CRON_JOB_NAMES + CRON_JOB_SCHEDULES (schedule "0 4 25 * *")
+  2. ✅ Job queries all active businesses and checks for an SCD in the current calendar month (excludes businesses with any StockCountDay created this month)
+  3. ✅ Businesses without a recent SCD get a NotificationLog entry with type "scd_reminder" (severity=info, entityType=stock_count_day)
+  4. ✅ If ownerEmail + SMTP configured, an email is also sent (branded HTML with CTA button)
+  5. ✅ Notification renders in NotificationCenter with teal "Count" style — tapping navigates to SCD hub (the "Run count" CTA)
+  6. ✅ Job is triggerable manually from /admin via POST /api/super-admin/trigger-cron/scd-monthly-reminder (added to JOB_RUNNERS map)
+  7. ✅ Job logs to CronJobLog on every run (success or failure) with full log + durationMs
+
+Stage Summary:
+- Phase 5 of the SCD Enhancement Plan is COMPLETE — ALL 5 PHASES DONE.
+- Files added: 1 (src/app/api/cron/scd-monthly-reminder/route.ts)
+- Files modified: 4 (src/lib/cron-jobs.ts, src/app/api/super-admin/trigger-cron/[jobName]/route.ts, src/modules/pharmacy/components/NotificationCenter.tsx, src/app/admin/SuperAdminHelp.tsx)
+- Schema changes: none (P5 uses existing NotificationLog + Business.ownerEmail)
+- API changes: new POST /api/cron/scd-monthly-reminder endpoint + scd-monthly-reminder added to trigger-cron JOB_RUNNERS
+- The SCD Enhancement Plan is now 100% complete: all 8 gaps closed across 5 phases (P1-P5).

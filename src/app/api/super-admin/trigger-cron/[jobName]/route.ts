@@ -20,6 +20,7 @@ import {
   runReportGeneratorWorker,
   runReportDeliveryWorker,
   runReportWorker,
+  runScdMonthlyReminderJob,
   CRON_JOB_SCHEDULES,
   CRON_JOB_NAMES,
   type CronJobName,
@@ -34,6 +35,7 @@ const JOB_RUNNERS: Record<CronJobName, () => Promise<void>> = {
   [CRON_JOB_NAMES.REPORT_GENERATOR_WORKER]: runReportGeneratorWorker, // deprecated
   [CRON_JOB_NAMES.REPORT_DELIVERY_WORKER]: runReportDeliveryWorker,   // deprecated
   [CRON_JOB_NAMES.REPORT_WORKER]: runReportWorker, // Phase 4 merged
+  [CRON_JOB_NAMES.SCD_MONTHLY_REMINDER]: runScdMonthlyReminderJob, // P5
 };
 
 /**
