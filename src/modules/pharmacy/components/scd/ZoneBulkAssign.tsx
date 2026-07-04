@@ -119,9 +119,12 @@ export function ZoneBulkAssign({ businessId, zones }: ZoneBulkAssignProps) {
     <Card className="shadow-pharmacy border-teal-100">
       <CardContent className="p-4 space-y-3">
         <div>
-          <p className="text-sm font-semibold">Assign products to a zone</p>
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-semibold">Assign products to a zone</p>
+            <Badge className="text-[9px] h-4 px-1.5 bg-teal-100 text-teal-700 border-0">Optional</Badge>
+          </div>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Search and select medicines kept in one area. A product can be in multiple zones.
+            Optional — most pharmacies skip this and let the system learn from counting. Use this only if you want to pre-assign before your first count.
           </p>
         </div>
 

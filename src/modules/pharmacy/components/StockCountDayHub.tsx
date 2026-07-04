@@ -21,6 +21,7 @@ import { usePermissions } from "@/lib/use-permissions";
 import { ZoneBulkAssign } from "./scd/ZoneBulkAssign";
 import { ScdOnboardingCard } from "./scd/ScdOnboardingCard";
 import { VarianceReasonDialog, VarianceReasonBadge } from "./scd/VarianceReasonDialog";
+import { ZoneAddProductDialog } from "./scd/ZoneAddProductDialog";
 import { cn } from "@/lib/utils";
 
 // ── Types ──
@@ -164,6 +165,12 @@ export function StockCountDayHub() {
   const [reasonDialog, setReasonDialog] = useState<{ open: boolean; productId: string; productName: string }>({
     open: false, productId: "", productName: "",
   });
+  // P3: add-product-from-directory dialog state
+  const [addProductDialog, setAddProductDialog] = useState<{ open: boolean; zoneName: string }>({
+    open: false, zoneName: "",
+  });
+  // P3: inheritance info returned by createAndStartScd
+  const [inheritanceInfo, setInheritanceInfo] = useState<{ name: string; appliedAt: string; snapshotCount: number } | null>(null);
 
   const loadHub = useCallback(async () => {
     if (!businessId) return;
@@ -255,6 +262,17 @@ export function StockCountDayHub() {
       });
       const createData = await createRes.json();
       if (!createRes.ok) throw new Error(createData.error || "Failed to create");
+
+      // P3: capture inheritance info for the UI banner
+      if (createData.inheritedFrom) {
+        setInheritanceInfo({
+          name: createData.inheritedFrom.name,
+          appliedAt: createData.inheritedFrom.appliedAt,
+          snapshotCount: createData.snapshotCount ?? 0,
+        });
+      } else {
+        setInheritanceInfo(null);
+      }
 
       const startRes = await fetch(
         `/api/businesses/${businessId}/stock-count-day/${createData.scd.id}`,
@@ -416,6 +434,40 @@ export function StockCountDayHub() {
     }
   };
 
+  // P3: Add a product to the current zone count session from the directory
+  const addProductToZone = async (productId: string) => {
+    if (!businessId || !activeScd || !activeZoneSession) return;
+    const res = await fetch(
+      `/api/businesses/${businessId}/stock-count-day/${activeScd.id}/zones/${activeZoneSession.id}/add-line`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ productId, userId }),
+      }
+    );
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Failed to add product");
+    setZoneLines(data.session?.lines ?? []);
+    setZoneProgress(data.session?.progress ?? { counted: 0, total: 0 });
+  };
+
+  // P3: Create a minimal new product and return its ID (for the add-product dialog shortcut)
+  const createNewProduct = async (data: { name: string; genericName?: string; unit?: string }): Promise<string> => {
+    if (!businessId) throw new Error("No business");
+    const res = await fetch(`/api/businesses/${businessId}/products`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: data.name,
+        genericName: data.genericName || null,
+        unit: data.unit || "piece",
+      }),
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || "Failed to create product");
+    return json.product?.id ?? json.id;
+  };
+
   const closeZone = async () => {
     if (!businessId || !activeScd || !activeZoneSession) return;
     setActionLoading(true);
@@ -504,9 +556,18 @@ export function StockCountDayHub() {
               If a medicine is stored in <strong>two areas</strong>, enter the quantity for <em>this</em> area here.
               The app adds both zones together at the end.
             </p>
-            <div className="flex gap-2 pt-1">
+            <div className="flex gap-2 pt-1 flex-wrap">
               <Button size="sm" className="gap-1.5 bg-teal-600 hover:bg-teal-700" onClick={openShelfScanner}>
                 <ScanLine className="h-4 w-4" /> Photo scan this shelf
+              </Button>
+              {/* P3: Add product manually from directory */}
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-1.5 border-teal-300 text-teal-700 hover:bg-teal-50"
+                onClick={() => setAddProductDialog({ open: true, zoneName })}
+              >
+                <Plus className="h-4 w-4" /> Add product manually
               </Button>
             </div>
           </CardContent>
@@ -623,6 +684,17 @@ export function StockCountDayHub() {
             </Card>
           ))}
         </div>
+
+        {/* P3: Add product from directory dialog */}
+        <ZoneAddProductDialog
+          open={addProductDialog.open}
+          onOpenChange={(open) => setAddProductDialog((prev) => ({ ...prev, open }))}
+          businessId={businessId || ""}
+          zoneName={addProductDialog.zoneName || zoneName}
+          existingProductIds={new Set(zoneLines.map((l) => l.productId))}
+          onAddProduct={addProductToZone}
+          onCreateNewProduct={createNewProduct}
+        />
       </motion.div>
     );
   }
@@ -747,10 +819,15 @@ export function StockCountDayHub() {
 
         {/* P2: Filtered list — shows variances with Record reason button, or uncounted/matched list */}
         <div className="space-y-2">
-          <h2 className={cn("text-xs font-bold uppercase tracking-wider px-1 flex items-center gap-1", filterConfig[varianceFilter].color)}>
-            <filterConfig[varianceFilter].icon className="h-3.5 w-3.5" />
-            {filterConfig[varianceFilter].label} ({filteredList.length}{searchLower ? ` of ${activeList.length}` : ""})
-          </h2>
+          {(() => {
+            const ActiveIcon = filterConfig[varianceFilter].icon;
+            return (
+              <h2 className={cn("text-xs font-bold uppercase tracking-wider px-1 flex items-center gap-1", filterConfig[varianceFilter].color)}>
+                <ActiveIcon className="h-3.5 w-3.5" />
+                {filterConfig[varianceFilter].label} ({filteredList.length}{searchLower ? ` of ${activeList.length}` : ""})
+              </h2>
+            );
+          })()}
 
           {filteredList.length === 0 ? (
             <Card className="shadow-pharmacy">
@@ -1092,6 +1169,32 @@ export function StockCountDayHub() {
           </Card>
         );
       })()}
+
+      {/* P3: Inheritance banner — shown when this SCD inherited assignments from a previous one */}
+      {scd && scd.status === "active" && inheritanceInfo && (
+        <Card className="border-violet-200 bg-violet-50/80 shadow-none">
+          <CardContent className="p-3.5 flex items-start gap-3">
+            <div className="h-8 w-8 rounded-lg bg-violet-100 flex items-center justify-center shrink-0">
+              <Sparkles className="h-4 w-4 text-violet-600" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-violet-900">
+                Inherited {inheritanceInfo.snapshotCount} zone assignment{inheritanceInfo.snapshotCount !== 1 ? "s" : ""} from your last count
+              </p>
+              <p className="text-xs text-violet-700 mt-0.5">
+                From &ldquo;{inheritanceInfo.name}&rdquo; (applied {new Date(inheritanceInfo.appliedAt).toLocaleDateString()}). Zones are pre-populated — count what you see and the system keeps learning.
+              </p>
+            </div>
+            <button
+              className="text-violet-400 hover:text-violet-600 shrink-0"
+              onClick={() => setInheritanceInfo(null)}
+              aria-label="Dismiss"
+            >
+              ✕
+            </button>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Active SCD banner */}
       {scd && scd.status === "active" && (

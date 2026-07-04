@@ -267,24 +267,77 @@ export async function createStockCountDay(
   const month = new Date().toLocaleString("en-US", { month: "long", year: "numeric" });
   const name = opts.name?.trim() || `Stock Count — ${month}`;
 
-  const scd = await db.stockCountDay.create({
-    data: {
-      businessId,
-      name,
-      status: "draft",
-      zoneSessions: {
-        create: zones.map((z, i) => ({
-          businessId,
-          zoneId: z.id,
-          sortOrder: i,
-          status: "pending",
-        })),
-      },
-    },
-    include: SCD_INCLUDE,
+  // P3: Zone inheritance — find the most recent applied SCD to inherit assignments from
+  const previousScd = await db.stockCountDay.findFirst({
+    where: { businessId, status: "applied" },
+    orderBy: { appliedAt: "desc" },
+    select: { id: true, name: true, appliedAt: true },
   });
 
-  return { ok: true as const, scd };
+  const scd = await db.$transaction(async (tx) => {
+    const newScd = await tx.stockCountDay.create({
+      data: {
+        businessId,
+        name,
+        status: "draft",
+        zoneSessions: {
+          create: zones.map((z, i) => ({
+            businessId,
+            zoneId: z.id,
+            sortOrder: i,
+            status: "pending",
+          })),
+        },
+      },
+      include: SCD_INCLUDE,
+    });
+
+    // P3: Snapshot current live ProductZoneAssignment rows for the selected zones
+    const liveAssignments = await tx.productZoneAssignment.findMany({
+      where: { businessId, zoneId: { in: opts.zoneIds } },
+      select: { productId: true, zoneId: true },
+    });
+    if (liveAssignments.length > 0) {
+      await tx.zoneAssignmentSnapshot.createMany({
+        data: liveAssignments.map((a) => ({
+          scdId: newScd.id,
+          businessId,
+          productId: a.productId,
+          zoneId: a.zoneId,
+        })),
+        skipDuplicates: true,
+      });
+    }
+
+    // P3: Inheritance — copy snapshots from previous applied SCD (for selected zones only)
+    // This captures products that were counted in a zone last time but may have been
+    // removed from live assignments since. Merges with live snapshots via skipDuplicates.
+    if (previousScd) {
+      const prevSnapshots = await tx.zoneAssignmentSnapshot.findMany({
+        where: { scdId: previousScd.id, zoneId: { in: opts.zoneIds } },
+        select: { productId: true, zoneId: true },
+      });
+      if (prevSnapshots.length > 0) {
+        await tx.zoneAssignmentSnapshot.createMany({
+          data: prevSnapshots.map((s) => ({
+            scdId: newScd.id,
+            businessId,
+            productId: s.productId,
+            zoneId: s.zoneId,
+          })),
+          skipDuplicates: true,
+        });
+      }
+    }
+
+    return newScd;
+  });
+
+  // Return with inheritance metadata for the UI banner
+  const snapshotCount = await db.zoneAssignmentSnapshot.count({
+    where: { scdId: scd.id },
+  });
+  return { ok: true as const, scd, inheritedFrom: previousScd ?? null, snapshotCount };
 }
 
 export async function startStockCountDay(scdId: string, businessId: string, userId?: string) {
@@ -360,10 +413,20 @@ export async function startZoneCounting(
     return { ok: false as const, error: "This zone is already closed" };
   }
 
-  const assignments = await db.productZoneAssignment.findMany({
-    where: { businessId, zoneId: session.zoneId },
+  // P3: Read from the SCD's ZoneAssignmentSnapshot (which includes inherited assignments)
+  // instead of live ProductZoneAssignment. Falls back to live assignments if no snapshot
+  // exists (e.g. SCDs created before P3 was deployed).
+  let assignments = await db.zoneAssignmentSnapshot.findMany({
+    where: { scdId: session.scdId, zoneId: session.zoneId },
     select: { productId: true },
   });
+  if (assignments.length === 0) {
+    // Fallback for pre-P3 SCDs or first-time use with no assignments
+    assignments = await db.productZoneAssignment.findMany({
+      where: { businessId, zoneId: session.zoneId },
+      select: { productId: true },
+    });
+  }
 
   const productIds = assignments.map((a) => a.productId);
 
@@ -524,6 +587,41 @@ export async function upsertZoneCountLine(
     await startZoneCounting(zoneSessionId, businessId);
   }
 
+  // P3: Scan-to-assign — upsert ProductZoneAssignment so future SCDs inherit this mapping.
+  // If the assignment already exists, this is a no-op. If new, the line gets autoAssigned=true.
+  const existingAssignment = await db.productZoneAssignment.findUnique({
+    where: { productId_zoneId: { productId: data.productId, zoneId: session.zoneId } },
+  });
+  let autoAssigned = false;
+  if (!existingAssignment) {
+    await db.productZoneAssignment.create({
+      data: {
+        businessId,
+        productId: data.productId,
+        zoneId: session.zoneId,
+      },
+    });
+    autoAssigned = true;
+    // Also add to this SCD's snapshot so the current SCD's other zone sessions (if any)
+    // can see this assignment if the product is also physically in another zone.
+    await db.zoneAssignmentSnapshot.upsert({
+      where: {
+        scdId_productId_zoneId: {
+          scdId: session.scdId,
+          productId: data.productId,
+          zoneId: session.zoneId,
+        },
+      },
+      create: {
+        scdId: session.scdId,
+        businessId,
+        productId: data.productId,
+        zoneId: session.zoneId,
+      },
+      update: {},
+    });
+  }
+
   const line = await db.stockCountLine.upsert({
     where: {
       scdId_zoneSessionId_productId: {
@@ -546,6 +644,7 @@ export async function upsertZoneCountLine(
       countedBy: data.countedBy ?? null,
       countedAt: new Date(),
       notes: data.notes ?? null,
+      autoAssigned,  // P3: true if this count created a new zone assignment
     },
     update: {
       countedQty: data.countedQty,
@@ -556,6 +655,8 @@ export async function upsertZoneCountLine(
       countedBy: data.countedBy ?? undefined,
       countedAt: new Date(),
       notes: data.notes ?? undefined,
+      // Preserve autoAssigned if it was already true; set if newly auto-assigned
+      autoAssigned: autoAssigned || undefined,
     },
   });
 
@@ -603,6 +704,99 @@ async function recalcProductSummary(scdId: string, productId: string) {
       variance,
     },
   });
+}
+
+// P3: Add a product to a zone count session manually (from the directory).
+// Creates a StockCountLine with countedQty=null (counter enters qty after).
+// Also upserts ProductZoneAssignment + ZoneAssignmentSnapshot so the product
+// is associated with this zone for future SCDs (scan-to-assign behavior).
+export async function addZoneCountLine(
+  businessId: string,
+  zoneSessionId: string,
+  data: { productId: string; userId?: string }
+): Promise<{ ok: true; line: any } | { ok: false; error: string }> {
+  const session = await db.stockCountZoneSession.findFirst({
+    where: { id: zoneSessionId, businessId },
+    include: { scd: { select: { id: true, status: true } } },
+  });
+  if (!session) return { ok: false, error: "Zone session not found" };
+  if (session.scd.status !== "active") {
+    return { ok: false, error: "Stock Count Day is not active" };
+  }
+  if (session.status === "closed") {
+    return { ok: false, error: "This zone is closed" };
+  }
+
+  const product = await db.product.findFirst({
+    where: { id: data.productId, businessId },
+    select: { id: true },
+  });
+  if (!product) return { ok: false, error: "Product not found" };
+
+  // Check if line already exists (avoid duplicates)
+  const existing = await db.stockCountLine.findUnique({
+    where: {
+      scdId_zoneSessionId_productId: {
+        scdId: session.scdId,
+        zoneSessionId,
+        productId: data.productId,
+      },
+    },
+  });
+  if (existing) {
+    return { ok: false, error: "This product is already in the count list" };
+  }
+
+  if (session.status === "pending") {
+    await startZoneCounting(zoneSessionId, businessId);
+  }
+
+  // P3: Scan-to-assign — upsert ProductZoneAssignment for future SCDs
+  const existingAssignment = await db.productZoneAssignment.findUnique({
+    where: { productId_zoneId: { productId: data.productId, zoneId: session.zoneId } },
+  });
+  let autoAssigned = false;
+  if (!existingAssignment) {
+    await db.productZoneAssignment.create({
+      data: { businessId, productId: data.productId, zoneId: session.zoneId },
+    });
+    autoAssigned = true;
+    await db.zoneAssignmentSnapshot.upsert({
+      where: {
+        scdId_productId_zoneId: {
+          scdId: session.scdId,
+          productId: data.productId,
+          zoneId: session.zoneId,
+        },
+      },
+      create: {
+        scdId: session.scdId,
+        businessId,
+        productId: data.productId,
+        zoneId: session.zoneId,
+      },
+      update: {},
+    });
+  }
+
+  const line = await db.stockCountLine.create({
+    data: {
+      scdId: session.scdId,
+      zoneSessionId,
+      zoneId: session.zoneId,
+      businessId,
+      productId: data.productId,
+      countedQty: null,  // Counter enters qty after adding
+      status: "pending",
+      autoAssigned,
+      countedBy: data.userId ?? null,
+    },
+    include: {
+      product: { select: { id: true, name: true, genericName: true, unit: true, rackNo: true } },
+    },
+  });
+
+  return { ok: true, line };
 }
 
 export async function closeZoneSession(

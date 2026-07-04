@@ -139,6 +139,7 @@ model Business {
   storageZones    StorageZone[]
   stockCountDays  StockCountDay[]
   productZoneAssignments ProductZoneAssignment[]
+  zoneAssignmentSnapshots ZoneAssignmentSnapshot[]  // P3: enables zone inheritance
 
   @@index([userId])
   @@index([businessTypeId])
@@ -248,6 +249,7 @@ model Product {
   zoneAssignments ProductZoneAssignment[]
   stockCountLines StockCountLine[]
   stockCountSummaries StockCountProductSummary[]
+  zoneAssignmentSnapshots ZoneAssignmentSnapshot[]  // P3: enables zone inheritance
 
   @@index([businessId])
   @@index([categoryId])
@@ -1352,6 +1354,7 @@ model StorageZone {
   assignments ProductZoneAssignment[]
   zoneSessions StockCountZoneSession[]
   countLines  StockCountLine[]
+  assignmentSnapshots ZoneAssignmentSnapshot[]  // P3: enables zone inheritance
 
   @@unique([businessId, name])
   @@index([businessId])
@@ -1396,6 +1399,8 @@ model StockCountDay {
   lines        StockCountLine[]
   summaries    StockCountProductSummary[]
   sales        Sale[]
+  // P3: snapshot of zone assignments at creation time (enables inheritance)
+  assignmentSnapshots ZoneAssignmentSnapshot[]
 
   @@index([businessId])
   @@index([status])
@@ -1467,6 +1472,8 @@ model StockCountLine {
   countedBy         String?
   countedAt         DateTime?
   notes             String?
+  // P3: true if assignment was auto-created by scan-to-assign
+  autoAssigned      Boolean   @default(false)
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 
@@ -1480,6 +1487,30 @@ model StockCountLine {
   @@index([scdId])
   @@index([productId])
   @@map("stock_count_lines")
+}
+
+// P3: Snapshot of ProductZoneAssignment rows at SCD creation time.
+// Enables zone inheritance — new SCDs can read the previous SCD's snapshot
+// to pre-populate zone count lines without re-assigning every product.
+model ZoneAssignmentSnapshot {
+  id          String   @id @default(cuid())
+  scdId       String
+  businessId  String
+  productId   String
+  zoneId      String
+  createdAt   DateTime @default(now())
+
+  scd       StockCountDay @relation(fields: [scdId], references: [id], onDelete: Cascade)
+  business  Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  product   Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  zone      StorageZone   @relation(fields: [zoneId], references: [id], onDelete: Cascade)
+
+  @@unique([scdId, productId, zoneId])
+  @@index([businessId])
+  @@index([scdId])
+  @@index([productId])
+  @@index([zoneId])
+  @@map("zone_assignment_snapshots")
 }
 
 // ── AI Provider Configuration ──

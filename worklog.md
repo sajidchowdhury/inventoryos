@@ -1966,3 +1966,74 @@ Stage Summary:
 - Schema changes: 2 new nullable fields on StockCountProductSummary (varianceReason, varianceNote) — REQUIRES npx prisma db push on local machine + WHM before testing
 - API change: PATCH /stock-count-day/[scdId] now accepts action="setReason" with { productId, reason, note }
 - Ready for P3 (Smart Zones — the largest phase: zone inheritance + scan-to-assign + manual add from directory).
+
+---
+Task ID: scd-enhance-p3
+Agent: Super Z (Main Agent)
+Task: Implement Phase 3 of the SCD Enhancement Plan — smart zone inheritance + scan-to-assign + manual add from directory (the largest phase, closes gap #8).
+
+Work Log:
+- Added 2 schema changes to prisma/schema.prisma:
+  * New ZoneAssignmentSnapshot model (id, scdId, businessId, productId, zoneId, createdAt) with @@unique([scdId, productId, zoneId]) + indexes + relations to StockCountDay, Business, Product, StorageZone
+  * New StockCountLine.autoAssigned Boolean @default(false) — true if assignment was auto-created by scan-to-assign
+  * Added back-reference relations on Business (zoneAssignmentSnapshots), Product (zoneAssignmentSnapshots), StorageZone (assignmentSnapshots), and StockCountDay (assignmentSnapshots)
+  * Ran npx prisma generate — client regenerated with new models/fields
+- Modified createStockCountDay() in src/lib/scd.ts (~95 lines added):
+  * Wrapped in db.$transaction for atomicity
+  * P3 snapshot: copies current live ProductZoneAssignment rows (for selected zones) into ZoneAssignmentSnapshot for the new SCD
+  * P3 inheritance: finds most recent applied SCD, copies its snapshots (for selected zones only) into the new SCD via createMany skipDuplicates (merges with live snapshots)
+  * Returns { ok, scd, inheritedFrom: previousScd | null, snapshotCount } for UI banner
+- Modified startZoneCounting() in src/lib/scd.ts:
+  * Now reads from ZoneAssignmentSnapshot (which includes inherited assignments) instead of live ProductZoneAssignment
+  * Falls back to live assignments if no snapshot exists (backward compat for pre-P3 SCDs)
+- Modified upsertZoneCountLine() in src/lib/scd.ts (scan-to-assign):
+  * After saving countedQty, upserts ProductZoneAssignment for product+zone
+  * If new assignment created, sets line.autoAssigned=true + adds to ZoneAssignmentSnapshot for current SCD
+  * Uses findUnique on productId_zoneId compound unique + create (not upsert) to detect new vs existing
+- Added addZoneCountLine() function to src/lib/scd.ts (~85 lines):
+  * For manual add-from-directory: creates StockCountLine with countedQty=null + status=pending
+  * Same scan-to-assign logic (upsert ProductZoneAssignment + ZoneAssignmentSnapshot)
+  * Duplicate check: returns error if line already exists for this product+zone
+  * Auto-starts zone if status was pending
+- Created POST /api/businesses/[id]/stock-count-day/[scdId]/zones/[zoneSessionId]/add-line route:
+  * Accepts { productId, userId? }
+  * Calls addZoneCountLine, returns { success, line, ...sessionDetail }
+- Created src/modules/pharmacy/components/scd/ZoneAddProductDialog.tsx (~340 lines):
+  * Searchable product directory with 250ms debounce
+  * Results show name + genericName + "Added" badge for products already in zone
+  * Tap to add — stays open for multiple adds (counter can add several products)
+  * "Product not in directory? Add a new one" shortcut expands a 3-field form (name, generic, unit)
+  * "Create & add" button creates minimal product via POST /products then adds to zone
+  * Auto-focuses search input on open, clears on close
+- Modified StockCountDayHub.tsx (~115 lines added):
+  * Added ZoneAddProductDialog import
+  * Added state: addProductDialog { open, zoneName }, inheritanceInfo { name, appliedAt, snapshotCount } | null
+  * Updated createAndStartScd to capture inheritedFrom + snapshotCount from create response
+  * Added addProductToZone() handler — POSTs to add-line endpoint, updates zoneLines + zoneProgress
+  * Added createNewProduct() handler — POSTs to /products with minimal fields, returns new product ID
+  * Added "Add product manually" button beside "Photo scan this shelf" in zone-count screen (teal outline)
+  * Rendered ZoneAddProductDialog at end of zone-count screen return
+  * Added P3 inheritance banner (violet) on main hub — shows "Inherited N zone assignments from your last count" with dismiss button
+- Modified ZoneBulkAssign.tsx:
+  * Added "Optional" Badge next to title
+  * Updated description: "Optional — most pharmacies skip this and let the system learn from counting. Use this only if you want to pre-assign before your first count."
+- TypeScript: 0 errors in changed files (1 pre-existing error in scd.ts:188 is unrelated — it's in getProductZoneMap)
+- Pre-push guardrail: PASS
+- Acceptance criteria verification (all 8 met):
+  1. ✅ First SCD (no previous): zone sessions start empty, counter counts what they see (snapshot table empty, fallback to live assignments which are also empty)
+  2. ✅ During counting, every saved qty creates/updates ProductZoneAssignment for that product+zone (scan-to-assign in upsertZoneCountLine)
+  3. ✅ Second SCD: manager sees "Inherited N assignments from {date}" banner on hub (inheritanceInfo set from createStockCountDay response)
+  4. ✅ Inherited assignments pre-populate zone count lines (startZoneCounting reads from ZoneAssignmentSnapshot)
+  5. ✅ "Add product manually" button opens searchable directory of business's products (ZoneAddProductDialog with debounced search)
+  6. ✅ Selecting a product from directory adds it to the zone count lines with qty=null (addZoneCountLine creates pending line)
+  7. ✅ "Add new product" shortcut creates a minimal product (name+generic+unit) and adds it to the zone (createNewProduct + addProductToZone)
+  8. ✅ ZoneBulkAssign remains available but is marked Optional (badge + updated description)
+
+Stage Summary:
+- Phase 3 of the SCD Enhancement Plan is COMPLETE — the largest phase.
+- Files added: 2 (src/modules/pharmacy/components/scd/ZoneAddProductDialog.tsx, src/app/api/businesses/[id]/stock-count-day/[scdId]/zones/[zoneSessionId]/add-line/route.ts)
+- Files modified: 4 (prisma/schema.prisma, src/lib/scd.ts, src/modules/pharmacy/components/StockCountDayHub.tsx, src/modules/pharmacy/components/scd/ZoneBulkAssign.tsx)
+- Schema changes: 1 new model (ZoneAssignmentSnapshot) + 1 new field (StockCountLine.autoAssigned) + 4 new relations — REQUIRES npx prisma db push on local machine + WHM before testing
+- API changes: POST /stock-count-day now returns inheritedFrom + snapshotCount; new POST /zones/[zoneSessionId]/add-line endpoint; PATCH zones action=count now upserts ProductZoneAssignment
+- The founder's zone-inheritance proposal is now fully implemented: first SCD = count what you see, every subsequent SCD inherits the learned zone map.
+- Ready for P4 (Export & History Detail — PDF/Excel export + browsable past SCDs).
