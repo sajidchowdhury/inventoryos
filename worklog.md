@@ -2419,3 +2419,31 @@ Stage Summary:
 - Acceptance criterion #5 (admin prompt editing) is satisfied via the existing ai-config API + documented in the help entry. A dedicated admin UI card for purchase-scan prompt editing can be added in a future iteration if the founder wants a visual editor (currently editable via API call or by extending ShelfScannerConfigCard).
 === PURCHASE SCANNER PLAN 100% COMPLETE ===
 All 4 phases (P1-P4) done. Feature is end-to-end usable.
+
+---
+Task ID: subscription-spec
+Agent: Super Z (Main Agent)
+Task: Create phased spec doc for Subscription Management System (per-shop billing + 4-stage grace period + bKash/Nagad payments + super-admin monitoring + SSL Commerz) + add §18 phase tracker to PROJECT_CONTEXT.md.
+
+Work Log:
+- Researched BD pharmacy software market: Easy Pharma (800-1200), Pharmacom (1000-1500), Pharmacy Manager BD (500-800). bKash/Nagad dominate 80%+ payments. Annual billing (10 for 12) is standard. Free trial expected.
+- Recommended 3-tier structure: Free (0), Pro (800 BDT/mo, 8000/yr), Pro AI (1500 BDT/mo, 15000/yr). Kept current 3-tier structure (free/pro/pro_ai) but updated prices (500→800, 1000→1500) to match market + give AI margin.
+- Designed 6-phase plan covering all founder requirements:
+  * P1 — Schema: SubscriptionInvoice + PaymentTransaction + ReceivedPayment models + Business lifecycle fields + admin phone uniqueness + updated pricing
+  * P2 — Grace Period: 4-stage lifecycle (active→expiring_soon→read_only→data_wiped) + daily cron + server-side read-only guard + soft-delete with 30-day recovery
+  * P3 — Manual Payments: user submission (bKash/Nagad TRX ID) + super-admin received-payments panel + auto-matching engine (TRX + amount ±5 BDT) + manual review queue
+  * P4 — Super-Admin Monitoring: /admin/clients dashboard with stage badges + revenue cards (Expected/Received/Outstanding/Churn) + client detail + package price management
+  * P5 — SSL Commerz: gateway integration + payment-method toggle + annual billing (pay 10 get 12)
+  * P6 — Notifications + Polish: 7 event notifications + first-time onboarding + refunds + plan changes + SuperAdminHelp entries
+- Added 5 improvement suggestions: (1) server-side read-only guard not just client UI, (2) soft-delete with 30-day recovery instead of permanent wipe, (3) TRX ID fuzzy matching with ±5 BDT tolerance + manual review, (4) annual billing option, (5) 14-day free trial of Pro
+- Generated spec docx via 3 scripts: subscription-spec-cover.js + subscription-spec-body.js + subscription-spec-generate.js
+- Docx: 32 KB, 15 tables, ~560 paragraphs, 10 sections (cover + TOC + exec summary + market research + gap analysis + 6 phase sections + tracking)
+- Postcheck: 0 errors, 3 acceptable warnings
+- Updated PROJECT_CONTEXT.md with new §18 "Subscription Management System — Phase Tracker" with 6-phase status table + per-phase details + update protocol
+
+Stage Summary:
+- Subscription Management System documented in a phased spec doc + tracked in PROJECT_CONTEXT.md §18.
+- Files created: 3 generator scripts + 1 docx (download/InventoryOS_Subscription_System_Plan.docx, 32 KB)
+- Files modified: PROJECT_CONTEXT.md (added §18), worklog.md (this entry)
+- 6 phases, ~8-11 sessions total. Strictly sequential.
+- Ready to start P1 (Schema + Per-Shop Model) in next session.

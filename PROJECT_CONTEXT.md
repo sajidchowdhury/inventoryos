@@ -657,4 +657,77 @@ After completing a phase:
 
 ---
 
+## 18. Subscription Management System — Phase Tracker
+
+> **Full spec:** `download/InventoryOS_Subscription_System_Plan.docx`
+> **Status legend:** Pending → In Progress → Done (tag)
+> **Design decisions:** Per-shop billing · 4-stage grace period (active→expiring_soon→read_only→data_wiped) · bKash/Nagad manual + SSL Commerz (P5) · 3-tier pricing (Free/Pro 800/Pro AI 1500)
+
+| Phase | Theme | Features | Effort | Status | Tag |
+|---|---|---|---|---|---|
+| **P1** | Schema + Per-Shop Model | New billing models + admin phone uniqueness + 3-tier pricing | 1–2 sessions | Pending | — |
+| **P2** | Grace Period Lifecycle | 4-stage enforcement: active→read-only→data-wiped + server guard | 2 sessions | Pending | — |
+| **P3** | Manual Payments (bKash/Nagad) | User submission + super-admin matching + auto-extend | 2 sessions | Pending | — |
+| **P4** | Super-Admin Monitoring | Client-wise status dashboard + revenue tracking + package management | 1–2 sessions | Pending | — |
+| **P5** | SSL Commerz + Toggle | Gateway integration + payment-method toggle + annual billing | 1–2 sessions | Pending | — |
+| **P6** | Notifications + Polish | In-app/email alerts + onboarding + refunds + plan changes | 1 session | Pending | — |
+
+### P1 — Schema + Per-Shop Model + Admin Phone Uniqueness
+- **New models:** `SubscriptionInvoice`, `PaymentTransaction`, `ReceivedPayment`
+- **Update Business:** +subscriptionStage, +gracePeriodEnd, +dataWipeDate, +dataSoftDeletedAt, +dataPurgeDate
+- **Update BusinessUser:** +isAdmin (Boolean)
+- **Update feature-gate.ts:** Free=0, Pro=800, Pro AI=1500, +annualPrice field
+- **Registration:** phone uniqueness check for admin accounts
+- **Task ID:** `subscription-p1` · **Tag:** `v1.8.0-subscription-p1`
+
+### P2 — Grace Period Lifecycle + Read-Only Enforcement
+- **New cron:** `subscription-lifecycle` (daily at 02:00 UTC) — transitions 4 stages
+- **New lib:** `src/lib/subscription-guard.ts` — `requireActiveSubscription()` server guard on all write endpoints
+- **4 stages:** active → expiring_soon (7d before end) → read_only (0-14d after end) → data_wiped (14d+ after end, soft-delete)
+- **Soft-delete:** data recoverable for 30 days, true purge after 45 days total
+- **Client UI:** disabled write buttons + persistent banner in read-only; payment-only screen in data_wiped
+- **Task ID:** `subscription-p2` · **Tag:** `v1.8.1-subscription-p2`
+
+### P3 — Manual Payments (bKash/Nagad)
+- **User:** Pay Subscription page (select bKash/Nagad + enter TRX ID + amount)
+- **Super-admin:** Received Payments panel (upload received TRX IDs + amounts)
+- **Auto-matching:** TRX ID + amount (±5 BDT) match → auto-extend subscription
+- **Manual review:** unmatched submissions go to pending queue for super-admin review
+- **Task ID:** `subscription-p3` · **Tag:** `v1.8.2-subscription-p3`
+
+### P4 — Super-Admin Monitoring Dashboard
+- **New page:** `/admin/clients` — all businesses with stage badges + revenue
+- **Revenue cards:** Monthly Expected, Monthly Received, Outstanding, Churn Risk
+- **Client detail:** subscription timeline + payment history + manual extend/override
+- **Package management:** edit tier prices + toggle payment methods + set account numbers
+- **Task ID:** `subscription-p4` · **Tag:** `v1.8.3-subscription-p4`
+
+### P5 — SSL Commerz + Payment Method Toggle + Annual Billing
+- **SSL Commerz:** EasyCheckout integration + success/fail/cancel callbacks
+- **Toggle:** super-admin chooses active methods (bKash/Nagad/SSL)
+- **Annual billing:** pay 10 months, get 12 (8,000/15,000 BDT)
+- **New model:** `PaymentConfig` (sslStoreId, sslStorePasswd, sslMode, activeMethods, account numbers)
+- **Task ID:** `subscription-p5` · **Tag:** `v1.8.4-subscription-p5`
+
+### P6 — Notifications + Polish + Edge Cases
+- **Notifications:** in-app + email for all 7 subscription events (invoice, payment, expiring, expired, wipe warning, wiped, restored)
+- **First-time onboarding:** tooltip + trial-ending banner with Subscribe CTA
+- **Refunds:** super-admin can refund (reverses extension + logs reason)
+- **Plan changes:** upgrade (prorated, immediate) / downgrade (next cycle)
+- **New model:** `SubscriptionAdjustment` (audit trail for refunds + manual adjustments)
+- **SuperAdminHelp:** 6 new entries
+- **Task ID:** `subscription-p6` · **Tag:** `v1.8.5-subscription-p6`
+
+### Recommended sequencing
+**P1 → P2 → P3 → P4 → P5 → P6** (strictly sequential — each phase's output is the next phase's input)
+
+### Update protocol for this section
+After completing a phase:
+1. Append worklog entry with the phase's Task ID (`subscription-pN`)
+2. Update the Status column above to "Done" + fill the Tag
+3. Bump the semver tag (`git tag v1.8.N-subscription-pN`)
+4. Regenerate the docx Table 13 via `node /home/z/my-project/scripts/subscription-spec-generate.js`
+
+---
+
 **This file is the contract between sessions. Keep it accurate. When in doubt, update it.**
