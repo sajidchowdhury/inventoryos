@@ -51,11 +51,42 @@ export async function getActiveStockCountDay(businessId: string) {
 
 /** Active or closed (awaiting apply) — the current open count session. */
 export async function getCurrentStockCountDay(businessId: string) {
-  return db.stockCountDay.findFirst({
+  const scd = await db.stockCountDay.findFirst({
     where: { businessId, status: { in: ["active", "closed"] } },
     orderBy: { createdAt: "desc" },
     include: SCD_INCLUDE,
   });
+  if (!scd) return null;
+
+  // ── P1 enhancement: enrich each zoneSession with countedLineCount + lastCountedAt ──
+  // The SCD_INCLUDE already gives us _count.lines (total lines), but we also need:
+  //   - countedLineCount: lines with status === "counted" (for resume banner progress)
+  //   - lastCountedAt: most recent countedAt timestamp (for "last activity" display)
+  const zoneSessionIds = scd.zoneSessions.map((zs) => zs.id);
+  const countedAggregates = zoneSessionIds.length > 0
+    ? await db.stockCountLine.groupBy({
+        by: ["zoneSessionId"],
+        where: { zoneSessionId: { in: zoneSessionIds }, status: "counted" },
+        _count: { _all: true },
+        _max: { countedAt: true },
+      })
+    : [];
+
+  const countedMap = new Map(
+    countedAggregates.map((a) => [
+      a.zoneSessionId,
+      { countedLineCount: a._count._all, lastCountedAt: a._max.countedAt },
+    ])
+  );
+
+  return {
+    ...scd,
+    zoneSessions: scd.zoneSessions.map((zs) => ({
+      ...zs,
+      countedLineCount: countedMap.get(zs.id)?.countedLineCount ?? 0,
+      lastCountedAt: countedMap.get(zs.id)?.lastCountedAt ?? null,
+    })),
+  };
 }
 
 export async function listStorageZones(businessId: string) {

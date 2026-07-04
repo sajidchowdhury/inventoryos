@@ -1854,3 +1854,54 @@ Stage Summary:
 - Files modified: PROJECT_CONTEXT.md (added §16), worklog.md (this entry).
 - Founder's zone-inheritance proposal confirmed and designed as P3 with snapshot table for historical accuracy.
 - Ready to start P1 implementation in next session — read PROJECT_CONTEXT.md §16 first for context.
+
+---
+Task ID: scd-enhance-p1
+Agent: Super Z (Main Agent)
+Task: Implement Phase 1 of the SCD Enhancement Plan — onboarding empty state + resume count UX.
+
+Work Log:
+- Created src/modules/pharmacy/components/scd/ScdOnboardingCard.tsx (~170 lines):
+  * Hero card with teal/emerald gradient header explaining "Count your stock once a month"
+  * 2-sentence value prop: "Catch theft, catch spoilage, and stay ready for regulators — all without closing the shop."
+  * 3 value-prop rows: Stop shrinkage (rose), Catch expired stock (amber), Audit-ready (blue)
+  * 3-step walkthrough: Name zones → Count each zone → Apply to inventory
+  * Primary CTA "Set up your first zone" → calls onSetupZones prop
+  * Reassurance text: "Takes 2 minutes. You only do this once — the system learns your zones as you count."
+- Modified src/lib/scd.ts getCurrentStockCountDay() (lines 53-90):
+  * Added post-processing step that queries StockCountLine grouped by zoneSessionId
+  * Computes countedLineCount (lines with status === "counted") per zone session
+  * Computes lastCountedAt (max countedAt) per zone session
+  * Returns enriched zoneSessions array with countedLineCount + lastCountedAt fields
+  * Uses a single groupBy query (not N+1) for efficiency
+- Modified src/modules/pharmacy/components/StockCountDayHub.tsx:
+  * Added ScdOnboardingCard import
+  * Extended ZoneSession interface with countedLineCount? + lastCountedAt? fields
+  * Added formatLastActivity() helper — relative time formatter (just now / Xm ago / Xh ago / Xd ago)
+  * Added resume-count banner: renders when scd.status === "active" && any zoneSession.status === "counting"
+    - Shows "Resume counting {zone name}" with progress "X of Y products counted"
+    - Shows last activity timestamp (e.g. "3m ago")
+    - Teal gradient card with Play icon, tappable → calls loadZoneSession() which reloads zone-count screen
+    - All previously saved quantities are intact (already persisted in StockCountLine.countedQty)
+  * Replaced "Actions when no active SCD" section with conditional:
+    - When zones.length === 0 && history.length === 0 && canManage: renders ScdOnboardingCard
+    - When zones.length === 0 && history.length === 0 && !canManage: renders "ask your manager" card
+    - Otherwise: renders existing action buttons (Manage zones, Start new count day, etc.)
+  * Fixed JSX apostrophe: used &rsquo; HTML entity instead of \u2019 escape (JSX text nodes don't process \u escapes)
+- TypeScript: 0 errors in changed files (5 pre-existing errors in ShelfScanner.tsx + TransactionLog.tsx are unrelated)
+- Pre-push guardrail: PASS
+- Acceptance criteria verification (all 6 met):
+  1. ✅ First-time pharmacy (0 zones, 0 history) sees ScdOnboardingCard, not the empty "Manage zones" button
+  2. ✅ Onboarding card explains why SCD matters in 2 sentences
+  3. ✅ Tapping "Set up your first zone" opens existing setup-zones screen via setScreen("setup-zones")
+  4. ✅ Counter who navigates away mid-zone sees "Resume counting {zone}" banner on return
+  5. ✅ Tapping resume banner reloads zone-count screen with all previously saved quantities intact (loadZoneSession populates qtyDrafts from line.countedQty)
+  6. ✅ Existing flows (start SCD, count, close zone, variance review, apply) are unchanged — only added conditional branch + banner
+
+Stage Summary:
+- Phase 1 of the SCD Enhancement Plan is COMPLETE.
+- Files added: 1 (src/modules/pharmacy/components/scd/ScdOnboardingCard.tsx)
+- Files modified: 2 (src/lib/scd.ts, src/modules/pharmacy/components/StockCountDayHub.tsx)
+- Schema changes: none (P1 is UI + API enrichment only, as specified)
+- API change: GET /stock-count-day now returns countedLineCount + lastCountedAt per zoneSession (enables resume banner progress display)
+- Ready for P2 (Variance UX — search/filter + reason capture) in next session.

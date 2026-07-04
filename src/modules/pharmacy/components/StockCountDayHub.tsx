@@ -19,6 +19,7 @@ import { useAuthStore } from "@/lib/auth-store";
 import { useNavStore } from "@/lib/nav-store";
 import { usePermissions } from "@/lib/use-permissions";
 import { ZoneBulkAssign } from "./scd/ZoneBulkAssign";
+import { ScdOnboardingCard } from "./scd/ScdOnboardingCard";
 import { cn } from "@/lib/utils";
 
 // ── Types ──
@@ -37,6 +38,8 @@ interface ZoneSession {
   sortOrder: number;
   zone: { id: string; name: string; color: string };
   lineCount?: number;
+  countedLineCount?: number;  // P1: lines with status === "counted" (for resume banner)
+  lastCountedAt?: string | null;  // P1: most recent countedAt (for "last activity" display)
   _count?: { lines: number };
 }
 
@@ -413,6 +416,19 @@ export function StockCountDayHub() {
       case "closed": return "Done";
       default: return status;
     }
+  };
+
+  // P1: format "last activity" timestamp as relative time (e.g. "3m ago", "2h ago")
+  const formatLastActivity = (isoTs: string): string => {
+    const then = new Date(isoTs).getTime();
+    const now = Date.now();
+    const diffMin = Math.floor((now - then) / 60000);
+    if (diffMin < 1) return "just now";
+    if (diffMin < 60) return `${diffMin}m ago`;
+    const diffHr = Math.floor(diffMin / 60);
+    if (diffHr < 24) return `${diffHr}h ago`;
+    const diffDay = Math.floor(diffHr / 24);
+    return `${diffDay}d ago`;
   };
 
   if (loading) {
@@ -872,6 +888,38 @@ export function StockCountDayHub() {
         </div>
       )}
 
+      {/* ── P1: Resume count banner ── shown when a zone session is mid-count ── */}
+      {scd && scd.status === "active" && scd.zoneSessions && (() => {
+        const inProgress = scd.zoneSessions.find((zs) => zs.status === "counting");
+        if (!inProgress) return null;
+        const total = inProgress._count?.lines ?? inProgress.lineCount ?? 0;
+        const counted = inProgress.countedLineCount ?? 0;
+        return (
+          <Card
+            className="card-hover cursor-pointer border-teal-300 bg-gradient-to-r from-teal-50 to-emerald-50 shadow-pharmacy stagger-in"
+            onClick={() => loadZoneSession(scd.id, inProgress)}
+          >
+            <CardContent className="p-3.5 flex items-center gap-3">
+              <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-teal-500 to-emerald-600 flex items-center justify-center shrink-0 shadow-sm animate-pulse-soft">
+                <Play className="h-5 w-5 text-white" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold text-teal-900">Resume counting {inProgress.zone.name}</p>
+                <p className="text-xs text-teal-700 mt-0.5">
+                  {counted} of {total} products counted
+                  {inProgress.lastCountedAt && (
+                    <span className="text-teal-500 ml-1">
+                      · last activity {formatLastActivity(inProgress.lastCountedAt)}
+                    </span>
+                  )}
+                </p>
+              </div>
+              <ChevronRight className="h-5 w-5 text-teal-400 shrink-0" />
+            </CardContent>
+          </Card>
+        );
+      })()}
+
       {/* Active SCD banner */}
       {scd && scd.status === "active" && (
         <Card className="border-amber-200 bg-amber-50 shadow-none">
@@ -941,47 +989,63 @@ export function StockCountDayHub() {
         </div>
       )}
 
-      {/* Actions when no active SCD */}
+      {/* Actions when no active SCD — P1: show onboarding card for first-time users */}
       {(!scd || scd.status === "applied" || scd.status === "draft") && (
-        <div className="space-y-2">
-          {canManage && (
-            <Button
-              variant="outline"
-              className="w-full justify-start gap-3 h-auto py-3"
-              onClick={() => setScreen("setup-zones")}
-            >
-              <MapPin className="h-5 w-5 text-teal-600" />
-              <div className="text-left">
-                <p className="text-sm font-semibold">Manage storage zones</p>
-                <p className="text-xs text-gray-400">{zones.length} zone{zones.length !== 1 ? "s" : ""} set up</p>
-              </div>
-              <ChevronRight className="h-4 w-4 ml-auto text-gray-300" />
-            </Button>
-          )}
-
-          {canManage && (!scd || scd.status !== "active") ? (
-            <Button
-              className="w-full justify-start gap-3 h-auto py-3 bg-gradient-to-r from-teal-600 to-emerald-600"
-              onClick={() => setScreen("start-scd")}
-              disabled={zones.length === 0}
-            >
-              <ClipboardList className="h-5 w-5" />
-              <div className="text-left">
-                <p className="text-sm font-semibold">Start new count day</p>
-                <p className="text-xs text-teal-100">Count all zones, then apply once</p>
-              </div>
-              <ChevronRight className="h-4 w-4 ml-auto text-teal-200" />
-            </Button>
-          ) : null}
-
-          {canCount && !canManage && zones.length > 0 && (
+        zones.length === 0 && history.length === 0 ? (
+          canManage ? (
+            <ScdOnboardingCard onSetupZones={() => setScreen("setup-zones")} />
+          ) : (
             <Card className="shadow-pharmacy border-blue-100 bg-blue-50/40">
-              <CardContent className="p-3 text-xs text-blue-900">
-                You can count zones when a manager starts a Stock Count Day. Ask them to begin from this screen.
+              <CardContent className="p-4 text-center">
+                <ClipboardList className="h-8 w-8 mx-auto mb-2 text-blue-400" />
+                <p className="text-sm font-semibold text-blue-900">Stock Count Day</p>
+                <p className="text-xs text-blue-700 mt-1 leading-relaxed">
+                  Your manager hasn&rsquo;t set up stock counting yet. Ask them to set up storage zones from this screen.
+                </p>
               </CardContent>
             </Card>
-          )}
-        </div>
+          )
+        ) : (
+          <div className="space-y-2">
+            {canManage && (
+              <Button
+                variant="outline"
+                className="w-full justify-start gap-3 h-auto py-3"
+                onClick={() => setScreen("setup-zones")}
+              >
+                <MapPin className="h-5 w-5 text-teal-600" />
+                <div className="text-left">
+                  <p className="text-sm font-semibold">Manage storage zones</p>
+                  <p className="text-xs text-gray-400">{zones.length} zone{zones.length !== 1 ? "s" : ""} set up</p>
+                </div>
+                <ChevronRight className="h-4 w-4 ml-auto text-gray-300" />
+              </Button>
+            )}
+
+            {canManage && (!scd || scd.status !== "active") ? (
+              <Button
+                className="w-full justify-start gap-3 h-auto py-3 bg-gradient-to-r from-teal-600 to-emerald-600"
+                onClick={() => setScreen("start-scd")}
+                disabled={zones.length === 0}
+              >
+                <ClipboardList className="h-5 w-5" />
+                <div className="text-left">
+                  <p className="text-sm font-semibold">Start new count day</p>
+                  <p className="text-xs text-teal-100">Count all zones, then apply once</p>
+                </div>
+                <ChevronRight className="h-4 w-4 ml-auto text-teal-200" />
+              </Button>
+            ) : null}
+
+            {canCount && !canManage && zones.length > 0 && (
+              <Card className="shadow-pharmacy border-blue-100 bg-blue-50/40">
+                <CardContent className="p-3 text-xs text-blue-900">
+                  You can count zones when a manager starts a Stock Count Day. Ask them to begin from this screen.
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        )
       )}
 
       {/* History */}
