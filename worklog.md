@@ -1721,3 +1721,25 @@ Stage Summary:
 - Files added: 9 (1 seed script + 1 shared helper + 7 route files)
 - Files modified: 1 (schema.prisma — added 7 models + 2 Business fields + 1 Business relation)
 - Ready for Phase B (AI prediction algorithm + report generation).
+
+---
+Task ID: project-context-init
+Agent: Super Z (Main Agent)
+Task: Create PROJECT_CONTEXT.md — single source of truth for project context across sessions.
+
+Work Log:
+- Audited repo: package.json, AGENTS.md, prisma/schema.prisma (55 models), worklog.md (1723 lines, 26 prior Task IDs), .env.example, src/middleware.ts, src/lib/rbac.ts, src/lib/modules.ts, src/lib/ai-rate-limit.ts, src/lib/cron-jobs.ts, git log (8 merged PRs, latest = SCD polish).
+- Mapped the 55 Prisma models into 9 domain groups (identity/tenancy, catalog/inventory, sales/customers, purchases/suppliers, SCD, AI infrastructure, report scheduling, super-admin/ops, misc).
+- Documented the 9-tier AI defense stack (kill-switch → subscription → tier → aiEnabled → circuit breaker → burst → daily → monthly → token budget).
+- Documented 8 cron jobs (2 deprecated), 3 subscription tiers (free/pro/pro_ai), 6 RBAC roles.
+- Captured all gotchas from AGENTS.md: VM Postgres startup, .env recreation, demo OTP 9999, pharmacy UI client 401 issue, legacy SQLite file, pre-existing lint errors.
+- Defined a mandatory Update Protocol (§12) specifying exactly when to update this file vs worklog.md.
+- Wrote §13 "Where to Look First" cheat sheet for the 8 most common future tasks.
+- Listed §14 open risks & known gaps.
+
+Stage Summary:
+- Created PROJECT_CONTEXT.md (499 lines) at repo root.
+- File is structured as 14 sections covering: orientation, stack, schema, libs, auth/multi-tenancy, AI stack, cron, tiers, dev setup, worklog protocol, deliverables, update protocol, cheat sheet, risks.
+- Defines a strict Update Protocol that future agents must follow after any meaningful implementation.
+- The file is the contract between sessions — read it FIRST, update it AFTER every meaningful change.
+- Committed locally; NOT pushed (user should review before push, and the PAT embedded in remote URL should be rotated after this session per the security warning).
