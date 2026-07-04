@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import {
   ArrowLeft, Save, Truck, Plus, X, Search,
-  AlertCircle, Check, Loader2, Pill, CreditCard,
+  AlertCircle, Check, Loader2, Pill, CreditCard, ScanLine,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,8 @@ import {
 } from "@/components/ui/select";
 import { useAuthStore } from "@/lib/auth-store";
 import { useNavStore } from "@/lib/nav-store";
+import { PurchaseScannerDialog } from "./purchase/PurchaseScannerDialog";
+import type { ScannedItem } from "./purchase/ScannedItemList";
 
 const fadeIn = {
   initial: { opacity: 0, y: 12 },
@@ -70,6 +72,7 @@ export function PurchaseForm() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [scannerOpen, setScannerOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Fetch suppliers
@@ -110,6 +113,74 @@ export function PurchaseForm() {
     setSearch("");
     setShowSearch(false);
     setProducts([]);
+  };
+
+  // P2: Add scanned items from the PurchaseScannerDialog into the cart.
+  // Matched items (productId set) are added with detected fields pre-filled.
+  // Unmatched items are skipped (user links them in P3 — for now they're not added
+  // since the cart requires a productId). A toast/notification could be added later
+  // to tell the user how many were skipped.
+  const addScannedItemsToCart = (scannedItems: ScannedItem[]) => {
+    setCart((prev) => {
+      const updated = [...prev];
+      let added = 0;
+      let skipped = 0;
+
+      for (const scanned of scannedItems) {
+        // Only add matched items (must have a productId to add to cart)
+        if (!scanned.productId) {
+          skipped++;
+          continue;
+        }
+
+        // Check if already in cart — if so, merge quantity
+        const existingIdx = updated.findIndex((item) => item.product.id === scanned.productId);
+        if (existingIdx >= 0) {
+          const existing = updated[existingIdx];
+          const existingQty = parseFloat(existing.quantity) || 0;
+          const scannedQty = scanned.detectedQuantity ?? 0;
+          updated[existingIdx] = {
+            ...existing,
+            quantity: String(existingQty + scannedQty),
+            // Fill in detected fields if the existing cart item has them empty
+            batchNo: existing.batchNo || scanned.detectedBatchNo || "",
+            expiryDate: existing.expiryDate || scanned.detectedExpiryDate || "",
+            mfgDate: existing.mfgDate || scanned.detectedMfgDate || "",
+            mrp: existing.mrp || (scanned.detectedMrp?.toString() ?? ""),
+            unitCost: existing.unitCost || (scanned.detectedUnitCost?.toString() ?? "0"),
+          };
+          added++;
+          continue;
+        }
+
+        // New item — fetch the product from the search API to get full details
+        // (We only have productId from the scan, need the Product object for the cart)
+        // For now, create a minimal Product object — the cart will work with it.
+        // P3 will add the full product fetch + link dialog for unmatched items.
+        const minimalProduct: Product = {
+          id: scanned.productId,
+          name: scanned.matchedName || scanned.detectedProductName,
+          genericName: scanned.detectedGenericName,
+          strength: null,
+          unit: scanned.detectedUnit || "box",
+          mrp: scanned.detectedMrp,
+          category: null,
+        };
+
+        updated.push({
+          product: minimalProduct,
+          quantity: String(scanned.detectedQuantity ?? 0),
+          unitCost: String(scanned.detectedUnitCost ?? 0),
+          batchNo: scanned.detectedBatchNo || "",
+          expiryDate: scanned.detectedExpiryDate || "",
+          mfgDate: scanned.detectedMfgDate || "",
+          mrp: scanned.detectedMrp?.toString() ?? "",
+        });
+        added++;
+      }
+
+      return updated;
+    });
   };
 
   const updateItem = (productId: string, field: keyof CartItem, value: string) => {
@@ -322,9 +393,29 @@ export function PurchaseForm() {
           </CardContent>
         </Card>
       ) : (
-        <Button variant="outline" className="w-full h-12 gap-2 border-dashed rounded-2xl border-emerald-300 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800" onClick={() => setShowSearch(true)}>
-          <Plus className="h-4 w-4" /> Add Product
-        </Button>
+        <div className="grid grid-cols-2 gap-2">
+          <Button variant="outline" className="h-12 gap-2 border-dashed rounded-2xl border-emerald-300 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800" onClick={() => setShowSearch(true)}>
+            <Plus className="h-4 w-4" /> Add Product
+          </Button>
+          {/* P2: Scan purchase sheet button — opens the PurchaseScannerDialog */}
+          <Button
+            variant="outline"
+            className="h-12 gap-2 rounded-2xl border-teal-400 bg-teal-50 text-teal-700 hover:bg-teal-100 hover:text-teal-800"
+            onClick={() => setScannerOpen(true)}
+          >
+            <ScanLine className="h-4 w-4" /> Scan Sheet
+          </Button>
+        </div>
+      )}
+
+      {/* P2: Purchase Scanner Dialog */}
+      {businessId && (
+        <PurchaseScannerDialog
+          open={scannerOpen}
+          onOpenChange={setScannerOpen}
+          businessId={businessId}
+          onAddToCart={addScannedItemsToCart}
+        />
       )}
 
       {/* Cart Items */}
