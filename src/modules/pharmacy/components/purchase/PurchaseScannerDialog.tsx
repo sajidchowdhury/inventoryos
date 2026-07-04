@@ -15,7 +15,7 @@
 import { useState, useRef } from "react";
 import {
   ScanLine, Loader2, Plus, Check, X, Camera, Upload, FileImage,
-  AlertCircle, ChevronRight, Sparkles,
+  AlertCircle, ChevronRight, Sparkles, RotateCcw, Search,
 } from "lucide-react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
@@ -23,6 +23,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ScannedItemList, type ScannedItem } from "./ScannedItemList";
+import { PurchaseScanTips } from "./PurchaseScanTips";
 import { cn } from "@/lib/utils";
 
 // ── Image compression constants (mirrors ShelfScanner) ──
@@ -35,12 +36,14 @@ interface PurchaseScannerDialogProps {
   businessId: string;
   /** Called when user taps "Add N items to purchase" — receives the accumulated items */
   onAddToCart: (items: ScannedItem[]) => void;
+  /** P4: Called when user taps "Add manually" on error — closes dialog so user can use search */
+  onAddManually?: () => void;
 }
 
 type ScannerState = "upload" | "scanning" | "results";
 
 export function PurchaseScannerDialog({
-  open, onOpenChange, businessId, onAddToCart,
+  open, onOpenChange, businessId, onAddToCart, onAddManually,
 }: PurchaseScannerDialogProps) {
   const [state, setState] = useState<ScannerState>("upload");
   const [scannedItems, setScannedItems] = useState<ScannedItem[]>([]);
@@ -220,9 +223,35 @@ export function PurchaseScannerDialog({
 
         <div className="space-y-3 pt-2">
           {error && (
-            <div className="flex items-start gap-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-800">
-              <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-              <span>{error}</span>
+            <div className="space-y-2">
+              <div className="flex items-start gap-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-800">
+                <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                <span>{error}</span>
+              </div>
+              {/* P4: Retry + Add manually fallback buttons */}
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="flex-1 gap-1.5 border-amber-300 text-amber-700 hover:bg-amber-50"
+                  onClick={triggerFileInput}
+                  disabled={isScanningNext}
+                >
+                  <RotateCcw className="h-3.5 w-3.5" />
+                  Retry scan
+                </Button>
+                {onAddManually && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="flex-1 gap-1.5"
+                    onClick={onAddManually}
+                  >
+                    <Search className="h-3.5 w-3.5" />
+                    Add manually
+                  </Button>
+                )}
+              </div>
             </div>
           )}
 
@@ -246,19 +275,8 @@ export function PurchaseScannerDialog({
                 </div>
               </button>
 
-              {/* Tips */}
-              <Card className="border-emerald-100 bg-emerald-50/40 shadow-none">
-                <CardContent className="p-3 space-y-1.5">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 flex items-center gap-1">
-                    <Sparkles className="h-3 w-3" /> Tips for best results
-                  </p>
-                  <ul className="text-[11px] text-emerald-800 space-y-0.5 leading-relaxed">
-                    <li>• Frame the entire invoice — all 4 corners visible</li>
-                    <li>• Ensure good lighting — avoid shadows on text</li>
-                    <li>• Long invoice? Scan each page separately — items accumulate</li>
-                  </ul>
-                </CardContent>
-              </Card>
+              {/* P4: Tips (reusable component with see-example) */}
+              <PurchaseScanTips />
             </div>
           )}
 

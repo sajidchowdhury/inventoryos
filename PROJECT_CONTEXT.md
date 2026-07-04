@@ -614,7 +614,7 @@ After completing a phase:
 | **P1** | Vision Scan API | Scan endpoint + invoice prompt + catalog matching | 1–2 sessions | Done | `v1.7.0-purchase-scan-p1` |
 | **P2** | Scanner UI | Scan button + image upload + accumulate into cart | 1 session | Done | `v1.7.1-purchase-scan-p2` |
 | **P3** | Review & Edit | Edit detected items + link unmatched + confidence | 1 session | Done | `v1.7.2-purchase-scan-p3` |
-| **P4** | Polish & Edge Cases | Help text + manual fallback + SuperAdmin docs | 1 session | Pending | — |
+| **P4** | Polish & Edge Cases | Help text + manual fallback + SuperAdmin docs | 1 session | Done | `v1.7.3-purchase-scan-p4` |
 
 ### P1 — Vision Scan API + Catalog Matching
 - **New endpoint:** `POST /api/businesses/[id]/ai/purchase-scan` (accepts 1 base64 image, returns detected + matched line items)

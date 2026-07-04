@@ -89,6 +89,8 @@ export function PurchaseForm() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [scannerOpen, setScannerOpen] = useState(false);
+  // P4: first-time tooltip for the scan button (dismissed via localStorage)
+  const [showScanTooltip, setShowScanTooltip] = useState(false);
   // P3: link dialog state — which cart item is being linked to a product
   const [linkDialog, setLinkDialog] = useState<{ open: boolean; cartItemId: string; detectedName: string }>({
     open: false, cartItemId: "", detectedName: "",
@@ -105,6 +107,27 @@ export function PurchaseForm() {
       .then((d) => { if (d.success) setSuppliers(d.suppliers || []); })
       .catch(console.error);
   }, [businessId]);
+
+  // P4: Show first-time scan tooltip if not dismissed
+  useEffect(() => {
+    try {
+      const dismissed = localStorage.getItem("purchase-scan-tooltip-dismissed");
+      if (!dismissed) {
+        setShowScanTooltip(true);
+      }
+    } catch {
+      // localStorage unavailable (SSR or privacy mode) — skip tooltip
+    }
+  }, []);
+
+  const dismissScanTooltip = () => {
+    setShowScanTooltip(false);
+    try {
+      localStorage.setItem("purchase-scan-tooltip-dismissed", "1");
+    } catch {
+      // ignore
+    }
+  };
 
   // Search products
   useEffect(() => {
@@ -497,18 +520,49 @@ export function PurchaseForm() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-2 gap-2">
-          <Button variant="outline" className="h-12 gap-2 border-dashed rounded-2xl border-emerald-300 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800" onClick={() => setShowSearch(true)}>
-            <Plus className="h-4 w-4" /> Add Product
-          </Button>
-          {/* P2: Scan purchase sheet button — opens the PurchaseScannerDialog */}
-          <Button
-            variant="outline"
-            className="h-12 gap-2 rounded-2xl border-teal-400 bg-teal-50 text-teal-700 hover:bg-teal-100 hover:text-teal-800"
-            onClick={() => setScannerOpen(true)}
-          >
-            <ScanLine className="h-4 w-4" /> Scan Sheet
-          </Button>
+        <div className="space-y-2">
+          {/* P4: First-time tooltip highlighting the scan button */}
+          {showScanTooltip && (
+            <div className="relative rounded-2xl bg-gradient-to-r from-teal-500 to-emerald-500 p-0.5 shadow-lg shadow-teal-500/20 stagger-in">
+              <div className="rounded-2xl bg-white p-3 flex items-start gap-2">
+                <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-teal-500 to-emerald-500 flex items-center justify-center shrink-0">
+                  <ScanLine className="h-4 w-4 text-white" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-semibold text-gray-900">New: Scan your purchase sheet!</p>
+                  <p className="text-[11px] text-gray-500 mt-0.5 leading-relaxed">
+                    Photograph the supplier invoice and we'll auto-fill the items. Tap "Scan Sheet" to try it.
+                  </p>
+                </div>
+                <button
+                  className="p-1 rounded-lg hover:bg-gray-100 shrink-0"
+                  onClick={dismissScanTooltip}
+                  aria-label="Dismiss"
+                >
+                  <X className="h-3.5 w-3.5 text-gray-400" />
+                </button>
+              </div>
+            </div>
+          )}
+          <div className="grid grid-cols-2 gap-2">
+            <Button variant="outline" className="h-12 gap-2 border-dashed rounded-2xl border-emerald-300 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800" onClick={() => setShowSearch(true)}>
+              <Plus className="h-4 w-4" /> Add Product
+            </Button>
+            {/* P2: Scan purchase sheet button — opens the PurchaseScannerDialog */}
+            <Button
+              variant="outline"
+              className={cn(
+                "h-12 gap-2 rounded-2xl border-teal-400 bg-teal-50 text-teal-700 hover:bg-teal-100 hover:text-teal-800",
+                showScanTooltip && "ring-2 ring-teal-400 ring-offset-1"
+              )}
+              onClick={() => {
+                setScannerOpen(true);
+                dismissScanTooltip();
+              }}
+            >
+              <ScanLine className="h-4 w-4" /> Scan Sheet
+            </Button>
+          </div>
         </div>
       )}
 
@@ -519,6 +573,11 @@ export function PurchaseForm() {
           onOpenChange={setScannerOpen}
           businessId={businessId}
           onAddToCart={addScannedItemsToCart}
+          onAddManually={() => {
+            setScannerOpen(false);
+            setShowSearch(true);
+            setTimeout(() => searchInputRef.current?.focus(), 100);
+          }}
         />
       )}
 

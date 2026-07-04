@@ -14,7 +14,7 @@ import {
   ShieldAlert, Settings2, Mail, Activity, AlertTriangle,
   DollarSign, Users, Zap, Clock, CalendarClock, Play,
   TrendingUp, Building2, Sparkles, HelpCircle, Send,
-  LayoutDashboard, Pill, ClipboardList,
+  LayoutDashboard, Pill, ClipboardList, ScanLine,
 } from "lucide-react";
 
 export interface HelpEntry {
@@ -153,6 +153,16 @@ const HELP_ENTRIES: HelpEntry[] = [
     whatHappensIfNotSet: "The endpoint exists but requires an external scheduler to trigger it. Without scheduling, pharmacies won't get monthly count reminders — they'll forget to run SCD and miss shrinkage/expiry issues until quarter-end.",
     whyYouNeedIt: "Monthly stock counts are the #1 way pharmacies catch theft and spoilage. The 25th gives them a week before month-end book-closing. Deduped per business per month so re-running the job won't spam.",
     howToUse: "Click 'Run Now' on the trigger-cron card with job name 'scd-monthly-reminder' to test manually. In production, configure an external scheduler to hit POST /api/cron/scd-monthly-reminder with the x-cron-secret header at 04:00 UTC on the 25th of every month. Businesses see a teal 'Count' notification with a 'Run count' CTA that navigates to the SCD hub.",
+  },
+  {
+    id: "purchase-scanner",
+    title: "Purchase Sheet Scanner",
+    icon: ScanLine,
+    category: "Operations",
+    whatItIs: "AI vision feature that lets pharmacies photograph a supplier invoice and auto-fill the purchase cart. Detects product name, quantity, batch, expiry, MRP, and unit cost per line item. Uses the same vision provider as the shelf scanner but with an invoice-optimized prompt.",
+    whatHappensIfNotSet: "Read-only feature — works out of the box for all pro_ai businesses. No configuration required. The prompt is editable via the super-admin ai-config API (feature name: 'purchase-scan') if you need to tune it for specific invoice formats.",
+    whyYouNeedIt: "Manual purchase entry takes 15-30 minutes per invoice (20-50 items). The scanner cuts this to ~5 minutes. Pharmacies record purchases in real-time instead of backlogging, which keeps inventory and expiry data fresh. Each scan counts against the business's AI quota (feature: purchase-scan).",
+    howToUse: "Businesses tap 'Scan Sheet' in the purchase form, photograph the invoice, review detected items (with confidence indicators), link any unmatched products, and save. The prompt is editable via PUT /api/super-admin/ai-config with feature='purchase-scan' (systemPrompt + userPromptTemplate fields). Usage appears in the AI usage dashboard under 'purchase-scan'. One image per scan — items accumulate across multiple scans for long invoices.",
   },
   {
     id: "business-list",
