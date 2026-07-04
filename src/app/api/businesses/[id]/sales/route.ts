@@ -2,6 +2,7 @@
 // POST creates a sale (invoice) with FEFO allocation per line item
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { getActiveStockCountDay, recordSaleForScd } from "@/lib/scd";
 
 function calculateBatchStatus(expiryDate: Date): string {
   const diffDays = (expiryDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24);
@@ -252,6 +253,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     if (paidAmount < totalAmount) paymentStatus = "partial";
     if (paidAmount <= 0) paymentStatus = "unpaid";
 
+    // Check for active Stock Count Day (tag sales + track sold qty)
+    const activeScd = await getActiveStockCountDay(businessId);
+
     // Step 3: Create the sale in a transaction (atomic)
     const sale = await db.$transaction(async (tx) => {
       // Create Sale record
@@ -273,6 +277,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           totalQuantity,
           notes: body.notes || null,
           createdBy: body.createdBy || null,
+          stockCountDayId: activeScd?.id ?? null,
         },
       });
 
@@ -386,6 +391,19 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
       return newSale;
     });
+
+    // Update Stock Count Day sold quantities (outside main tx — non-blocking)
+    if (activeScd) {
+      try {
+        await recordSaleForScd(
+          activeScd.id,
+          businessId,
+          allocations.map((a) => ({ productId: a.product.id, quantity: a.quantity }))
+        );
+      } catch (scdErr) {
+        console.error("SCD sale tracking error:", scdErr);
+      }
+    }
 
     // Fetch the complete sale with items
     const completeSale = await db.sale.findUnique({

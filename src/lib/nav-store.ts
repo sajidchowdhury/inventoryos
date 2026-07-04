@@ -57,6 +57,7 @@ export type PharmacyView =
   | "ai-forecast"     // Demand forecasting
   | "ai-expiry-opt"   // Expiry optimization recommendations
   | "shelf-scanner"   // AI vision shelf scanner (under Stock)
+  | "stock-count-day" // Monthly full stock count (SCD)
   | "profile"        // Business profile / settings
   | "subscription";  // Subscription & AI usage status
 
@@ -86,6 +87,11 @@ interface NavState {
   // Supplier navigation
   activeSupplierId: string | null;
   setActiveSupplierId: (id: string | null) => void;
+  // Stock Count Day context (for shelf scanner + zone counting)
+  scdId: string | null;
+  setScdId: (id: string | null) => void;
+  scdZoneSessionId: string | null;
+  setScdZoneSessionId: (id: string | null) => void;
 }
 
 export const useNavStore = create<NavState>((set) => ({
@@ -109,4 +115,8 @@ export const useNavStore = create<NavState>((set) => ({
   setActivePurchaseId: (id) => set({ activePurchaseId: id }),
   activeSupplierId: null,
   setActiveSupplierId: (id) => set({ activeSupplierId: id }),
+  scdId: null,
+  setScdId: (id) => set({ scdId: id }),
+  scdZoneSessionId: null,
+  setScdZoneSessionId: (id) => set({ scdZoneSessionId: id }),
 }));

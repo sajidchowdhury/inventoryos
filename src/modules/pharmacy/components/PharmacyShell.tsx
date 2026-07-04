@@ -4,6 +4,7 @@ import { useNavStore } from "@/lib/nav-store";
 import { PharmacyDashboard } from "./PharmacyDashboard";
 import { InventoryHub } from "./InventoryHub";
 import { ShelfScanner } from "./ShelfScanner";
+import { StockCountDayHub } from "./StockCountDayHub";
 import { ReportsHub } from "./ReportsHub";
 import { MoreHub } from "./MoreHub";
 import { ProductList } from "./ProductList";
@@ -90,6 +91,8 @@ export function PharmacyShell() {
       // ── AI VISION ──
       case "shelf-scanner":
         return <ShelfScanner />;
+      case "stock-count-day":
+        return <StockCountDayHub />;
 
       // ── SALES ──
       case "dispense":

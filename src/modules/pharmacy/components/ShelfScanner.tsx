@@ -155,6 +155,8 @@ async function resizeImageToDataUrl(file: File): Promise<string> {
 export function ShelfScanner() {
   const businessId = useAuthStore((s) => s.session?.business?.id);
   const setActiveView = useNavStore((s) => s.setActiveView);
+  const scdZoneSessionId = useNavStore((s) => s.scdZoneSessionId);
+  const inScdMode = Boolean(scdZoneSessionId);
 
   const [subTab, setSubTab] = useState<SubTab>("scan");
   const [step, setStep] = useState<Step>("upload");
@@ -266,6 +268,7 @@ export function ShelfScanner() {
         body: JSON.stringify({
           images,
           note: note.trim() || undefined,
+          stockCountZoneSessionId: scdZoneSessionId || undefined,
         }),
       });
       // Guard against gateway/HTML error pages (e.g. 502 timeout) — if the
@@ -440,6 +443,7 @@ export function ShelfScanner() {
     try {
       const payload = {
         scanId,
+        stockCountZoneSessionId: scdZoneSessionId || undefined,
         items: activeItems.map((it) => ({
           shelfScanItemId: it.id,
           productId: it.product!.id,
@@ -461,7 +465,11 @@ export function ShelfScanner() {
         skipped: data.skipped || 0,
         errors: data.errors || 0,
       });
-      showToast(`Saved ${data.applied} stock updates`);
+      showToast(
+        inScdMode
+          ? `Saved ${data.applied} zone counts (inventory updates when count day ends)`
+          : `Saved ${data.applied} stock updates`
+      );
     } catch (err) {
       setScanError(err instanceof Error ? err.message : "Save failed");
       setStep("review"); // back to review on error
@@ -528,7 +536,7 @@ export function ShelfScanner() {
           size="sm"
           variant="ghost"
           className="px-2"
-          onClick={() => setActiveView("inventory-hub")}
+          onClick={() => setActiveView(inScdMode ? "stock-count-day" : "inventory-hub")}
         >
           <ArrowLeft className="h-4 w-4" />
         </Button>
@@ -542,6 +550,15 @@ export function ShelfScanner() {
           </div>
         </div>
       </div>
+
+      {inScdMode && (
+        <Card className="border-teal-200 bg-teal-50/80 shadow-none">
+          <CardContent className="p-3 text-xs text-teal-900 leading-relaxed">
+            <strong>Stock Count Day mode</strong> — quantities save to this zone only.
+            Inventory is updated when you finish and apply the count day.
+          </CardContent>
+        </Card>
+      )}
 
       {/* Sub-tabs */}
       <div className="flex gap-1 p-1 bg-muted rounded-lg">
