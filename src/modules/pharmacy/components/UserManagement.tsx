@@ -6,7 +6,7 @@ import {
   ArrowLeft, Plus, User, Edit2, Trash2,
   Shield, Check, AlertCircle, Loader2, UserCog, Lock,
   Phone, Mail, Eye, EyeOff, Monitor, History,
-  Users as UsersIcon, ShieldCheck,
+  Users as UsersIcon, ShieldCheck, Store,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -373,6 +373,18 @@ export function UserManagement() {
           </DialogHeader>
           <div className="space-y-3 pt-2">
             {error && <p className="text-sm text-destructive flex items-center gap-1.5"><AlertCircle className="h-3.5 w-3.5" /> {error}</p>}
+
+            {/* Shop code hint — only shown when creating a new user (not editing) */}
+            {!editingId && session?.business?.shopCode && (
+              <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2">
+                <Store className="h-4 w-4 text-emerald-600 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-[11px] text-emerald-800 leading-tight">
+                    Share shop code <span className="font-mono font-bold tracking-wider">{session.business.shopCode}</span> with staff to log in
+                  </p>
+                </div>
+              </div>
+            )}
 
             <div className="space-y-1.5">
               <Label className="text-xs font-medium">Username *</Label>

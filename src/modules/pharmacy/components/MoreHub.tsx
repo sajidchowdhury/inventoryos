@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import {
   ChevronRight, LogOut,
   Bell, CreditCard, Pencil,
-  Database,
+  Database, Percent,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -54,6 +54,7 @@ const sections: MoreSection[] = [
     accent: "blue",
     items: [
       { icon: Bell, label: "Alerts Center", desc: "View all alerts", view: "alerts", gradient: "from-red-500 to-rose-500" },
+      { icon: Percent, label: "Discount Rules", desc: "Manage discount & promo rules", view: "discount-rules", gradient: "from-orange-500 to-amber-500" },
       { icon: CreditCard, label: "Subscription", desc: "Plan & AI usage", view: "subscription", gradient: "from-violet-500 to-purple-600" },
     ],
   },

@@ -1767,3 +1767,28 @@ Stage Summary:
 - Files modified: 2 (.gitignore, PROJECT_CONTEXT.md)
 - The user can now safely: make changes in Z.ai → test at localhost:3000 → run pre-push-check.sh → commit only the code/schema files they changed → push to GitHub → WHM pulls without conflict.
 - The ONLY file that differs between environments is .env, which is already gitignored on both sides.
+
+---
+Task ID: ui-dashboard-reorganize-1
+Agent: Super Z (Main Agent)
+Task: Reorganize pharmacy dashboard quick actions + relocate Invoices/Discount + fix shop code badge per founder's 5-point UI request.
+
+Work Log:
+- PharmacyDashboard.tsx — shop code badge cleanup: removed both the "Shop code:" label prefix and the "· share with staff to log in" suffix. Badge now shows: Store icon + code value + Copy icon. Cleaner and less cluttered.
+- PharmacyDashboard.tsx — quick action grid reorganized per founder's exact spec:
+  * Row 1: Products (Package/blue), Restock (Boxes/amber), Return (RotateCcw/rose — moved from Row 2 slot 3, label singularized "Returns"→"Return"), Reports (BarChart3/sky — target changed from "business-dashboard" to "reports-hub" so it opens the ReportsHub list)
+  * Row 2: Customers (Users/blue), Payment (DollarSign/amber — label singularized "Payments"→"Payment"), Purchase (ShoppingBag/orange — NEW, → "purchases" view), Supplier (Truck/purple — NEW, → "suppliers" view)
+  * Removed: Invoices card (moved to ReportsHub), Discount card (moved to MoreHub Admin section)
+  * Imports updated: removed Receipt + Percent (no longer used), added ShoppingBag + Truck
+- ReportsHub.tsx — added "Invoices" entry to the Overview section (3rd item, ScrollText icon, purple accent, → "sales" view). Desc: "Sales invoices & transaction history". Added ScrollText to lucide imports.
+- MoreHub.tsx — added "Discount Rules" entry to the Admin section (2nd item, between Alerts Center and Subscription). Percent icon, orange→amber gradient, → "discount-rules" view. Desc: "Manage discount & promo rules". Added Percent to lucide imports. Updated comment block noting Discount moved from Home to Admin.
+- UserManagement.tsx — added shop code hint banner at the top of the create-user dialog body (only renders when !editingId AND session.business.shopCode exists). Emerald-tinted info box with Store icon + "Share shop code <CODE> with staff to log in" text. Added Store to lucide imports. This is the new home for the "share with staff to log in" message that was removed from the dashboard header.
+- Verified all views remain accessible: "sales" via ReportsHub, "discount-rules" via MoreHub Admin, "reports-hub" already routed in PharmacyShell.tsx line 66-67. No orphaned views.
+- TypeScript check: zero errors across all 4 changed files. Pre-push guardrail: PASS.
+
+Stage Summary:
+- 5 UI changes implemented per founder's spec, all in committed (environment-agnostic) src/** files.
+- Files modified: 4 (PharmacyDashboard.tsx, ReportsHub.tsx, MoreHub.tsx, UserManagement.tsx)
+- Final dashboard layout: Row 1 = Products, Restock, Return, Reports | Row 2 = Customers, Payment, Purchase, Supplier (exact match to founder's req 5)
+- Invoices moved to ReportsHub Overview section. Discount Rules moved to MoreHub Admin section. Shop code hint moved from dashboard header to create-user dialog.
+- Safe to push to GitHub — no environment-specific files touched.

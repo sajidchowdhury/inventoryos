@@ -4,9 +4,9 @@ import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
   ShoppingCart, Package, AlertTriangle, TrendingUp,
-  Check, Boxes, Receipt,
-  Clock, Pill, Users, DollarSign, RotateCcw, Percent, BarChart3,
-  Copy, Store,
+  Check, Boxes,
+  Clock, Pill, Users, DollarSign, RotateCcw, BarChart3,
+  Copy, Store, ShoppingBag, Truck,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -131,9 +131,7 @@ export function PharmacyDashboard() {
                 title="Tap to copy shop code"
               >
                 <Store className="h-3.5 w-3.5 shrink-0" />
-                <span className="opacity-80">Shop code:</span>
                 <span className="font-mono font-bold tracking-wider">{session.business.shopCode}</span>
-                <span className="text-white/70 hidden sm:inline">· share with staff to log in</span>
                 {copied ? (
                   <Check className="h-3 w-3 text-emerald-200 shrink-0" />
                 ) : (
@@ -277,18 +275,18 @@ export function PharmacyDashboard() {
 
         <button
           className="card-hover flex flex-col items-center gap-2 p-4 rounded-2xl bg-white shadow-pharmacy"
-          onClick={() => setActiveView("sales")}
+          onClick={() => setActiveView("returns")}
         >
-          <div className="w-11 h-11 rounded-xl bg-emerald-50 flex items-center justify-center">
-            <Receipt className="h-5 w-5 text-emerald-600" />
+          <div className="w-11 h-11 rounded-xl bg-rose-50 flex items-center justify-center">
+            <RotateCcw className="h-5 w-5 text-rose-600" />
           </div>
-          <span className="text-xs font-medium text-gray-700">Invoices</span>
+          <span className="text-xs font-medium text-gray-700">Return</span>
         </button>
 
         {/* Reports — goes to Business Dashboard with all reports */}
         <button
           className="card-hover flex flex-col items-center gap-2 p-4 rounded-2xl bg-white shadow-pharmacy"
-          onClick={() => setActiveView("business-dashboard")}
+          onClick={() => setActiveView("reports-hub")}
         >
           <div className="w-11 h-11 rounded-xl bg-sky-50 flex items-center justify-center">
             <BarChart3 className="h-5 w-5 text-sky-600" />
@@ -318,27 +316,27 @@ export function PharmacyDashboard() {
           <div className="w-11 h-11 rounded-xl bg-amber-50 flex items-center justify-center">
             <DollarSign className="h-5 w-5 text-amber-600" />
           </div>
-          <span className="text-xs font-medium text-gray-700">Payments</span>
+          <span className="text-xs font-medium text-gray-700">Payment</span>
         </button>
 
         <button
           className="card-hover flex flex-col items-center gap-2 p-4 rounded-2xl bg-white shadow-pharmacy"
-          onClick={() => setActiveView("returns")}
-        >
-          <div className="w-11 h-11 rounded-xl bg-rose-50 flex items-center justify-center">
-            <RotateCcw className="h-5 w-5 text-rose-600" />
-          </div>
-          <span className="text-xs font-medium text-gray-700">Returns</span>
-        </button>
-
-        <button
-          className="card-hover flex flex-col items-center gap-2 p-4 rounded-2xl bg-white shadow-pharmacy"
-          onClick={() => setActiveView("discount-rules")}
+          onClick={() => setActiveView("purchases")}
         >
           <div className="w-11 h-11 rounded-xl bg-orange-50 flex items-center justify-center">
-            <Percent className="h-5 w-5 text-orange-600" />
+            <ShoppingBag className="h-5 w-5 text-orange-600" />
           </div>
-          <span className="text-xs font-medium text-gray-700">Discount</span>
+          <span className="text-xs font-medium text-gray-700">Purchase</span>
+        </button>
+
+        <button
+          className="card-hover flex flex-col items-center gap-2 p-4 rounded-2xl bg-white shadow-pharmacy"
+          onClick={() => setActiveView("suppliers")}
+        >
+          <div className="w-11 h-11 rounded-xl bg-purple-50 flex items-center justify-center">
+            <Truck className="h-5 w-5 text-purple-600" />
+          </div>
+          <span className="text-xs font-medium text-gray-700">Supplier</span>
         </button>
       </div>
 

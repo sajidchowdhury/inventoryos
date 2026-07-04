@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import {
   BarChart3, TrendingUp, Boxes, Receipt, FileText,
   History, Database, ChevronRight, LayoutDashboard,
-  ArrowLeft, Printer, Sparkles,
+  ArrowLeft, Printer, Sparkles, ScrollText,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -52,6 +52,7 @@ const sections: ReportSection[] = [
     items: [
       { icon: LayoutDashboard, label: "Business Overview", desc: "Unified KPIs & financial position", view: "business-dashboard", color: "emerald" },
       { icon: BarChart3, label: "Sales Analytics", desc: "Trends, peak hours, top products", view: "analytics", color: "pink" },
+      { icon: ScrollText, label: "Invoices", desc: "Sales invoices & transaction history", view: "sales", color: "purple" },
     ],
   },
   {
