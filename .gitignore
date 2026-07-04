@@ -72,3 +72,16 @@ Thumbs.db
 # Agent context (auto-generated)
 /agent-ctx/
 .z-ai-config
+
+# ── Z.ai sandbox local overrides (NEVER commit) ──
+# These are environment-specific files that only exist in the Z.ai dev sandbox.
+# See DEPLOYMENT_WORKFLOW.md for the two-environment strategy.
+.env.zai
+.env.whm
+*.zai.local
+/scripts/zai-*
+/dev.log
+/server.log
+
+# Tool-results directory (sandbox artifacts, not app code)
+/tool-results/

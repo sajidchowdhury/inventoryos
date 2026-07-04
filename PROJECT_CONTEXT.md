@@ -496,4 +496,52 @@ After every meaningful change, the agent who made the change MUST:
 
 ---
 
+## 15. Deployment Workflow — Z.ai Sandbox ↔ GitHub ↔ WHM Production
+
+> **Full strategy documented in `DEPLOYMENT_WORKFLOW.md` — read it before your first push.**
+
+### The two environments
+| | Z.ai Sandbox (dev) | WHM Production |
+|---|---|---|
+| DB | Local PostgreSQL (system service) | Docker container + PgBouncer |
+| Runtime | Node.js (`npm run dev`, Turbopack) | Bun (`bun .next/standalone/server.js`) |
+| Proxy | None (`:3000` direct) | Caddy (`:81` → `:3000`) |
+| Secrets | `.env` (gitignored, local DB URL) | `.env` on server (gitignored, prod DB URL) |
+
+### The Golden Rule
+> **The repo is the source of truth for PRODUCTION. Z.ai uses gitignored overrides only.**
+>
+> If a change only makes sense in Z.ai → it goes in a gitignored file (`.env`, local scripts).
+> If a change makes sense in production → it goes in a committed file (`src/**`, `schema.prisma`, etc.).
+
+### Safe to push (environment-agnostic)
+`src/**`, `prisma/schema.prisma`, `prisma/migrations/**`, `prisma/seed.ts`, `public/**`, `package.json` (deps + lockfiles), `next.config.js`, `tsconfig.json`, `tailwind.config.ts`, `components.json`, `src/middleware.ts`, `download/**`, all `.md` docs.
+
+### Never push (gitignored, environment-specific)
+`.env`, `.env.local`, `.env.production`, `*.log`, `*.db`, `node_modules/`, `.next/`, `agent-ctx/`, `.z-ai-config`, `tool-results/`.
+
+### Modify with care (committed but environment-sensitive)
+`package.json` scripts (`dev`/`build`/`start`), `docker-compose.yml`, `Caddyfile`, `docker/pgbouncer/**`. Only modify these if the change benefits BOTH environments. For Z.ai-only scripts, ADD a new key (e.g., `dev:zai`) — don't modify existing.
+
+### Pre-push guardrail (MANDATORY before every push)
+```bash
+bash scripts/pre-push-check.sh
+```
+Verifies no `.env*` files, no `*.log`, no `*.db`, no `agent-ctx/` is staged. Exits non-zero if forbidden files found. Optional: install as a git pre-push hook (see `DEPLOYMENT_WORKFLOW.md` §5).
+
+### Standard workflow
+1. Make changes in Z.ai → test at `localhost:3000`
+2. `bash scripts/pre-push-check.sh` — must pass
+3. `git add` only the files you changed (be selective, avoid `git add .`)
+4. `git commit -m "feat(<scope>): <desc>"` → `git push origin main`
+5. On WHM: `git pull origin main` → `docker compose exec app npx prisma migrate deploy` (if schema changed) → `docker compose restart app`
+
+### Adding a new env var
+1. Add to `.env.example` (committed template, no real values)
+2. Add to local Z.ai `.env` (gitignored, real local value)
+3. Add to WHM server `.env` via SSH (real prod value)
+4. Document in §9 of this file
+
+---
+
 **This file is the contract between sessions. Keep it accurate. When in doubt, update it.**

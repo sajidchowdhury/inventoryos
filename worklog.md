@@ -1743,3 +1743,27 @@ Stage Summary:
 - Defines a strict Update Protocol that future agents must follow after any meaningful implementation.
 - The file is the contract between sessions — read it FIRST, update it AFTER every meaningful change.
 - Committed locally; NOT pushed (user should review before push, and the PAT embedded in remote URL should be rotated after this session per the security warning).
+
+---
+Task ID: deployment-workflow-setup
+Agent: Super Z (Main Agent)
+Task: Solve the Z.ai sandbox ↔ GitHub ↔ WHM production conflict — establish environment isolation so changes made in Z.ai can be pushed to GitHub in production-ready format without breaking WHM pulls.
+
+Work Log:
+- Analyzed the conflict: user develops in Z.ai (local Postgres + Node dev server) but deploys to WHM (Docker + Caddy + Bun). Risk = pushing Z.ai-specific config to GitHub breaks WHM pulls.
+- Key finding: the conflict is 95% already solved because .env is gitignored and Z.ai setup steps (start Postgres, create .env, prisma db push, npm run dev) don't modify any committed files. The 5% risk is human error (accidentally modifying package.json/docker-compose.yml/Caddyfile for Z.ai convenience).
+- Created DEPLOYMENT_WORKFLOW.md (committed) — 7-section strategy doc covering: two-environment comparison table, safe-to-push vs never-push vs modify-with-care file lists, the Golden Rule, step-by-step workflows for Z.ai→GitHub and GitHub→WHM, pre-push guardrail instructions, 4 conflict resolution scenarios, ASCII architecture diagram.
+- Created scripts/pre-push-check.sh (committed, chmod +x) — bash guardrail that verifies no .env*, no *.log, no *.db, no agent-ctx/, no tool-results/ is staged. Warns (doesn't fail) on docker-compose.yml/Caddyfile modifications. Tested 4 scenarios: clean state (pass), force-add .env.test (fail as expected), force-add .env (fail as expected), legit code file (pass). Initial pattern too narrow (^\.env$) — fixed to ^\.env(\..*)?$ to catch all .env variants except .env.example.
+- Strengthened .gitignore — added .env.zai, .env.whm, *.zai.local, /scripts/zai-*, /dev.log, /server.log, /tool-results/ patterns. These were previously not explicitly excluded.
+- Updated PROJECT_CONTEXT.md — added §15 Deployment Workflow with the two-environment table, Golden Rule, safe/never/modify-with-care file lists, pre-push guardrail mandate, standard workflow, and new-env-var procedure.
+- Verified repo state is clean: no .env files tracked (only .env.example), no Z.ai-specific files committed (zai.ts and zai-vision-models.ts are legit app code, not env config).
+
+Stage Summary:
+- The two-environment conflict is now structurally solved. Three layers of defense:
+  1. .gitignore prevents environment-specific files from being staged (first line)
+  2. scripts/pre-push-check.sh catches force-added forbidden files (second line)
+  3. DEPLOYMENT_WORKFLOW.md + PROJECT_CONTEXT.md §15 document the rules (third line — human discipline)
+- Files created: 2 (DEPLOYMENT_WORKFLOW.md, scripts/pre-push-check.sh)
+- Files modified: 2 (.gitignore, PROJECT_CONTEXT.md)
+- The user can now safely: make changes in Z.ai → test at localhost:3000 → run pre-push-check.sh → commit only the code/schema files they changed → push to GitHub → WHM pulls without conflict.
+- The ONLY file that differs between environments is .env, which is already gitignored on both sides.
