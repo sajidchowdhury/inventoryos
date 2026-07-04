@@ -2037,3 +2037,59 @@ Stage Summary:
 - API changes: POST /stock-count-day now returns inheritedFrom + snapshotCount; new POST /zones/[zoneSessionId]/add-line endpoint; PATCH zones action=count now upserts ProductZoneAssignment
 - The founder's zone-inheritance proposal is now fully implemented: first SCD = count what you see, every subsequent SCD inherits the learned zone map.
 - Ready for P4 (Export & History Detail — PDF/Excel export + browsable past SCDs).
+
+---
+Task ID: scd-enhance-p4
+Agent: Super Z (Main Agent)
+Task: Implement Phase 4 of the SCD Enhancement Plan — PDF/Excel export + history detail view (closes gaps #5, #7).
+
+Work Log:
+- Installed exceljs 4.4.0 (npm install exceljs) for .xlsx generation. No PDF library needed — PDF uses print-friendly HTML (browser prints to PDF, zero dependencies).
+- Created GET /api/businesses/[id]/stock-count-day/[scdId]/export?format=pdf|excel endpoint (~390 lines):
+  * Fetches SCD with full detail: zoneSessions (with lines + product) + summaries (with product + varianceReason + varianceNote)
+  * Fetches business info (name, address, phone, shopCode) for the report header
+  * PDF format: returns print-friendly HTML with @page A4 CSS, teal/emerald pharmacy branding, 4-card summary grid (Total/Matched/Variances/Not Counted), per-zone count sheet tables, variance report table with reasons + notes, not-counted list, "Print / Save as PDF" floating button. Opens in new tab via window.open — user uses browser's native print-to-PDF.
+  * Excel format: generates .xlsx via exceljs with multiple sheets — Sheet 1: Summary (metadata + stats), Sheet 2: Variances (with reasons + notes), Sheets 3+: one per zone (count sheet with #, product, generic, unit, counted, expected, diff, status, autoAssigned), final sheet: Not Counted. Each sheet has colored header row (teal for zones, amber for variances, gray for not-counted). Streams as attachment download.
+  * Filename: "{safeName}_{dateStr}.html" or ".xlsx" where safeName is SCD name sanitized to 40 chars
+  * Fixed TypeScript error: generatePdfHtml was missing safeName parameter — added to signature + call site
+- Created src/modules/pharmacy/components/scd/ScdExportButtons.tsx (~95 lines):
+  * Two buttons: "Export PDF" (FileText icon) + "Export Excel" (FileSpreadsheet icon)
+  * PDF: window.open in new tab (print-friendly HTML)
+  * Excel: fetch → blob → download with filename from Content-Disposition header
+  * Loading state per button (pdf | excel), disabled while exporting
+  * compact prop for smaller spaces (variance review header), default for full-size
+  * variant prop: "outline" (default) or "default"
+- Modified StockCountDayHub.tsx (~135 lines added):
+  * Added ScdExportButtons import
+  * Added "history-detail" to Screen type union
+  * Added state: historyDetailScdId (string | null)
+  * Added loadHistoryDetail() handler — fetches past SCD detail, sets varianceSummaries + stats, sets screen to "history-detail"
+  * Added export buttons to variance review screen header (compact mode, beside back button)
+  * Added new "history-detail" screen — read-only variant of variance review:
+    - Shows past SCD name + date + status badge in header
+    - Export buttons in header (compact)
+    - Stat cards (Matched/Mismatch/Not counted) — read-only
+    - Variance list with reason badges + notes (read-only — no Record reason button)
+    - Not counted list
+    - Back button returns to hub + clears historyDetailScdId
+  * Made history rows tappable: added card-hover + cursor-pointer + onClick={loadHistoryDetail}, added ChevronRight icon, improved date formatting (en-GB with month abbreviation)
+- TypeScript: 0 errors in changed files (5 pre-existing errors in generic /export/route.ts are unrelated — they're in the pre-existing full-data-export endpoint, not my SCD export)
+- Pre-push guardrail: PASS
+- Acceptance criteria verification (all 7 met):
+  1. ✅ Variance review screen has "Export PDF" + "Export Excel" buttons (compact, in header)
+  2. ✅ PDF export opens print-friendly HTML with business header, SCD date, per-zone count sheet, variance summary (browser prints to PDF)
+  3. ✅ Excel export downloads .xlsx with one sheet per zone + summary sheet + variances sheet + not-counted sheet
+  4. ✅ History list rows are tappable and open the history-detail screen
+  5. ✅ History-detail screen shows the same stat cards + variance list as the live variance review (read-only)
+  6. ✅ History-detail screen has working export buttons (same as variance review)
+  7. ✅ Exports work for SCDs in any status (active, closed, applied) — no status check in export endpoint
+
+Stage Summary:
+- Phase 4 of the SCD Enhancement Plan is COMPLETE.
+- Files added: 2 (src/app/api/businesses/[id]/stock-count-day/[scdId]/export/route.ts, src/modules/pharmacy/components/scd/ScdExportButtons.tsx)
+- Files modified: 2 (src/modules/pharmacy/components/StockCountDayHub.tsx, package.json + package-lock.json for exceljs)
+- Schema changes: none (P4 reads existing models only — no migration needed)
+- API change: new GET /stock-count-day/[scdId]/export?format=pdf|excel endpoint
+- Dependency added: exceljs 4.4.0 (for .xlsx generation)
+- PDF approach: print-friendly HTML (no library, works everywhere, browser handles actual PDF rendering)
+- Ready for P5 (Monthly Reminders — the final phase).

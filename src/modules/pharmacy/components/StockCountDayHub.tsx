@@ -22,6 +22,7 @@ import { ZoneBulkAssign } from "./scd/ZoneBulkAssign";
 import { ScdOnboardingCard } from "./scd/ScdOnboardingCard";
 import { VarianceReasonDialog, VarianceReasonBadge } from "./scd/VarianceReasonDialog";
 import { ZoneAddProductDialog } from "./scd/ZoneAddProductDialog";
+import { ScdExportButtons } from "./scd/ScdExportButtons";
 import { cn } from "@/lib/utils";
 
 // ── Types ──
@@ -86,7 +87,7 @@ interface ZoneLine {
   isMultiZone: boolean;
 }
 
-type Screen = "hub" | "setup-zones" | "start-scd" | "zone-count" | "variance-review";
+type Screen = "hub" | "setup-zones" | "start-scd" | "zone-count" | "variance-review" | "history-detail";
 
 interface VarianceSummary {
   id: string;
@@ -171,6 +172,8 @@ export function StockCountDayHub() {
   });
   // P3: inheritance info returned by createAndStartScd
   const [inheritanceInfo, setInheritanceInfo] = useState<{ name: string; appliedAt: string; snapshotCount: number } | null>(null);
+  // P4: history detail — when viewing a past SCD's variances
+  const [historyDetailScdId, setHistoryDetailScdId] = useState<string | null>(null);
 
   const loadHub = useCallback(async () => {
     if (!businessId) return;
@@ -345,6 +348,36 @@ export function StockCountDayHub() {
       setScreen("variance-review");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load review");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // P4: Load a past SCD's detail for the history-detail screen (read-only variance review)
+  const loadHistoryDetail = async (scdId: string) => {
+    if (!businessId) return;
+    setActionLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(
+        `/api/businesses/${businessId}/stock-count-day?scdId=${scdId}`
+      );
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to load history");
+      const summaries = (data.scd?.summaries ?? []) as VarianceSummary[];
+      setVarianceSummaries(summaries);
+      const mismatch = summaries.filter(
+        (s) => s.variance !== null && Math.abs(s.variance) > 0.001
+      ).length;
+      const uncounted = summaries.filter((s) => s.totalCountedQty === null).length;
+      const matched = summaries.filter(
+        (s) => s.totalCountedQty !== null && (s.variance === null || Math.abs(s.variance) <= 0.001)
+      ).length;
+      setVarianceStats({ mismatch, uncounted, matched });
+      setHistoryDetailScdId(scdId);
+      setScreen("history-detail");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to load history");
     } finally {
       setActionLoading(false);
     }
@@ -730,10 +763,14 @@ export function StockCountDayHub() {
           <Button variant="ghost" size="icon" onClick={() => setScreen("hub")}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <div>
+          <div className="flex-1 min-w-0">
             <h1 className="text-lg font-bold">Review before apply</h1>
             <p className="text-xs text-gray-500">Check mismatches, then update inventory</p>
           </div>
+          {/* P4: Export buttons */}
+          {businessId && activeScd && (
+            <ScdExportButtons businessId={businessId} scdId={activeScd.id} compact />
+          )}
         </div>
 
         {/* P2: Tappable stat cards — clicking a card switches the filter */}
@@ -949,6 +986,126 @@ export function StockCountDayHub() {
           initialNote={varianceSummaries.find((s) => s.productId === reasonDialog.productId)?.varianceNote ?? null}
           onSave={saveVarianceReason}
         />
+      </motion.div>
+    );
+  }
+
+  // ── P4: History detail screen (read-only variance review for past SCDs) ──
+  if (screen === "history-detail" && historyDetailScdId && businessId) {
+    const mismatches = varianceSummaries.filter(
+      (s) => s.variance !== null && Math.abs(s.variance) > 0.001
+    );
+    const uncounted = varianceSummaries.filter((s) => s.totalCountedQty === null);
+    const matched = varianceSummaries.filter(
+      (s) => s.totalCountedQty !== null && (s.variance === null || Math.abs(s.variance) <= 0.001)
+    );
+    const pastScd = history.find((h) => h.id === historyDetailScdId);
+
+    return (
+      <motion.div {...fadeIn} className="space-y-4 pb-24 pharmacy-bg">
+        <div className="flex items-center gap-2 pt-1">
+          <Button variant="ghost" size="icon" onClick={() => { setScreen("hub"); setHistoryDetailScdId(null); }}>
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-lg font-bold truncate">{pastScd?.name || "Past count"}</h1>
+            <p className="text-xs text-gray-500">
+              {pastScd ? new Date(pastScd.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }) : ""}
+              {" · "}
+              <Badge variant="outline" className="text-[10px] capitalize">{pastScd?.status || ""}</Badge>
+            </p>
+          </div>
+          {/* P4: Export buttons */}
+          <ScdExportButtons businessId={businessId} scdId={historyDetailScdId} compact />
+        </div>
+
+        {/* Stat cards (read-only) */}
+        <div className="grid grid-cols-3 gap-2">
+          <Card className="shadow-pharmacy border-emerald-200 bg-emerald-50/50">
+            <CardContent className="p-3 text-center">
+              <p className="text-lg font-bold text-emerald-700">{matched.length}</p>
+              <p className="text-[10px] text-emerald-800">Matched</p>
+            </CardContent>
+          </Card>
+          <Card className="shadow-pharmacy border-amber-200 bg-amber-50/50">
+            <CardContent className="p-3 text-center">
+              <p className="text-lg font-bold text-amber-700">{mismatches.length}</p>
+              <p className="text-[10px] text-amber-800">Mismatch</p>
+            </CardContent>
+          </Card>
+          <Card className="shadow-pharmacy border-slate-200 bg-slate-50/50">
+            <CardContent className="p-3 text-center">
+              <p className="text-lg font-bold text-slate-600">{uncounted.length}</p>
+              <p className="text-[10px] text-slate-700">Not counted</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Variance list (read-only — shows reason badges but no Record reason button) */}
+        {mismatches.length > 0 && (
+          <div className="space-y-2">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-amber-700 px-1 flex items-center gap-1">
+              <Scale className="h-3.5 w-3.5" /> Variances ({mismatches.length})
+            </h2>
+            {mismatches.map((s) => {
+              const expected = s.systemQtyAtStart - s.soldDuringScd;
+              return (
+                <Card key={s.id} className="shadow-pharmacy border-l-4 border-l-amber-400">
+                  <CardContent className="p-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="text-sm font-semibold flex-1 min-w-0">{s.product.name}</p>
+                      {s.varianceReason && (
+                        <VarianceReasonBadge reason={s.varianceReason} />
+                      )}
+                    </div>
+                    {s.product.genericName && (
+                      <p className="text-[11px] text-gray-400 mt-0.5">{s.product.genericName}</p>
+                    )}
+                    <div className="grid grid-cols-3 gap-2 mt-2 text-[11px]">
+                      <div>
+                        <p className="text-muted-foreground">Expected</p>
+                        <p className="font-semibold">{expected} {s.product.unit}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Counted</p>
+                        <p className="font-semibold">{s.totalCountedQty ?? "—"}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Diff</p>
+                        <p className={cn(
+                          "font-semibold",
+                          (s.variance ?? 0) > 0 ? "text-emerald-600" : "text-rose-600"
+                        )}>
+                          {s.variance !== null ? (s.variance > 0 ? "+" : "") + s.variance.toFixed(0) : "—"}
+                        </p>
+                      </div>
+                    </div>
+                    {s.varianceNote && (
+                      <p className="text-[11px] text-gray-500 mt-2 italic bg-gray-50 rounded px-2 py-1">
+                        &ldquo;{s.varianceNote}&rdquo;
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        )}
+
+        {uncounted.length > 0 && (
+          <div className="space-y-2">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500 px-1">
+              Not counted ({uncounted.length})
+            </h2>
+            <Card className="shadow-pharmacy">
+              <CardContent className="p-3 max-h-40 overflow-y-auto space-y-1">
+                {uncounted.map((s) => (
+                  <p key={s.id} className="text-xs text-muted-foreground">{s.product.name}</p>
+                ))}
+              </CardContent>
+            </Card>
+          </div>
+        )}
       </motion.div>
     );
   }
@@ -1331,15 +1488,22 @@ export function StockCountDayHub() {
             <History className="h-3.5 w-3.5" /> Recent counts
           </h2>
           {history.slice(0, 5).map((h) => (
-            <Card key={h.id} className="shadow-pharmacy">
+            <Card
+              key={h.id}
+              className="card-hover cursor-pointer shadow-pharmacy"
+              onClick={() => loadHistoryDetail(h.id)}
+            >
               <CardContent className="p-3 flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium">{h.name}</p>
+                <div className="min-w-0">
+                  <p className="text-sm font-medium truncate">{h.name}</p>
                   <p className="text-xs text-gray-400">
-                    {new Date(h.createdAt).toLocaleDateString()}
+                    {new Date(h.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
                   </p>
                 </div>
-                <Badge variant="outline" className="text-[10px] capitalize">{h.status}</Badge>
+                <div className="flex items-center gap-2 shrink-0">
+                  <Badge variant="outline" className="text-[10px] capitalize">{h.status}</Badge>
+                  <ChevronRight className="h-4 w-4 text-gray-300" />
+                </div>
               </CardContent>
             </Card>
           ))}
