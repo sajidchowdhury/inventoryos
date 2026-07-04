@@ -1289,6 +1289,33 @@ model ReceivedPayment {
   @@map("received_payments")
 }
 
+// ── P5: Payment Configuration (singleton) ──
+// Stores SSL Commerz credentials + active payment method toggles + bKash/Nagad
+// account numbers. Editable from /admin/packages. Falls back to env vars if no row.
+model PaymentConfig {
+  id              String   @id @default("default")
+  // SSL Commerz
+  sslStoreId      String?
+  sslStorePasswd  String?
+  sslMode         String   @default("sandbox") // "sandbox" | "production"
+  // Payment method toggles
+  bkashActive     Boolean  @default(true)
+  nagadActive     Boolean  @default(true)
+  sslActive       Boolean  @default(false)
+  // Account numbers shown to users on the Pay Subscription page
+  bkashNumber     String?
+  nagadNumber     String?
+  // Tier prices (editable from admin, falls back to feature-gate.ts defaults)
+  proMonthly      Float    @default(800)
+  proAnnual       Float    @default(8000)
+  proAiMonthly    Float    @default(1500)
+  proAiAnnual     Float    @default(15000)
+  updatedAt       DateTime @updatedAt
+  updatedBy       String?
+
+  @@map("payment_config")
+}
+
 // ── SMTP Configuration (Phase 6: dynamic, editable from super admin panel) ──
 // Stores SMTP credentials in the DB so the founder can configure email delivery
 // from /admin/api-setup → SMTP tab without touching environment variables.

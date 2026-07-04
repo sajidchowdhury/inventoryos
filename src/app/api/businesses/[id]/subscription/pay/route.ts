@@ -4,6 +4,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getTierConfig } from "@/lib/feature-gate";
+import { getPaymentConfig } from "@/lib/payment-config";
 
 export async function POST(
   req: NextRequest,
@@ -54,10 +55,20 @@ export async function POST(
       return NextResponse.json({ error: "Business not found" }, { status: 404 });
     }
 
-    // ── Get tier config for expected amount ──
+    // ── Get tier config + payment config for expected amount + active methods ──
     const tierConfig = getTierConfig(business.subscriptionTier);
     const period = billingPeriod === "year" ? "year" : "month";
-    const expectedAmount = period === "year" ? tierConfig.annualPrice : tierConfig.price;
+    const paymentConfig = await getPaymentConfig();
+
+    // Use DB-configured prices if available, otherwise fall back to tier config
+    let expectedAmount: number;
+    if (business.subscriptionTier === "pro") {
+      expectedAmount = period === "year" ? paymentConfig.proAnnual : paymentConfig.proMonthly;
+    } else if (business.subscriptionTier === "pro_ai") {
+      expectedAmount = period === "year" ? paymentConfig.proAiAnnual : paymentConfig.proAiMonthly;
+    } else {
+      expectedAmount = period === "year" ? tierConfig.annualPrice : tierConfig.price;
+    }
 
     // ── Check if there's already a pending payment for this TRX ID ──
     const existing = await db.paymentTransaction.findFirst({
