@@ -544,4 +544,63 @@ Verifies no `.env*` files, no `*.log`, no `*.db`, no `agent-ctx/` is staged. Exi
 
 ---
 
+## 16. SCD Enhancement Plan — Phase Tracker
+
+> **Full spec:** `download/InventoryOS_SCD_Enhancement_Plan.docx`
+> **Status legend:** Pending → In Progress → Done (commit SHA)
+
+| Phase | Theme | Features | Effort | Status | Commit |
+|---|---|---|---|---|---|
+| **P1** | Onboarding & Resume | First-time empty state, resume-count UX | 1 session | Pending | — |
+| **P2** | Variance UX | Search/filter, reason-for-variance capture | 1 session | Pending | — |
+| **P3** | Smart Zones | Zone inheritance from prev SCD + scan-to-assign + manual add from directory | 2 sessions | Pending | — |
+| **P4** | Export & History | PDF/Excel export, history detail view | 1 session | Pending | — |
+| **P5** | Reminders | Monthly SCD reminder cron job | 1 session | Pending | — |
+
+### P1 — Onboarding & Resume (closes gaps #1, #2)
+- **New file:** `src/modules/pharmacy/components/scd/ScdOnboardingCard.tsx`
+- **Modify:** `StockCountDayHub.tsx` (render onboarding card when 0 zones + 0 history; add resume-count banner when zoneSession.status === "counting")
+- **Schema:** none. **API:** GET /stock-count-day adds zoneSession.lineCount + lastCountedAt
+- **Task ID:** `scd-enhance-p1` · **Tag:** `v1.6.0-scd-p1`
+
+### P2 — Variance Search & Reason Capture (closes gaps #3, #4)
+- **New schema:** `StockCountProductSummary.varianceReason` (String?), `varianceNote` (String?)
+- **New file:** `src/modules/pharmacy/components/scd/VarianceReasonDialog.tsx`
+- **Modify:** variance review screen (search input + filter chips + tappable stat cards + reason badges)
+- **API:** PATCH /stock-count-day/[scdId] accepts action "setReason"
+- **Task ID:** `scd-enhance-p2` · **Tag:** `v1.6.1-scd-p2`
+
+### P3 — Smart Zone Inheritance & Counting-Time Assignment (closes gap #8)
+- **New schema:** `ZoneAssignmentSnapshot` model (snapshots ProductZoneAssignment at SCD creation); `StockCountLine.autoAssigned` Boolean
+- **New file:** `src/modules/pharmacy/components/scd/ZoneAddProductDialog.tsx`
+- **Modify:** start-scd screen (inheritance banner), zone-count screen (add "Add product manually" button), ZoneBulkAssign.tsx (mark optional)
+- **API:** POST /stock-count-day snapshots assignments; PATCH zones action=count upserts ProductZoneAssignment; new POST /zones/[id]/add-line
+- **Task ID:** `scd-enhance-p3` · **Tag:** `v1.6.2-scd-p3`
+
+### P4 — Export & History Detail (closes gaps #5, #7)
+- **New endpoints:** GET /stock-count-day/[scdId]/export?format=pdf|excel
+- **New file:** `src/modules/pharmacy/components/scd/ScdExportButtons.tsx`
+- **New screen state:** "history-detail" (read-only variance review with export buttons)
+- **Schema:** none. Reads existing models.
+- **Task ID:** `scd-enhance-p4` · **Tag:** `v1.6.3-scd-p4`
+
+### P5 — Monthly Reminders (closes gap #6)
+- **New cron:** `scd-monthly-reminder` (schedule `0 4 25 * *` = 09:00 Asia/Dhaka on 25th)
+- **New endpoint:** POST /api/cron/scd-monthly-reminder
+- **Modify:** NotificationCenter.tsx (render scd_reminder with "Run count" CTA), SuperAdminHelp.tsx (add help entry)
+- **Schema:** none. Uses NotificationLog + Business.ownerEmail.
+- **Task ID:** `scd-enhance-p5` · **Tag:** `v1.6.4-scd-p5`
+
+### Recommended sequencing
+**P1 → P2 → P3 → P4 → P5** (maximises user-impact-per-session; P4 benefits from P2's reason codes in exports; P5's reminders link to P4's history detail)
+
+### Update protocol for this section
+After completing a phase:
+1. Append worklog entry with the phase's Task ID
+2. Update the Status column above to "Done" + fill the Commit SHA
+3. Bump the semver tag (`git tag vX.6.N-scd-pN`)
+4. Update `download/InventoryOS_SCD_Enhancement_Plan.docx` Table 10 to match (regenerate via `node /home/z/my-project/scripts/scd-spec-generate.js`)
+
+---
+
 **This file is the contract between sessions. Keep it accurate. When in doubt, update it.**

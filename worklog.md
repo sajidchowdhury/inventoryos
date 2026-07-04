@@ -1824,3 +1824,33 @@ Stage Summary:
 - AI hub: AI Insights → AI Chat → Smart Forecast → Expiry Optimizer → Stock Count Day (SCD added after Expiry Optimizer per founder's req 1)
 - Fixed pre-existing bug: SCD tab highlighting (now Stock tab highlights when SCD active)
 - Safe to push — no environment-specific files touched.
+
+---
+Task ID: scd-enhancement-spec
+Agent: Super Z (Main Agent)
+Task: Create phased spec doc for 8 SCD enhancement features (7 from audit + 1 founder-proposed smart zone inheritance) + add §16 phase tracker to PROJECT_CONTEXT.md.
+
+Work Log:
+- Audited current SCD implementation: StockCountDayHub.tsx (1011 lines), 4 Prisma models, 4 API routes. Identified 8 gaps via UX walkthrough against real pharmacy workflow.
+- Reviewed founder's zone-inheritance proposal: confirmed it is a good idea — converts upfront assignment cost to incremental cost. Designed P3 around it with 3 sub-features: (a) snapshot-based inheritance from previous SCD, (b) scan-to-assign during counting, (c) manual add-from-directory button.
+- Designed 5-phase plan with sequencing P1→P5 by user-impact-to-effort ratio:
+  * P1 — Onboarding & Resume (closes gaps #1, #2; no schema change)
+  * P2 — Variance UX (closes gaps #3, #4; 2 new nullable fields on StockCountProductSummary)
+  * P3 — Smart Zones (closes gap #8; new ZoneAssignmentSnapshot model + StockCountLine.autoAssigned field)
+  * P4 — Export & History (closes gaps #5, #7; 2 new export endpoints + history-detail screen)
+  * P5 — Reminders (closes gap #6; new scd-monthly-reminder cron job)
+- Generated spec docx via 3 scripts under /home/z/my-project/scripts/:
+  * scd-spec-cover.js — R1 emerald pharmacy cover (reuses ai-report-helpers palette)
+  * scd-spec-body.js — TOC + executive summary + gap analysis + 5 phase sections + tracking section
+  * scd-spec-generate.js — assembles cover + body into final .docx with header/footer/page numbers
+- Ran mandatory docx postcheck.py: initial run had 1 ❌ (TOC outline levels missing). Fixed via add_toc_placeholders.py --auto. Re-ran postcheck: 0 errors, 3 acceptable warnings (intentional cover/body spacing variance, section-separator empty paragraphs, H1→H3 skips within phase sections).
+- Final docx: download/InventoryOS_SCD_Enhancement_Plan.docx (28 KB, 11 tables, ~350 paragraphs).
+- Updated PROJECT_CONTEXT.md with new §16 "SCD Enhancement Plan — Phase Tracker" containing: phase status table, per-phase details (new files, schema, API, Task ID, tag), recommended sequencing, and update protocol.
+- Update protocol specifies: after each phase, (1) append worklog entry with Task ID scd-enhance-pN, (2) update §16 status column with commit SHA, (3) tag vX.6.N-scd-pN, (4) regenerate the docx Table 10 to match.
+
+Stage Summary:
+- 8 SCD enhancement features documented in a phased spec doc + tracked in PROJECT_CONTEXT.md §16.
+- Files created: 3 generator scripts (scripts/scd-spec-cover.js, scd-spec-body.js, scd-spec-generate.js) + 1 docx (download/InventoryOS_SCD_Enhancement_Plan.docx).
+- Files modified: PROJECT_CONTEXT.md (added §16), worklog.md (this entry).
+- Founder's zone-inheritance proposal confirmed and designed as P3 with snapshot table for historical accuracy.
+- Ready to start P1 implementation in next session — read PROJECT_CONTEXT.md §16 first for context.
