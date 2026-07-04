@@ -552,7 +552,7 @@ Verifies no `.env*` files, no `*.log`, no `*.db`, no `agent-ctx/` is staged. Exi
 | Phase | Theme | Features | Effort | Status | Commit |
 |---|---|---|---|---|---|
 | **P1** | Onboarding & Resume | First-time empty state, resume-count UX | 1 session | Done | `v1.6.0-scd-p1` |
-| **P2** | Variance UX | Search/filter, reason-for-variance capture | 1 session | Pending | — |
+| **P2** | Variance UX | Search/filter, reason-for-variance capture | 1 session | Done | `v1.6.1-scd-p2` |
 | **P3** | Smart Zones | Zone inheritance from prev SCD + scan-to-assign + manual add from directory | 2 sessions | Pending | — |
 | **P4** | Export & History | PDF/Excel export, history detail view | 1 session | Pending | — |
 | **P5** | Reminders | Monthly SCD reminder cron job | 1 session | Pending | — |

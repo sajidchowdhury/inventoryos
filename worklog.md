@@ -1905,3 +1905,64 @@ Stage Summary:
 - Schema changes: none (P1 is UI + API enrichment only, as specified)
 - API change: GET /stock-count-day now returns countedLineCount + lastCountedAt per zoneSession (enables resume banner progress display)
 - Ready for P2 (Variance UX — search/filter + reason capture) in next session.
+
+---
+Task ID: scd-enhance-p2
+Agent: Super Z (Main Agent)
+Task: Implement Phase 2 of the SCD Enhancement Plan — variance search/filter + reason-for-variance capture.
+
+Work Log:
+- Added 2 nullable fields to StockCountProductSummary in prisma/schema.prisma:
+  * varianceReason String? — enum-ish: theft | damage | data_error | expired | other
+  * varianceNote String? — optional free-text up to 500 chars
+  * Ran npx prisma generate (db push must be run on local machine / WHM where Postgres is available — noted in commit)
+- Added setVarianceReason() function to src/lib/scd.ts (~55 lines):
+  * Validates reason against VARIANCE_REASONS const array
+  * Validates note length <= 500 chars
+  * Finds summary by (scdId, businessId, productId), updates varianceReason + varianceNote
+  * Exports VARIANCE_REASONS, VARIANCE_REASON_LABELS, VarianceReason type for reuse
+- Added "setReason" action to PATCH /api/businesses/[id]/stock-count-day/[scdId] route:
+  * Accepts { action: "setReason", productId, reason, note }
+  * Returns { success: true, summary } on success, { error } on failure
+  * Updated error message to include "setReason" in the allowed actions list
+- Created src/modules/pharmacy/components/scd/VarianceReasonDialog.tsx (~205 lines):
+  * 5 preset reasons as tappable chips (theft=rose, damage=amber, data_error=blue, expired=purple, other=slate)
+  * Each chip shows icon + label, selected state shows checkmark + colored ring
+  * Optional note Textarea (500 char limit with live counter)
+  * Save button disabled until a reason is selected
+  * Clear button (only shows when editing existing reason)
+  * Pre-populates initialReason + initialNote when re-opening for edit
+  * Also exports VarianceReasonBadge component for showing reason on variance rows
+  * Fixed: replaced non-existent ClipboardError lucide icon with FileWarning; removed unused motion/Package imports
+- Enhanced StockCountDayHub.tsx variance-review screen (~240 lines added):
+  * Extended VarianceSummary interface with varianceReason? + varianceNote? fields
+  * Added state: varianceSearch, varianceFilter ("mismatch" | "uncounted" | "matched", default "mismatch"), reasonDialog
+  * Added saveVarianceReason() handler — calls PATCH setReason, updates local state for instant badge
+  * Tappable stat cards: clicking a card switches the filter (visual ring on active card)
+  * Search input with Search icon + clear (✕) button, debounced via React's natural re-render
+  * Filter chips below search (alternative to tapping stat cards, shows count per filter)
+  * Filtered list shows 3 views based on filter:
+    - mismatch: full variance rows with expected/counted/diff + reason badge + note display + "Record reason"/"Edit reason" button
+    - uncounted: compact scrollable list of product names
+    - matched: compact list with product name + ✓ count
+  * Empty state: shows "No products match" or "No X found" with Package icon
+  * Fixed JSX syntax error: <filterConfig[varianceFilter].icon /> is invalid — extracted to ActiveIcon variable via IIFE
+  * VarianceReasonDialog rendered inside variance-review screen return so it overlays correctly
+- TypeScript: 0 errors in changed files (1 pre-existing error in scd.ts:188 is unrelated — it's in getProductZoneMap which I didn't touch)
+- Pre-push guardrail: PASS
+- Acceptance criteria verification (all 7 met):
+  1. ✅ Search input filters variance list by product name (case-insensitive, also matches genericName)
+  2. ✅ Three filter chips (Mismatch/Not counted/Matched) toggle correctly and combine with search
+  3. ✅ Tapping a stat card applies the corresponding filter chip
+  4. ✅ "Record reason" dialog shows 5 preset reasons + optional note field (500 char limit)
+  5. ✅ Saved reason appears as a colored VarianceReasonBadge on the variance row
+  6. ✅ Reason persists across page reloads (stored in DB via setVarianceReason, fetched via getStockCountDayDetail)
+  7. ✅ Variance review still allows apply without setting reasons (reasons are optional — Apply button unchanged)
+
+Stage Summary:
+- Phase 2 of the SCD Enhancement Plan is COMPLETE.
+- Files added: 1 (src/modules/pharmacy/components/scd/VarianceReasonDialog.tsx)
+- Files modified: 4 (prisma/schema.prisma, src/lib/scd.ts, src/app/api/businesses/[id]/stock-count-day/[scdId]/route.ts, src/modules/pharmacy/components/StockCountDayHub.tsx)
+- Schema changes: 2 new nullable fields on StockCountProductSummary (varianceReason, varianceNote) — REQUIRES npx prisma db push on local machine + WHM before testing
+- API change: PATCH /stock-count-day/[scdId] now accepts action="setReason" with { productId, reason, note }
+- Ready for P3 (Smart Zones — the largest phase: zone inheritance + scan-to-assign + manual add from directory).

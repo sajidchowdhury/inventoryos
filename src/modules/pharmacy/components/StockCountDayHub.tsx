@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, ClipboardList, MapPin, Play, CheckCircle2, Loader2,
   Plus, ChevronRight, AlertCircle, ScanLine, Layers, Package,
-  CircleDot, Lock, Sparkles, History, Scale,
+  CircleDot, Lock, Sparkles, History, Scale, Search,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,7 @@ import { useNavStore } from "@/lib/nav-store";
 import { usePermissions } from "@/lib/use-permissions";
 import { ZoneBulkAssign } from "./scd/ZoneBulkAssign";
 import { ScdOnboardingCard } from "./scd/ScdOnboardingCard";
+import { VarianceReasonDialog, VarianceReasonBadge } from "./scd/VarianceReasonDialog";
 import { cn } from "@/lib/utils";
 
 // ── Types ──
@@ -93,6 +94,9 @@ interface VarianceSummary {
   soldDuringScd: number;
   totalCountedQty: number | null;
   variance: number | null;
+  // P2: variance reason capture
+  varianceReason?: string | null;  // theft | damage | data_error | expired | other
+  varianceNote?: string | null;
   product: { id: string; name: string; genericName?: string | null; unit: string };
 }
 
@@ -152,6 +156,14 @@ export function StockCountDayHub() {
   const [qtyDrafts, setQtyDrafts] = useState<Record<string, string>>({});
   const [varianceSummaries, setVarianceSummaries] = useState<VarianceSummary[]>([]);
   const [varianceStats, setVarianceStats] = useState({ mismatch: 0, uncounted: 0, matched: 0 });
+
+  // P2: variance review search + filter state
+  const [varianceSearch, setVarianceSearch] = useState("");
+  const [varianceFilter, setVarianceFilter] = useState<"mismatch" | "uncounted" | "matched">("mismatch");
+  // P2: variance reason dialog state
+  const [reasonDialog, setReasonDialog] = useState<{ open: boolean; productId: string; productName: string }>({
+    open: false, productId: "", productName: "",
+  });
 
   const loadHub = useCallback(async () => {
     if (!businessId) return;
@@ -318,6 +330,34 @@ export function StockCountDayHub() {
     } finally {
       setActionLoading(false);
     }
+  };
+
+  // P2: save variance reason via PATCH /stock-count-day/[scdId] action=setReason
+  const saveVarianceReason = async (reason: string | null, note: string | null) => {
+    if (!businessId || !activeScd || !reasonDialog.productId) return;
+    const res = await fetch(
+      `/api/businesses/${businessId}/stock-count-day/${activeScd.id}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "setReason",
+          productId: reasonDialog.productId,
+          reason,
+          note,
+        }),
+      }
+    );
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Failed to save reason");
+    // Update local state so the badge appears immediately
+    setVarianceSummaries((prev) =>
+      prev.map((s) =>
+        s.productId === reasonDialog.productId
+          ? { ...s, varianceReason: reason, varianceNote: note }
+          : s
+      )
+    );
   };
 
   const startZone = async (zoneSession: ZoneSession) => {
@@ -587,7 +627,7 @@ export function StockCountDayHub() {
     );
   }
 
-  // ── Variance review before apply ──
+  // ── Variance review before apply (P2: enhanced with search + filter + reason capture) ──
   if (screen === "variance-review" && activeScd) {
     const mismatches = varianceSummaries.filter(
       (s) => s.variance !== null && Math.abs(s.variance) > 0.001
@@ -596,6 +636,21 @@ export function StockCountDayHub() {
     const matched = varianceSummaries.filter(
       (s) => s.totalCountedQty !== null && (s.variance === null || Math.abs(s.variance) <= 0.001)
     );
+
+    // P2: compute the filtered list based on active filter + search
+    const filterConfig = {
+      mismatch: { list: mismatches, label: "Variances", icon: Scale, color: "text-amber-700" },
+      uncounted: { list: uncounted, label: "Not counted", icon: Package, color: "text-slate-500" },
+      matched: { list: matched, label: "Matched", icon: CheckCircle2, color: "text-emerald-700" },
+    };
+    const activeList = filterConfig[varianceFilter].list;
+    const searchLower = varianceSearch.trim().toLowerCase();
+    const filteredList = searchLower
+      ? activeList.filter((s) =>
+          s.product.name.toLowerCase().includes(searchLower) ||
+          (s.product.genericName?.toLowerCase().includes(searchLower) ?? false)
+        )
+      : activeList;
 
     return (
       <motion.div {...fadeIn} className="space-y-4 pb-24 pharmacy-bg">
@@ -609,38 +664,119 @@ export function StockCountDayHub() {
           </div>
         </div>
 
+        {/* P2: Tappable stat cards — clicking a card switches the filter */}
         <div className="grid grid-cols-3 gap-2">
-          <Card className="shadow-pharmacy border-emerald-200 bg-emerald-50/50">
-            <CardContent className="p-3 text-center">
-              <p className="text-lg font-bold text-emerald-700">{matched.length}</p>
-              <p className="text-[10px] text-emerald-800">Matched</p>
-            </CardContent>
-          </Card>
-          <Card className="shadow-pharmacy border-amber-200 bg-amber-50/50">
+          <Card
+            className={cn(
+              "shadow-pharmacy cursor-pointer transition-all active:scale-95",
+              varianceFilter === "mismatch" ? "ring-2 ring-amber-400 bg-amber-50" : "border-amber-200 bg-amber-50/50"
+            )}
+            onClick={() => setVarianceFilter("mismatch")}
+          >
             <CardContent className="p-3 text-center">
               <p className="text-lg font-bold text-amber-700">{mismatches.length}</p>
               <p className="text-[10px] text-amber-800">Mismatch</p>
             </CardContent>
           </Card>
-          <Card className="shadow-pharmacy border-slate-200 bg-slate-50/50">
+          <Card
+            className={cn(
+              "shadow-pharmacy cursor-pointer transition-all active:scale-95",
+              varianceFilter === "uncounted" ? "ring-2 ring-slate-400 bg-slate-100" : "border-slate-200 bg-slate-50/50"
+            )}
+            onClick={() => setVarianceFilter("uncounted")}
+          >
             <CardContent className="p-3 text-center">
               <p className="text-lg font-bold text-slate-600">{uncounted.length}</p>
               <p className="text-[10px] text-slate-700">Not counted</p>
             </CardContent>
           </Card>
+          <Card
+            className={cn(
+              "shadow-pharmacy cursor-pointer transition-all active:scale-95",
+              varianceFilter === "matched" ? "ring-2 ring-emerald-400 bg-emerald-100" : "border-emerald-200 bg-emerald-50/50"
+            )}
+            onClick={() => setVarianceFilter("matched")}
+          >
+            <CardContent className="p-3 text-center">
+              <p className="text-lg font-bold text-emerald-700">{matched.length}</p>
+              <p className="text-[10px] text-emerald-800">Matched</p>
+            </CardContent>
+          </Card>
         </div>
 
-        {mismatches.length > 0 && (
-          <div className="space-y-2">
-            <h2 className="text-xs font-bold uppercase tracking-wider text-amber-700 px-1 flex items-center gap-1">
-              <Scale className="h-3.5 w-3.5" /> Variances ({mismatches.length})
-            </h2>
-            {mismatches.map((s) => {
+        {/* P2: Search input */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Input
+            placeholder={`Search ${filterConfig[varianceFilter].label.toLowerCase()} by product name...`}
+            value={varianceSearch}
+            onChange={(e) => setVarianceSearch(e.target.value)}
+            className="pl-9 h-10"
+          />
+          {varianceSearch && (
+            <button
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              onClick={() => setVarianceSearch("")}
+            >
+              ✕
+            </button>
+          )}
+        </div>
+
+        {/* P2: Filter chips (acts as alternative to tapping stat cards) */}
+        <div className="flex gap-2 flex-wrap">
+          {(["mismatch", "uncounted", "matched"] as const).map((f) => {
+            const cfg = filterConfig[f];
+            const count = cfg.list.length;
+            return (
+              <button
+                key={f}
+                className={cn(
+                  "px-3 py-1.5 rounded-full text-xs font-medium border transition-all active:scale-95",
+                  varianceFilter === f
+                    ? "bg-gray-900 text-white border-gray-900"
+                    : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
+                )}
+                onClick={() => setVarianceFilter(f)}
+              >
+                {cfg.label} ({count})
+              </button>
+            );
+          })}
+        </div>
+
+        {/* P2: Filtered list — shows variances with Record reason button, or uncounted/matched list */}
+        <div className="space-y-2">
+          <h2 className={cn("text-xs font-bold uppercase tracking-wider px-1 flex items-center gap-1", filterConfig[varianceFilter].color)}>
+            <filterConfig[varianceFilter].icon className="h-3.5 w-3.5" />
+            {filterConfig[varianceFilter].label} ({filteredList.length}{searchLower ? ` of ${activeList.length}` : ""})
+          </h2>
+
+          {filteredList.length === 0 ? (
+            <Card className="shadow-pharmacy">
+              <CardContent className="p-6 text-center text-sm text-gray-500">
+                <Package className="h-8 w-8 mx-auto mb-2 text-gray-300" />
+                {searchLower
+                  ? `No products match "${varianceSearch}"`
+                  : `No ${filterConfig[varianceFilter].label.toLowerCase()} found`}
+              </CardContent>
+            </Card>
+          ) : varianceFilter === "mismatch" ? (
+            // Variance rows: show expected/counted/diff + reason badge + Record reason button
+            filteredList.map((s) => {
               const expected = s.systemQtyAtStart - s.soldDuringScd;
               return (
                 <Card key={s.id} className="shadow-pharmacy border-l-4 border-l-amber-400">
                   <CardContent className="p-3">
-                    <p className="text-sm font-semibold">{s.product.name}</p>
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="text-sm font-semibold flex-1 min-w-0">{s.product.name}</p>
+                      {s.varianceReason && (
+                        <VarianceReasonBadge reason={s.varianceReason} />
+                      )}
+                    </div>
+                    {s.product.genericName && (
+                      <p className="text-[11px] text-gray-400 mt-0.5">{s.product.genericName}</p>
+                    )}
                     <div className="grid grid-cols-3 gap-2 mt-2 text-[11px]">
                       <div>
                         <p className="text-muted-foreground">Expected</p>
@@ -660,30 +796,57 @@ export function StockCountDayHub() {
                         </p>
                       </div>
                     </div>
+                    {s.varianceNote && (
+                      <p className="text-[11px] text-gray-500 mt-2 italic bg-gray-50 rounded px-2 py-1">
+                        “{s.varianceNote}”
+                      </p>
+                    )}
+                    {/* P2: Record reason / Edit reason button */}
+                    <Button
+                      size="sm"
+                      variant={s.varianceReason ? "outline" : "default"}
+                      className={cn(
+                        "w-full mt-2 gap-1.5 h-8 text-xs",
+                        !s.varianceReason && "bg-amber-600 hover:bg-amber-700"
+                      )}
+                      onClick={() =>
+                        setReasonDialog({
+                          open: true,
+                          productId: s.productId,
+                          productName: s.product.name,
+                        })
+                      }
+                    >
+                      <Scale className="h-3 w-3" />
+                      {s.varianceReason ? "Edit reason" : "Record reason"}
+                    </Button>
                   </CardContent>
                 </Card>
               );
-            })}
-          </div>
-        )}
-
-        {uncounted.length > 0 && (
-          <div className="space-y-2">
-            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500 px-1">
-              Not counted — will be skipped ({uncounted.length})
-            </h2>
+            })
+          ) : varianceFilter === "uncounted" ? (
+            // Uncounted list — same compact view as before
             <Card className="shadow-pharmacy">
-              <CardContent className="p-3 max-h-40 overflow-y-auto space-y-1">
-                {uncounted.slice(0, 20).map((s) => (
+              <CardContent className="p-3 max-h-60 overflow-y-auto space-y-1">
+                {filteredList.map((s) => (
                   <p key={s.id} className="text-xs text-muted-foreground">{s.product.name}</p>
                 ))}
-                {uncounted.length > 20 && (
-                  <p className="text-[10px] text-muted-foreground">+{uncounted.length - 20} more</p>
-                )}
               </CardContent>
             </Card>
-          </div>
-        )}
+          ) : (
+            // Matched list — compact
+            <Card className="shadow-pharmacy">
+              <CardContent className="p-3 max-h-60 overflow-y-auto space-y-1">
+                {filteredList.map((s) => (
+                  <div key={s.id} className="flex items-center justify-between text-xs">
+                    <span className="text-gray-700 truncate">{s.product.name}</span>
+                    <span className="text-emerald-600 font-medium ml-2 shrink-0">✓ {s.totalCountedQty}</span>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
+        </div>
 
         {canManage ? (
           <Button
@@ -699,6 +862,16 @@ export function StockCountDayHub() {
             Ask a manager to apply counts to inventory.
           </p>
         )}
+
+        {/* P2: Variance reason dialog — rendered here so it overlays the variance-review screen */}
+        <VarianceReasonDialog
+          open={reasonDialog.open}
+          onOpenChange={(open) => setReasonDialog((prev) => ({ ...prev, open }))}
+          productName={reasonDialog.productName}
+          initialReason={varianceSummaries.find((s) => s.productId === reasonDialog.productId)?.varianceReason ?? null}
+          initialNote={varianceSummaries.find((s) => s.productId === reasonDialog.productId)?.varianceNote ?? null}
+          onSave={saveVarianceReason}
+        />
       </motion.div>
     );
   }

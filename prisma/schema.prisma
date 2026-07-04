@@ -1436,6 +1436,9 @@ model StockCountProductSummary {
   soldDuringScd    Float    @default(0)
   totalCountedQty  Float?   // sum of zone lines once counted
   variance         Float?
+  // P2: variance reason capture for audit trail
+  varianceReason   String?  // theft | damage | data_error | expired | other
+  varianceNote     String?  // optional free-text up to 500 chars
   updatedAt        DateTime @updatedAt
 
   scd     StockCountDay @relation(fields: [scdId], references: [id], onDelete: Cascade)

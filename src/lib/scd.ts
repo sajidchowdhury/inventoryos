@@ -910,3 +910,59 @@ export function formatScdStatus(status: string): string {
       return status;
   }
 }
+
+// ── P2: Variance reason capture ──────────────────────────────────────────────
+// Allows managers to record WHY a variance occurred for audit trail.
+// Reasons: theft | damage | data_error | expired | other
+// Optional free-text note (up to 500 chars).
+
+export const VARIANCE_REASONS = [
+  "theft",
+  "damage",
+  "data_error",
+  "expired",
+  "other",
+] as const;
+export type VarianceReason = (typeof VARIANCE_REASONS)[number];
+
+export const VARIANCE_REASON_LABELS: Record<VarianceReason, string> = {
+  theft: "Theft / suspected theft",
+  damage: "Damage / spoilage",
+  data_error: "Data entry error",
+  expired: "Expired / disposed without record",
+  other: "Other",
+};
+
+export async function setVarianceReason(
+  scdId: string,
+  businessId: string,
+  productId: string,
+  reason: string | null,
+  note?: string | null
+): Promise<{ ok: true; summary: any } | { ok: false; error: string }> {
+  // Validate reason
+  if (reason !== null && !VARIANCE_REASONS.includes(reason as VarianceReason)) {
+    return { ok: false, error: `Invalid reason. Must be one of: ${VARIANCE_REASONS.join(", ")}` };
+  }
+  // Validate note length
+  if (note && note.length > 500) {
+    return { ok: false, error: "Note must be 500 characters or fewer" };
+  }
+
+  const summary = await db.stockCountProductSummary.findFirst({
+    where: { scdId, businessId, productId },
+  });
+  if (!summary) {
+    return { ok: false, error: "Variance summary not found for this product" };
+  }
+
+  const updated = await db.stockCountProductSummary.update({
+    where: { id: summary.id },
+    data: {
+      varianceReason: reason,
+      varianceNote: note?.trim() || null,
+    },
+  });
+
+  return { ok: true, summary: updated };
+}

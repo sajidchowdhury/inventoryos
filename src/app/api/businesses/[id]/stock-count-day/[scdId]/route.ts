@@ -1,10 +1,11 @@
 // GET/PATCH /api/businesses/[id]/stock-count-day/[scdId]
-// PATCH body: { action: "start" | "close" | "apply", userId?: string }
+// PATCH body: { action: "start" | "close" | "apply" | "setReason", userId?: string, ... }
 import { NextRequest, NextResponse } from "next/server";
 import {
   applyStockCountDay,
   closeStockCountDay,
   getStockCountDayDetail,
+  setVarianceReason,
   startStockCountDay,
 } from "@/lib/scd";
 
@@ -62,9 +63,29 @@ export async function PATCH(
           skipped: result.skipped,
         });
       }
+      case "setReason": {
+        // P2: record variance reason + optional note for audit trail
+        const productId = body.productId as string | undefined;
+        const reason = body.reason as string | null | undefined;
+        const note = body.note as string | null | undefined;
+        if (!productId) {
+          return NextResponse.json({ error: "productId is required" }, { status: 400 });
+        }
+        const result = await setVarianceReason(
+          scdId,
+          businessId,
+          productId,
+          reason ?? null,
+          note ?? null
+        );
+        if (!result.ok) {
+          return NextResponse.json({ error: result.error }, { status: 400 });
+        }
+        return NextResponse.json({ success: true, summary: result.summary });
+      }
       default:
         return NextResponse.json(
-          { error: 'action must be "start", "close", or "apply"' },
+          { error: 'action must be "start", "close", "apply", or "setReason"' },
           { status: 400 }
         );
     }
