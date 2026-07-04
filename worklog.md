@@ -1792,3 +1792,35 @@ Stage Summary:
 - Final dashboard layout: Row 1 = Products, Restock, Return, Reports | Row 2 = Customers, Payment, Purchase, Supplier (exact match to founder's req 5)
 - Invoices moved to ReportsHub Overview section. Discount Rules moved to MoreHub Admin section. Shop code hint moved from dashboard header to create-user dialog.
 - Safe to push to GitHub — no environment-specific files touched.
+
+---
+Task ID: ui-stock-ai-hub-reorganize-2
+Agent: Super Z (Main Agent)
+Task: Reorganize Stock hub (Stock & Batches section) + add Stock Count Day to AI hub per founder's 2-point request.
+
+Work Log:
+- InventoryHub.tsx — Stock & Batches section reordered per founder's spec:
+  * Before: All Batches, Stock Count Day, Shelf Scanner (3 items)
+  * After: All Batches, Shelf Scanner, Stock Count Day, Add From Catalog (4 items)
+  * "Add From Catalog" moved from Products section → Stock & Batches section (label changed from "Add from Catalog" to "Add From Catalog" per founder's exact casing)
+  * Products section now has 4 items (was 5): All Products, Add Product, Import CSV, Categories
+  * Expiry Management section: unchanged (founder marked "ok")
+  * Products section: unchanged structurally (founder marked "ok") — only lost the catalog item
+- AIHub.tsx — added Stock Count Day as 5th AI feature (after Expiry Optimizer per founder's spec):
+  * Title: "Stock Count Day"
+  * Desc: "AI-assisted monthly full stock count with shelf scanner integration & variance review"
+  * Icon: ClipboardList, teal→emerald gradient
+  * View: "stock-count-day" (navigates to existing StockCountDayHub component)
+  * Extended AIFeature interface view union to include "stock-count-day"
+  * Added ClipboardList to lucide imports
+  * Note: SCD is now accessible from BOTH Stock hub (primary) and AI hub (secondary) — same component renders in both cases
+- BottomNav.tsx — added "stock-count-day" and "catalog-picker" to the inventory-hub hubGroups array so the Stock tab stays highlighted when SCD or catalog-picker is active. Previously SCD was not in any hub group (pre-existing bug — no tab highlighted when SCD was active).
+- TypeScript: zero errors. Pre-push guardrail: PASS.
+
+Stage Summary:
+- 2 UI changes per founder's spec, all in committed src/** files.
+- Files modified: 3 (InventoryHub.tsx, AIHub.tsx, BottomNav.tsx)
+- Stock hub Stock & Batches: All Batches → Shelf Scanner → SCD → Add From Catalog (exact match to founder's req 1)
+- AI hub: AI Insights → AI Chat → Smart Forecast → Expiry Optimizer → Stock Count Day (SCD added after Expiry Optimizer per founder's req 1)
+- Fixed pre-existing bug: SCD tab highlighting (now Stock tab highlights when SCD active)
+- Safe to push — no environment-specific files touched.

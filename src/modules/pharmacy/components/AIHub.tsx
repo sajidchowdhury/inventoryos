@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import {
   ArrowLeft, Sparkles, Brain, MessageSquare,
-  CalendarClock, Zap, ChevronRight,
+  CalendarClock, Zap, ChevronRight, ClipboardList,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,7 +18,7 @@ const fadeIn = {
 };
 
 interface AIFeature {
-  view: "ai-insights" | "ai-chat" | "ai-forecast" | "ai-expiry-opt";
+  view: "ai-insights" | "ai-chat" | "ai-forecast" | "ai-expiry-opt" | "stock-count-day";
   title: string;
   description: string;
   icon: typeof Brain;
@@ -65,6 +65,15 @@ const aiFeatures: AIFeature[] = [
     gradient: "from-purple-500 to-pink-500",
     iconBg: "bg-pink-50",
     iconColor: "text-pink-600",
+  },
+  {
+    view: "stock-count-day",
+    title: "Stock Count Day",
+    description: "AI-assisted monthly full stock count with shelf scanner integration & variance review",
+    icon: ClipboardList,
+    gradient: "from-teal-500 to-emerald-600",
+    iconBg: "bg-teal-50",
+    iconColor: "text-teal-600",
   },
 ];
 
