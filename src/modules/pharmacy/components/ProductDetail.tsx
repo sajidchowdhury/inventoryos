@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import {
   ArrowLeft, Pill, Edit2, Plus, Clock, AlertTriangle,
   Package, TrendingUp, TrendingDown, Trash2, Calendar,
-  Boxes, ChevronRight, RefreshCw, ShieldAlert,
+  Boxes, ChevronRight, RefreshCw, ShieldAlert, Layers,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -55,6 +55,7 @@ interface Product {
   maxStock: number;
   reorderLevel: number;
   category: { id: string; name: string; color: string } | null;
+  zoneAssignments?: { zone: { id: string; name: string; color: string } }[];
   inventory: { quantity: number; minStock: number; unitCost: number | null } | null;
   batches: Batch[];
 }
@@ -290,8 +291,33 @@ export function ProductDetail() {
               {product.rackNo && <><span className="text-white/40">•</span><span>Rack <span className="font-semibold text-white">{product.rackNo}</span></span></>}
             </div>
           )}
+          {product.zoneAssignments && product.zoneAssignments.length > 0 && (
+            <div className="relative mt-2 flex flex-wrap gap-1.5">
+              {product.zoneAssignments.map((a) => (
+                <Badge
+                  key={a.zone.id}
+                  variant="outline"
+                  className="text-[10px] border-white/30 text-white bg-white/10 gap-1"
+                >
+                  <span className="h-1.5 w-1.5 rounded-full" style={{ background: a.zone.color }} />
+                  {a.zone.name}
+                </Badge>
+              ))}
+            </div>
+          )}
         </div>
       </Card>
+
+      {product.zoneAssignments && product.zoneAssignments.length > 1 && (
+        <Card className="shadow-pharmacy border-violet-100 bg-violet-50/40">
+          <CardContent className="p-3 flex items-start gap-2 text-xs text-violet-900">
+            <Layers className="h-4 w-4 shrink-0 mt-0.5" />
+            <span>
+              Stored in <strong>{product.zoneAssignments.length} zones</strong> — count each area separately during Stock Count Day.
+            </span>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Stock Summary */}
       <div className="grid grid-cols-3 gap-2 stagger-in">

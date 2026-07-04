@@ -14,6 +14,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { ensureScdProductSummary } from "@/lib/scd";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id: businessId } = await params;
@@ -172,6 +173,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           mrp: product.mrp,
           currentStock: stockQty,
         });
+        try {
+          await ensureScdProductSummary(businessId, product.id);
+        } catch (scdErr) {
+          console.error("SCD summary for catalog product:", scdErr);
+        }
         created++;
       } catch (err) {
         errors.push(`Error: ${err instanceof Error ? err.message : "Unknown"}`);

@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   createStockCountDay,
-  getActiveStockCountDay,
+  getCurrentStockCountDay,
   getStockCountDayDetail,
 } from "@/lib/scd";
 import { db } from "@/lib/db";
@@ -24,8 +24,8 @@ export async function GET(
       return NextResponse.json({ success: true, scd: detail });
     }
 
-    const [active, history] = await Promise.all([
-      getActiveStockCountDay(businessId),
+    const [current, history] = await Promise.all([
+      getCurrentStockCountDay(businessId),
       db.stockCountDay.findMany({
         where: { businessId },
         orderBy: { createdAt: "desc" },
@@ -42,7 +42,7 @@ export async function GET(
       }),
     ]);
 
-    return NextResponse.json({ success: true, active, history });
+    return NextResponse.json({ success: true, active: current, history });
   } catch (error) {
     console.error("Get stock count day error:", error);
     return NextResponse.json({ error: "Failed to load Stock Count Day" }, { status: 500 });
