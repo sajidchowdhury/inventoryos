@@ -3,6 +3,7 @@
 // POST: Create a new product
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { ensureScdProductSummary } from "@/lib/scd";
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -148,6 +149,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         unitCost: null,
       },
     });
+
+    // If a Stock Count Day is active, include this product in summaries
+    try {
+      await ensureScdProductSummary(businessId, product.id);
+    } catch (scdErr) {
+      console.error("SCD summary for new product:", scdErr);
+    }
 
     return NextResponse.json({ success: true, product }, { status: 201 });
   } catch (error) {

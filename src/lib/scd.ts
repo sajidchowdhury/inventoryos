@@ -49,6 +49,15 @@ export async function getActiveStockCountDay(businessId: string) {
   });
 }
 
+/** Active or closed (awaiting apply) — the current open count session. */
+export async function getCurrentStockCountDay(businessId: string) {
+  return db.stockCountDay.findFirst({
+    where: { businessId, status: { in: ["active", "closed"] } },
+    orderBy: { createdAt: "desc" },
+    include: SCD_INCLUDE,
+  });
+}
+
 export async function listStorageZones(businessId: string) {
   return db.storageZone.findMany({
     where: { businessId, isActive: true },
@@ -149,6 +158,59 @@ export async function getProductZoneMap(businessId: string, productIds: string[]
     map.set(a.productId, list);
   }
   return map;
+}
+
+/** Add multiple products to a zone (keeps existing zone assignments on each product). */
+export async function addProductsToZone(
+  businessId: string,
+  zoneId: string,
+  productIds: string[]
+) {
+  const zone = await db.storageZone.findFirst({
+    where: { id: zoneId, businessId, isActive: true },
+  });
+  if (!zone) return { ok: false as const, error: "Zone not found" };
+
+  const uniqueIds = [...new Set(productIds)];
+  if (uniqueIds.length === 0) {
+    return { ok: true as const, added: 0 };
+  }
+
+  const products = await db.product.count({
+    where: { businessId, id: { in: uniqueIds }, isActive: true },
+  });
+  if (products !== uniqueIds.length) {
+    return { ok: false as const, error: "One or more products are invalid" };
+  }
+
+  const result = await db.productZoneAssignment.createMany({
+    data: uniqueIds.map((productId) => ({ businessId, productId, zoneId })),
+    skipDuplicates: true,
+  });
+
+  return { ok: true as const, added: result.count };
+}
+
+/** Ensure a product has an SCD summary row if a count day is active. */
+export async function ensureScdProductSummary(businessId: string, productId: string) {
+  const active = await getActiveStockCountDay(businessId);
+  if (!active) return;
+
+  const existing = await db.stockCountProductSummary.findUnique({
+    where: { scdId_productId: { scdId: active.id, productId } },
+  });
+  if (existing) return;
+
+  const qty = await getProductStock(businessId, productId);
+  await db.stockCountProductSummary.create({
+    data: {
+      scdId: active.id,
+      businessId,
+      productId,
+      systemQtyAtStart: qty,
+      soldDuringScd: 0,
+    },
+  });
 }
 
 export async function createStockCountDay(

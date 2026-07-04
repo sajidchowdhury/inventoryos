@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { motion } from "framer-motion";
 import {
   ArrowLeft, Search, Plus, X, Check, AlertCircle, Loader2,
-  ShoppingCart, Pill, Calendar, TrendingDown, Receipt, Percent,
+  ShoppingCart, Pill, Calendar, TrendingDown, Receipt, Percent, ClipboardList,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -75,8 +75,22 @@ export function QuickDispense() {
   const [discountPercent, setDiscountPercent] = useState("0");
   const [discountAmount, setDiscountAmount] = useState("0");
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const [activeScdName, setActiveScdName] = useState<string | null>(null);
 
-  // Search products with debounce
+  // Stock Count Day banner
+  useEffect(() => {
+    if (!businessId) return;
+    fetch(`/api/businesses/${businessId}/stock-count-day`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.active?.status === "active") {
+          setActiveScdName(data.active.name || "Stock Count Day");
+        } else {
+          setActiveScdName(null);
+        }
+      })
+      .catch(() => setActiveScdName(null));
+  }, [businessId]);
   useEffect(() => {
     if (!businessId || !search.trim()) {
       setProducts([]);
@@ -309,6 +323,20 @@ export function QuickDispense() {
           </Button>
         )}
       </div>
+
+      {activeScdName && (
+        <Card className="stagger-in border-amber-200 bg-amber-50 shadow-none">
+          <CardContent className="p-3 flex items-start gap-2.5 text-xs text-amber-900">
+            <ClipboardList className="h-4 w-4 shrink-0 mt-0.5 text-amber-700" />
+            <div>
+              <p className="font-semibold">Stock Count Day in progress</p>
+              <p className="mt-0.5 text-amber-800 leading-relaxed">
+                {activeScdName} — sell as normal. Sold quantities are tracked automatically for counters.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Info Banner — Emerald gradient */}
       <Card className="stagger-in overflow-hidden border-0 shadow-pharmacy">

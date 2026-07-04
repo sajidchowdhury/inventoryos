@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, ClipboardList, MapPin, Play, CheckCircle2, Loader2,
   Plus, ChevronRight, AlertCircle, ScanLine, Layers, Package,
-  CircleDot, Lock, Sparkles, History,
+  CircleDot, Lock, Sparkles, History, Scale,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,8 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useAuthStore } from "@/lib/auth-store";
 import { useNavStore } from "@/lib/nav-store";
+import { usePermissions } from "@/lib/use-permissions";
+import { ZoneBulkAssign } from "./scd/ZoneBulkAssign";
 import { cn } from "@/lib/utils";
 
 // ── Types ──
@@ -79,7 +81,17 @@ interface ZoneLine {
   isMultiZone: boolean;
 }
 
-type Screen = "hub" | "setup-zones" | "start-scd" | "zone-count" | "review";
+type Screen = "hub" | "setup-zones" | "start-scd" | "zone-count" | "variance-review";
+
+interface VarianceSummary {
+  id: string;
+  productId: string;
+  systemQtyAtStart: number;
+  soldDuringScd: number;
+  totalCountedQty: number | null;
+  variance: number | null;
+  product: { id: string; name: string; genericName?: string | null; unit: string };
+}
 
 const ZONE_COLORS = ["#0d9488", "#3b82f6", "#f59e0b", "#8b5cf6", "#ef4444", "#10b981"];
 
@@ -116,6 +128,9 @@ export function StockCountDayHub() {
   const setActiveView = useNavStore((s) => s.setActiveView);
   const setScdZoneSessionId = useNavStore((s) => s.setScdZoneSessionId);
   const setScdId = useNavStore((s) => s.setScdId);
+  const { hasPermission, hasAnyPermission } = usePermissions(businessId);
+  const canManage = hasPermission("scd.manage");
+  const canCount = hasAnyPermission(["scd.count", "scd.manage"]);
 
   const [screen, setScreen] = useState<Screen>("hub");
   const [loading, setLoading] = useState(true);
@@ -132,6 +147,8 @@ export function StockCountDayHub() {
   const [zoneLines, setZoneLines] = useState<ZoneLine[]>([]);
   const [zoneProgress, setZoneProgress] = useState({ counted: 0, total: 0 });
   const [qtyDrafts, setQtyDrafts] = useState<Record<string, string>>({});
+  const [varianceSummaries, setVarianceSummaries] = useState<VarianceSummary[]>([]);
+  const [varianceStats, setVarianceStats] = useState({ mismatch: 0, uncounted: 0, matched: 0 });
 
   const loadHub = useCallback(async () => {
     if (!businessId) return;
@@ -247,6 +264,7 @@ export function StockCountDayHub() {
 
   const scdAction = async (action: "close" | "apply") => {
     if (!businessId || !activeScd) return;
+    if (action === "apply" && !canManage) return;
     if (action === "apply" && !confirm("Apply counted stock to inventory? This updates your stock levels.")) return;
     setActionLoading(true);
     setError(null);
@@ -263,8 +281,37 @@ export function StockCountDayHub() {
       if (!res.ok) throw new Error(data.error || `Failed to ${action}`);
       setActiveScd(data.scd);
       await loadHub();
+      if (action === "apply") setScreen("hub");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Action failed");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const loadVarianceReview = async (scdId: string) => {
+    if (!businessId) return;
+    setActionLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(
+        `/api/businesses/${businessId}/stock-count-day?scdId=${scdId}`
+      );
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to load review");
+      const summaries = (data.scd?.summaries ?? []) as VarianceSummary[];
+      setVarianceSummaries(summaries);
+      const mismatch = summaries.filter(
+        (s) => s.variance !== null && Math.abs(s.variance) > 0.001
+      ).length;
+      const uncounted = summaries.filter((s) => s.totalCountedQty === null).length;
+      const matched = summaries.filter(
+        (s) => s.totalCountedQty !== null && (s.variance === null || Math.abs(s.variance) <= 0.001)
+      ).length;
+      setVarianceStats({ mismatch, uncounted, matched });
+      setScreen("variance-review");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to load review");
     } finally {
       setActionLoading(false);
     }
@@ -524,6 +571,122 @@ export function StockCountDayHub() {
     );
   }
 
+  // ── Variance review before apply ──
+  if (screen === "variance-review" && activeScd) {
+    const mismatches = varianceSummaries.filter(
+      (s) => s.variance !== null && Math.abs(s.variance) > 0.001
+    );
+    const uncounted = varianceSummaries.filter((s) => s.totalCountedQty === null);
+    const matched = varianceSummaries.filter(
+      (s) => s.totalCountedQty !== null && (s.variance === null || Math.abs(s.variance) <= 0.001)
+    );
+
+    return (
+      <motion.div {...fadeIn} className="space-y-4 pb-24 pharmacy-bg">
+        <div className="flex items-center gap-2 pt-1">
+          <Button variant="ghost" size="icon" onClick={() => setScreen("hub")}>
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div>
+            <h1 className="text-lg font-bold">Review before apply</h1>
+            <p className="text-xs text-gray-500">Check mismatches, then update inventory</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-3 gap-2">
+          <Card className="shadow-pharmacy border-emerald-200 bg-emerald-50/50">
+            <CardContent className="p-3 text-center">
+              <p className="text-lg font-bold text-emerald-700">{matched.length}</p>
+              <p className="text-[10px] text-emerald-800">Matched</p>
+            </CardContent>
+          </Card>
+          <Card className="shadow-pharmacy border-amber-200 bg-amber-50/50">
+            <CardContent className="p-3 text-center">
+              <p className="text-lg font-bold text-amber-700">{mismatches.length}</p>
+              <p className="text-[10px] text-amber-800">Mismatch</p>
+            </CardContent>
+          </Card>
+          <Card className="shadow-pharmacy border-slate-200 bg-slate-50/50">
+            <CardContent className="p-3 text-center">
+              <p className="text-lg font-bold text-slate-600">{uncounted.length}</p>
+              <p className="text-[10px] text-slate-700">Not counted</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {mismatches.length > 0 && (
+          <div className="space-y-2">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-amber-700 px-1 flex items-center gap-1">
+              <Scale className="h-3.5 w-3.5" /> Variances ({mismatches.length})
+            </h2>
+            {mismatches.map((s) => {
+              const expected = s.systemQtyAtStart - s.soldDuringScd;
+              return (
+                <Card key={s.id} className="shadow-pharmacy border-l-4 border-l-amber-400">
+                  <CardContent className="p-3">
+                    <p className="text-sm font-semibold">{s.product.name}</p>
+                    <div className="grid grid-cols-3 gap-2 mt-2 text-[11px]">
+                      <div>
+                        <p className="text-muted-foreground">Expected</p>
+                        <p className="font-semibold">{expected} {s.product.unit}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Counted</p>
+                        <p className="font-semibold">{s.totalCountedQty ?? "—"}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Diff</p>
+                        <p className={cn(
+                          "font-semibold",
+                          (s.variance ?? 0) > 0 ? "text-emerald-600" : "text-rose-600"
+                        )}>
+                          {s.variance !== null ? (s.variance > 0 ? "+" : "") + s.variance.toFixed(0) : "—"}
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        )}
+
+        {uncounted.length > 0 && (
+          <div className="space-y-2">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500 px-1">
+              Not counted — will be skipped ({uncounted.length})
+            </h2>
+            <Card className="shadow-pharmacy">
+              <CardContent className="p-3 max-h-40 overflow-y-auto space-y-1">
+                {uncounted.slice(0, 20).map((s) => (
+                  <p key={s.id} className="text-xs text-muted-foreground">{s.product.name}</p>
+                ))}
+                {uncounted.length > 20 && (
+                  <p className="text-[10px] text-muted-foreground">+{uncounted.length - 20} more</p>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {canManage ? (
+          <Button
+            className="w-full gap-2 bg-emerald-600 hover:bg-emerald-700 sticky bottom-4"
+            disabled={actionLoading}
+            onClick={() => scdAction("apply")}
+          >
+            <CheckCircle2 className="h-4 w-4" />
+            Apply {varianceStats.matched + varianceStats.mismatch} counted products to inventory
+          </Button>
+        ) : (
+          <p className="text-xs text-center text-muted-foreground py-2">
+            Ask a manager to apply counts to inventory.
+          </p>
+        )}
+      </motion.div>
+    );
+  }
+
   // ── Setup zones screen ──
   if (screen === "setup-zones") {
     return (
@@ -571,11 +734,25 @@ export function StockCountDayHub() {
             value={newZoneName}
             onChange={(e) => setNewZoneName(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && addZone()}
+            disabled={!canManage}
           />
-          <Button onClick={addZone} disabled={actionLoading || !newZoneName.trim()} className="gap-1 shrink-0">
+          <Button onClick={addZone} disabled={actionLoading || !newZoneName.trim() || !canManage} className="gap-1 shrink-0">
             <Plus className="h-4 w-4" /> Add
           </Button>
         </div>
+
+        {businessId && zones.length > 0 && (
+          <ZoneBulkAssign
+            businessId={businessId}
+            zones={zones.map((z) => ({ id: z.id, name: z.name, color: z.color }))}
+          />
+        )}
+
+        {!canManage && (
+          <p className="text-xs text-center text-muted-foreground">
+            Only managers can add zones or assign products.
+          </p>
+        )}
 
         <Button className="w-full" onClick={() => { loadHub(); setScreen("hub"); }}>
           Done
@@ -641,7 +818,7 @@ export function StockCountDayHub() {
 
             <Button
               className="w-full gap-2 bg-gradient-to-r from-teal-600 to-emerald-600"
-              disabled={actionLoading || selectedZoneIds.length === 0}
+              disabled={actionLoading || selectedZoneIds.length === 0 || !canManage}
               onClick={createAndStartScd}
             >
               {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
@@ -720,7 +897,7 @@ export function StockCountDayHub() {
               className="card-hover cursor-pointer shadow-pharmacy border-l-4"
               style={{ borderLeftColor: zs.zone.color }}
               onClick={() => {
-                if (scd.status === "active" && zs.status !== "closed") {
+                if (scd.status === "active" && zs.status !== "closed" && canCount) {
                   if (zs.status === "pending") startZone(zs);
                   else loadZoneSession(scd.id, zs);
                 }
@@ -740,7 +917,7 @@ export function StockCountDayHub() {
             </Card>
           ))}
 
-          {scd.status === "active" && zonesClosed === zonesTotal && zonesTotal > 0 && (
+          {scd.status === "active" && zonesClosed === zonesTotal && zonesTotal > 0 && canManage && (
             <Button
               className="w-full mt-2"
               disabled={actionLoading}
@@ -752,11 +929,13 @@ export function StockCountDayHub() {
 
           {scd.status === "closed" && (
             <Button
-              className="w-full mt-2 gap-2 bg-emerald-600 hover:bg-emerald-700"
+              className="w-full mt-2 gap-2"
+              variant={canManage ? "default" : "outline"}
               disabled={actionLoading}
-              onClick={() => scdAction("apply")}
+              onClick={() => loadVarianceReview(scd.id)}
             >
-              <CheckCircle2 className="h-4 w-4" /> Apply counts to inventory
+              <Scale className="h-4 w-4" />
+              {canManage ? "Review variances & apply" : "Review variances"}
             </Button>
           )}
         </div>
@@ -765,20 +944,22 @@ export function StockCountDayHub() {
       {/* Actions when no active SCD */}
       {(!scd || scd.status === "applied" || scd.status === "draft") && (
         <div className="space-y-2">
-          <Button
-            variant="outline"
-            className="w-full justify-start gap-3 h-auto py-3"
-            onClick={() => setScreen("setup-zones")}
-          >
-            <MapPin className="h-5 w-5 text-teal-600" />
-            <div className="text-left">
-              <p className="text-sm font-semibold">Manage storage zones</p>
-              <p className="text-xs text-gray-400">{zones.length} zone{zones.length !== 1 ? "s" : ""} set up</p>
-            </div>
-            <ChevronRight className="h-4 w-4 ml-auto text-gray-300" />
-          </Button>
+          {canManage && (
+            <Button
+              variant="outline"
+              className="w-full justify-start gap-3 h-auto py-3"
+              onClick={() => setScreen("setup-zones")}
+            >
+              <MapPin className="h-5 w-5 text-teal-600" />
+              <div className="text-left">
+                <p className="text-sm font-semibold">Manage storage zones</p>
+                <p className="text-xs text-gray-400">{zones.length} zone{zones.length !== 1 ? "s" : ""} set up</p>
+              </div>
+              <ChevronRight className="h-4 w-4 ml-auto text-gray-300" />
+            </Button>
+          )}
 
-          {!scd || scd.status !== "active" ? (
+          {canManage && (!scd || scd.status !== "active") ? (
             <Button
               className="w-full justify-start gap-3 h-auto py-3 bg-gradient-to-r from-teal-600 to-emerald-600"
               onClick={() => setScreen("start-scd")}
@@ -792,6 +973,14 @@ export function StockCountDayHub() {
               <ChevronRight className="h-4 w-4 ml-auto text-teal-200" />
             </Button>
           ) : null}
+
+          {canCount && !canManage && zones.length > 0 && (
+            <Card className="shadow-pharmacy border-blue-100 bg-blue-50/40">
+              <CardContent className="p-3 text-xs text-blue-900">
+                You can count zones when a manager starts a Stock Count Day. Ask them to begin from this screen.
+              </CardContent>
+            </Card>
+          )}
         </div>
       )}
 
