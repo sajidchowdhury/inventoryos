@@ -2447,3 +2447,51 @@ Stage Summary:
 - Files modified: PROJECT_CONTEXT.md (added §18), worklog.md (this entry)
 - 6 phases, ~8-11 sessions total. Strictly sequential.
 - Ready to start P1 (Schema + Per-Shop Model) in next session.
+
+---
+Task ID: subscription-p1
+Agent: Super Z (Main Agent)
+Task: Implement Phase 1 of the Subscription Management System — schema + per-shop model + admin phone uniqueness + 3-tier pricing (the data foundation).
+
+Work Log:
+- Added 3 new Prisma models to schema.prissa (~90 lines):
+  * SubscriptionInvoice: id, businessId, tier, billingPeriod (month/year), amount, status (pending/paid/overdue/cancelled), dueDate, paidAt, paymentMethod, createdAt + relation to Business + PaymentTransaction[]. Indexes on businessId, status, dueDate.
+  * PaymentTransaction: id, businessId, invoiceId (nullable), method (bkash/nagad/ssl_commerz/manual), trxId, amount, status (pending/matched/rejected/refunded), submittedBy, submittedAt, matchedAt, matchedBy, notes + relations to Business + SubscriptionInvoice (SetNull on delete). Indexes on businessId, status, trxId, method.
+  * ReceivedPayment: id, method, trxId, amount, receivedAt, uploadedBy, matchedTransactionId (nullable). Indexes on trxId, method, matchedTransactionId.
+- Added 5 lifecycle fields to Business model:
+  * subscriptionStage: String @default("active") — active/expiring_soon/read_only/data_wiped
+  * gracePeriodEnd: DateTime? — subscriptionEnd + 14 days
+  * dataWipeDate: DateTime? — when data gets soft-deleted
+  * dataSoftDeletedAt: DateTime? — set when stage transitions to data_wiped
+  * dataPurgeDate: DateTime? — dataSoftDeletedAt + 30 days (true purge)
+- Added 2 new indexes on Business: subscriptionStage (fast filtering by lifecycle stage) + subscriptionEnd (fast cron queries on expiring subscriptions)
+- Added relation back-references on Business: subscriptionInvoices + paymentTransactions
+- Added isAdmin Boolean @default(false) to BusinessUser model — distinguishes shop admin (owner) from employees
+- Updated feature-gate.ts:
+  * Added annualPrice field to TierConfig interface
+  * Updated prices: free=0/0, pro=800/8000 (was 500), pro_ai=1500/15000 (was 1000)
+  * Annual = pay 10 months, get 12
+- Updated registration flow (POST /api/auth/register):
+  * New businesses now start with 14-day trial of Pro AI (subscriptionStatus="trial", subscriptionEnd = now + 14 days)
+  * BusinessUser created with role="owner" + isAdmin=true (was role="admin" with no isAdmin flag)
+  * Previous behavior was subscriptionStatus="active" with no end date — now properly trial with 14-day expiry
+- Ran npx prisma generate: client regenerated with all new models + fields
+- TypeScript: 0 errors in changed files
+- Pre-push guardrail: PASS
+- Acceptance criteria verification (all 8 met):
+  1. ✅ SubscriptionInvoice model created with all fields + relations
+  2. ✅ PaymentTransaction model created with status enum (pending/matched/rejected/refunded)
+  3. ✅ ReceivedPayment model created with matchedTransactionId nullable relation
+  4. ✅ Business model has subscriptionStage, gracePeriodEnd, dataWipeDate, dataSoftDeletedAt, dataPurgeDate fields
+  5. ✅ BusinessUser has isAdmin field (default false)
+  6. ✅ feature-gate.ts updated: free=0, pro=800, pro_ai=1500, annualPrice field added (8000/15000)
+  7. ✅ Registration flow sets isAdmin=true + role="owner" for the registering user; phone uniqueness already enforced by User.phone @unique constraint
+  8. ✅ prisma generate runs successfully (db push required on local/WHM before testing)
+
+Stage Summary:
+- Phase 1 of the Subscription Management System is COMPLETE — data foundation ready.
+- Files modified: 3 (prisma/schema.prisma, src/lib/feature-gate.ts, src/app/api/auth/register/route.ts)
+- Schema changes: 3 new models + 5 new Business fields + 1 new BusinessUser field + 2 new indexes — REQUIRES npx prisma db push on local + WHM
+- New businesses now get a proper 14-day trial (was unlimited access before)
+- Admin phone uniqueness: enforced by existing User.phone @unique constraint (one phone = one User = one admin account, regardless of how many shops they own)
+- Ready for P2 (Grace Period Lifecycle — daily cron + server-side read-only guard) in next session.

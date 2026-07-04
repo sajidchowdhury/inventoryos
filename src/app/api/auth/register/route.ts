@@ -56,6 +56,12 @@ export async function POST(req: NextRequest) {
     let business;
     for (let attempt = 0; attempt < 6; attempt++) {
       try {
+        // P1: New businesses start with a 14-day trial of Pro AI.
+        // After trial, they drop to Free tier unless they pay (P2 lifecycle cron).
+        const trialStart = new Date();
+        const trialEnd = new Date();
+        trialEnd.setDate(trialEnd.getDate() + 14); // 14-day free trial
+
         business = await db.business.create({
           data: {
             userId,
@@ -63,11 +69,12 @@ export async function POST(req: NextRequest) {
             name: businessName,
             address: address || null,
             shopCode: generateShopCode(businessType?.slug),
-            // ── Dev/testing default: grant Pro+AI tier so new businesses can
-            // use all AI features immediately. In production, set this to
-            // "trial" and gate AI behind a paid subscription upgrade flow.
+            // P1: 14-day trial of Pro AI, then drops to Free
             subscriptionTier: "pro_ai",
-            subscriptionStatus: "active",
+            subscriptionStatus: "trial",
+            subscriptionStart: trialStart,
+            subscriptionEnd: trialEnd,
+            subscriptionStage: "active",
             aiEnabled: true,
           },
           include: {
@@ -92,13 +99,15 @@ export async function POST(req: NextRequest) {
     }
 
     // Create admin credentials for this business
+    // P1: The registering user is the shop admin (owner) — isAdmin=true
     const passwordHash = await hashPassword(password);
     const businessUser = await db.businessUser.create({
       data: {
         businessId: business.id,
         username,
         passwordHash,
-        role: "admin",
+        role: "owner",
+        isAdmin: true,  // P1: mark as shop admin (handles subscription per shop)
       },
     });
 

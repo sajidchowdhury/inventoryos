@@ -62,6 +62,8 @@ export interface TierConfig {
   label: string;
   /** Monthly price in BDT. */
   price: number;
+  /** Annual price in BDT (pay 10 months, get 12). */
+  annualPrice: number;
   limits: TierLimits;
   features: TierFeatures;
 }
@@ -71,6 +73,7 @@ const TIER_CONFIGS: Record<SubscriptionTier, TierConfig> = {
   free: {
     label: "Free",
     price: 0,
+    annualPrice: 0,
     limits: {
       maxProducts: 100,
       aiEnabled: false,
@@ -100,7 +103,8 @@ const TIER_CONFIGS: Record<SubscriptionTier, TierConfig> = {
 
   pro: {
     label: "Pro",
-    price: 500,
+    price: 800,
+    annualPrice: 8000,  // pay 10 months, get 12
     limits: {
       maxProducts: null, // unlimited
       aiEnabled: false,
@@ -130,7 +134,8 @@ const TIER_CONFIGS: Record<SubscriptionTier, TierConfig> = {
 
   pro_ai: {
     label: "Pro AI",
-    price: 1000,
+    price: 1500,
+    annualPrice: 15000,  // pay 10 months, get 12
     limits: {
       maxProducts: null, // unlimited
       aiEnabled: true,
