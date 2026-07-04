@@ -8,7 +8,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, Settings, Pill, Cctv, MoreHorizontal,
-  ShieldCheck, Rocket, Package,
+  ShieldCheck, Rocket, Package, Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -18,6 +18,12 @@ const NAV_ITEMS = [
     href: "/admin",
     icon: LayoutDashboard,
     description: "Cross-project metrics & platform health",
+  },
+  {
+    label: "Clients",
+    href: "/admin/clients",
+    icon: Users,
+    description: "Subscription monitoring + revenue tracking",
   },
   {
     label: "API Setup",
