@@ -15,6 +15,9 @@ export async function GET(
       include: {
         category: { select: { id: true, name: true, color: true, icon: true, slug: true } },
         inventory: true,
+        zoneAssignments: {
+          include: { zone: { select: { id: true, name: true, color: true } } },
+        },
         batches: {
           orderBy: { expiryDate: "asc" },
         },

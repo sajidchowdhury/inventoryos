@@ -20,7 +20,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ScanLine, ArrowLeft, Camera, UploadCloud, X, Loader2, Sparkles,
   ImageOff, AlertTriangle, CheckCircle2, TrendingUp, Search, Plus,
-  Clock, ChevronRight, RefreshCw, Trash2, Pencil,
+  Clock, ChevronRight, RefreshCw, Trash2, Pencil, Layers,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -93,6 +93,20 @@ interface HistoryScan {
   fullyApplied: boolean;
 }
 
+interface ScdExpectedInfo {
+  expectedTotalQty: number;
+  systemQtyAtStart: number;
+  soldDuringScd: number;
+  otherZones: { id: string; name: string; color: string }[];
+  countedInOtherZones: {
+    zoneId: string;
+    zoneName: string;
+    zoneColor: string;
+    countedQty: number | null;
+  }[];
+  isMultiZone: boolean;
+}
+
 const fadeIn = {
   initial: { opacity: 0, y: 12 },
   animate: { opacity: 1, y: 0 },
@@ -158,6 +172,9 @@ export function ShelfScanner() {
   const scdZoneSessionId = useNavStore((s) => s.scdZoneSessionId);
   const inScdMode = Boolean(scdZoneSessionId);
 
+  const [scdZoneName, setScdZoneName] = useState("");
+  const [expectedQtyMap, setExpectedQtyMap] = useState<Record<string, ScdExpectedInfo>>({});
+
   const [subTab, setSubTab] = useState<SubTab>("scan");
   const [step, setStep] = useState<Step>("upload");
 
@@ -196,6 +213,25 @@ export function ShelfScanner() {
     setToast(msg);
     setTimeout(() => setToast(null), 2500);
   };
+
+  const loadExpectedQty = useCallback(
+    async (productIds: string[]) => {
+      if (!businessId || !scdZoneSessionId || productIds.length === 0) return;
+      try {
+        const res = await fetch(
+          `/api/businesses/${businessId}/stock-count-day/expected-qty?zoneSessionId=${scdZoneSessionId}&productIds=${productIds.join(",")}`
+        );
+        const data = await res.json();
+        if (res.ok && data.success) {
+          setScdZoneName(data.zoneName || "");
+          setExpectedQtyMap((prev) => ({ ...prev, ...data.byProduct }));
+        }
+      } catch {
+        // non-blocking — scanner still works without expected qty
+      }
+    },
+    [businessId, scdZoneSessionId]
+  );
 
   // Modal state
   const [matchModalItem, setMatchModalItem] = useState<ScanItem | null>(null);
@@ -298,22 +334,27 @@ export function ShelfScanner() {
       if (data.detectedCount === 0 && data.diagnostic?.rawPreview) {
         console.log("[shelf-scanner] AI raw preview:", data.diagnostic.rawPreview);
       }
-      setItems(
-        (data.items as ScanItem[]).map((it) => ({
-          ...it,
-          newQuantity: "",
-          removed: false,
-          sellingPrice: it.product?.sellingPrice
-            ? String(it.product.sellingPrice)
-            : it.masterProduct?.defaultMrp
-              ? String(it.masterProduct.defaultMrp)
-              : "",
-          reorderLevel: it.product?.reorderLevel ? String(it.product.reorderLevel) : "",
-          rackNo: it.product?.rackNo || "",
-          showDetails: false,
-        }))
-      );
+      const mappedItems = (data.items as ScanItem[]).map((it) => ({
+        ...it,
+        newQuantity: "",
+        removed: false,
+        sellingPrice: it.product?.sellingPrice
+          ? String(it.product.sellingPrice)
+          : it.masterProduct?.defaultMrp
+            ? String(it.masterProduct.defaultMrp)
+            : "",
+        reorderLevel: it.product?.reorderLevel ? String(it.product.reorderLevel) : "",
+        rackNo: it.product?.rackNo || "",
+        showDetails: false,
+      }));
+      setItems(mappedItems);
       setStep("review");
+      if (scdZoneSessionId) {
+        const ids = mappedItems
+          .filter((it) => it.product)
+          .map((it) => it.product!.id);
+        void loadExpectedQty(ids);
+      }
     } catch (err) {
       setScanError(err instanceof Error ? err.message : "Scan failed. Please try again.");
     } finally {
@@ -352,6 +393,7 @@ export function ShelfScanner() {
       rackNo: product.rackNo || "",
     });
     showToast(`Linked to ${product.name}`);
+    if (scdZoneSessionId) void loadExpectedQty([product.id]);
   };
 
   const handleAddFromCatalog = async (item: ScanItem) => {
@@ -398,6 +440,7 @@ export function ShelfScanner() {
         rackNo: linked.rackNo || "",
       });
       showToast(`Added ${linked.name} to your inventory`);
+      if (scdZoneSessionId) void loadExpectedQty([linked.id]);
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Could not add from catalog");
     } finally {
@@ -431,6 +474,7 @@ export function ShelfScanner() {
       rackNo: product.rackNo || "",
     });
     showToast(`Created ${product.name}`);
+    if (scdZoneSessionId) void loadExpectedQty([product.id]);
   };
 
   // ── Save (Step 2 → Step 3) ──
@@ -490,6 +534,10 @@ export function ShelfScanner() {
     setScanError(null);
     setSaveResult(null);
     setUploadError(null);
+    if (!scdZoneSessionId) {
+      setExpectedQtyMap({});
+      setScdZoneName("");
+    }
   };
 
   // ── History ──
@@ -553,9 +601,15 @@ export function ShelfScanner() {
 
       {inScdMode && (
         <Card className="border-teal-200 bg-teal-50/80 shadow-none">
-          <CardContent className="p-3 text-xs text-teal-900 leading-relaxed">
-            <strong>Stock Count Day mode</strong> — quantities save to this zone only.
-            Inventory is updated when you finish and apply the count day.
+          <CardContent className="p-3 text-xs text-teal-900 leading-relaxed space-y-1">
+            <p>
+              <strong>Stock Count Day</strong>
+              {scdZoneName ? ` — counting: ${scdZoneName}` : ""}
+            </p>
+            <p>
+              Enter quantity for <em>this zone only</em>. Expected column shows shop-wide stock
+              (system − sales during count). Inventory updates when you apply the count day.
+            </p>
           </CardContent>
         </Card>
       )}
@@ -759,8 +813,18 @@ export function ShelfScanner() {
               </div>
 
               <p className="text-xs text-muted-foreground px-1">
-                Items already in your inventory can go straight to quantity entry. Catalog matches can be added to your list. Brand-new medicines use Add to list.
+                {inScdMode
+                  ? "Enter the quantity physically in this zone. Expected = shop total now (after sales during count)."
+                  : "Items already in your inventory can go straight to quantity entry. Catalog matches can be added to your list. Brand-new medicines use Add to list."}
               </p>
+
+              {inScdMode && inInventoryCount > 0 && (
+                <div className="grid grid-cols-[1fr_auto_auto] gap-2 px-3 py-1.5 rounded-md bg-muted/40 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  <span>Product</span>
+                  <span className="text-right w-20">Expected</span>
+                  <span className="text-right w-24">This zone</span>
+                </div>
+              )}
 
               {/* Item cards */}
               <div className="space-y-2.5">
@@ -771,6 +835,7 @@ export function ShelfScanner() {
                   const isInInventory = hasProduct;
                   const isInCatalogOnly = !hasProduct && hasMaster;
                   const isBrandNew = !hasProduct && !hasMaster;
+                  const expected = item.product ? expectedQtyMap[item.product.id] : undefined;
                   return (
                     <Card key={item.id} className={cn(
                       "overflow-hidden shadow-sm transition-opacity",
@@ -894,26 +959,84 @@ export function ShelfScanner() {
                               </div>
                             )}
 
-                            {/* New quantity input — only if matched */}
+                            {/* Multi-zone hints during SCD */}
+                            {inScdMode && hasProduct && expected?.isMultiZone && (
+                              <div className="flex flex-wrap gap-1 mt-2">
+                                <Badge variant="outline" className="text-[10px] gap-1 border-violet-200 text-violet-700 bg-violet-50">
+                                  <Layers className="h-3 w-3" /> In {expected.otherZones.length + 1} zones
+                                </Badge>
+                                {expected.otherZones.map((z) => (
+                                  <Badge key={z.id} variant="outline" className="text-[10px]" style={{ borderColor: z.color, color: z.color }}>
+                                    Also in: {z.name}
+                                  </Badge>
+                                ))}
+                              </div>
+                            )}
+                            {inScdMode && hasProduct && expected && expected.countedInOtherZones.length > 0 && (
+                              <p className="text-[10px] text-muted-foreground mt-1">
+                                Counted elsewhere:{" "}
+                                {expected.countedInOtherZones.map((z, i) => (
+                                  <span key={z.zoneId}>
+                                    {i > 0 ? ", " : ""}
+                                    <span style={{ color: z.zoneColor }} className="font-medium">
+                                      {z.zoneName}: {z.countedQty}
+                                    </span>
+                                  </span>
+                                ))}
+                              </p>
+                            )}
+
+                            {/* Quantity input — matched inventory items */}
                             {hasProduct && (
-                              <div className="mt-2.5 flex items-center gap-2">
-                                <Label className="text-xs text-muted-foreground shrink-0">New qty:</Label>
+                              <div className={cn(
+                                "mt-2.5 flex items-center gap-2",
+                                inScdMode && "flex-wrap"
+                              )}>
+                                {inScdMode && expected !== undefined && (
+                                  <div className="flex items-center gap-1.5 shrink-0 rounded-md bg-slate-100 px-2 py-1.5">
+                                    <Label className="text-[10px] text-muted-foreground">Expected</Label>
+                                    <span className="text-sm font-semibold tabular-nums w-10 text-right">
+                                      {expected.expectedTotalQty}
+                                    </span>
+                                    <span className="text-[10px] text-muted-foreground">{item.product?.unit}</span>
+                                    {expected.soldDuringScd > 0 && (
+                                      <span className="text-[9px] text-amber-600">−{expected.soldDuringScd} sold</span>
+                                    )}
+                                  </div>
+                                )}
+                                <Label className="text-xs text-muted-foreground shrink-0">
+                                  {inScdMode ? `Qty in ${scdZoneName || "zone"}:` : "New qty:"}
+                                </Label>
                                 <Input
                                   type="number"
                                   inputMode="numeric"
                                   value={item.newQuantity}
                                   onChange={(e) => updateItem(item.id, { newQuantity: e.target.value })}
-                                  placeholder={String(item.previousQuantity)}
+                                  placeholder={inScdMode ? "0" : String(item.previousQuantity)}
                                   className="h-9 w-24 text-sm"
                                 />
                                 <span className="text-[11px] text-muted-foreground">{item.product?.unit}</span>
-                                {item.newQuantity.trim() !== "" && parseFloat(item.newQuantity) !== item.previousQuantity && (
+                                {!inScdMode && item.newQuantity.trim() !== "" && parseFloat(item.newQuantity) !== item.previousQuantity && (
                                   <span className="text-[11px] text-emerald-600 flex items-center gap-0.5">
                                     <TrendingUp className="h-3 w-3" />
                                     {parseFloat(item.newQuantity) > item.previousQuantity ? "+" : ""}
                                     {(parseFloat(item.newQuantity) - item.previousQuantity).toFixed(0)}
                                   </span>
                                 )}
+                                {inScdMode && item.newQuantity.trim() !== "" && expected !== undefined && (() => {
+                                  const otherTotal = expected.countedInOtherZones.reduce(
+                                    (s, z) => s + (z.countedQty ?? 0), 0
+                                  );
+                                  const combined = (parseFloat(item.newQuantity) || 0) + otherTotal;
+                                  const diff = combined - expected.expectedTotalQty;
+                                  if (Math.abs(diff) < 0.001) return null;
+                                  return (
+                                    <span className="text-[11px] text-amber-600">
+                                      All zones: {combined} vs expected {expected.expectedTotalQty}
+                                      ({diff > 0 ? "+" : ""}{diff.toFixed(0)})
+                                    </span>
+                                  );
+                                })()}
                               </div>
                             )}
 
