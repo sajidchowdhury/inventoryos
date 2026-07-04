@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import {
   ArrowLeft, Save, Truck, Plus, X, Search,
-  AlertCircle, Check, Loader2, Pill, CreditCard, ScanLine,
+  AlertCircle, Check, Loader2, Pill, CreditCard, ScanLine, Link2,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,10 +15,15 @@ import { Badge } from "@/components/ui/badge";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
+} from "@/components/ui/dialog";
 import { useAuthStore } from "@/lib/auth-store";
 import { useNavStore } from "@/lib/nav-store";
 import { PurchaseScannerDialog } from "./purchase/PurchaseScannerDialog";
+import { LinkProductDialog } from "./purchase/LinkProductDialog";
 import type { ScannedItem } from "./purchase/ScannedItemList";
+import { cn } from "@/lib/utils";
 
 const fadeIn = {
   initial: { opacity: 0, y: 12 },
@@ -27,6 +32,7 @@ const fadeIn = {
 };
 
 interface Product {
+  // P3: id is "" for unmatched scanned items (not yet linked to a real product)
   id: string;
   name: string;
   genericName: string | null;
@@ -43,6 +49,10 @@ interface Supplier {
 }
 
 interface CartItem {
+  // P3: cartItemId is a stable unique key for the cart item.
+  // For matched items it's "cart:" + productId. For unmatched items it's "scan:" + a generated id.
+  // This allows unmatched items (no productId yet) to coexist in the cart until linked.
+  cartItemId: string;
   product: Product;
   quantity: string;
   unitCost: string;
@@ -50,6 +60,12 @@ interface CartItem {
   expiryDate: string;
   mfgDate: string;
   mrp: string;
+  // P3: scan metadata (undefined for manually-added items)
+  scanMeta?: {
+    matchedMethod: "ai" | "master-catalog" | "unmatched";
+    confidenceLevel: "high" | "medium" | "low";
+    detectedProductName: string;
+  };
 }
 
 export function PurchaseForm() {
@@ -73,6 +89,12 @@ export function PurchaseForm() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [scannerOpen, setScannerOpen] = useState(false);
+  // P3: link dialog state — which cart item is being linked to a product
+  const [linkDialog, setLinkDialog] = useState<{ open: boolean; cartItemId: string; detectedName: string }>({
+    open: false, cartItemId: "", detectedName: "",
+  });
+  // P3: remove confirmation dialog
+  const [removeConfirm, setRemoveConfirm] = useState<CartItem | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Fetch suppliers
@@ -99,8 +121,9 @@ export function PurchaseForm() {
 
   const addToCart = (product: Product) => {
     setCart((prev) => {
-      if (prev.some((item) => item.product.id === product.id)) return prev;
+      if (prev.some((item) => item.product.id === product.id && product.id)) return prev;
       return [...prev, {
+        cartItemId: `cart:${product.id}`,
         product,
         quantity: "10",
         unitCost: "5",
@@ -115,82 +138,153 @@ export function PurchaseForm() {
     setProducts([]);
   };
 
-  // P2: Add scanned items from the PurchaseScannerDialog into the cart.
-  // Matched items (productId set) are added with detected fields pre-filled.
-  // Unmatched items are skipped (user links them in P3 — for now they're not added
-  // since the cart requires a productId). A toast/notification could be added later
-  // to tell the user how many were skipped.
+  // P2/P3: Add scanned items from the PurchaseScannerDialog into the cart.
+  // Matched items (productId set) are added with detected fields pre-filled + scan metadata.
+  // Unmatched items (no productId) are ALSO added — with product.id="" + a "Link to product"
+  // button shown in the cart. User links them via LinkProductDialog before saving.
+  // Duplicate matched items merge quantities; unmatched items always append.
   const addScannedItemsToCart = (scannedItems: ScannedItem[]) => {
     setCart((prev) => {
       const updated = [...prev];
-      let added = 0;
-      let skipped = 0;
+      let unmatchedCounter = Date.now();
 
       for (const scanned of scannedItems) {
-        // Only add matched items (must have a productId to add to cart)
-        if (!scanned.productId) {
-          skipped++;
-          continue;
-        }
-
-        // Check if already in cart — if so, merge quantity
-        const existingIdx = updated.findIndex((item) => item.product.id === scanned.productId);
-        if (existingIdx >= 0) {
-          const existing = updated[existingIdx];
-          const existingQty = parseFloat(existing.quantity) || 0;
-          const scannedQty = scanned.detectedQuantity ?? 0;
-          updated[existingIdx] = {
-            ...existing,
-            quantity: String(existingQty + scannedQty),
-            // Fill in detected fields if the existing cart item has them empty
-            batchNo: existing.batchNo || scanned.detectedBatchNo || "",
-            expiryDate: existing.expiryDate || scanned.detectedExpiryDate || "",
-            mfgDate: existing.mfgDate || scanned.detectedMfgDate || "",
-            mrp: existing.mrp || (scanned.detectedMrp?.toString() ?? ""),
-            unitCost: existing.unitCost || (scanned.detectedUnitCost?.toString() ?? "0"),
-          };
-          added++;
-          continue;
-        }
-
-        // New item — fetch the product from the search API to get full details
-        // (We only have productId from the scan, need the Product object for the cart)
-        // For now, create a minimal Product object — the cart will work with it.
-        // P3 will add the full product fetch + link dialog for unmatched items.
-        const minimalProduct: Product = {
-          id: scanned.productId,
-          name: scanned.matchedName || scanned.detectedProductName,
-          genericName: scanned.detectedGenericName,
-          strength: null,
-          unit: scanned.detectedUnit || "box",
-          mrp: scanned.detectedMrp,
-          category: null,
+        const scanMeta = {
+          matchedMethod: scanned.matchedMethod,
+          confidenceLevel: scanned.confidenceLevel,
+          detectedProductName: scanned.detectedProductName,
         };
 
-        updated.push({
-          product: minimalProduct,
-          quantity: String(scanned.detectedQuantity ?? 0),
-          unitCost: String(scanned.detectedUnitCost ?? 0),
-          batchNo: scanned.detectedBatchNo || "",
-          expiryDate: scanned.detectedExpiryDate || "",
-          mfgDate: scanned.detectedMfgDate || "",
-          mrp: scanned.detectedMrp?.toString() ?? "",
-        });
-        added++;
+        // Matched item — check if already in cart by productId
+        if (scanned.productId) {
+          const existingIdx = updated.findIndex(
+            (item) => item.product.id === scanned.productId && item.product.id
+          );
+          if (existingIdx >= 0) {
+            const existing = updated[existingIdx];
+            const existingQty = parseFloat(existing.quantity) || 0;
+            const scannedQty = scanned.detectedQuantity ?? 0;
+            updated[existingIdx] = {
+              ...existing,
+              quantity: String(existingQty + scannedQty),
+              batchNo: existing.batchNo || scanned.detectedBatchNo || "",
+              expiryDate: existing.expiryDate || scanned.detectedExpiryDate || "",
+              mfgDate: existing.mfgDate || scanned.detectedMfgDate || "",
+              mrp: existing.mrp || (scanned.detectedMrp?.toString() ?? ""),
+              unitCost: existing.unitCost || (scanned.detectedUnitCost?.toString() ?? "0"),
+              // Keep the higher confidence level
+              scanMeta: existing.scanMeta && existing.scanMeta.confidenceLevel === "high"
+                ? existing.scanMeta
+                : scanMeta,
+            };
+            continue;
+          }
+
+          // New matched item
+          const minimalProduct: Product = {
+            id: scanned.productId,
+            name: scanned.matchedName || scanned.detectedProductName,
+            genericName: scanned.detectedGenericName,
+            strength: null,
+            unit: scanned.detectedUnit || "box",
+            mrp: scanned.detectedMrp,
+            category: null,
+          };
+
+          updated.push({
+            cartItemId: `cart:${scanned.productId}`,
+            product: minimalProduct,
+            quantity: String(scanned.detectedQuantity ?? 0),
+            unitCost: String(scanned.detectedUnitCost ?? 0),
+            batchNo: scanned.detectedBatchNo || "",
+            expiryDate: scanned.detectedExpiryDate || "",
+            mfgDate: scanned.detectedMfgDate || "",
+            mrp: scanned.detectedMrp?.toString() ?? "",
+            scanMeta,
+          });
+        } else {
+          // Unmatched item — add with empty productId + "Link to product" button
+          const unmatchedProduct: Product = {
+            id: "",
+            name: scanned.detectedProductName,
+            genericName: scanned.detectedGenericName,
+            strength: null,
+            unit: scanned.detectedUnit || "box",
+            mrp: scanned.detectedMrp,
+            category: null,
+          };
+
+          updated.push({
+            cartItemId: `scan:unmatched-${unmatchedCounter++}`,
+            product: unmatchedProduct,
+            quantity: String(scanned.detectedQuantity ?? 0),
+            unitCost: String(scanned.detectedUnitCost ?? 0),
+            batchNo: scanned.detectedBatchNo || "",
+            expiryDate: scanned.detectedExpiryDate || "",
+            mfgDate: scanned.detectedMfgDate || "",
+            mrp: scanned.detectedMrp?.toString() ?? "",
+            scanMeta,
+          });
+        }
       }
 
       return updated;
     });
   };
 
-  const updateItem = (productId: string, field: keyof CartItem, value: string) => {
+  // P3: Link an unmatched cart item to an existing product (or newly created one)
+  const linkCartItemToProduct = (cartItemId: string, product: Product) => {
+    setCart((prev) => prev.map((item) => {
+      if (item.cartItemId !== cartItemId) return item;
+      return {
+        ...item,
+        cartItemId: `cart:${product.id}`,  // upgrade to matched key
+        product,
+        // Keep detected scan fields but update the product reference
+        mrp: item.mrp || (product.mrp?.toString() ?? ""),
+        scanMeta: item.scanMeta
+          ? { ...item.scanMeta, matchedMethod: "ai", confidenceLevel: "high" }
+          : undefined,
+      };
+    }));
+  };
+
+  // P3: Create a new minimal product + link it to a cart item
+  const createNewProductForCartItem = async (cartItemId: string, data: { name: string; genericName?: string; unit?: string }): Promise<Product> => {
+    if (!businessId) throw new Error("No business");
+    const res = await fetch(`/api/businesses/${businessId}/products`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: data.name,
+        genericName: data.genericName || null,
+        unit: data.unit || "box",
+      }),
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || "Failed to create product");
+    const newProduct: Product = {
+      id: json.product?.id ?? json.id,
+      name: json.product?.name ?? data.name,
+      genericName: json.product?.genericName ?? data.genericName ?? null,
+      strength: null,
+      unit: json.product?.unit ?? data.unit ?? "box",
+      mrp: json.product?.mrp ?? null,
+      category: null,
+    };
+    linkCartItemToProduct(cartItemId, newProduct);
+    return newProduct;
+  };
+
+  // P3: updated to use cartItemId (stable for both matched + unmatched items)
+  const updateItem = (cartItemId: string, field: keyof CartItem, value: string) => {
     setCart((prev) => prev.map((item) =>
-      item.product.id === productId ? { ...item, [field]: value } : item
+      item.cartItemId === cartItemId ? { ...item, [field]: value } : item
     ));
   };
 
-  const removeFromCart = (productId: string) => {
-    setCart((prev) => prev.filter((item) => item.product.id !== productId));
+  const removeFromCart = (cartItemId: string) => {
+    setCart((prev) => prev.filter((item) => item.cartItemId !== cartItemId));
   };
 
   const subtotal = cart.reduce((sum, item) => {
@@ -201,6 +295,16 @@ export function PurchaseForm() {
   const handleSave = async () => {
     if (!businessId || cart.length === 0) {
       setError("Add at least one item");
+      return;
+    }
+    // P3: Block save if any unmatched items haven't been linked
+    const unlinked = cart.filter((item) => !item.product.id);
+    if (unlinked.length > 0) {
+      setError(
+        unlinked.length === 1
+          ? `Link "${unlinked[0].product.name}" to a product before saving`
+          : `${unlinked.length} items need to be linked to a product before saving. Tap "Link" on each.`
+      );
       return;
     }
     // Validate each item
@@ -418,47 +522,216 @@ export function PurchaseForm() {
         />
       )}
 
-      {/* Cart Items */}
-      {cart.map((item, idx) => (
-        <Card key={item.product.id} className={`card-hover shadow-pharmacy border-0 overflow-hidden ${idx === 0 ? "stagger-in" : ""}`}>
+      {/* P3: Link Product Dialog — for unmatched scanned items */}
+      {businessId && (
+        <LinkProductDialog
+          open={linkDialog.open}
+          onOpenChange={(open) => setLinkDialog((prev) => ({ ...prev, open }))}
+          businessId={businessId}
+          detectedName={linkDialog.detectedName}
+          onLink={(productId, productOption) => {
+            const product: Product = {
+              id: productOption.id,
+              name: productOption.name,
+              genericName: productOption.genericName,
+              strength: null,
+              unit: productOption.unit,
+              mrp: productOption.mrp,
+              category: null,
+            };
+            linkCartItemToProduct(linkDialog.cartItemId, product);
+          }}
+          onCreateNew={async (data) => {
+            const newProduct = await createNewProductForCartItem(linkDialog.cartItemId, data);
+            return {
+              id: newProduct.id,
+              name: newProduct.name,
+              genericName: newProduct.genericName,
+              unit: newProduct.unit,
+              mrp: newProduct.mrp,
+            };
+          }}
+        />
+      )}
+
+      {/* P3: Remove confirmation dialog */}
+      <Dialog open={!!removeConfirm} onOpenChange={(open) => !open && setRemoveConfirm(null)}>
+        <DialogContent className="max-w-xs">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 text-rose-500" />
+              Remove item?
+            </DialogTitle>
+            <DialogDescription>
+              Remove <span className="font-medium text-gray-700">{removeConfirm?.product.name}</span> from the purchase? This cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex gap-2 pt-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex-1"
+              onClick={() => setRemoveConfirm(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              className="flex-1 gap-1.5 bg-rose-600 hover:bg-rose-700"
+              onClick={() => {
+                if (removeConfirm) removeFromCart(removeConfirm.cartItemId);
+                setRemoveConfirm(null);
+              }}
+            >
+              <X className="h-3.5 w-3.5" />
+              Remove
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Cart Items — P3: confidence dot + link button + amber borders + remove confirmation */}
+      {cart.map((item, idx) => {
+        const isUnmatched = !item.product.id;
+        const confidence = item.scanMeta?.confidenceLevel;
+        const isLowConfidence = confidence === "low";
+        const isMediumConfidence = confidence === "medium";
+        return (
+        <Card
+          key={item.cartItemId}
+          className={cn(
+            "card-hover shadow-pharmacy border-0 overflow-hidden",
+            idx === 0 && "stagger-in",
+            isUnmatched && "ring-2 ring-amber-300",
+            isLowConfidence && !isUnmatched && "ring-1 ring-rose-200"
+          )}
+        >
           <CardContent className="p-3 space-y-2">
+            {/* Row 1: product icon + name + confidence dot + remove */}
             <div className="flex items-start gap-2">
-              <div className="h-9 w-9 rounded-xl flex items-center justify-center shrink-0 bg-gradient-to-br from-emerald-400 to-emerald-600"
-                style={item.product.category?.color ? { background: `linear-gradient(135deg, ${item.product.category.color}, ${item.product.category.color}dd)` } : undefined}>
-                <Pill className="h-4 w-4 text-white" />
+              <div
+                className={cn(
+                  "h-9 w-9 rounded-xl flex items-center justify-center shrink-0",
+                  isUnmatched
+                    ? "bg-gradient-to-br from-amber-400 to-orange-500"
+                    : "bg-gradient-to-br from-emerald-400 to-emerald-600"
+                )}
+                style={!isUnmatched && item.product.category?.color ? { background: `linear-gradient(135deg, ${item.product.category.color}, ${item.product.category.color}dd)` } : undefined}
+              >
+                {isUnmatched ? <Link2 className="h-4 w-4 text-white" /> : <Pill className="h-4 w-4 text-white" />}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold truncate">{item.product.name}</p>
-                <p className="text-[10px] text-muted-foreground">{item.product.unit}</p>
+                <div className="flex items-center gap-1.5">
+                  <p className="text-sm font-semibold truncate">{item.product.name}</p>
+                  {/* P3: confidence dot */}
+                  {confidence === "high" && <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0" title="High confidence" />}
+                  {isMediumConfidence && <span className="h-1.5 w-1.5 rounded-full bg-amber-500 shrink-0" title="Medium confidence — please verify" />}
+                  {isLowConfidence && <span className="h-1.5 w-1.5 rounded-full bg-rose-500 shrink-0" title="Low confidence — please verify" />}
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <p className="text-[10px] text-muted-foreground">{item.product.unit}</p>
+                  {isUnmatched && (
+                    <Badge className="text-[9px] h-4 px-1.5 bg-amber-100 text-amber-700 border-0">
+                      Not linked
+                    </Badge>
+                  )}
+                  {item.scanMeta?.matchedMethod === "master-catalog" && (
+                    <Badge className="text-[9px] h-4 px-1.5 bg-blue-100 text-blue-700 border-0">
+                      Catalog
+                    </Badge>
+                  )}
+                </div>
               </div>
-              <button className="p-1 rounded-lg hover:bg-rose-50" onClick={() => removeFromCart(item.product.id)}>
+              {/* P3: remove with confirmation */}
+              <button
+                className="p-1 rounded-lg hover:bg-rose-50"
+                onClick={() => setRemoveConfirm(item)}
+                aria-label="Remove item"
+              >
                 <X className="h-3.5 w-3.5 text-rose-500" />
               </button>
             </div>
+
+            {/* P3: "Link to product" button for unmatched items */}
+            {isUnmatched && (
+              <Button
+                size="sm"
+                className="w-full gap-1.5 bg-amber-600 hover:bg-amber-700 h-8 text-xs"
+                onClick={() =>
+                  setLinkDialog({
+                    open: true,
+                    cartItemId: item.cartItemId,
+                    detectedName: item.product.name,
+                  })
+                }
+              >
+                <Link2 className="h-3 w-3" />
+                Link to product
+              </Button>
+            )}
+
+            {/* P3: detected-name hint for matched items where detected ≠ matched */}
+            {item.scanMeta && item.scanMeta.detectedProductName !== item.product.name && !isUnmatched && (
+              <p className="text-[10px] text-gray-400 italic">
+                Detected as: {item.scanMeta.detectedProductName}
+              </p>
+            )}
+
+            {/* Fields — P3: amber border on low-confidence items */}
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1">
                 <label className="text-[10px] text-muted-foreground">Quantity *</label>
-                <Input type="number" step="0.01" value={item.quantity} onChange={(e) => updateItem(item.product.id, "quantity", e.target.value)} className="h-9 text-sm rounded-lg" />
+                <Input
+                  type="number" step="0.01"
+                  value={item.quantity}
+                  onChange={(e) => updateItem(item.cartItemId, "quantity", e.target.value)}
+                  className={cn("h-9 text-sm rounded-lg", isLowConfidence && "border-amber-300")}
+                />
               </div>
               <div className="space-y-1">
                 <label className="text-[10px] text-muted-foreground">Unit Cost (৳) *</label>
-                <Input type="number" step="0.01" value={item.unitCost} onChange={(e) => updateItem(item.product.id, "unitCost", e.target.value)} className="h-9 text-sm rounded-lg" />
+                <Input
+                  type="number" step="0.01"
+                  value={item.unitCost}
+                  onChange={(e) => updateItem(item.cartItemId, "unitCost", e.target.value)}
+                  className={cn("h-9 text-sm rounded-lg", isLowConfidence && "border-amber-300")}
+                />
               </div>
               <div className="space-y-1">
                 <label className="text-[10px] text-muted-foreground">Batch No *</label>
-                <Input value={item.batchNo} onChange={(e) => updateItem(item.product.id, "batchNo", e.target.value)} className="h-9 text-sm rounded-lg font-mono" placeholder="SQ240101" />
+                <Input
+                  value={item.batchNo}
+                  onChange={(e) => updateItem(item.cartItemId, "batchNo", e.target.value)}
+                  className={cn("h-9 text-sm rounded-lg font-mono", (isLowConfidence || isMediumConfidence) && "border-amber-300")}
+                  placeholder="SQ240101"
+                />
               </div>
               <div className="space-y-1">
                 <label className="text-[10px] text-muted-foreground">Expiry *</label>
-                <Input type="date" value={item.expiryDate} onChange={(e) => updateItem(item.product.id, "expiryDate", e.target.value)} className="h-9 text-sm rounded-lg" />
+                <Input
+                  type="date"
+                  value={item.expiryDate}
+                  onChange={(e) => updateItem(item.cartItemId, "expiryDate", e.target.value)}
+                  className={cn("h-9 text-sm rounded-lg", (isLowConfidence || isMediumConfidence) && "border-amber-300")}
+                />
               </div>
               <div className="space-y-1">
                 <label className="text-[10px] text-muted-foreground">Mfg Date</label>
-                <Input type="date" value={item.mfgDate} onChange={(e) => updateItem(item.product.id, "mfgDate", e.target.value)} className="h-9 text-sm rounded-lg" />
+                <Input
+                  type="date"
+                  value={item.mfgDate}
+                  onChange={(e) => updateItem(item.cartItemId, "mfgDate", e.target.value)}
+                  className="h-9 text-sm rounded-lg"
+                />
               </div>
               <div className="space-y-1">
                 <label className="text-[10px] text-muted-foreground">MRP (৳)</label>
-                <Input type="number" step="0.01" value={item.mrp} onChange={(e) => updateItem(item.product.id, "mrp", e.target.value)} className="h-9 text-sm rounded-lg" />
+                <Input
+                  type="number" step="0.01"
+                  value={item.mrp}
+                  onChange={(e) => updateItem(item.cartItemId, "mrp", e.target.value)}
+                  className={cn("h-9 text-sm rounded-lg", isLowConfidence && "border-amber-300")}
+                />
               </div>
             </div>
             <div className="text-right text-xs font-medium pt-1 border-t border-dashed">
@@ -466,7 +739,8 @@ export function PurchaseForm() {
             </div>
           </CardContent>
         </Card>
-      ))}
+        );
+      })}
 
       {/* Payment Section */}
       {cart.length > 0 && (
