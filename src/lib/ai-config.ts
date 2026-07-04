@@ -50,6 +50,16 @@ export const AI_CONFIG_DEFAULTS = {
     temperature: 0.1,
     disableThinking: true,   // Gemini 2.5+ must not burn output budget on reasoning
   },
+  "purchase-scan": {
+    maxOutputTokens: 8192,   // invoices: 20-50 line items per photo with batch/expiry/price
+    maxInputBatches: null as number | null,
+    maxInputProducts: null as number | null,
+    maxInputImages: 1,       // P1: one image at a time (accumulate in UI)
+    systemPrompt: null as string | null,
+    userPromptTemplate: null as string | null,
+    temperature: 0.1,
+    disableThinking: true,
+  },
 } as const;
 
 export type AiFeatureName = keyof typeof AI_CONFIG_DEFAULTS;

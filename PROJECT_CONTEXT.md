@@ -611,7 +611,7 @@ After completing a phase:
 
 | Phase | Theme | Features | Effort | Status | Tag |
 |---|---|---|---|---|---|
-| **P1** | Vision Scan API | Scan endpoint + invoice prompt + catalog matching | 1–2 sessions | Pending | — |
+| **P1** | Vision Scan API | Scan endpoint + invoice prompt + catalog matching | 1–2 sessions | Done | `v1.7.0-purchase-scan-p1` |
 | **P2** | Scanner UI | Scan button + image upload + accumulate into cart | 1 session | Pending | — |
 | **P3** | Review & Edit | Edit detected items + link unmatched + confidence | 1 session | Pending | — |
 | **P4** | Polish & Edge Cases | Help text + manual fallback + SuperAdmin docs | 1 session | Pending | — |

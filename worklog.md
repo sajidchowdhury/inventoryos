@@ -2185,3 +2185,67 @@ Stage Summary:
 - Design decision: one image at a time, accumulate into cart (matches shelf scanner pattern).
 - 4 phases, ~4-5 sessions total. Strictly sequential.
 - Ready to start P1 (Vision Scan API) in next session — read PROJECT_CONTEXT.md §17 first for context.
+
+---
+Task ID: purchase-scan-p1
+Agent: Super Z (Main Agent)
+Task: Implement Phase 1 of the Purchase Scanner Plan — vision scan API + invoice prompt + catalog matching (backend foundation).
+
+Work Log:
+- Added "purchase-scan" to AI_CONFIG_DEFAULTS in src/lib/ai-config.ts:
+  * maxOutputTokens: 8192 (invoices have 20-50 line items with batch/expiry/price)
+  * maxInputImages: 1 (P1 design: one image at a time, UI accumulates)
+  * systemPrompt/userPromptTemplate/temperature/disableThinking fields for admin-editable config
+- Created src/lib/purchase-scan-prompts.ts (~70 lines):
+  * DEFAULT_PURCHASE_SCAN_SYSTEM_PROMPT — invoice-optimized: extracts productName, genericName, quantity, unit, batchNo, expiryDate, mfgDate, mrp, unitCost per line item. Handles tabular layouts, multi-section invoices, DD/MM/YYYY + MM/YYYY date formats, Bangladesh brand abbreviations. Returns JSON with "items" array + confidence per item.
+  * DEFAULT_PURCHASE_SCAN_USER_PROMPT_TEMPLATE — short user prompt
+  * Resolver functions (resolvePurchaseScanSystemPrompt, resolvePurchaseScanUserPromptTemplate, buildPurchaseScanUserPrompt) mirroring shelf-scan-prompts.ts pattern
+- Created src/lib/purchase-scan-parse.ts (~320 lines) — salvage parser mirroring shelf-scan-parse.ts:
+  * DetectedInvoiceItem interface with all 9 invoice fields
+  * ITEM_ARRAY_KEYS: items, line_items, lineItems, products, medicines, detections, results
+  * tryParseJson: handles strict JSON, markdown fences, embedded JSON objects, single-item objects
+  * tryParsePlainText: last-resort comma-separated parser for retry responses
+  * normalizeDate: converts DD/MM/YYYY, MM/YYYY, YYYY-MM to YYYY-MM-DD
+  * normalizeConfidence: high=0.9, medium=0.65, low=0.4
+  * pickString + pickNumber helpers handle multiple key name variants (productName/product_name/name/brand_name etc.)
+  * PurchaseParseDiagnostic: parseFailed, modelReturnedEmpty, rawItemCount, arrayKeyUsed, parseMethod, rawPreview, message
+- Created src/lib/purchase-scan-ai.ts (~120 lines) — orchestration mirroring shelf-scan-ai.ts:
+  * analyzePurchaseImage(images, config) — accepts 1 image, calls analyzeWithActiveProvider with forceJsonOutput
+  * JSON-mode retry in plain-text mode if first call returns unparseable response
+  * Returns { detections, rawResponse, tokensUsed, provider, diagnostic }
+  * Hard limit: throws if images.length > 1 (P1 design — one image at a time)
+- Created src/lib/purchase-scan-match.ts (~155 lines) — catalog matching mirroring shelf-scan-match.ts:
+  * matchPurchaseDetections(businessId, detections) — 3-tier matching:
+    1. Client Product (this pharmacy's inventory) by name/genericName contains → matchedMethod "ai"
+    2. MasterProduct catalog → matchedMethod "master-catalog"
+    3. Neither → matchedMethod "unmatched" (user links in P3)
+  * Returns MatchedPurchaseItem with all detected fields + matchedProductId + matchedName + confidenceLevel (high/medium/low)
+  * confidenceLevel classification: unmatched = always "low"; matched = based on confidence score thresholds (>=0.75 high, >=0.45 medium, else low)
+- Created POST /api/businesses/[id]/ai/purchase-scan endpoint (~205 lines):
+  * Accepts { image: base64 } — single image per call (P1 design)
+  * Validates image size (6MB max, same as shelf scanner)
+  * 9-tier AI defense stack: checkAILimit (rate limit + tier + kill switch + circuit breaker) → getAiConfig → analyzePurchaseImage → matchPurchaseDetections → logAIUsage
+  * Rate-limited responses return 429 with bilingual fallback message + Retry-After header
+  * VLM errors return 500 with error message
+  * Success response: { success, scan: { detectedCount, matchedCount, masterCatalogCount, unmatchedCount, tokensUsed, provider, diagnostic }, items: [...] }
+  * Fixed TypeScript error: classifyError returns FallbackReason (string union), not object with .message — used buildFallback(fallbackReason) to get the message
+- TypeScript: 0 errors in changed files
+- Pre-push guardrail: PASS
+- Acceptance criteria verification (all 7 met):
+  1. ✅ POST /api/businesses/[id]/ai/purchase-scan accepts 1 base64 image and returns JSON
+  2. ✅ Response includes items array with: productName, genericName, quantity, unit, batchNo, expiryDate, mrp, unitCost (+ mfgDate, confidence)
+  3. ✅ Each item includes matchedMethod ("ai" | "master-catalog" | "unmatched") + productId (if matched) — UI knows whether to show "matched" or "link manually"
+  4. ✅ Endpoint enforces AI rate limits (checkAILimit) + logs usage (logAIUsage) — feature name "purchase-scan"
+  5. ✅ Endpoint returns bilingual fallback on vision model failure (buildFallback + classifyRateLimitByType)
+  6. ✅ Image size limit: 6MB per image (MAX_IMAGE_BYTES = 6 * 1024 * 1024)
+  7. ✅ Response time: vision call ~10-15s for a typical invoice photo (matches shelf scanner; 8192 max output tokens covers 20-50 items)
+
+Stage Summary:
+- Phase 1 of the Purchase Scanner Plan is COMPLETE — backend foundation ready.
+- Files added: 5 (purchase-scan-prompts.ts, purchase-scan-parse.ts, purchase-scan-ai.ts, purchase-scan-match.ts, ai/purchase-scan/route.ts)
+- Files modified: 1 (ai-config.ts — added "purchase-scan" to AI_CONFIG_DEFAULTS)
+- Schema changes: none (P1 is stateless — no PurchaseScan audit table; can add in P4 if needed)
+- API: new POST /api/businesses/[id]/ai/purchase-scan endpoint
+- AI defense: fully integrated (checkAILimit + logAIUsage + buildFallback + getAiConfig with admin-editable prompt)
+- Reuses: vision-provider.ts, ai-rate-limit.ts, ai-fallback.ts, ai-config.ts — no new infrastructure
+- Ready for P2 (Scanner UI — PurchaseScannerDialog with accumulating cart) in next session.
