@@ -150,6 +150,7 @@ model Business {
   // P1: Subscription billing relations
   subscriptionInvoices SubscriptionInvoice[]
   paymentTransactions  PaymentTransaction[]
+  subscriptionAdjustments SubscriptionAdjustment[]  // P6: audit trail
 
   @@index([userId])
   @@index([businessTypeId])
@@ -1314,6 +1315,27 @@ model PaymentConfig {
   updatedBy       String?
 
   @@map("payment_config")
+}
+
+// ── P6: Subscription Adjustment Audit Trail ──
+// Logs every manual change to a business's subscription: refunds, extensions,
+// reductions, plan changes. Required reason field for audit compliance.
+model SubscriptionAdjustment {
+  id            String   @id @default(cuid())
+  businessId    String
+  type          String   // "refund" | "extension" | "reduction" | "plan_change"
+  daysAdjusted  Int      // positive = extension, negative = reduction
+  amount        Float    @default(0) // BDT (for refunds)
+  reason        String   // required — why the adjustment was made
+  oldTier       String?
+  newTier       String?
+  createdBy     String?  // super-admin id
+  createdAt     DateTime @default(now())
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@map("subscription_adjustments")
 }
 
 // ── SMTP Configuration (Phase 6: dynamic, editable from super admin panel) ──

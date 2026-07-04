@@ -192,8 +192,33 @@ export async function tryMatchReceivedPayment(
     const canRestore = await canRestoreData(business.id);
     if (canRestore) {
       await restoreBusinessData(business.id);
+      // P6: Send "data restored" notification
+      await db.notificationLog.create({
+        data: {
+          businessId: business.id,
+          type: "subscription_restored",
+          severity: "info",
+          title: "Data restored",
+          message: "Your data has been restored after payment. Full access is re-enabled.",
+          entityType: "subscription",
+          entityId: null,
+        },
+      });
     }
   }
+
+  // P6: Send "payment received" notification
+  await db.notificationLog.create({
+    data: {
+      businessId: business.id,
+      type: "subscription_payment_received",
+      severity: "info",
+      title: "Payment received",
+      message: `Your ${isAnnual ? "annual" : "monthly"} subscription payment of ৳${bestMatch.amount} has been verified. Subscription extended until ${newSubscriptionEnd.toLocaleDateString("en-GB")}.`,
+      entityType: "subscription",
+      entityId: null,
+    },
+  });
 
   return {
     matched: true,
@@ -306,8 +331,33 @@ export async function manualMatchPayment(
     const canRestore = await canRestoreData(business.id);
     if (canRestore) {
       await restoreBusinessData(business.id);
+      // P6: Send "data restored" notification
+      await db.notificationLog.create({
+        data: {
+          businessId: business.id,
+          type: "subscription_restored",
+          severity: "info",
+          title: "Data restored",
+          message: "Your data has been restored after payment. Full access is re-enabled.",
+          entityType: "subscription",
+          entityId: null,
+        },
+      });
     }
   }
+
+  // P6: Send "payment received" notification
+  await db.notificationLog.create({
+    data: {
+      businessId: business.id,
+      type: "subscription_payment_received",
+      severity: "info",
+      title: "Payment received",
+      message: `Your ${isAnnual ? "annual" : "monthly"} subscription payment of ৳${transaction.amount} has been verified. Subscription extended until ${newSubscriptionEnd.toLocaleDateString("en-GB")}.`,
+      entityType: "subscription",
+      entityId: null,
+    },
+  });
 
   return {
     matched: true,

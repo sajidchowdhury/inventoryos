@@ -670,7 +670,7 @@ After completing a phase:
 | **P3** | Manual Payments (bKash/Nagad) | User submission + super-admin matching + auto-extend | 2 sessions | Done | `v1.8.2-subscription-p3` |
 | **P4** | Super-Admin Monitoring | Client-wise status dashboard + revenue tracking + package management | 1–2 sessions | Done | `v1.8.3-subscription-p4` |
 | **P5** | SSL Commerz + Toggle | Gateway integration + payment-method toggle + annual billing | 1–2 sessions | Done | `v1.8.4-subscription-p5` |
-| **P6** | Notifications + Polish | In-app/email alerts + onboarding + refunds + plan changes | 1 session | Pending | — |
+| **P6** | Notifications + Polish | In-app/email alerts + onboarding + refunds + plan changes | 1 session | Done | `v1.8.5-subscription-p6` |
 
 ### P1 — Schema + Per-Shop Model + Admin Phone Uniqueness
 - **New models:** `SubscriptionInvoice`, `PaymentTransaction`, `ReceivedPayment`
