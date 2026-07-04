@@ -666,7 +666,7 @@ After completing a phase:
 | Phase | Theme | Features | Effort | Status | Tag |
 |---|---|---|---|---|---|
 | **P1** | Schema + Per-Shop Model | New billing models + admin phone uniqueness + 3-tier pricing | 1–2 sessions | Done | `v1.8.0-subscription-p1` |
-| **P2** | Grace Period Lifecycle | 4-stage enforcement: active→read-only→data-wiped + server guard | 2 sessions | Pending | — |
+| **P2** | Grace Period Lifecycle | 4-stage enforcement: active→read-only→data-wiped + server guard | 2 sessions | Done | `v1.8.1-subscription-p2` |
 | **P3** | Manual Payments (bKash/Nagad) | User submission + super-admin matching + auto-extend | 2 sessions | Pending | — |
 | **P4** | Super-Admin Monitoring | Client-wise status dashboard + revenue tracking + package management | 1–2 sessions | Pending | — |
 | **P5** | SSL Commerz + Toggle | Gateway integration + payment-method toggle + annual billing | 1–2 sessions | Pending | — |

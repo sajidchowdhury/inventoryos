@@ -29,6 +29,7 @@ export const CRON_JOB_NAMES = {
   REPORT_DELIVERY_WORKER: "report-delivery-worker",   // @deprecated — use REPORT_WORKER
   REPORT_WORKER: "report-worker", // Phase 4: merged generator + delivery
   SCD_MONTHLY_REMINDER: "scd-monthly-reminder", // P5: nudge businesses that haven't run SCD this month
+  SUBSCRIPTION_LIFECYCLE: "subscription-lifecycle", // P2: 4-stage grace period transitions
 } as const;
 
 export type CronJobName = (typeof CRON_JOB_NAMES)[keyof typeof CRON_JOB_NAMES];
@@ -82,6 +83,11 @@ export const CRON_JOB_SCHEDULES: Record<
     schedule: "0 4 25 * *", // 04:00 UTC on the 25th of every month = 09:00 Asia/Dhaka (BST)
     description:
       "P5: Nudge businesses that haven't run a Stock Count Day this calendar month. Creates a NotificationLog entry (type=scd_reminder, severity=info) for each. If the business has ownerEmail + SMTP configured, also sends an email. Sent on the 25th to give a week before month-end.",
+  },
+  [CRON_JOB_NAMES.SUBSCRIPTION_LIFECYCLE]: {
+    schedule: "0 2 * * *", // 02:00 UTC daily = 08:00 Asia/Dhaka
+    description:
+      "P2: Transition businesses through the 4-stage subscription lifecycle: active → expiring_soon (7d before end) → read_only (0-14d after end) → data_wiped (14d+ after end, soft-delete). Sends notifications at each transition. Purges data after 30 days in data_wiped stage.",
   },
 };
 
@@ -1018,6 +1024,239 @@ export async function runScdMonthlyReminderJob(): Promise<void> {
   }
 }
 
+// ── runSubscriptionLifecycleJob (P2) ──
+// Transitions businesses through the 4-stage subscription lifecycle:
+//   active → expiring_soon (7 days before subscriptionEnd)
+//   → read_only (0-14 days after subscriptionEnd; writes blocked)
+//   → data_wiped (14+ days after subscriptionEnd; data soft-deleted)
+//   → true purge (30 days after data_wiped; data permanently deleted)
+//
+// Sends NotificationLog entries at each transition.
+// Runs daily at 02:00 UTC (08:00 Asia/Dhaka).
+export async function runSubscriptionLifecycleJob(): Promise<void> {
+  const jobName = CRON_JOB_NAMES.SUBSCRIPTION_LIFECYCLE;
+  const log: string[] = [];
+  const startedAt = new Date();
+  log.push(`[${startedAt.toISOString()}] Starting subscription lifecycle job`);
+
+  const cronLog = await db.cronJobLog.create({
+    data: {
+      jobName,
+      status: "running",
+      startedAt,
+      log: log.join("\n"),
+    },
+  });
+
+  try {
+    const now = new Date();
+    const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+    let transitionedToExpiring = 0;
+    let transitionedToReadOnly = 0;
+    let transitionedToWiped = 0;
+    let purged = 0;
+    let notificationsCreated = 0;
+
+    // ── 1. active → expiring_soon (subscriptionEnd within 7 days) ──
+    const expiringBusinesses = await db.business.findMany({
+      where: {
+        subscriptionStage: "active",
+        subscriptionStatus: { in: ["trial", "active"] },
+        subscriptionEnd: {
+          gte: now,
+          lte: sevenDaysFromNow,
+        },
+      },
+      select: { id: true, name: true, subscriptionEnd: true, ownerEmail: true },
+    });
+
+    for (const biz of expiringBusinesses) {
+      await db.business.update({
+        where: { id: biz.id },
+        data: {
+          subscriptionStage: "expiring_soon",
+          gracePeriodEnd: biz.subscriptionEnd
+            ? new Date(biz.subscriptionEnd.getTime() + 14 * 24 * 60 * 60 * 1000)
+            : null,
+          dataWipeDate: biz.subscriptionEnd
+            ? new Date(biz.subscriptionEnd.getTime() + 14 * 24 * 60 * 60 * 1000)
+            : null,
+        },
+      });
+
+      // Send notification
+      await db.notificationLog.create({
+        data: {
+          businessId: biz.id,
+          type: "subscription_expiring",
+          severity: "warning",
+          title: "Subscription expiring soon",
+          message: `Your subscription expires on ${biz.subscriptionEnd?.toLocaleDateString("en-GB")}. Pay now to avoid interruption.`,
+          entityType: "subscription",
+          entityId: null,
+        },
+      });
+      notificationsCreated++;
+      transitionedToExpiring++;
+    }
+    log.push(`Stage 1 (active → expiring_soon): ${transitionedToExpiring} business(es)`);
+
+    // ── 2. expiring_soon → read_only (subscriptionEnd has passed, within 14 days) ──
+    const expiredBusinesses = await db.business.findMany({
+      where: {
+        subscriptionStage: "expiring_soon",
+        subscriptionEnd: { lt: now },
+      },
+      select: { id: true, name: true, subscriptionEnd: true, dataWipeDate: true },
+    });
+
+    for (const biz of expiredBusinesses) {
+      await db.business.update({
+        where: { id: biz.id },
+        data: {
+          subscriptionStage: "read_only",
+          subscriptionStatus: "suspended",
+        },
+      });
+
+      // Send notification
+      await db.notificationLog.create({
+        data: {
+          businessId: biz.id,
+          type: "subscription_expired",
+          severity: "critical",
+          title: "Subscription expired — read-only mode",
+          message: `Your subscription expired. You can view reports but cannot make sales or purchases. Data will be permanently lost in 14 days. Pay now to restore full access.`,
+          entityType: "subscription",
+          entityId: null,
+        },
+      });
+      notificationsCreated++;
+      transitionedToReadOnly++;
+    }
+    log.push(`Stage 2 (expiring_soon → read_only): ${transitionedToReadOnly} business(es)`);
+
+    // ── 3. read_only → data_wiped (14+ days after subscriptionEnd) ──
+    const wipeCutoff = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+    const wipeBusinesses = await db.business.findMany({
+      where: {
+        subscriptionStage: "read_only",
+        subscriptionEnd: { lt: wipeCutoff },
+      },
+      select: { id: true, name: true, subscriptionEnd: true },
+    });
+
+    for (const biz of wipeBusinesses) {
+      const purgeDate = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+      await db.business.update({
+        where: { id: biz.id },
+        data: {
+          subscriptionStage: "data_wiped",
+          dataSoftDeletedAt: now,
+          dataPurgeDate: purgeDate,
+        },
+      });
+
+      // Send notification
+      await db.notificationLog.create({
+        data: {
+          businessId: biz.id,
+          type: "subscription_data_wiped",
+          severity: "critical",
+          title: "Data archived — pay to restore",
+          message: `Your data has been archived due to non-payment. Pay within 30 days (by ${purgeDate.toLocaleDateString("en-GB")}) to restore your data. After that, data will be permanently deleted.`,
+          entityType: "subscription",
+          entityId: null,
+        },
+      });
+      notificationsCreated++;
+      transitionedToWiped++;
+    }
+    log.push(`Stage 3 (read_only → data_wiped): ${transitionedToWiped} business(es)`);
+
+    // ── 4. True purge (30 days after dataSoftDeletedAt) ──
+    // Deletes all business data except the Business row + SubscriptionInvoice +
+    // PaymentTransaction (kept for audit). This is permanent.
+    const purgeBusinesses = await db.business.findMany({
+      where: {
+        subscriptionStage: "data_wiped",
+        dataPurgeDate: { lt: now },
+      },
+      select: { id: true, name: true },
+    });
+
+    for (const biz of purgeBusinesses) {
+      // Delete in dependency order (children first)
+      // ShelfScanItem doesn't have businessId — delete via ShelfScan cascade
+      await db.shelfScan.deleteMany({ where: { businessId: biz.id } });
+      await db.stockCountLine.deleteMany({ where: { businessId: biz.id } });
+      await db.stockCountProductSummary.deleteMany({ where: { businessId: biz.id } });
+      await db.stockCountZoneSession.deleteMany({ where: { businessId: biz.id } });
+      await db.stockCountDay.deleteMany({ where: { businessId: biz.id } });
+      await db.zoneAssignmentSnapshot.deleteMany({ where: { businessId: biz.id } });
+      await db.productZoneAssignment.deleteMany({ where: { businessId: biz.id } });
+      await db.storageZone.deleteMany({ where: { businessId: biz.id } });
+      await db.transaction.deleteMany({ where: { businessId: biz.id } });
+      await db.batch.deleteMany({ where: { businessId: biz.id } });
+      await db.inventory.deleteMany({ where: { businessId: biz.id } });
+      await db.saleItem.deleteMany({ where: { businessId: biz.id } });
+      await db.sale.deleteMany({ where: { businessId: biz.id } });
+      await db.payment.deleteMany({ where: { businessId: biz.id } });
+      await db.returnItem.deleteMany({ where: { businessId: biz.id } });
+      await db.return.deleteMany({ where: { businessId: biz.id } });
+      await db.discountRule.deleteMany({ where: { businessId: biz.id } });
+      await db.customer.deleteMany({ where: { businessId: biz.id } });
+      await db.purchaseItem.deleteMany({ where: { businessId: biz.id } });
+      await db.purchase.deleteMany({ where: { businessId: biz.id } });
+      await db.supplier.deleteMany({ where: { businessId: biz.id } });
+      await db.product.deleteMany({ where: { businessId: biz.id } });
+      await db.category.deleteMany({ where: { businessId: biz.id } });
+      await db.notificationLog.deleteMany({ where: { businessId: biz.id } });
+      await db.alertPreference.deleteMany({ where: { businessId: biz.id } });
+      await db.businessDailyStats.deleteMany({ where: { businessId: biz.id } });
+      await db.aIUsageLog.deleteMany({ where: { businessId: biz.id } });
+
+      // Mark as purged (keep Business row + invoices + payments for audit)
+      await db.business.update({
+        where: { id: biz.id },
+        data: {
+          subscriptionStatus: "cancelled",
+          aiEnabled: false,
+        },
+      });
+
+      purged++;
+      log.push(`  ⚠️ Purged all data for: ${biz.name} (${biz.id})`);
+    }
+    log.push(`Stage 4 (true purge): ${purged} business(es)`);
+
+    log.push(`Total notifications created: ${notificationsCreated}`);
+    log.push(`Job completed successfully`);
+
+    await db.cronJobLog.update({
+      where: { id: cronLog.id },
+      data: {
+        status: "success",
+        durationMs: Date.now() - startedAt.getTime(),
+        log: log.join("\n"),
+      },
+    });
+  } catch (err) {
+    log.push(`❌ Job failed: ${err instanceof Error ? err.message : String(err)}`);
+    await db.cronJobLog.update({
+      where: { id: cronLog.id },
+      data: {
+        status: "error",
+        durationMs: Date.now() - startedAt.getTime(),
+        log: log.join("\n"),
+      },
+    });
+    throw err;
+  }
+}
+
 // ── runReportScheduleCheckerJob (Phase C) ──
 // Checks all active report schedules. For each schedule where nextRunAt <= now:
 //   1. Determines the target client list
@@ -1855,6 +2094,7 @@ export async function runAllCronJobs(): Promise<{
   reportScheduleChecker: { ok: boolean; error?: string };
   reportWorker: { ok: boolean; error?: string };
   scdMonthlyReminder: { ok: boolean; error?: string };
+  subscriptionLifecycle: { ok: boolean; error?: string };
 }> {
   const result = {
     nightlyStats: { ok: true as boolean, error: undefined as string | undefined },
@@ -1864,6 +2104,7 @@ export async function runAllCronJobs(): Promise<{
     reportScheduleChecker: { ok: true as boolean, error: undefined as string | undefined },
     reportWorker: { ok: true as boolean, error: undefined as string | undefined },
     scdMonthlyReminder: { ok: true as boolean, error: undefined as string | undefined },
+    subscriptionLifecycle: { ok: true as boolean, error: undefined as string | undefined },
   };
 
   try { await runNightlyStatsJob(); } catch (e) { result.nightlyStats = { ok: false, error: e instanceof Error ? e.message : String(e) }; }
@@ -1873,6 +2114,7 @@ export async function runAllCronJobs(): Promise<{
   try { await runReportScheduleCheckerJob(); } catch (e) { result.reportScheduleChecker = { ok: false, error: e instanceof Error ? e.message : String(e) }; }
   try { await runReportWorker(); } catch (e) { result.reportWorker = { ok: false, error: e instanceof Error ? e.message : String(e) }; }
   try { await runScdMonthlyReminderJob(); } catch (e) { result.scdMonthlyReminder = { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  try { await runSubscriptionLifecycleJob(); } catch (e) { result.subscriptionLifecycle = { ok: false, error: e instanceof Error ? e.message : String(e) }; }
 
   return result;
 }
