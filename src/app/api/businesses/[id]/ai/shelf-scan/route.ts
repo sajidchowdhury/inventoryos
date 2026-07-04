@@ -145,6 +145,10 @@ export async function POST(
         matchedCount: 0,
         tokensUsed: 0,
         rawResult: null,
+        stockCountZoneSessionId:
+          typeof body.stockCountZoneSessionId === "string"
+            ? body.stockCountZoneSessionId
+            : null,
       },
     });
 

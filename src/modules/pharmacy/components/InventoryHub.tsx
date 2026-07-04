@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import {
   Package, Boxes, CalendarClock, Tag, Upload, ChevronRight,
-  Plus, Search, ScanLine,
+  Plus, Search, ScanLine, ClipboardList,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,7 @@ const sections = [
     border: "border-l-orange-500",
     items: [
       { icon: Boxes, label: "All Batches", desc: "View stock by batch", view: "batches" as const, gradient: "from-orange-500 to-amber-600" },
+      { icon: ClipboardList, label: "Stock Count Day", desc: "Monthly full count while shop stays open", view: "stock-count-day" as const, gradient: "from-teal-600 to-emerald-600" },
       { icon: ScanLine, label: "Shelf Scanner", desc: "Scan shelf photos & update stock", view: "shelf-scanner" as const, gradient: "from-teal-500 to-emerald-600" },
     ],
   },

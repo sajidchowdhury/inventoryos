@@ -21,6 +21,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { upsertZoneCountLine } from "@/lib/scd";
 
 // ── Types ──
 
@@ -35,6 +36,7 @@ interface BulkUpdateItem {
 
 interface BulkUpdateBody {
   scanId?: string;          // optional — the ShelfScan this batch belongs to
+  stockCountZoneSessionId?: string; // when set, writes zone count lines instead of inventory
   items: BulkUpdateItem[];
 }
 
@@ -125,6 +127,20 @@ export async function POST(
       }
     }
 
+    // ── 2b. If SCD zone session, verify it belongs to this business ──
+    if (body.stockCountZoneSessionId) {
+      const zs = await db.stockCountZoneSession.findFirst({
+        where: { id: body.stockCountZoneSessionId, businessId },
+        select: { id: true },
+      });
+      if (!zs) {
+        return NextResponse.json(
+          { error: "Stock Count zone session not found." },
+          { status: 404 }
+        );
+      }
+    }
+
     // ── 3. Process each item (per-item atomic, partial success) ──
     const results: ItemResult[] = [];
     let appliedCount = 0;
@@ -133,7 +149,9 @@ export async function POST(
 
     for (const item of body.items) {
       try {
-        const result = await applyOneItem(businessId, body.scanId || null, item);
+        const result = body.stockCountZoneSessionId
+          ? await applyScdZoneItem(businessId, body.stockCountZoneSessionId, body.scanId || null, item)
+          : await applyOneItem(businessId, body.scanId || null, item);
         results.push(result);
         if (result.status === "applied") appliedCount++;
         else if (result.status === "skipped") skippedCount++;
@@ -155,6 +173,7 @@ export async function POST(
     return NextResponse.json({
       success: true,
       scanId: body.scanId || null,
+      stockCountZoneSessionId: body.stockCountZoneSessionId || null,
       applied: appliedCount,
       skipped: skippedCount,
       errors: errorCount,
@@ -167,6 +186,51 @@ export async function POST(
       { status: 500 }
     );
   }
+}
+
+// ── SCD zone count (defer inventory apply until count day ends) ──
+
+async function applyScdZoneItem(
+  businessId: string,
+  zoneSessionId: string,
+  scanId: string | null,
+  item: BulkUpdateItem
+): Promise<ItemResult> {
+  const result = await upsertZoneCountLine(businessId, zoneSessionId, {
+    productId: item.productId,
+    countedQty: item.newQuantity,
+    shelfScanItemId: item.shelfScanItemId,
+  });
+
+  if (!result.ok) {
+    return {
+      shelfScanItemId: item.shelfScanItemId,
+      productId: item.productId,
+      status: "error",
+      error: result.error,
+    };
+  }
+
+  if (item.shelfScanItemId) {
+    await db.shelfScanItem.update({
+      where: { id: item.shelfScanItemId },
+      data: { appliedAt: new Date(), newQuantity: item.newQuantity },
+    });
+  }
+
+  if (scanId) {
+    await db.shelfScan.updateMany({
+      where: { id: scanId, businessId },
+      data: { stockCountZoneSessionId: zoneSessionId },
+    });
+  }
+
+  return {
+    shelfScanItemId: item.shelfScanItemId,
+    productId: item.productId,
+    status: "applied",
+    newQuantity: item.newQuantity,
+  };
 }
 
 // ── Per-item apply (atomic via $transaction) ──

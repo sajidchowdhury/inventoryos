@@ -136,6 +136,9 @@ model Business {
   fefoOverrides FefoOverride[]
   generatedReports GeneratedReport[]
   shelfScans      ShelfScan[]
+  storageZones    StorageZone[]
+  stockCountDays  StockCountDay[]
+  productZoneAssignments ProductZoneAssignment[]
 
   @@index([userId])
   @@index([businessTypeId])
@@ -242,6 +245,9 @@ model Product {
   returnItems  ReturnItem[]
   purchaseItems PurchaseItem[]
   shelfScanItems ShelfScanItem[]
+  zoneAssignments ProductZoneAssignment[]
+  stockCountLines StockCountLine[]
+  stockCountSummaries StockCountProductSummary[]
 
   @@index([businessId])
   @@index([categoryId])
@@ -473,6 +479,7 @@ model Sale {
   cancelledAt     DateTime?
   cancelledBy     String?
   cancelReason    String?
+  stockCountDayId String?  // set when sale happens during an active Stock Count Day
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -481,6 +488,7 @@ model Sale {
   items    SaleItem[]
   payments Payment[]
   returns  Return[]
+  stockCountDay StockCountDay? @relation(fields: [stockCountDayId], references: [id], onDelete: SetNull)
 
   @@unique([businessId, invoiceNo])
   @@index([businessId])
@@ -1286,12 +1294,15 @@ model ShelfScan {
   rawResult     String?  // full LLM JSON output, for debugging/replay
   tokensUsed    Int      @default(0)
   createdBy     String?  // BusinessUser ID who initiated the scan
+  stockCountZoneSessionId String? // linked Stock Count Day zone session
   createdAt     DateTime @default(now())
 
   business Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  zoneSession StockCountZoneSession? @relation(fields: [stockCountZoneSessionId], references: [id], onDelete: SetNull)
   items    ShelfScanItem[]
 
   @@index([businessId])
+  @@index([stockCountZoneSessionId])
   @@index([createdAt])
   @@map("shelf_scans")
 }
@@ -1320,6 +1331,152 @@ model ShelfScanItem {
   @@index([productId])
   @@index([masterProductId])
   @@map("shelf_scan_items")
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Stock Counting Day (SCD) — monthly full-stock count while shop stays open
+// ══════════════════════════════════════════════════════════════════════════════
+
+// Permanent shop areas (reused every month). A product may belong to 2+ zones.
+model StorageZone {
+  id         String   @id @default(cuid())
+  businessId String
+  name       String
+  sortOrder  Int      @default(0)
+  color      String   @default("#0d9488")
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  business    Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  assignments ProductZoneAssignment[]
+  zoneSessions StockCountZoneSession[]
+  countLines  StockCountLine[]
+
+  @@unique([businessId, name])
+  @@index([businessId])
+  @@map("storage_zones")
+}
+
+model ProductZoneAssignment {
+  id         String   @id @default(cuid())
+  businessId String
+  productId  String
+  zoneId     String
+  createdAt  DateTime @default(now())
+
+  business Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  product  Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  zone     StorageZone @relation(fields: [zoneId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, zoneId])
+  @@index([businessId])
+  @@index([zoneId])
+  @@map("product_zone_assignments")
+}
+
+// One monthly (or ad-hoc) full count session per business.
+model StockCountDay {
+  id          String    @id @default(cuid())
+  businessId  String
+  name        String
+  status      String    @default("draft") // draft | active | closed | applied
+  startedAt   DateTime?
+  closedAt    DateTime?
+  appliedAt   DateTime?
+  startedBy   String?
+  closedBy    String?
+  appliedBy   String?
+  notes       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  business     Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  zoneSessions StockCountZoneSession[]
+  lines        StockCountLine[]
+  summaries    StockCountProductSummary[]
+  sales        Sale[]
+
+  @@index([businessId])
+  @@index([status])
+  @@map("stock_count_days")
+}
+
+// Progress of each storage zone within a Stock Count Day.
+model StockCountZoneSession {
+  id         String    @id @default(cuid())
+  scdId      String
+  zoneId     String
+  businessId String
+  status     String    @default("pending") // pending | counting | review | closed
+  closedAt   DateTime?
+  closedBy   String?
+  sortOrder  Int       @default(0)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  scd        StockCountDay @relation(fields: [scdId], references: [id], onDelete: Cascade)
+  zone       StorageZone @relation(fields: [zoneId], references: [id], onDelete: Cascade)
+  lines      StockCountLine[]
+  shelfScans ShelfScan[]
+
+  @@unique([scdId, zoneId])
+  @@index([businessId])
+  @@index([scdId])
+  @@map("stock_count_zone_sessions")
+}
+
+// Per-product rollup for the whole SCD (sales + total counted across zones).
+model StockCountProductSummary {
+  id               String   @id @default(cuid())
+  scdId            String
+  businessId       String
+  productId        String
+  systemQtyAtStart Float    @default(0)
+  soldDuringScd    Float    @default(0)
+  totalCountedQty  Float?   // sum of zone lines once counted
+  variance         Float?
+  updatedAt        DateTime @updatedAt
+
+  scd     StockCountDay @relation(fields: [scdId], references: [id], onDelete: Cascade)
+  product Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([scdId, productId])
+  @@index([businessId])
+  @@map("stock_count_product_summaries")
+}
+
+// Count line per product per zone (same product → separate lines in 2 zones).
+model StockCountLine {
+  id                String    @id @default(cuid())
+  scdId             String
+  zoneSessionId     String
+  zoneId            String
+  businessId        String
+  productId         String
+  countedQty        Float?
+  systemQtyAtStart  Float     @default(0)
+  soldDuringScd     Float     @default(0)
+  status            String    @default("pending") // pending | counted | skipped
+  detectedName      String?
+  confidence        Float?
+  shelfScanItemId   String?
+  countedBy         String?
+  countedAt         DateTime?
+  notes             String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  scd         StockCountDay         @relation(fields: [scdId], references: [id], onDelete: Cascade)
+  zoneSession StockCountZoneSession @relation(fields: [zoneSessionId], references: [id], onDelete: Cascade)
+  zone        StorageZone           @relation(fields: [zoneId], references: [id], onDelete: Cascade)
+  product     Product               @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([scdId, zoneSessionId, productId])
+  @@index([businessId])
+  @@index([scdId])
+  @@index([productId])
+  @@map("stock_count_lines")
 }
 
 // ── AI Provider Configuration ──
