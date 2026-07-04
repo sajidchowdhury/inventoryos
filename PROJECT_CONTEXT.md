@@ -603,4 +603,58 @@ After completing a phase:
 
 ---
 
+## 17. Purchase Scanner Plan — Phase Tracker
+
+> **Full spec:** `download/InventoryOS_Purchase_Scanner_Plan.docx`
+> **Status legend:** Pending → In Progress → Done (tag)
+> **Design decision:** One image at a time, accumulate into cart (matches shelf scanner pattern)
+
+| Phase | Theme | Features | Effort | Status | Tag |
+|---|---|---|---|---|---|
+| **P1** | Vision Scan API | Scan endpoint + invoice prompt + catalog matching | 1–2 sessions | Pending | — |
+| **P2** | Scanner UI | Scan button + image upload + accumulate into cart | 1 session | Pending | — |
+| **P3** | Review & Edit | Edit detected items + link unmatched + confidence | 1 session | Pending | — |
+| **P4** | Polish & Edge Cases | Help text + manual fallback + SuperAdmin docs | 1 session | Pending | — |
+
+### P1 — Vision Scan API + Catalog Matching
+- **New endpoint:** `POST /api/businesses/[id]/ai/purchase-scan` (accepts 1 base64 image, returns detected + matched line items)
+- **New file:** `src/lib/purchase-scan-prompts.ts` (invoice-optimized, editable from /admin)
+- **Reuse:** `vision-provider.ts`, `shelf-scan-parse.ts` (salvage parser), `shelf-scan-match.ts` patterns
+- **AI defense:** checkAILimit + logAIUsage + buildFallback (feature name: "purchase-scan")
+- **Optional schema:** `PurchaseScan` model for audit trail (not required for MVP)
+- **Task ID:** `purchase-scan-p1` · **Tag:** `v1.7.0-purchase-scan-p1`
+
+### P2 — Scanner UI
+- **Modify:** `PurchaseForm.tsx` — add "Scan purchase sheet" button beside search input
+- **New file:** `src/modules/pharmacy/components/purchase/PurchaseScannerDialog.tsx` (~250 lines)
+- **New file:** `src/modules/pharmacy/components/purchase/ScannedItemList.tsx` (~100 lines)
+- **Behavior:** one image at a time → items accumulate → "Add N items to purchase" → cart pre-filled
+- **Image compression:** reuse shelf scanner's canvas resize (max 2560px, JPEG 0.85)
+- **Task ID:** `purchase-scan-p2` · **Tag:** `v1.7.1-purchase-scan-p2`
+
+### P3 — Review & Edit Scanned Items
+- **Modify:** PurchaseForm cart items — confidence dot + "Link to product" button + amber border on low-confidence fields
+- **New file:** `src/modules/pharmacy/components/purchase/LinkProductDialog.tsx` (~120 lines)
+- **Behavior:** confidence indicators (green/amber/red), link unmatched to catalog, inline edit all fields, remove misdetected items
+- **Task ID:** `purchase-scan-p3` · **Tag:** `v1.7.2-purchase-scan-p3`
+
+### P4 — Polish & Edge Cases
+- **Modify:** PurchaseScannerDialog — 3 tips in upload state + error fallback ("Retry" + "Add manually")
+- **Modify:** `SuperAdminHelp.tsx` — add "Purchase Scanner" help entry
+- **Modify:** admin config card — purchase-scan prompt editing
+- **New file:** `src/modules/pharmacy/components/purchase/PurchaseScanTips.tsx` (~60 lines)
+- **Task ID:** `purchase-scan-p4` · **Tag:** `v1.7.3-purchase-scan-p4`
+
+### Recommended sequencing
+**P1 → P2 → P3 → P4** (strictly sequential — each phase's output is the next phase's input. No parallelism.)
+
+### Update protocol for this section
+After completing a phase:
+1. Append worklog entry with the phase's Task ID (`purchase-scan-pN`)
+2. Update the Status column above to "Done" + fill the Tag
+3. Bump the semver tag (`git tag v1.7.N-purchase-scan-pN`)
+4. Regenerate the docx Table 5 via `node /home/z/my-project/scripts/purchase-scan-spec-generate.js`
+
+---
+
 **This file is the contract between sessions. Keep it accurate. When in doubt, update it.**

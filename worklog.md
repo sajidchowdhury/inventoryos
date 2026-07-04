@@ -2154,3 +2154,34 @@ Stage Summary:
 - Schema changes: none (P5 uses existing NotificationLog + Business.ownerEmail)
 - API changes: new POST /api/cron/scd-monthly-reminder endpoint + scd-monthly-reminder added to trigger-cron JOB_RUNNERS
 - The SCD Enhancement Plan is now 100% complete: all 8 gaps closed across 5 phases (P1-P5).
+
+---
+Task ID: purchase-scan-spec
+Agent: Super Z (Main Agent)
+Task: Create phased spec doc for Purchase Sheet Scanner feature (AI vision invoice scanning) + add §17 phase tracker to PROJECT_CONTEXT.md.
+
+Work Log:
+- Inspected current purchase flow: PurchaseForm.tsx (438 lines) — manual search + add to cart one at a time. Identified gap: 20-50 item invoices take 15-30 minutes to enter manually.
+- Inspected shelf scanner (ShelfScanner.tsx, 1250 lines) + shelf-scan API route for reusable patterns: image compression, base64 encoding, vision provider, salvage parser, rate limiting, fallback.
+- Founder question: multi-image batch upload vs one-at-a-time. Recommended one-at-a-time (Option 2) because: matches proven shelf scanner pattern, immediate feedback, no timeout risk (3-5MB vs 20-50MB batch), easy retry, interleaved workflow, simpler UI. Documented the comparison in Table 2 of the spec.
+- Designed 4-phase plan (P1-P4), strictly sequential:
+  * P1 — Vision Scan API: POST /api/businesses/[id]/ai/purchase-scan endpoint + invoice-optimized prompt + catalog matching. Reuses vision-provider.ts, shelf-scan-parse.ts, shelf-scan-match.ts patterns. Integrates with 9-tier AI defense stack (feature name: purchase-scan).
+  * P2 — Scanner UI: "Scan purchase sheet" button in PurchaseForm + PurchaseScannerDialog (upload → scan → accumulate → add to cart). One image at a time, items accumulate across multiple scans, merge duplicate products.
+  * P3 — Review & Edit: confidence indicators (green/amber/red), link unmatched items to catalog, inline edit all fields, remove misdetected items.
+  * P4 — Polish & Edge Cases: help text (3 tips), manual fallback on scan failure, SuperAdminHelp entry, prompt tuning from /admin, first-time tooltip.
+- Generated spec docx via 3 scripts under /home/z/my-project/scripts/ (copied to repo scripts/):
+  * purchase-scan-spec-cover.js — R1 emerald pharmacy cover
+  * purchase-scan-spec-body.js — TOC + executive summary + gap analysis + multi-image comparison table + 4 phase sections + tracking section
+  * purchase-scan-spec-generate.js — assembles cover + body into final .docx
+- Ran mandatory docx postcheck.py: 0 errors, 3 acceptable warnings (intentional cover/body spacing variance, section-separator empty paragraphs, H1→H3 skips within phase sections).
+- Final docx: download/InventoryOS_Purchase_Scanner_Plan.docx (25 KB, 7 tables, ~290 paragraphs).
+- Updated PROJECT_CONTEXT.md with new §17 "Purchase Scanner Plan — Phase Tracker" containing: design decision note, phase status table, per-phase details (new files, reuse, Task ID, tag), recommended sequencing (strict P1→P2→P3→P4), update protocol.
+- Update protocol specifies: after each phase, (1) append worklog with Task ID purchase-scan-pN, (2) update §17 status + tag, (3) tag v1.7.N-purchase-scan-pN, (4) regenerate docx Table 5.
+
+Stage Summary:
+- Purchase Sheet Scanner feature documented in a phased spec doc + tracked in PROJECT_CONTEXT.md §17.
+- Files created: 3 generator scripts (scripts/purchase-scan-spec-{cover,body,generate}.js) + 1 docx (download/InventoryOS_Purchase_Scanner_Plan.docx).
+- Files modified: PROJECT_CONTEXT.md (added §17), worklog.md (this entry).
+- Design decision: one image at a time, accumulate into cart (matches shelf scanner pattern).
+- 4 phases, ~4-5 sessions total. Strictly sequential.
+- Ready to start P1 (Vision Scan API) in next session — read PROJECT_CONTEXT.md §17 first for context.
