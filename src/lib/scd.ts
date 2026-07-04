@@ -687,6 +687,80 @@ export async function recordSaleForScd(
   });
 }
 
+export interface ScdProductExpected {
+  expectedTotalQty: number;
+  systemQtyAtStart: number;
+  soldDuringScd: number;
+  otherZones: { id: string; name: string; color: string }[];
+  countedInOtherZones: {
+    zoneId: string;
+    zoneName: string;
+    zoneColor: string;
+    countedQty: number | null;
+  }[];
+  isMultiZone: boolean;
+}
+
+/** Expected shop-wide qty (system − sales during SCD) for shelf scanner review. */
+export async function getScdExpectedQtyForProducts(
+  businessId: string,
+  zoneSessionId: string,
+  productIds: string[]
+) {
+  if (productIds.length === 0) {
+    return { ok: true as const, zoneName: "", byProduct: {} as Record<string, ScdProductExpected> };
+  }
+
+  const session = await db.stockCountZoneSession.findFirst({
+    where: { id: zoneSessionId, businessId },
+    include: { zone: { select: { id: true, name: true } } },
+  });
+  if (!session) return { ok: false as const, error: "Zone session not found" };
+
+  const summaries = await db.stockCountProductSummary.findMany({
+    where: { scdId: session.scdId, productId: { in: productIds } },
+  });
+  const zoneMap = await getProductZoneMap(businessId, productIds);
+
+  const otherLines = await db.stockCountLine.findMany({
+    where: {
+      scdId: session.scdId,
+      productId: { in: productIds },
+      zoneSessionId: { not: zoneSessionId },
+      countedQty: { not: null },
+    },
+    include: { zone: { select: { id: true, name: true, color: true } } },
+  });
+  const otherByProduct = new Map<string, typeof otherLines>();
+  for (const line of otherLines) {
+    const list = otherByProduct.get(line.productId) ?? [];
+    list.push(line);
+    otherByProduct.set(line.productId, list);
+  }
+
+  const byProduct: Record<string, ScdProductExpected> = {};
+  for (const productId of productIds) {
+    const summary = summaries.find((s) => s.productId === productId);
+    const zones = zoneMap.get(productId) ?? [];
+    byProduct[productId] = {
+      expectedTotalQty:
+        (summary?.systemQtyAtStart ?? 0) - (summary?.soldDuringScd ?? 0),
+      systemQtyAtStart: summary?.systemQtyAtStart ?? 0,
+      soldDuringScd: summary?.soldDuringScd ?? 0,
+      otherZones: zones.filter((z) => z.id !== session.zoneId),
+      countedInOtherZones: (otherByProduct.get(productId) ?? []).map((l) => ({
+        zoneId: l.zoneId,
+        zoneName: l.zone.name,
+        zoneColor: l.zone.color,
+        countedQty: l.countedQty,
+      })),
+      isMultiZone: zones.length > 1,
+    };
+  }
+
+  return { ok: true as const, zoneName: session.zone.name, byProduct };
+}
+
 export async function getStockCountDayDetail(scdId: string, businessId: string) {
   const scd = await db.stockCountDay.findFirst({
     where: { id: scdId, businessId },

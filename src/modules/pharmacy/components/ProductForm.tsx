@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import {
   ArrowLeft, Save, Pill, Tag, Box, Thermometer,
   MapPin, Hash, DollarSign, AlertCircle, Check,
-  Sparkles, Loader2,
+  Sparkles, Loader2, Layers,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -31,6 +31,12 @@ interface Category {
   color: string;
   icon: string;
   slug: string;
+}
+
+interface StorageZoneOption {
+  id: string;
+  name: string;
+  color: string;
 }
 
 interface ProductData {
@@ -86,6 +92,8 @@ export function ProductForm({ mode }: ProductFormProps) {
   const businessId = session?.business?.id;
 
   const [categories, setCategories] = useState<Category[]>([]);
+  const [storageZones, setStorageZones] = useState<StorageZoneOption[]>([]);
+  const [selectedZoneIds, setSelectedZoneIds] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -134,6 +142,17 @@ export function ProductForm({ mode }: ProductFormProps) {
     }
   }, [businessId]);
 
+  const fetchStorageZones = useCallback(async () => {
+    if (!businessId) return;
+    try {
+      const res = await fetch(`/api/businesses/${businessId}/storage-zones`);
+      const data = await res.json();
+      if (data.success) setStorageZones(data.zones || []);
+    } catch (err) {
+      console.error("Storage zones fetch error:", err);
+    }
+  }, [businessId]);
+
   const fetchProduct = useCallback(async () => {
     if (!businessId || !editingProductId) return;
     try {
@@ -165,14 +184,32 @@ export function ProductForm({ mode }: ProductFormProps) {
           reorderLevel: p.reorderLevel?.toString() || "0",
           categoryId: p.categoryId || "",
         });
+        const zoneIds = (data.product.zoneAssignments as { zoneId: string }[] | undefined)
+          ?.map((a) => a.zoneId) ?? [];
+        setSelectedZoneIds(zoneIds);
       }
     } catch (err) {
       console.error("Product fetch error:", err);
     }
   }, [businessId, editingProductId]);
 
-  useEffect(() => { fetchCategories(); }, [fetchCategories]);
+  useEffect(() => { fetchCategories(); fetchStorageZones(); }, [fetchCategories, fetchStorageZones]);
   useEffect(() => { if (mode === "edit") fetchProduct(); }, [mode, fetchProduct]);
+
+  const toggleZone = (zoneId: string) => {
+    setSelectedZoneIds((prev) =>
+      prev.includes(zoneId) ? prev.filter((id) => id !== zoneId) : [...prev, zoneId]
+    );
+  };
+
+  const saveZoneAssignments = async (productId: string) => {
+    if (!businessId) return;
+    await fetch(`/api/businesses/${businessId}/storage-zones/assignments`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ productId, zoneIds: selectedZoneIds }),
+    });
+  };
 
   const handleSubmit = async () => {
     if (!businessId) return;
@@ -223,6 +260,11 @@ export function ProductForm({ mode }: ProductFormProps) {
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to save product");
+
+      const productId = mode === "edit" ? editingProductId! : data.product?.id;
+      if (productId && selectedZoneIds.length >= 0) {
+        await saveZoneAssignments(productId);
+      }
 
       setSuccess(true);
       setTimeout(() => {
@@ -604,6 +646,70 @@ export function ProductForm({ mode }: ProductFormProps) {
               </div>
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Storage zones — product can live in 2+ areas for Stock Count Day */}
+      <Card className="card-hover shadow-pharmacy stagger-in">
+        <CardContent className="p-4 space-y-4">
+          <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+            <span className="h-2.5 w-2.5 rounded-full bg-teal-500 shrink-0 ring-4 ring-teal-500/15" />
+            Storage zones
+          </div>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            Where is this product kept? Select all areas that apply — e.g. counter <em>and</em> back rack.
+            Used during Stock Count Day so each zone is counted separately.
+          </p>
+
+          {storageZones.length === 0 ? (
+            <div className="rounded-lg border border-dashed p-4 text-center text-xs text-muted-foreground">
+              No zones yet. Add zones from{" "}
+              <button
+                type="button"
+                className="text-teal-600 font-medium underline"
+                onClick={() => setActiveView("stock-count-day")}
+              >
+                Stock Count Day
+              </button>
+              .
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {storageZones.map((zone) => {
+                const selected = selectedZoneIds.includes(zone.id);
+                return (
+                  <button
+                    key={zone.id}
+                    type="button"
+                    onClick={() => toggleZone(zone.id)}
+                    className={cn(
+                      "w-full flex items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition-colors",
+                      selected
+                        ? "border-teal-400 bg-teal-50/60 ring-1 ring-teal-300"
+                        : "border-border hover:bg-muted/40"
+                    )}
+                  >
+                    <span
+                      className="h-3 w-3 rounded-full shrink-0"
+                      style={{ backgroundColor: zone.color }}
+                    />
+                    <span className="text-sm font-medium flex-1">{zone.name}</span>
+                    {selected ? (
+                      <Badge className="bg-teal-600 text-white border-0 text-[10px]">Selected</Badge>
+                    ) : (
+                      <Layers className="h-4 w-4 text-muted-foreground/40" />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {selectedZoneIds.length > 1 && (
+            <p className="text-[11px] text-violet-700 bg-violet-50 rounded-md px-2.5 py-2 border border-violet-100">
+              This product is in {selectedZoneIds.length} zones — during a count, enter quantity in each area separately.
+            </p>
+          )}
         </CardContent>
       </Card>
 
