@@ -120,3 +120,46 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* ─── CCTV Module Styles ─── */
+.cctv-bg {
+  background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 30%, #5b21b6 60%, #4c1d95 100%);
+  position: relative;
+}
+.cctv-bg::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 80% 20%, rgba(167, 139, 250, 0.3) 0%, transparent 50%),
+              radial-gradient(circle at 20% 80%, rgba(139, 92, 246, 0.2) 0%, transparent 40%);
+  pointer-events: none;
+}
+
+.shadow-cctv {
+  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.15);
+}
+.shadow-cctv-lg {
+  box-shadow: 0 4px 16px rgba(124, 58, 237, 0.2);
+}
+.shadow-cctv-xl {
+  box-shadow: 0 8px 32px rgba(124, 58, 237, 0.25);
+}
+
+.cctv-card-hover {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.cctv-card-hover:active {
+  transform: scale(0.98);
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
