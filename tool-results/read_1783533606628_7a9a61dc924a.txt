@@ -1,0 +1,502 @@
+   601→   601→   601→model ReturnItem {
+   602→   602→   602→  id            String   @id @default(cuid())
+   603→   603→   603→  returnId      String
+   604→   604→   604→  saleItemId    String
+   605→   605→   605→  businessId    String
+   606→   606→   606→  productId     String
+   607→   607→   607→  batchId       String?
+   608→   608→   608→  productName   String
+   609→   609→   609→  quantity      Float    // quantity returned
+   610→   610→   610→  unitPrice     Float    // refund per unit
+   611→   611→   611→  refundAmount  Float    // quantity * unitPrice
+   612→   612→   612→
+   613→   613→   613→  return      Return   @relation(fields: [returnId], references: [id], onDelete: Cascade)
+   614→   614→   614→  business    Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+   615→   615→   615→  saleItem    SaleItem @relation(fields: [saleItemId], references: [id])
+   616→   616→   616→  product     Product  @relation(fields: [productId], references: [id])
+   617→   617→   617→
+   618→   618→   618→  @@index([returnId])
+   619→   619→   619→  @@index([saleItemId])
+   620→   620→   620→}
+   621→   621→   621→
+   622→   622→   622→// ── Discount Rules ──
+   623→   623→   623→// Auto-applied discounts based on conditions (e.g., bulk, customer loyalty, time-based)
+   624→   624→   624→model DiscountRule {
+   625→   625→   625→  id              String   @id @default(cuid())
+   626→   626→   626→  businessId      String
+   627→   627→   627→  name            String   // "Bulk 10% off", "Senior Citizen 5%"
+   628→   628→   628→  description     String?
+   629→   629→   629→  type            String   // "percent" or "flat"
+   630→   630→   630→  value           Float    // percentage (0-100) or flat amount in BDT
+   631→   631→   631→  // Condition
+   632→   632→   632→  conditionType   String   // "none", "min_quantity", "min_amount", "customer_tag", "schedule_type", "time_based"
+   633→   633→   633→  conditionValue  String?  // e.g., "10" for min_quantity, "schedule_h" for schedule_type
+   634→   634→   634→  // Scope
+   635→   635→   635→  scope           String   // "all", "category", "product", "schedule_type"
+   636→   636→   636→  scopeValue      String?  // categoryId, productId, or schedule type
+   637→   637→   637→  // Validity
+   638→   638→   638→  startDate       DateTime?
+   639→   639→   639→  endDate         DateTime?
+   640→   640→   640→  isActive        Boolean  @default(true)
+   641→   641→   641→  priority        Int      @default(0)  // higher = applied first
+   642→   642→   642→  // Tracking
+   643→   643→   643→  timesUsed       Int      @default(0)
+   644→   644→   644→  totalDiscountGiven Float @default(0)
+   645→   645→   645→  createdAt       DateTime @default(now())
+   646→   646→   646→  updatedAt       DateTime @updatedAt
+   647→   647→   647→
+   648→   648→   648→  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+   649→   649→   649→
+   650→   650→   650→  @@index([businessId])
+   651→   651→   651→  @@index([isActive])
+   652→   652→   652→  @@index([scope])
+   653→   653→   653→}
+   654→   654→   654→
+   655→   655→   655→// ── Suppliers ──
+   656→   656→   656→// Vendors/manufacturers/distributors that supply products
+   657→   657→   657→model Supplier {
+   658→   658→   658→  id            String   @id @default(cuid())
+   659→   659→   659→  businessId    String
+   660→   660→   660→  name          String
+   661→   661→   661→  code          String?  // internal supplier code: SUP-001
+   662→   662→   662→  contactPerson String?
+   663→   663→   663→  phone         String?
+   664→   664→   664→  email         String?
+   665→   665→   665→  address       String?
+   666→   666→   666→  // Financial
+   667→   667→   667→  balance       Float    @default(0)  // outstanding payable (positive = we owe them)
+   668→   668→   668→  totalPurchased Float   @default(0)  // lifetime purchase value
+   669→   669→   669→  totalPaid     Float    @default(0)  // lifetime payments to supplier
+   670→   670→   670→  // Metadata
+   671→   671→   671→  notes         String?
+   672→   672→   672→  isActive      Boolean  @default(true)
+   673→   673→   673→  createdAt     DateTime @default(now())
+   674→   674→   674→  updatedAt     DateTime @updatedAt
+   675→   675→   675→
+   676→   676→   676→  business  Business   @relation(fields: [businessId], references: [id], onDelete: Cascade)
+   677→   677→   677→  purchases Purchase[]
+   678→   678→   678→  batches   Batch[]
+   679→   679→   679→
+   680→   680→   680→  @@index([businessId])
+   681→   681→   681→  @@index([name])
+   682→   682→   682→  @@index([phone])
+   683→   683→   683→}
+   684→   684→   684→
+   685→   685→   685→// ── Purchases (Goods Receipt / Purchase Invoices) ──
+   686→   686→   686→// Records incoming stock from suppliers with batch creation
+   687→   687→   687→model Purchase {
+   688→   688→   688→  id              String   @id @default(cuid())
+   689→   689→   689→  businessId      String
+   690→   690→   690→  supplierId      String?
+   691→   691→   691→  purchaseNo      String   // human-readable: PO-2026-0001
+   692→   692→   692→  status          String   @default("received") // "draft", "ordered", "received", "cancelled"
+   693→   693→   693→  // Pricing
+   694→   694→   694→  subtotal        Float    @default(0)
+   695→   695→   695→  discountAmount  Float    @default(0)
+   696→   696→   696→  taxAmount       Float    @default(0)
+   697→   697→   697→  totalAmount     Float    @default(0)
+   698→   698→   698→  paidAmount      Float    @default(0)
+   699→   699→   699→  paymentStatus   String   @default("unpaid") // "paid", "partial", "unpaid"
+   700→   700→   700→  // Metadata
+   701→   701→   701→  invoiceNo       String?  // supplier's invoice number
+   702→   702→   702→  invoiceDate     DateTime?
+   703→   703→   703→  receivedDate    DateTime?
+   704→   704→   704→  notes           String?
+   705→   705→   705→  // Audit
+   706→   706→   706→  createdBy       String?
+   707→   707→   707→  createdAt       DateTime @default(now())
+   708→   708→   708→  updatedAt       DateTime @updatedAt
+   709→   709→   709→
+   710→   710→   710→  business  Business   @relation(fields: [businessId], references: [id], onDelete: Cascade)
+   711→   711→   711→  supplier  Supplier?  @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+   712→   712→   712→  items     PurchaseItem[]
+   713→   713→   713→
+   714→   714→   714→  @@unique([businessId, purchaseNo])
+   715→   715→   715→  @@index([businessId])
+   716→   716→   716→  @@index([supplierId])
+   717→   717→   717→  @@index([status])
+   718→   718→   718→  @@index([createdAt])
+   719→   719→   719→}
+   720→   720→   720→
+   721→   721→   721→// ── Purchase Items ──
+   722→   722→   722→model PurchaseItem {
+   723→   723→   723→  id              String   @id @default(cuid())
+   724→   724→   724→  purchaseId      String
+   725→   725→   725→  businessId      String
+   726→   726→   726→  productId       String
+   727→   727→   727→  batchId         String?  // batch created on receipt
+   728→   728→   728→  productName     String   // snapshot
+   729→   729→   729→  quantity        Float    // ordered quantity
+   730→   730→   730→  receivedQuantity Float   @default(0) // actually received
+   731→   731→   731→  unit            String   // snapshot
+   732→   732→   732→  unitCost        Float    // purchase price per unit
+   733→   733→   733→  totalPrice      Float    // quantity * unitCost
+   734→   734→   734→  // Batch details (used when creating batch on receipt)
+   735→   735→   735→  batchNo         String?
+   736→   736→   736→  expiryDate      DateTime?
+   737→   737→   737→  mfgDate         DateTime?
+   738→   738→   738→  mrp             Float?   // selling price (MRP) for the batch
+   739→   739→   739→
+   740→   740→   740→  purchase Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+   741→   741→   741→  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+   742→   742→   742→  product  Product  @relation(fields: [productId], references: [id])
+   743→   743→   743→  batch    Batch?   @relation(fields: [batchId], references: [id])
+   744→   744→   744→
+   745→   745→   745→  @@index([purchaseId])
+   746→   746→   746→  @@index([productId])
+   747→   747→   747→}
+   748→   748→   748→
+   749→   749→   749→// ── AI Usage Log ──
+   750→   750→   750→// Tracks every AI call per business for cost monitoring and rate limiting
+   751→   751→   751→model AIUsageLog {
+   752→   752→   752→  id            String   @id @default(cuid())
+   753→   753→   753→  businessId    String
+   754→   754→   754→  feature       String   // "chat" / "insights" / "expiry-optimizer" / "product-assistant:*" / "sql-router:*" / "*-cache"
+   755→   755→   755→  tokensUsed    Int      @default(0)
+   756→   756→   756→  costEstimate  Float    @default(0)
+   757→   757→   757→  success       Boolean  @default(true)
+   758→   758→   758→  errorMessage  String?
+   759→   759→   759→  createdAt     DateTime @default(now())
+   760→   760→   760→
+   761→   761→   761→  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+   762→   762→   762→
+   763→   763→   763→  @@index([businessId])
+   764→   764→   764→  @@index([feature])
+   765→   765→   765→  @@index([createdAt])
+   766→   766→   766→  @@index([businessId, createdAt])
+   767→   767→   767→}
+   768→   768→   768→
+   769→   769→   769→// ── Super Admin ──
+   770→   770→   770→model SuperAdmin {
+   771→   771→   771→  id           String   @id @default(cuid())
+   772→   772→   772→  username     String   @unique
+   773→   773→   773→  passwordHash String
+   774→   774→   774→  fullName     String?
+   775→   775→   775→  role         String   @default("super_admin")
+   776→   776→   776→  isActive     Boolean  @default(true)
+   777→   777→   777→  lastLoginAt  DateTime?
+   778→   778→   778→  createdAt    DateTime @default(now())
+   779→   779→   779→  updatedAt    DateTime @updatedAt
+   780→   780→   780→
+   781→   781→   781→  sessions SuperAdminSession[]
+   782→   782→   782→}
+   783→   783→   783→
+   784→   784→   784→model SuperAdminSession {
+   785→   785→   785→  id              String   @id @default(cuid())
+   786→   786→   786→  superAdminId    String
+   787→   787→   787→  token           String   @unique
+   788→   788→   788→  expiresAt       DateTime
+   789→   789→   789→  createdAt       DateTime @default(now())
+   790→   790→   790→
+   791→   791→   791→  superAdmin SuperAdmin @relation(fields: [superAdminId], references: [id], onDelete: Cascade)
+   792→   792→   792→
+   793→   793→   793→  @@index([superAdminId])
+   794→   794→   794→  @@index([token])
+   795→   795→   795→  @@index([expiresAt])
+   796→   796→   796→}
+   797→   797→   797→
+   798→   798→   798→// ── Business Daily Stats (Cron pre-computation) ──
+   799→   799→   799→model BusinessDailyStats {
+   800→   800→   800→  id              String   @id @default(cuid())
+   801→   801→   801→  businessId      String
+   802→   802→   802→  date            DateTime
+   803→   803→   803→
+   804→   804→   804→  salesTotal      Float    @default(0)
+   805→   805→   805→  salesCount      Int      @default(0)
+   806→   806→   806→  salesDiscount   Float    @default(0)
+   807→   807→   807→  salesReturns    Float    @default(0)
+   808→   808→   808→  salesReturnsCount Int    @default(0)
+   809→   809→   809→  purchasesTotal  Float    @default(0)
+   810→   810→   810→  purchasesCount  Int      @default(0)
+   811→   811→   811→  paymentsIn      Float    @default(0)
+   812→   812→   812→  paymentsOut     Float    @default(0)
+   813→   813→   813→  productCount    Int      @default(0)
+   814→   814→   814→  lowStockCount   Int      @default(0)
+   815→   815→   815→  outOfStockCount Int      @default(0)
+   816→   816→   816→  batchCount      Int      @default(0)
+   817→   817→   817→  nearExpiryCount Int      @default(0)
+   818→   818→   818→  expiredCount    Int      @default(0)
+   819→   819→   819→  inventoryCostValue Float @default(0)
+   820→   820→   820→  inventoryMrpValue  Float @default(0)
+   821→   821→   821→  customerCount       Int  @default(0)
+   822→   822→   822→  supplierCount       Int  @default(0)
+   823→   823→   823→  receivablesTotal    Float @default(0)
+   824→   824→   824→  payablesTotal       Float @default(0)
+   825→   825→   825→  aiCalls         Int      @default(0)
+   826→   826→   826→  aiTokens        Int      @default(0)
+   827→   827→   827→  aiCost          Float    @default(0)
+   828→   828→   828→  createdAt       DateTime @default(now())
+   829→   829→   829→
+   830→   830→   830→  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+   831→   831→   831→
+   832→   832→   832→  @@unique([businessId, date])
+   833→   833→   833→  @@index([businessId, date])
+   834→   834→   834→  @@index([date])
+   835→   835→   835→}
+   836→   836→   836→
+   837→   837→   837→// ── Cron Job Log ──
+   838→   838→   838→model CronJobLog {
+   839→   839→   839→  id            String   @id @default(cuid())
+   840→   840→   840→  jobName       String
+   841→   841→   841→  status        String   // "running" | "success" | "failed"
+   842→   842→   842→  startedAt     DateTime @default(now())
+   843→   843→   843→  finishedAt    DateTime?
+   844→   844→   844→  durationMs    Int?
+   845→   845→   845→  businessesProcessed Int @default(0)
+   846→   846→   846→  recordsWritten     Int @default(0)
+   847→   847→   847→  errorMessage       String?
+   848→   848→   848→  log           String?
+   849→   849→   849→
+   850→   850→   850→  @@index([jobName, startedAt])
+   851→   851→   851→  @@index([status])
+   852→   852→   852→  @@index([startedAt])
+   853→   853→   853→}
+   854→   854→   854→
+   855→   855→   855→// ── AI Response Cache (Gap 9) ──
+   856→   856→   856→model AIResponseCache {
+   857→   857→   857→  id              String   @id @default(cuid())
+   858→   858→   858→  businessId      String
+   859→   859→   859→  feature         String
+   860→   860→   860→  normalizedQuery String
+   861→   861→   861→  dataHash        String
+   862→   862→   862→  response        String
+   863→   863→   863→  tokensUsed      Int      @default(0)
+   864→   864→   864→  createdAt       DateTime @default(now())
+   865→   865→   865→  expiresAt       DateTime
+   866→   866→   866→
+   867→   867→   867→  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+   868→   868→   868→
+   869→   869→   869→  @@unique([businessId, feature, normalizedQuery, dataHash])
+   870→   870→   870→  @@index([businessId, feature, normalizedQuery])
+   871→   871→   871→  @@index([expiresAt])
+   872→   872→   872→  @@index([businessId, expiresAt])
+   873→   873→   873→}
+   874→   874→   874→
+   875→   875→   875→// ── FEFO Override Audit Trail (Gap 11) ──
+   876→   876→   876→// Records every time staff overrides FEFO (picks a later-expiring batch
+   877→   877→   877→// instead of the soonest-expiring one). Required for DGDA compliance.
+   878→   878→   878→model FefoOverride {
+   879→   879→   879→  id              String   @id @default(cuid())
+   880→   880→   880→  businessId      String
+   881→   881→   881→  saleId          String?
+   882→   882→   882→  saleItemId      String?
+   883→   883→   883→  productId       String
+   884→   884→   884→  productName     String   // snapshot
+   885→   885→   885→  selectedBatchId String   // the batch actually dispensed
+   886→   886→   886→  selectedBatchNo String   // snapshot
+   887→   887→   887→  expectedBatchId String   // the FEFO-first batch that was skipped
+   888→   888→   888→  expectedBatchNo String   // snapshot
+   889→   889→   889→  userId          String?  // who made the override
+   890→   890→   890→  userName        String?  // snapshot
+   891→   891→   891→  reason          String   // required, min 10 chars
+   892→   892→   892→  createdAt       DateTime @default(now())
+   893→   893→   893→
+   894→   894→   894→  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+   895→   895→   895→
+   896→   896→   896→  @@index([businessId, createdAt])
+   897→   897→   897→  @@index([saleId])
+   898→   898→   898→  @@index([productId])
+   899→   899→   899→}
+   900→   900→   900→
+   901→   901→   901→// ── AI Configuration (Phase 1: configurable cost-control knobs) ──
+   902→   902→   902→// Stores per-feature AI limits that the founder can tune from the super-admin
+   903→   903→   903→// panel without redeploying. Falls back to hardcoded defaults in src/lib/ai-config.ts
+   904→   904→   904→// if the row is missing or the DB is unreachable.
+   905→   905→   905→//
+   906→   906→   906→// Features:
+   907→   907→   907→//   - "chat"             → maxOutputTokens (default 1024)
+   908→   908→   908→//   - "insights"         → maxOutputTokens (default 2048)
+   909→   909→   909→//   - "expiry-optimizer" → maxOutputTokens (default 2048) + maxInputBatches (default 50)
+   910→   910→   910→//   - "product-assistant"→ maxOutputTokens (default 512)  + maxInputProducts (default 20)
+   911→   911→   911→model AiConfig {
+   912→   912→   912→  id               String   @id @default(cuid())
+   913→   913→   913→  feature          String   @unique
+   914→   914→   914→  maxOutputTokens  Int      @default(1024)
+   915→   915→   915→  maxInputBatches  Int?     // only used by expiry-optimizer
+   916→   916→   916→  maxInputProducts Int?     // only used by product-assistant:check_interactions
+   917→   917→   917→  maxInputImages   Int?     // only used by shelf-scanner (max photos per scan)
+   918→   918→   918→  systemPrompt     String?  @db.Text // shelf-scanner: custom system prompt (null = default)
+   919→   919→   919→  userPromptTemplate String? @db.Text // shelf-scanner: user prompt with {{imageCount}} placeholder
+   920→   920→   920→  temperature      Float?   // shelf-scanner: LLM temperature (null = 0.1)
+   921→   921→   921→  disableThinking  Boolean? // shelf-scanner: disable Gemini 2.5+ internal reasoning (null = true)
+   922→   922→   922→  updatedAt        DateTime @updatedAt
+   923→   923→   923→  updatedBy        String?  // super-admin username
+   924→   924→   924→
+   925→   925→   925→  @@map("ai_configs")
+   926→   926→   926→}
+   927→   927→   927→
+   928→   928→   928→// ── Kill Switch Audit Log (Phase 4) ──
+   929→   929→   929→// Records every time a kill-switch trigger fires. Each row = one trigger event.
+   930→   930→   930→// isActive=true means the kill-switch is currently blocking AI for that scope
+   931→   931→   931→// (per-pharmacy for triggers 1+2, platform-wide for triggers 3+4).
+   932→   932→   932→// Super-admin resets by setting isActive=false via /api/super-admin/kill-switch/[id]/reset.
+   933→   933→   933→model KillSwitch {
+   934→   934→   934→  id             String   @id @default(cuid())
+   935→   935→   935→  trigger        String   // "per_pharmacy_monthly" | "per_pharmacy_24h" | "platform_monthly" | "zai_error_rate"
+   936→   936→   936→  thresholdValue Float    @default(0) // the threshold that was configured at trigger time
+   937→   937→   937→  actualValue    Float    @default(0) // the actual value that triggered it
+   938→   938→   938→  triggeredAt    DateTime @default(now())
+   939→   939→   939→  triggeredBy    String   // businessId for triggers 1+2, "platform" for triggers 3+4
+   940→   940→   940→  isActive       Boolean  @default(true)
+   941→   941→   941→  deactivatedAt  DateTime?
+   942→   942→   942→  deactivatedBy  String?  // super-admin username
+   943→   943→   943→  notes          String?
+   944→   944→   944→
+   945→   945→   945→  @@index([trigger, isActive])
+   946→   946→   946→  @@index([triggeredAt])
+   947→   947→   947→  @@index([triggeredBy])
+   948→   948→   948→  @@map("kill_switches")
+   949→   949→   949→}
+   950→   950→   950→
+   951→   951→   951→// ── Kill Switch Thresholds (Phase 4: dynamic, editable from super admin) ──
+   952→   952→   952→// The founder can tune these from /admin without redeploying. Each trigger has
+   953→   953→   953→// its own row with a configurable threshold value.
+   954→   954→   954→//
+   955→   955→   955→// Triggers:
+   956→   956→   956→//   "per_pharmacy_monthly"  → max BDT per pharmacy per month (default 200)
+   957→   957→   957→//   "per_pharmacy_24h"      → max tokens per pharmacy per 24h (default 50000)
+   958→   958→   958→//   "platform_monthly"      → max BDT platform-wide per month (default 100000)
+   959→   959→   959→//   "zai_error_rate"        → max error rate % in 1 hour (default 10)
+   960→   960→   960→model KillSwitchThreshold {
+   961→   961→   961→  id            String   @id @default(cuid())
+   962→   962→   962→  trigger       String   @unique
+   963→   963→   963→  thresholdValue Float   @default(0)
+   964→   964→   964→  unit          String   @default("") // "BDT", "tokens", "BDT", "%" for display
+   965→   965→   965→  isActive      Boolean  @default(true) // founder can disable a trigger entirely
+   966→   966→   966→  updatedAt     DateTime @updatedAt
+   967→   967→   967→  updatedBy     String?
+   968→   968→   968→
+   969→   969→   969→  @@map("kill_switch_thresholds")
+   970→   970→   970→}
+   971→   971→   971→
+   972→   972→   972→// ── Notification Recipients (Phase 4: up to 3 emails for kill-switch alerts) ──
+   973→   973→   973→// The founder can configure up to 3 email addresses from /admin. When a
+   974→   974→   974→// kill-switch triggers, an email is sent to ALL active recipients.
+   975→   975→   975→// If no recipients are configured, the alert is logged to NotificationLog only.
+   976→   976→   976→model NotificationRecipient {
+   977→   977→   977→  id        String   @id @default(cuid())
+   978→   978→   978→  email     String   @unique
+   979→   979→   979→  label     String?  // e.g., "Founder", "CTO", "On-call engineer"
+   980→   980→   980→  isActive  Boolean  @default(true)
+   981→   981→   981→  createdAt DateTime @default(now())
+   982→   982→   982→  updatedAt DateTime @updatedAt
+   983→   983→   983→
+   984→   984→   984→  @@map("notification_recipients")
+   985→   985→   985→}
+   986→   986→   986→
+   987→   987→   987→// ═══════════════════════════════════════════════════════════════════════════
+   988→   988→   988→// ── AI REPORT SCHEDULING SYSTEM (Phase A) ──
+   989→   989→   989→// 7 models for the weekly client-hook feature:
+   990→   990→   990→//   1. ReportSchedule   — founder's schedule config (weekly/monthly/date_range)
+   991→   991→   991→//   2. ReportOccasion   — point events (Eid, Friday, Puja)
+   992→   992→   992→//   3. ReportSeason     — recurring seasonal periods (Winter, Monsoon, Summer)
+   993→   993→   993→//   4. HolidayCalendar  — specific occasion dates per year (Eid 2026 = 2026-04-10)
+   994→   994→   994→//   5. EpidemicAlert    — active outbreaks (dengue, COVID) that override predictions
+   995→   995→   995→//   6. GeneratedReport  — the report itself (one per business per schedule run)
+   996→   996→   996→//   7. ReportDelivery   — delivery tracking (email + WhatsApp)
+   997→   997→   997→// ═══════════════════════════════════════════════════════════════════════════
+   998→   998→   998→
+   999→   999→   999→// ── 1. ReportSchedule ──
+  1000→  1000→  1000→// Founder's schedule configuration. Each row defines one recurring schedule
+  1001→  1001→  1001→// (e.g., "Weekly Monday report for all Pro+AI clients considering Eid + Winter").
+  1002→  1002→  1002→// Platform-wide — generates reports for multiple businesses.
+  1003→  1003→  1003→model ReportSchedule {
+  1004→  1004→  1004→  id                String    @id @default(cuid())
+  1005→  1005→  1005→  name              String    // e.g., "Weekly Eid-Aware Report"
+  1006→  1006→  1006→  description       String?
+  1007→  1007→  1007→  frequency         String    // "weekly" | "monthly" | "date_range"
+  1008→  1008→  1008→  dayOfWeek         Int?      // For weekly: 0=Sun, 1=Mon, ..., 6=Sat
+  1009→  1009→  1009→  dayOfMonth        Int?      // For monthly: 1-28 (avoids 29/30/31 to prevent skipped months)
+  1010→  1010→  1010→  startDate         DateTime? // For date_range: first report date
+  1011→  1011→  1011→  endDate           DateTime? // For date_range: last report date
+  1012→  1012→  1012→  occasions         String    @default("[]") // JSON array of occasion IDs to consider (empty = all active)
+  1013→  1013→  1013→  considerSeasons   Boolean   @default(true) // Whether to apply seasonal adjustments
+  1014→  1014→  1014→  considerEpidemics Boolean   @default(true) // Whether to apply active epidemic alerts
+  1015→  1015→  1015→  targetClientMode  String    @default("all") // "all" | "selected"
+  1016→  1016→  1016→  targetClientIds   String?   // JSON array of businessIds. Null if "all"
+  1017→  1017→  1017→  deliveryChannels  String    @default("[\"email\"]") // JSON: ["email"] | ["whatsapp"] | ["email","whatsapp"]
+  1018→  1018→  1018→  reportPeriodDays  Int       @default(7) // How many days ahead to predict (7=weekly, 14=biweekly)
+  1019→  1019→  1019→  // Phase 6: multi-project filtering. Null = all projects (backward compatible).
+  1020→  1020→  1020→  // When set, the schedule checker only targets businesses of this type.
+  1021→  1021→  1021→  businessTypeId    String?
+  1022→  1022→  1022→  isActive          Boolean   @default(true)
+  1023→  1023→  1023→  lastRunAt         DateTime?
+  1024→  1024→  1024→  nextRunAt         DateTime?
+  1025→  1025→  1025→  createdBy         String?   // super-admin username
+  1026→  1026→  1026→  createdAt         DateTime  @default(now())
+  1027→  1027→  1027→  updatedAt         DateTime  @updatedAt
+  1028→  1028→  1028→
+  1029→  1029→  1029→  generatedReports GeneratedReport[]
+  1030→  1030→  1030→
+  1031→  1031→  1031→  @@index([isActive, nextRunAt])
+  1032→  1032→  1032→  @@index([frequency])
+  1033→  1033→  1033→  @@index([businessTypeId])
+  1034→  1034→  1034→  @@map("report_schedules")
+  1035→  1035→  1035→}
+  1036→  1036→  1036→
+  1037→  1037→  1037→// ── 2. ReportOccasion ──
+  1038→  1038→  1038→// Point-in-time events (Eid, Friday, Puja, government holidays).
+  1039→  1039→  1039→// Duration is short (1-7 days). Recurrence is predictable (annual/weekly).
+  1040→  1040→  1040→// Pre-seeded with 14+ Bangladesh occasions.
+  1041→  1041→  1041→model ReportOccasion {
+  1042→  1042→  1042→  id              String   @id @default(cuid())
+  1043→  1043→  1043→  name            String   // "Eid-ul-Fitr", "Friday", etc.
+  1044→  1044→  1044→  slug            String   @unique // "eid-ul-fitr", "friday"
+  1045→  1045→  1045→  type            String   // "religious" | "national" | "weekly" | "custom"
+  1046→  1046→  1046→  datePattern     String   // "fixed_date" | "lunar_approximate" | "recurring_weekly"
+  1047→  1047→  1047→  fixedMonth      Int?     // For fixed_date: 1-12
+  1048→  1048→  1048→  fixedDay        Int?     // For fixed_date: 1-31
+  1049→  1049→  1049→  weeklyDayOfWeek Int?     // For recurring_weekly: 0=Sun, 5=Fri, 6=Sat
+  1050→  1050→  1050→  impactWeight    Float    @default(1.0) // 1.0=normal, 2.5=150% boost, 0.3=70% reduction
+  1051→  1051→  1051→  durationDays    Int      @default(1) // How long the spike lasts (Eid=7, Friday=1)
+  1052→  1052→  1052→  leadDays        Int      @default(0) // Days BEFORE occasion the spike starts (Eid shopping=5 days before)
+  1053→  1053→  1053→  description     String?
+  1054→  1054→  1054→  isActive        Boolean  @default(true)
+  1055→  1055→  1055→  createdAt       DateTime @default(now())
+  1056→  1056→  1056→  updatedAt       DateTime @updatedAt
+  1057→  1057→  1057→
+  1058→  1058→  1058→  holidayCalendar HolidayCalendar[]
+  1059→  1059→  1059→
+  1060→  1060→  1060→  @@map("report_occasions")
+  1061→  1061→  1061→}
+  1062→  1062→  1062→
+  1063→  1063→  1063→// ── 3. ReportSeason ──
+  1064→  1064→  1064→// Recurring seasonal periods that shift baseline demand for months at a time.
+  1065→  1065→  1065→// Unlike occasions (point events), seasons are extended periods (2-3 months)
+  1066→  1066→  1066→// with a "multiplier" that adjusts the baseline demand for affected product
+  1067→  1067→  1067→// categories throughout the season.
+  1068→  1068→  1068→//
+  1069→  1069→  1069→// Pre-seeded with 4 Bangladesh seasons:
+  1070→  1070→  1070→//   - Winter (Dec-Feb): respiratory meds spike 1.5x
+  1071→  1071→  1071→//   - Summer (Mar-May): ORS, antacids, heatstroke meds 1.3x (overlaps Ramadan/Eid)
+  1072→  1072→  1072→//   - Monsoon (Jun-Sep): dengue/malaria/water-borne disease meds 2.0x
+  1073→  1073→  1073→//   - Autumn (Oct-Nov): transition, baseline 1.0x
+  1074→  1074→  1074→//
+  1075→  1075→  1075→// A season's effect is COMPOUND with occasions: Eid in Monsoon = Eid spike (2.8x)
+  1076→  1076→  1076→// applied to the Monsoon-adjusted baseline (2.0x) = 5.6x for dengue meds during
+  1077→  1077→  1077→// Eid in monsoon. The prediction algorithm handles this layering.
+  1078→  1078→  1078→model ReportSeason {
+  1079→  1079→  1079→  id              String   @id @default(cuid())
+  1080→  1080→  1080→  name            String   // "Winter", "Summer", "Monsoon", "Autumn"
+  1081→  1081→  1081→  slug            String   @unique // "winter", "monsoon"
+  1082→  1082→  1082→  startMonth      Int      // 1-12 (e.g., Winter = 12)
+  1083→  1083→  1083→  startDay        Int      @default(1) // 1-31
+  1084→  1084→  1084→  endMonth        Int      // 1-12 (e.g., Winter = 2)
+  1085→  1085→  1085→  endDay          Int      @default(28) // 1-31
+  1086→  1086→  1086→  impactWeight    Float    @default(1.0) // 1.0=normal, 1.5=50% boost, 0.8=20% reduction
+  1087→  1087→  1087→  affectedCategories String @default("[]") // JSON array of category names most affected
+  1088→  1088→  1088→  description     String?
+  1089→  1089→  1089→  isActive        Boolean  @default(true)
+  1090→  1090→  1090→  createdAt       DateTime @default(now())
+  1091→  1091→  1091→  updatedAt       DateTime @updatedAt
+  1092→  1092→  1092→
+  1093→  1093→  1093→  @@map("report_seasons")
+  1094→  1094→  1094→}
+  1095→  1095→  1095→
+  1096→  1096→  1096→// ── 4. HolidayCalendar ──
+  1097→  1097→  1097→// Stores the specific dates of occasions for each year.
+  1098→  1098→  1098→// Necessary because lunar occasions (Eid) shift each year and must be confirmed.
+  1099→  1099→  1099→// The prediction algorithm queries this to know which dates in the next 7-14
+  1100→  1100→  1100→// days have occasions, then looks up the same occasions in historical sales.
+
+[showing lines 601-1100 of 1676; use offset=1101 with limit to continue reading]

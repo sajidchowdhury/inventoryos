@@ -1,0 +1,1676 @@
+     1→     1→     1→     1→// ── InventoryOS Database Schema ──
+     2→     2→     2→     2→// Multi-tenant inventory management platform
+     3→     3→     3→     3→// Phase 1a: Pharmacy product master with batch tracking
+     4→     4→     4→     4→
+     5→     5→     5→     5→generator client {
+     6→     6→     6→     6→  provider      = "prisma-client-js"
+     7→     7→     7→     7→  binaryTargets = ["native", "rhel-openssl-3.0.x"]
+     8→     8→     8→     8→}
+     9→     9→     9→     9→
+    10→    10→    10→    10→datasource db {
+    11→    11→    11→    11→  provider = "postgresql"
+    12→    12→    12→    12→  url      = env("DATABASE_URL")
+    13→    13→    13→    13→}
+    14→    14→    14→    14→
+    15→    15→    15→    15→// ── Business Types ──
+    16→    16→    16→    16→model BusinessType {
+    17→    17→    17→    17→  id        String   @id @default(cuid())
+    18→    18→    18→    18→  slug      String   @unique
+    19→    19→    19→    19→  name      String
+    20→    20→    20→    20→  icon      String
+    21→    21→    21→    21→  color     String
+    22→    22→    22→    22→  isActive  Boolean  @default(false)
+    23→    23→    23→    23→  sortOrder Int     @default(0)
+    24→    24→    24→    24→  createdAt DateTime @default(now())
+    25→    25→    25→    25→  updatedAt DateTime @updatedAt
+    26→    26→    26→    26→
+    27→    27→    27→    27→  businesses Business[]
+    28→    28→    28→    28→}
+    29→    29→    29→    29→
+    30→    30→    30→    30→// ── Users ──
+    31→    31→    31→    31→model User {
+    32→    32→    32→    32→  id        String   @id @default(cuid())
+    33→    33→    33→    33→  phone     String   @unique
+    34→    34→    34→    34→  name      String?
+    35→    35→    35→    35→  createdAt DateTime @default(now())
+    36→    36→    36→    36→  updatedAt DateTime @updatedAt
+    37→    37→    37→    37→
+    38→    38→    38→    38→  businesses     Business[]
+    39→    39→    39→    39→  trustedDevices TrustedDevice[]
+    40→    40→    40→    40→  phoneTokens    PhoneAuthToken[]
+    41→    41→    41→    41→}
+    42→    42→    42→    42→
+    43→    43→    43→    43→// ── Trusted Devices (skip-OTP for returning owners) ──
+    44→    44→    44→    44→// A long-lived, revocable token that proves a device has previously verified
+    45→    45→    45→    45→// this phone via OTP. Lets an owner return to their business list without
+    46→    46→    46→    46→// re-entering an OTP until the token expires.
+    47→    47→    47→    47→model TrustedDevice {
+    48→    48→    48→    48→  id         String   @id @default(cuid())
+    49→    49→    49→    49→  userId     String
+    50→    50→    50→    50→  token      String   @unique
+    51→    51→    51→    51→  deviceInfo String?
+    52→    52→    52→    52→  expiresAt  DateTime
+    53→    53→    53→    53→  createdAt  DateTime @default(now())
+    54→    54→    54→    54→  lastUsedAt DateTime @default(now())
+    55→    55→    55→    55→
+    56→    56→    56→    56→  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+    57→    57→    57→    57→
+    58→    58→    58→    58→  @@index([userId])
+    59→    59→    59→    59→  @@index([token])
+    60→    60→    60→    60→  @@index([expiresAt])
+    61→    61→    61→    61→}
+    62→    62→    62→    62→
+    63→    63→    63→    63→// ── Phone Auth Tokens (short-lived OTP proof) ──
+    64→    64→    64→    64→// Issued by verify-otp / trusted-device. Proves the holder recently verified
+    65→    65→    65→    65→// ownership of a phone number. Required by owner-login so a raw userId from the
+    66→    66→    66→    66→// client can never be used to enter someone else's shop without OTP.
+    67→    67→    67→    67→model PhoneAuthToken {
+    68→    68→    68→    68→  id        String   @id @default(cuid())
+    69→    69→    69→    69→  userId    String
+    70→    70→    70→    70→  token     String   @unique
+    71→    71→    71→    71→  expiresAt DateTime
+    72→    72→    72→    72→  createdAt DateTime @default(now())
+    73→    73→    73→    73→
+    74→    74→    74→    74→  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+    75→    75→    75→    75→
+    76→    76→    76→    76→  @@index([token])
+    77→    77→    77→    77→  @@index([expiresAt])
+    78→    78→    78→    78→}
+    79→    79→    79→    79→
+    80→    80→    80→    80→// ── Businesses ──
+    81→    81→    81→    81→model Business {
+    82→    82→    82→    82→  id             String   @id @default(cuid())
+    83→    83→    83→    83→  userId         String
+    84→    84→    84→    84→  businessTypeId String
+    85→    85→    85→    85→  name           String
+    86→    86→    86→    86→  // Globally-unique human-friendly shop code (e.g. "PHA-XK7T").
+    87→    87→    87→    87→  // Used by the staff login door to unambiguously resolve a business even when
+    88→    88→    88→    88→  // the same username exists across many shops. Nullable only for backfill.
+    89→    89→    89→    89→  shopCode       String?  @unique
+    90→    90→    90→    90→  address        String?
+    91→    91→    91→    91→  phone          String?
+    92→    92→    92→    92→  isActive       Boolean  @default(true)
+    93→    93→    93→    93→  createdAt      DateTime @default(now())
+    94→    94→    94→    94→  updatedAt      DateTime @updatedAt
+    95→    95→    95→    95→
+    96→    96→    96→    96→  // ── Subscription & AI Control ──
+    97→    97→    97→    97→  subscriptionTier   String   @default("free")    // "free" / "pro" / "pro_ai"
+    98→    98→    98→    98→  subscriptionStatus String   @default("trial")   // "trial" / "active" / "suspended" / "cancelled"
+    99→    99→    99→    99→  subscriptionStart  DateTime?
+   100→   100→   100→   100→  subscriptionEnd    DateTime?
+   101→   101→   101→   101→  // P1: 4-stage subscription lifecycle (computed by daily cron in P2)
+   102→   102→   102→   102→  subscriptionStage  String   @default("active")  // "active" / "expiring_soon" / "read_only" / "data_wiped"
+   103→   103→   103→   103→  gracePeriodEnd     DateTime?  // subscriptionEnd + 14 days (read-only window end)
+   104→   104→   104→   104→  dataWipeDate       DateTime?  // subscriptionEnd + 14 days (when data gets soft-deleted)
+   105→   105→   105→   105→  dataSoftDeletedAt  DateTime?  // set when stage transitions to "data_wiped" (null = not wiped)
+   106→   106→   106→   106→  dataPurgeDate      DateTime?  // dataSoftDeletedAt + 30 days (true purge date)
+   107→   107→   107→   107→  aiEnabled          Boolean  @default(false)
+   108→   108→   108→   108→  aiDailyLimit       Int      @default(50)
+   109→   109→   109→   109→  aiMonthlyLimit     Int      @default(1000)
+   110→   110→   110→   110→  aiTokenBudget      Int      @default(500000)
+   111→   111→   111→   111→
+   112→   112→   112→   112→  // ── Report Scheduling (Phase A) ──
+   113→   113→   113→   113→  // Email address for the business owner — used to deliver AI reports.
+   114→   114→   114→   114→  // Falls back to the email of the BusinessUser with role "owner" if null.
+   115→   115→   115→   115→  ownerEmail         String?
+   116→   116→   116→   116→  // WhatsApp number with country code (e.g., "+8801712345678") for report delivery.
+   117→   117→   117→   117→  // Falls back to Business.phone if null.
+   118→   118→   118→   118→  ownerWhatsapp      String?
+   119→   119→   119→   119→
+   120→   120→   120→   120→  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+   121→   121→   121→   121→  businessType BusinessType @relation(fields: [businessTypeId], references: [id])
+   122→   122→   122→   122→  businessUsers BusinessUser[]
+   123→   123→   123→   123→  categories    Category[]
+   124→   124→   124→   124→  products      Product[]
+   125→   125→   125→   125→  transactions  Transaction[]
+   126→   126→   126→   126→  inventories   Inventory[]
+   127→   127→   127→   127→  batches       Batch[]
+   128→   128→   128→   128→  alertPreference AlertPreference?
+   129→   129→   129→   129→  notificationLogs NotificationLog[]
+   130→   130→   130→   130→  customers     Customer[]
+   131→   131→   131→   131→  sales         Sale[]
+   132→   132→   132→   132→  saleItems     SaleItem[]
+   133→   133→   133→   133→  payments      Payment[]
+   134→   134→   134→   134→  returns       Return[]
+   135→   135→   135→   135→  returnItems   ReturnItem[]
+   136→   136→   136→   136→  discountRules DiscountRule[]
+   137→   137→   137→   137→  suppliers     Supplier[]
+   138→   138→   138→   138→  purchases     Purchase[]
+   139→   139→   139→   139→  purchaseItems PurchaseItem[]
+   140→   140→   140→   140→  aiUsageLogs   AIUsageLog[]
+   141→   141→   141→   141→  dailyStats    BusinessDailyStats[]
+   142→   142→   142→   142→  aiResponseCache AIResponseCache[]
+   143→   143→   143→   143→  fefoOverrides FefoOverride[]
+   144→   144→   144→   144→  generatedReports GeneratedReport[]
+   145→   145→   145→   145→  shelfScans      ShelfScan[]
+   146→   146→   146→   146→  storageZones    StorageZone[]
+   147→   147→   147→   147→  stockCountDays  StockCountDay[]
+   148→   148→   148→   148→  productZoneAssignments ProductZoneAssignment[]
+   149→   149→   149→   149→  zoneAssignmentSnapshots ZoneAssignmentSnapshot[]  // P3: enables zone inheritance
+   150→   150→   150→   150→
+   151→   151→   151→   151→  // P1: Subscription billing relations
+   152→   152→   152→   152→  subscriptionInvoices SubscriptionInvoice[]
+   153→   153→   153→   153→  paymentTransactions  PaymentTransaction[]
+   154→   154→   154→   154→  subscriptionAdjustments SubscriptionAdjustment[]  // P6: audit trail
+   155→   155→   155→   155→
+   156→   156→   156→   156→  @@index([userId])
+   157→   157→   157→   157→  @@index([businessTypeId])
+   158→   158→   158→   158→  @@index([subscriptionStage])  // P1: fast filtering by lifecycle stage
+   159→   159→   159→   159→  @@index([subscriptionEnd])    // P1: fast cron queries on expiring subscriptions
+   160→   160→   160→   160→}
+   161→   161→   161→   161→
+   162→   162→   162→   162→// ── Business Users ──
+   163→   163→   163→   163→model BusinessUser {
+   164→   164→   164→   164→  id           String   @id @default(cuid())
+   165→   165→   165→   165→  businessId   String
+   166→   166→   166→   166→  username     String
+   167→   167→   167→   167→  passwordHash String
+   168→   168→   168→   168→  role         String   @default("admin") // "owner", "admin", "manager", "pharmacist", "cashier", "stock_clerk"
+   169→   169→   169→   169→  // P1: distinguishes the shop admin (owner) from employees.
+   170→   170→   170→   170→  // The admin handles the subscription per shop. Only one admin per business.
+   171→   171→   171→   171→  isAdmin      Boolean  @default(false)
+   172→   172→   172→   172→  fullName     String?
+   173→   173→   173→   173→  phone        String?
+   174→   174→   174→   174→  email        String?
+   175→   175→   175→   175→  permissions  String?  // JSON array of permission strings, null = use role defaults
+   176→   176→   176→   176→  isActive     Boolean  @default(true)
+   177→   177→   177→   177→  lastLoginAt  DateTime?
+   178→   178→   178→   178→  createdAt    DateTime @default(now())
+   179→   179→   179→   179→  updatedAt    DateTime @updatedAt
+   180→   180→   180→   180→
+   181→   181→   181→   181→  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+   182→   182→   182→   182→  sessions Session[]
+   183→   183→   183→   183→
+   184→   184→   184→   184→  @@unique([businessId, username])
+   185→   185→   185→   185→  @@index([businessId])
+   186→   186→   186→   186→  @@index([role])
+   187→   187→   187→   187→}
+   188→   188→   188→   188→
+   189→   189→   189→   189→// ── Categories ──
+   190→   190→   190→   190→// Product categories with color, icon, and hierarchy support
+   191→   191→   191→   191→model Category {
+   192→   192→   192→   192→  id         String   @id @default(cuid())
+   193→   193→   193→   193→  businessId String
+   194→   194→   194→   194→  parentId   String?
+   195→   195→   195→   195→  name       String
+   196→   196→   196→   196→  slug       String              // URL-friendly: "antibiotics", "pain-relief"
+   197→   197→   197→   197→  icon       String   @default("Tag")   // Lucide icon name
+   198→   198→   198→   198→  color      String   @default("#6B7280") // Category brand color
+   199→   199→   199→   199→  type       String   @default("medicine") // "medicine", "surgical", "cosmetic", "supplement", "baby-care", "other"
+   200→   200→   200→   200→  sortOrder  Int      @default(0)
+   201→   201→   201→   201→  isActive   Boolean  @default(true)
+   202→   202→   202→   202→  createdAt  DateTime @default(now())
+   203→   203→   203→   203→  updatedAt  DateTime @updatedAt
+   204→   204→   204→   204→
+   205→   205→   205→   205→  business Business   @relation(fields: [businessId], references: [id], onDelete: Cascade)
+   206→   206→   206→   206→  parent   Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
+   207→   207→   207→   207→  children Category[] @relation("CategoryHierarchy")
+   208→   208→   208→   208→  products Product[]
+   209→   209→   209→   209→
+   210→   210→   210→   210→  @@unique([businessId, slug])
+   211→   211→   211→   211→  @@index([businessId])
+   212→   212→   212→   212→  @@index([parentId])
+   213→   213→   213→   213→}
+   214→   214→   214→   214→
+   215→   215→   215→   215→// ── Products (Base + Pharmacy Extension) ──
+   216→   216→   216→   216→// Unified product model with pharmacy-specific optional fields
+   217→   217→   217→   217→model Product {
+   218→   218→   218→   218→  id           String   @id @default(cuid())
+   219→   219→   219→   219→  businessId   String
+   220→   220→   220→   220→  categoryId   String?
+   221→   221→   221→   221→  name         String              // Brand name (e.g., "Napa Extra")
+   222→   222→   222→   222→  genericName  String?             // Generic name (e.g., "Paracetamol + Caffeine")
+   223→   223→   223→   223→  sku          String?             // Internal SKU code
+   224→   224→   224→   224→  barcode      String?             // Barcode / QR code
+   225→   225→   225→   225→  productType  String   @default("medicine") // "medicine", "surgical", "cosmetic", "supplement", "baby-care", "other"
+   226→   226→   226→   226→
+   227→   227→   227→   227→  // Unit & Conversion
+   228→   228→   228→   228→  unit         String   @default("piece")  // Base unit: "piece", "tablet", "ml", "g"
+   229→   229→   229→   229→  stripSize    Int?              // e.g., 10 tablets per strip
+   230→   230→   230→   230→  boxSize      Int?              // e.g., 10 strips per box
+   231→   231→   231→   231→
+   232→   232→   232→   232→  // Pharmacy-specific
+   233→   233→   233→   233→  strength     String?            // "500mg", "250mg/5ml"
+   234→   234→   234→   234→  dosageForm   String?            // "Tablet", "Capsule", "Syrup", "Injection", "Cream"
+   235→   235→   235→   235→  manufacturer String?            // "Square", "Beximco", "Renata"
+   236→   236→   236→   236→  scheduleType String?            // "OTC", "Schedule_H", "Schedule_H1", "Schedule_X", "Narcotic"
+   237→   237→   237→   237→  hsnCode      String?            // For VAT: "30049099"
+   238→   238→   238→   238→  vatRate      Float   @default(0)    // VAT percentage (medicines have reduced rate)
+   239→   239→   239→   239→  mrp          Float?             // Maximum Retail Price
+   240→   240→   240→   240→  isPrescription Boolean @default(false) // Prescription required?
+   241→   241→   241→   241→  storageCondition String?        // "Room Temp", "Fridge (2-8C)", "Cool & Dry"
+   242→   242→   242→   242→  rackNo       String?            // Shelf location: "A3", "Rack-5"
+   243→   243→   243→   243→
+   244→   244→   244→   244→  // Stock thresholds
+   245→   245→   245→   245→  minStock     Float   @default(0)     // Low stock alert threshold
+   246→   246→   246→   246→  maxStock     Float   @default(0)     // Overstock warning threshold
+   247→   247→   247→   247→  reorderLevel Float   @default(0)     // When to reorder
+   248→   248→   248→   248→
+   249→   249→   249→   249→  // Phase 2: Master Catalog link (null = custom product, backward compatible)
+   250→   250→   250→   250→  masterProductId String?              // FK to MasterProduct. When set, metadata sourced from catalog.
+   251→   251→   251→   251→  sellingPrice  Float?                 // Pharmacy's selling price (may differ from MRP)
+   252→   252→   252→   252→
+   253→   253→   253→   253→  isActive     Boolean  @default(true)
+   254→   254→   254→   254→  createdAt    DateTime @default(now())
+   255→   255→   255→   255→  updatedAt    DateTime @updatedAt
+   256→   256→   256→   256→
+   257→   257→   257→   257→  business     Business     @relation(fields: [businessId], references: [id], onDelete: Cascade)
+   258→   258→   258→   258→  category     Category?    @relation(fields: [categoryId], references: [id])
+   259→   259→   259→   259→  inventory    Inventory?
+   260→   260→   260→   260→  transactions Transaction[]
+   261→   261→   261→   261→  batches      Batch[]
+   262→   262→   262→   262→  saleItems    SaleItem[]
+   263→   263→   263→   263→  returnItems  ReturnItem[]
+   264→   264→   264→   264→  purchaseItems PurchaseItem[]
+   265→   265→   265→   265→  shelfScanItems ShelfScanItem[]
+   266→   266→   266→   266→  zoneAssignments ProductZoneAssignment[]
+   267→   267→   267→   267→  stockCountLines StockCountLine[]
+   268→   268→   268→   268→  stockCountSummaries StockCountProductSummary[]
+   269→   269→   269→   269→  zoneAssignmentSnapshots ZoneAssignmentSnapshot[]  // P3: enables zone inheritance
+   270→   270→   270→   270→
+   271→   271→   271→   271→  @@index([businessId])
+   272→   272→   272→   272→  @@index([categoryId])
+   273→   273→   273→   273→  @@index([genericName])
+   274→   274→   274→   274→  @@index([manufacturer])
+   275→   275→   275→   275→  @@index([masterProductId])
+   276→   276→   276→   276→}
+   277→   277→   277→   277→
+   278→   278→   278→   278→// ── Batch ──
+   279→   279→   279→   279→// Multi-batch tracking per product with expiry management
+   280→   280→   280→   280→model Batch {
+   281→   281→   281→   281→  id            String   @id @default(cuid())
+   282→   282→   282→   282→  businessId    String
+   283→   283→   283→   283→  productId     String
+   284→   284→   284→   284→  batchNo       String              // Batch number from manufacturer
+   285→   285→   285→   285→  mfgDate       DateTime?           // Manufacturing date
+   286→   286→   286→   286→  expiryDate    DateTime            // Expiry date (CRITICAL)
+   287→   287→   287→   287→  quantity      Float    @default(0)  // Current quantity in this batch
+   288→   288→   288→   288→  purchasePrice Float?              // Cost price per unit for this batch
+   289→   289→   289→   289→  mrp           Float?              // Selling price per unit
+   290→   290→   290→   290→  supplierId    String?             // Supplier reference (Phase 5)
+   291→   291→   291→   291→  status        String   @default("active") // "active", "near_expiry", "expired", "quarantined", "returned", "destroyed"
+   292→   292→   292→   292→  notes         String?             // Optional notes
+   293→   293→   293→   293→  createdAt     DateTime @default(now())
+   294→   294→   294→   294→  updatedAt     DateTime @updatedAt
+   295→   295→   295→   295→
+   296→   296→   296→   296→  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+   297→   297→   297→   297→  product  Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+   298→   298→   298→   298→  supplier Supplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+   299→   299→   299→   299→  purchaseItems PurchaseItem[]
+   300→   300→   300→   300→
+   301→   301→   301→   301→  @@index([businessId])
+   302→   302→   302→   302→  @@index([productId])
+   303→   303→   303→   303→  @@index([expiryDate])
+   304→   304→   304→   304→  @@index([status])
+   305→   305→   305→   305→  @@index([supplierId])
+   306→   306→   306→   306→}
+   307→   307→   307→   307→
+   308→   308→   308→   308→// ── Inventory ──
+   309→   309→   309→   309→// Aggregated stock levels per product (sum of all batches)
+   310→   310→   310→   310→model Inventory {
+   311→   311→   311→   311→  id         String   @id @default(cuid())
+   312→   312→   312→   312→  businessId String
+   313→   313→   313→   313→  productId  String   @unique
+   314→   314→   314→   314→  quantity   Float    @default(0)
+   315→   315→   315→   315→  minStock   Float    @default(0)
+   316→   316→   316→   316→  unitCost   Float?
+   317→   317→   317→   317→  updatedAt  DateTime @updatedAt
+   318→   318→   318→   318→
+   319→   319→   319→   319→  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+   320→   320→   320→   320→  product  Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+   321→   321→   321→   321→
+   322→   322→   322→   322→  @@index([businessId])
+   323→   323→   323→   323→}
+   324→   324→   324→   324→
+   325→   325→   325→   325→// ── Transactions ──
+   326→   326→   326→   326→model Transaction {
+   327→   327→   327→   327→  id         String   @id @default(cuid())
+   328→   328→   328→   328→  businessId String
+   329→   329→   329→   329→  productId  String
+   330→   330→   330→   330→  batchId    String?             // Link to specific batch
+   331→   331→   331→   331→  type       String              // "PURCHASE", "SALE", "ADJUSTMENT", "WASTE", "RETURN"
+   332→   332→   332→   332→  quantity   Float
+   333→   333→   333→   333→  unitPrice  Float?              // Price per unit at transaction time
+   334→   334→   334→   334→  note       String?
+   335→   335→   335→   335→  createdBy  String?             // BusinessUser ID who performed the action
+   336→   336→   336→   336→  createdAt  DateTime @default(now())
+   337→   337→   337→   337→
+   338→   338→   338→   338→  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+   339→   339→   339→   339→  product  Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+   340→   340→   340→   340→
+   341→   341→   341→   341→  @@index([businessId])
+   342→   342→   342→   342→  @@index([productId])
+   343→   343→   343→   343→  @@index([createdAt])
+   344→   344→   344→   344→}
+   345→   345→   345→   345→
+   346→   346→   346→   346→// ── OTP Verification ──
+   347→   347→   347→   347→model OtpVerification {
+   348→   348→   348→   348→  id        String   @id @default(cuid())
+   349→   349→   349→   349→  phone     String
+   350→   350→   350→   350→  otp       String
+   351→   351→   351→   351→  purpose   String
+   352→   352→   352→   352→  expiresAt DateTime
+   353→   353→   353→   353→  isUsed    Boolean  @default(false)
+   354→   354→   354→   354→  createdAt DateTime @default(now())
+   355→   355→   355→   355→
+   356→   356→   356→   356→  @@index([phone, purpose])
+   357→   357→   357→   357→  @@index([expiresAt])
+   358→   358→   358→   358→}
+   359→   359→   359→   359→
+   360→   360→   360→   360→// ── Sessions ──
+   361→   361→   361→   361→model Session {
+   362→   362→   362→   362→  id           String   @id @default(cuid())
+   363→   363→   363→   363→  businessUserId String
+   364→   364→   364→   364→  token        String   @unique
+   365→   365→   365→   365→  deviceInfo   String?
+   366→   366→   366→   366→  expiresAt    DateTime
+   367→   367→   367→   367→  createdAt    DateTime @default(now())
+   368→   368→   368→   368→
+   369→   369→   369→   369→  businessUser BusinessUser @relation(fields: [businessUserId], references: [id], onDelete: Cascade)
+   370→   370→   370→   370→
+   371→   371→   371→   371→  @@index([businessUserId])
+   372→   372→   372→   372→  @@index([token])
+   373→   373→   373→   373→  @@index([expiresAt])
+   374→   374→   374→   374→}
+   375→   375→   375→   375→
+   376→   376→   376→   376→// ── Alert Preferences ──
+   377→   377→   377→   377→// Per-business notification settings (one record per business)
+   378→   378→   378→   378→model AlertPreference {
+   379→   379→   379→   379→  id              String   @id @default(cuid())
+   380→   380→   380→   380→  businessId      String   @unique
+   381→   381→   381→   381→
+   382→   382→   382→   382→  // Expiry alert thresholds (in days before expiry)
+   383→   383→   383→   383→  expiryCriticalDays  Int @default(7)    // Red alert threshold
+   384→   384→   384→   384→  expiryWarningDays   Int @default(30)   // Orange alert threshold
+   385→   385→   385→   385→  expiryNoticeDays    Int @default(90)   // Yellow alert threshold
+   386→   386→   386→   386→
+   387→   387→   387→   387→  // Low stock alert
+   388→   388→   388→   388→  lowStockEnabled   Boolean @default(true)
+   389→   389→   389→   389→  lowStockThreshold Int     @default(10) // Absolute quantity threshold
+   390→   390→   390→   390→
+   391→   391→   391→   391→  // Quarantine alerts
+   392→   392→   392→   392→  quarantineAlerts  Boolean @default(true)
+   393→   393→   393→   393→
+   394→   394→   394→   394→  // Notification channels (for future email/SMS integration)
+   395→   395→   395→   395→  emailEnabled      Boolean @default(false)
+   396→   396→   396→   396→  email             String?
+   397→   397→   397→   397→  smsEnabled        Boolean @default(false)
+   398→   398→   398→   398→  phone             String?
+   399→   399→   399→   399→
+   400→   400→   400→   400→  // Digest frequency
+   401→   401→   401→   401→  digestFrequency   String  @default("daily") // "daily", "weekly", "monthly", "none"
+   402→   402→   402→   402→
+   403→   403→   403→   403→  // Quiet hours (alerts still recorded, just not pushed)
+   404→   404→   404→   404→  quietHoursStart   Int?    // Hour 0-23
+   405→   405→   405→   405→  quietHoursEnd     Int?
+   406→   406→   406→   406→
+   407→   407→   407→   407→  createdAt DateTime @default(now())
+   408→   408→   408→   408→  updatedAt DateTime @updatedAt
+   409→   409→   409→   409→
+   410→   410→   410→   410→  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+   411→   411→   411→   411→
+   412→   412→   412→   412→  @@index([businessId])
+   413→   413→   413→   413→}
+   414→   414→   414→   414→
+   415→   415→   415→   415→// ── Notification Log ──
+   416→   416→   416→   416→// Records each alert generated (for audit + dedup)
+   417→   417→   417→   417→model NotificationLog {
+   418→   418→   418→   418→  id          String   @id @default(cuid())
+   419→   419→   419→   419→  businessId  String
+   420→   420→   420→   420→  type        String   // "expiry_critical", "expiry_warning", "low_stock", "quarantine", "disposed"
+   421→   421→   421→   421→  severity    String   // "critical", "warning", "info"
+   422→   422→   422→   422→  title       String
+   423→   423→   423→   423→  message     String
+   424→   424→   424→   424→  entityType  String   // "batch", "product", "category"
+   425→   425→   425→   425→  entityId    String?  // ID of related batch/product
+   426→   426→   426→   426→  isRead      Boolean  @default(false)
+   427→   427→   427→   427→  isResolved  Boolean  @default(false)
+   428→   428→   428→   428→  createdAt   DateTime @default(now())
+   429→   429→   429→   429→  readAt      DateTime?
+   430→   430→   430→   430→
+   431→   431→   431→   431→  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+   432→   432→   432→   432→
+   433→   433→   433→   433→  @@index([businessId])
+   434→   434→   434→   434→  @@index([type])
+   435→   435→   435→   435→  @@index([isRead])
+   436→   436→   436→   436→  @@index([createdAt])
+   437→   437→   437→   437→}
+   438→   438→   438→   438→
+   439→   439→   439→   439→// ── Customers ──
+   440→   440→   440→   440→// Pharmacy customers (optional — walk-in sales use null customerId)
+   441→   441→   441→   441→model Customer {
+   442→   442→   442→   442→  id          String   @id @default(cuid())
+   443→   443→   443→   443→  businessId  String
+   444→   444→   444→   444→  name        String
+   445→   445→   445→   445→  phone       String?
+   446→   446→   446→   446→  email       String?
+   447→   447→   447→   447→  address     String?
+   448→   448→   448→   448→  dateOfBirth DateTime?
+   449→   449→   449→   449→  gender      String?  // "male", "female", "other"
+   450→   450→   450→   450→  // Chronic condition flags (for pharmacy context)
+   451→   451→   451→   451→  chronicConditions String? // comma-separated: "diabetes,hypertension"
+   452→   452→   452→   452→  allergies         String? // comma-separated: "penicillin,sulfa"
+   453→   453→   453→   453→  notes             String?
+   454→   454→   454→   454→  // Loyalty / credit
+   455→   455→   455→   455→  totalSpent  Float    @default(0)
+   456→   456→   456→   456→  visitCount  Int      @default(0)
+   457→   457→   457→   457→  lastVisitAt DateTime?
+   458→   458→   458→   458→  isActive    Boolean  @default(true)
+   459→   459→   459→   459→  createdAt   DateTime @default(now())
+   460→   460→   460→   460→  updatedAt   DateTime @updatedAt
+   461→   461→   461→   461→
+   462→   462→   462→   462→  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+   463→   463→   463→   463→  sales    Sale[]
+   464→   464→   464→   464→  payments Payment[]
+   465→   465→   465→   465→  returns  Return[]
+   466→   466→   466→   466→
+   467→   467→   467→   467→  @@index([businessId])
+   468→   468→   468→   468→  @@index([phone])
+   469→   469→   469→   469→  @@index([name])
+   470→   470→   470→   470→}
+   471→   471→   471→   471→
+   472→   472→   472→   472→// ── Sales (Invoices) ──
+   473→   473→   473→   473→// Each sale is an invoice with multiple line items
+   474→   474→   474→   474→model Sale {
+   475→   475→   475→   475→  id              String   @id @default(cuid())
+   476→   476→   476→   476→  businessId      String
+   477→   477→   477→   477→  customerId      String?  // null for walk-in customers
+   478→   478→   478→   478→  invoiceNo       String   // human-readable: INV-2026-0001
+   479→   479→   479→   479→  status          String   @default("completed") // "completed", "cancelled", "refunded", "pending"
+   480→   480→   480→   480→  paymentMethod   String   @default("cash") // "cash", "card", "mobile_banking", "credit", "mixed"
+   481→   481→   481→   481→  paymentStatus   String   @default("paid") // "paid", "partial", "unpaid", "refunded"
+   482→   482→   482→   482→
+   483→   483→   483→   483→  // Pricing breakdown
+   484→   484→   484→   484→  subtotal        Float    @default(0)  // sum of (item.price * item.quantity)
+   485→   485→   485→   485→  discountAmount  Float    @default(0)  // flat discount
+   486→   486→   486→   486→  discountPercent Float    @default(0)  // percentage discount (0-100)
+   487→   487→   487→   487→  taxAmount       Float    @default(0)  // VAT/tax
+   488→   488→   488→   488→  totalAmount     Float    @default(0)  // final amount customer pays
+   489→   489→   489→   489→  paidAmount      Float    @default(0)  // amount actually paid (for partial payments)
+   490→   490→   490→   490→
+   491→   491→   491→   491→  // Metadata
+   492→   492→   492→   492→  itemCount       Int      @default(0)
+   493→   493→   493→   493→  totalQuantity   Float    @default(0)
+   494→   494→   494→   494→  notes           String?
+   495→   495→   495→   495→
+   496→   496→   496→   496→  // Audit
+   497→   497→   497→   497→  createdBy       String?  // BusinessUser ID
+   498→   498→   498→   498→  cancelledAt     DateTime?
+   499→   499→   499→   499→  cancelledBy     String?
+   500→   500→   500→   500→  cancelReason    String?
+   501→   501→   501→   501→  stockCountDayId String?  // set when sale happens during an active Stock Count Day
+   502→   502→   502→   502→  createdAt       DateTime @default(now())
+   503→   503→   503→   503→  updatedAt       DateTime @updatedAt
+   504→   504→   504→   504→
+   505→   505→   505→   505→  business Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+   506→   506→   506→   506→  customer Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+   507→   507→   507→   507→  items    SaleItem[]
+   508→   508→   508→   508→  payments Payment[]
+   509→   509→   509→   509→  returns  Return[]
+   510→   510→   510→   510→  stockCountDay StockCountDay? @relation(fields: [stockCountDayId], references: [id], onDelete: SetNull)
+   511→   511→   511→   511→
+   512→   512→   512→   512→  @@unique([businessId, invoiceNo])
+   513→   513→   513→   513→  @@index([businessId])
+   514→   514→   514→   514→  @@index([customerId])
+   515→   515→   515→   515→  @@index([status])
+   516→   516→   516→   516→  @@index([paymentStatus])
+   517→   517→   517→   517→  @@index([createdAt])
+   518→   518→   518→   518→}
+   519→   519→   519→   519→
+   520→   520→   520→   520→// ── Sale Items (Invoice Line Items) ──
+   521→   521→   521→   521→model SaleItem {
+   522→   522→   522→   522→  id          String   @id @default(cuid())
+   523→   523→   523→   523→  saleId      String
+   524→   524→   524→   524→  businessId  String
+   525→   525→   525→   525→  productId   String
+   526→   526→   526→   526→  batchId     String?  // specific batch that fulfilled this item (FEFO)
+   527→   527→   527→   527→  productName String   // snapshot at time of sale
+   528→   528→   528→   528→  genericName String?  // snapshot
+   529→   529→   529→   529→  batchNo     String?  // snapshot
+   530→   530→   530→   530→  quantity    Float
+   531→   531→   531→   531→  unit        String   // snapshot
+   532→   532→   532→   532→  unitPrice   Float    // price per unit (MRP at time of sale)
+   533→   533→   533→   533→  discountPercent Float @default(0)  // per-line discount
+   534→   534→   534→   534→  totalPrice  Float    // quantity * unitPrice * (1 - discountPercent/100)
+   535→   535→   535→   535→  override    Boolean  @default(false)  // Gap 11: true when staff picked a non-FEFO batch
+   536→   536→   536→   536→
+   537→   537→   537→   537→  sale    Sale    @relation(fields: [saleId], references: [id], onDelete: Cascade)
+   538→   538→   538→   538→  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+   539→   539→   539→   539→  product Product @relation(fields: [productId], references: [id])
+   540→   540→   540→   540→  returnItems ReturnItem[]
+   541→   541→   541→   541→
+   542→   542→   542→   542→  @@index([saleId])
+   543→   543→   543→   543→  @@index([productId])
+   544→   544→   544→   544→  @@index([batchId])
+   545→   545→   545→   545→}
+   546→   546→   546→   546→
+   547→   547→   547→   547→// ── Payments ──
+   548→   548→   548→   548→// Records each payment made against a sale (supports partial payments + multiple methods)
+   549→   549→   549→   549→model Payment {
+   550→   550→   550→   550→  id            String   @id @default(cuid())
+   551→   551→   551→   551→  businessId    String
+   552→   552→   552→   552→  saleId        String
+   553→   553→   553→   553→  customerId    String?  // snapshot for quick lookup
+   554→   554→   554→   554→  amount        Float    // amount paid
+   555→   555→   555→   555→  paymentMethod String   // "cash", "card", "mobile_banking", "credit", "cheque"
+   556→   556→   556→   556→  reference     String?  // transaction ref (card last 4, mobile tx ID, cheque no)
+   557→   557→   557→   557→  notes         String?
+   558→   558→   558→   558→  receivedBy    String?  // BusinessUser ID
+   559→   559→   559→   559→  createdAt     DateTime @default(now())
+   560→   560→   560→   560→
+   561→   561→   561→   561→  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+   562→   562→   562→   562→  sale     Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
+   563→   563→   563→   563→  customer Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+   564→   564→   564→   564→
+   565→   565→   565→   565→  @@index([businessId])
+   566→   566→   566→   566→  @@index([saleId])
+   567→   567→   567→   567→  @@index([customerId])
+   568→   568→   568→   568→  @@index([createdAt])
+   569→   569→   569→   569→}
+   570→   570→   570→   570→
+   571→   571→   571→   571→// ── Returns / Refunds ──
+   572→   572→   572→   572→// Records product returns from customers (post-sale)
+   573→   573→   573→   573→model Return {
+   574→   574→   574→   574→  id            String   @id @default(cuid())
+   575→   575→   575→   575→  businessId    String
+   576→   576→   576→   576→  saleId        String
+   577→   577→   577→   577→  customerId    String?
+   578→   578→   578→   578→  returnNo      String   // human-readable: RET-2026-0001
+   579→   579→   579→   579→  status        String   @default("completed") // "completed", "pending", "rejected"
+   580→   580→   580→   580→  refundAmount  Float    @default(0)
+   581→   581→   581→   581→  refundMethod  String   @default("cash") // "cash", "credit", "store_credit"
+   582→   582→   582→   582→  restockItems  Boolean  @default(true) // whether to add items back to inventory
+   583→   583→   583→   583→  reason        String   // "defective", "wrong_item", "expired", "customer_changed_mind", "other"
+   584→   584→   584→   584→  notes         String?
+   585→   585→   585→   585→  processedBy   String?
+   586→   586→   586→   586→  createdAt     DateTime @default(now())
+   587→   587→   587→   587→
+   588→   588→   588→   588→  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+   589→   589→   589→   589→  sale     Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
+   590→   590→   590→   590→  customer Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+   591→   591→   591→   591→  items    ReturnItem[]
+   592→   592→   592→   592→
+   593→   593→   593→   593→  @@unique([businessId, returnNo])
+   594→   594→   594→   594→  @@index([businessId])
+   595→   595→   595→   595→  @@index([saleId])
+   596→   596→   596→   596→  @@index([customerId])
+   597→   597→   597→   597→  @@index([createdAt])
+   598→   598→   598→   598→}
+   599→   599→   599→   599→
+   600→   600→   600→   600→// ── Return Items ──
+   601→   601→   601→   601→model ReturnItem {
+   602→   602→   602→   602→  id            String   @id @default(cuid())
+   603→   603→   603→   603→  returnId      String
+   604→   604→   604→   604→  saleItemId    String
+   605→   605→   605→   605→  businessId    String
+   606→   606→   606→   606→  productId     String
+   607→   607→   607→   607→  batchId       String?
+   608→   608→   608→   608→  productName   String
+   609→   609→   609→   609→  quantity      Float    // quantity returned
+   610→   610→   610→   610→  unitPrice     Float    // refund per unit
+   611→   611→   611→   611→  refundAmount  Float    // quantity * unitPrice
+   612→   612→   612→   612→
+   613→   613→   613→   613→  return      Return   @relation(fields: [returnId], references: [id], onDelete: Cascade)
+   614→   614→   614→   614→  business    Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+   615→   615→   615→   615→  saleItem    SaleItem @relation(fields: [saleItemId], references: [id])
+   616→   616→   616→   616→  product     Product  @relation(fields: [productId], references: [id])
+   617→   617→   617→   617→
+   618→   618→   618→   618→  @@index([returnId])
+   619→   619→   619→   619→  @@index([saleItemId])
+   620→   620→   620→   620→}
+   621→   621→   621→   621→
+   622→   622→   622→   622→// ── Discount Rules ──
+   623→   623→   623→   623→// Auto-applied discounts based on conditions (e.g., bulk, customer loyalty, time-based)
+   624→   624→   624→   624→model DiscountRule {
+   625→   625→   625→   625→  id              String   @id @default(cuid())
+   626→   626→   626→   626→  businessId      String
+   627→   627→   627→   627→  name            String   // "Bulk 10% off", "Senior Citizen 5%"
+   628→   628→   628→   628→  description     String?
+   629→   629→   629→   629→  type            String   // "percent" or "flat"
+   630→   630→   630→   630→  value           Float    // percentage (0-100) or flat amount in BDT
+   631→   631→   631→   631→  // Condition
+   632→   632→   632→   632→  conditionType   String   // "none", "min_quantity", "min_amount", "customer_tag", "schedule_type", "time_based"
+   633→   633→   633→   633→  conditionValue  String?  // e.g., "10" for min_quantity, "schedule_h" for schedule_type
+   634→   634→   634→   634→  // Scope
+   635→   635→   635→   635→  scope           String   // "all", "category", "product", "schedule_type"
+   636→   636→   636→   636→  scopeValue      String?  // categoryId, productId, or schedule type
+   637→   637→   637→   637→  // Validity
+   638→   638→   638→   638→  startDate       DateTime?
+   639→   639→   639→   639→  endDate         DateTime?
+   640→   640→   640→   640→  isActive        Boolean  @default(true)
+   641→   641→   641→   641→  priority        Int      @default(0)  // higher = applied first
+   642→   642→   642→   642→  // Tracking
+   643→   643→   643→   643→  timesUsed       Int      @default(0)
+   644→   644→   644→   644→  totalDiscountGiven Float @default(0)
+   645→   645→   645→   645→  createdAt       DateTime @default(now())
+   646→   646→   646→   646→  updatedAt       DateTime @updatedAt
+   647→   647→   647→   647→
+   648→   648→   648→   648→  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+   649→   649→   649→   649→
+   650→   650→   650→   650→  @@index([businessId])
+   651→   651→   651→   651→  @@index([isActive])
+   652→   652→   652→   652→  @@index([scope])
+   653→   653→   653→   653→}
+   654→   654→   654→   654→
+   655→   655→   655→   655→// ── Suppliers ──
+   656→   656→   656→   656→// Vendors/manufacturers/distributors that supply products
+   657→   657→   657→   657→model Supplier {
+   658→   658→   658→   658→  id            String   @id @default(cuid())
+   659→   659→   659→   659→  businessId    String
+   660→   660→   660→   660→  name          String
+   661→   661→   661→   661→  code          String?  // internal supplier code: SUP-001
+   662→   662→   662→   662→  contactPerson String?
+   663→   663→   663→   663→  phone         String?
+   664→   664→   664→   664→  email         String?
+   665→   665→   665→   665→  address       String?
+   666→   666→   666→   666→  // Financial
+   667→   667→   667→   667→  balance       Float    @default(0)  // outstanding payable (positive = we owe them)
+   668→   668→   668→   668→  totalPurchased Float   @default(0)  // lifetime purchase value
+   669→   669→   669→   669→  totalPaid     Float    @default(0)  // lifetime payments to supplier
+   670→   670→   670→   670→  // Metadata
+   671→   671→   671→   671→  notes         String?
+   672→   672→   672→   672→  isActive      Boolean  @default(true)
+   673→   673→   673→   673→  createdAt     DateTime @default(now())
+   674→   674→   674→   674→  updatedAt     DateTime @updatedAt
+   675→   675→   675→   675→
+   676→   676→   676→   676→  business  Business   @relation(fields: [businessId], references: [id], onDelete: Cascade)
+   677→   677→   677→   677→  purchases Purchase[]
+   678→   678→   678→   678→  batches   Batch[]
+   679→   679→   679→   679→
+   680→   680→   680→   680→  @@index([businessId])
+   681→   681→   681→   681→  @@index([name])
+   682→   682→   682→   682→  @@index([phone])
+   683→   683→   683→   683→}
+   684→   684→   684→   684→
+   685→   685→   685→   685→// ── Purchases (Goods Receipt / Purchase Invoices) ──
+   686→   686→   686→   686→// Records incoming stock from suppliers with batch creation
+   687→   687→   687→   687→model Purchase {
+   688→   688→   688→   688→  id              String   @id @default(cuid())
+   689→   689→   689→   689→  businessId      String
+   690→   690→   690→   690→  supplierId      String?
+   691→   691→   691→   691→  purchaseNo      String   // human-readable: PO-2026-0001
+   692→   692→   692→   692→  status          String   @default("received") // "draft", "ordered", "received", "cancelled"
+   693→   693→   693→   693→  // Pricing
+   694→   694→   694→   694→  subtotal        Float    @default(0)
+   695→   695→   695→   695→  discountAmount  Float    @default(0)
+   696→   696→   696→   696→  taxAmount       Float    @default(0)
+   697→   697→   697→   697→  totalAmount     Float    @default(0)
+   698→   698→   698→   698→  paidAmount      Float    @default(0)
+   699→   699→   699→   699→  paymentStatus   String   @default("unpaid") // "paid", "partial", "unpaid"
+   700→   700→   700→   700→  // Metadata
+   701→   701→   701→   701→  invoiceNo       String?  // supplier's invoice number
+   702→   702→   702→   702→  invoiceDate     DateTime?
+   703→   703→   703→   703→  receivedDate    DateTime?
+   704→   704→   704→   704→  notes           String?
+   705→   705→   705→   705→  // Audit
+   706→   706→   706→   706→  createdBy       String?
+   707→   707→   707→   707→  createdAt       DateTime @default(now())
+   708→   708→   708→   708→  updatedAt       DateTime @updatedAt
+   709→   709→   709→   709→
+   710→   710→   710→   710→  business  Business   @relation(fields: [businessId], references: [id], onDelete: Cascade)
+   711→   711→   711→   711→  supplier  Supplier?  @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+   712→   712→   712→   712→  items     PurchaseItem[]
+   713→   713→   713→   713→
+   714→   714→   714→   714→  @@unique([businessId, purchaseNo])
+   715→   715→   715→   715→  @@index([businessId])
+   716→   716→   716→   716→  @@index([supplierId])
+   717→   717→   717→   717→  @@index([status])
+   718→   718→   718→   718→  @@index([createdAt])
+   719→   719→   719→   719→}
+   720→   720→   720→   720→
+   721→   721→   721→   721→// ── Purchase Items ──
+   722→   722→   722→   722→model PurchaseItem {
+   723→   723→   723→   723→  id              String   @id @default(cuid())
+   724→   724→   724→   724→  purchaseId      String
+   725→   725→   725→   725→  businessId      String
+   726→   726→   726→   726→  productId       String
+   727→   727→   727→   727→  batchId         String?  // batch created on receipt
+   728→   728→   728→   728→  productName     String   // snapshot
+   729→   729→   729→   729→  quantity        Float    // ordered quantity
+   730→   730→   730→   730→  receivedQuantity Float   @default(0) // actually received
+   731→   731→   731→   731→  unit            String   // snapshot
+   732→   732→   732→   732→  unitCost        Float    // purchase price per unit
+   733→   733→   733→   733→  totalPrice      Float    // quantity * unitCost
+   734→   734→   734→   734→  // Batch details (used when creating batch on receipt)
+   735→   735→   735→   735→  batchNo         String?
+   736→   736→   736→   736→  expiryDate      DateTime?
+   737→   737→   737→   737→  mfgDate         DateTime?
+   738→   738→   738→   738→  mrp             Float?   // selling price (MRP) for the batch
+   739→   739→   739→   739→
+   740→   740→   740→   740→  purchase Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+   741→   741→   741→   741→  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+   742→   742→   742→   742→  product  Product  @relation(fields: [productId], references: [id])
+   743→   743→   743→   743→  batch    Batch?   @relation(fields: [batchId], references: [id])
+   744→   744→   744→   744→
+   745→   745→   745→   745→  @@index([purchaseId])
+   746→   746→   746→   746→  @@index([productId])
+   747→   747→   747→   747→}
+   748→   748→   748→   748→
+   749→   749→   749→   749→// ── AI Usage Log ──
+   750→   750→   750→   750→// Tracks every AI call per business for cost monitoring and rate limiting
+   751→   751→   751→   751→model AIUsageLog {
+   752→   752→   752→   752→  id            String   @id @default(cuid())
+   753→   753→   753→   753→  businessId    String
+   754→   754→   754→   754→  feature       String   // "chat" / "insights" / "expiry-optimizer" / "product-assistant:*" / "sql-router:*" / "*-cache"
+   755→   755→   755→   755→  tokensUsed    Int      @default(0)
+   756→   756→   756→   756→  costEstimate  Float    @default(0)
+   757→   757→   757→   757→  success       Boolean  @default(true)
+   758→   758→   758→   758→  errorMessage  String?
+   759→   759→   759→   759→  createdAt     DateTime @default(now())
+   760→   760→   760→   760→
+   761→   761→   761→   761→  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+   762→   762→   762→   762→
+   763→   763→   763→   763→  @@index([businessId])
+   764→   764→   764→   764→  @@index([feature])
+   765→   765→   765→   765→  @@index([createdAt])
+   766→   766→   766→   766→  @@index([businessId, createdAt])
+   767→   767→   767→   767→}
+   768→   768→   768→   768→
+   769→   769→   769→   769→// ── Super Admin ──
+   770→   770→   770→   770→model SuperAdmin {
+   771→   771→   771→   771→  id           String   @id @default(cuid())
+   772→   772→   772→   772→  username     String   @unique
+   773→   773→   773→   773→  passwordHash String
+   774→   774→   774→   774→  fullName     String?
+   775→   775→   775→   775→  role         String   @default("super_admin")
+   776→   776→   776→   776→  isActive     Boolean  @default(true)
+   777→   777→   777→   777→  lastLoginAt  DateTime?
+   778→   778→   778→   778→  createdAt    DateTime @default(now())
+   779→   779→   779→   779→  updatedAt    DateTime @updatedAt
+   780→   780→   780→   780→
+   781→   781→   781→   781→  sessions SuperAdminSession[]
+   782→   782→   782→   782→}
+   783→   783→   783→   783→
+   784→   784→   784→   784→model SuperAdminSession {
+   785→   785→   785→   785→  id              String   @id @default(cuid())
+   786→   786→   786→   786→  superAdminId    String
+   787→   787→   787→   787→  token           String   @unique
+   788→   788→   788→   788→  expiresAt       DateTime
+   789→   789→   789→   789→  createdAt       DateTime @default(now())
+   790→   790→   790→   790→
+   791→   791→   791→   791→  superAdmin SuperAdmin @relation(fields: [superAdminId], references: [id], onDelete: Cascade)
+   792→   792→   792→   792→
+   793→   793→   793→   793→  @@index([superAdminId])
+   794→   794→   794→   794→  @@index([token])
+   795→   795→   795→   795→  @@index([expiresAt])
+   796→   796→   796→   796→}
+   797→   797→   797→   797→
+   798→   798→   798→   798→// ── Business Daily Stats (Cron pre-computation) ──
+   799→   799→   799→   799→model BusinessDailyStats {
+   800→   800→   800→   800→  id              String   @id @default(cuid())
+   801→   801→   801→   801→  businessId      String
+   802→   802→   802→   802→  date            DateTime
+   803→   803→   803→   803→
+   804→   804→   804→   804→  salesTotal      Float    @default(0)
+   805→   805→   805→   805→  salesCount      Int      @default(0)
+   806→   806→   806→   806→  salesDiscount   Float    @default(0)
+   807→   807→   807→   807→  salesReturns    Float    @default(0)
+   808→   808→   808→   808→  salesReturnsCount Int    @default(0)
+   809→   809→   809→   809→  purchasesTotal  Float    @default(0)
+   810→   810→   810→   810→  purchasesCount  Int      @default(0)
+   811→   811→   811→   811→  paymentsIn      Float    @default(0)
+   812→   812→   812→   812→  paymentsOut     Float    @default(0)
+   813→   813→   813→   813→  productCount    Int      @default(0)
+   814→   814→   814→   814→  lowStockCount   Int      @default(0)
+   815→   815→   815→   815→  outOfStockCount Int      @default(0)
+   816→   816→   816→   816→  batchCount      Int      @default(0)
+   817→   817→   817→   817→  nearExpiryCount Int      @default(0)
+   818→   818→   818→   818→  expiredCount    Int      @default(0)
+   819→   819→   819→   819→  inventoryCostValue Float @default(0)
+   820→   820→   820→   820→  inventoryMrpValue  Float @default(0)
+   821→   821→   821→   821→  customerCount       Int  @default(0)
+   822→   822→   822→   822→  supplierCount       Int  @default(0)
+   823→   823→   823→   823→  receivablesTotal    Float @default(0)
+   824→   824→   824→   824→  payablesTotal       Float @default(0)
+   825→   825→   825→   825→  aiCalls         Int      @default(0)
+   826→   826→   826→   826→  aiTokens        Int      @default(0)
+   827→   827→   827→   827→  aiCost          Float    @default(0)
+   828→   828→   828→   828→  createdAt       DateTime @default(now())
+   829→   829→   829→   829→
+   830→   830→   830→   830→  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+   831→   831→   831→   831→
+   832→   832→   832→   832→  @@unique([businessId, date])
+   833→   833→   833→   833→  @@index([businessId, date])
+   834→   834→   834→   834→  @@index([date])
+   835→   835→   835→   835→}
+   836→   836→   836→   836→
+   837→   837→   837→   837→// ── Cron Job Log ──
+   838→   838→   838→   838→model CronJobLog {
+   839→   839→   839→   839→  id            String   @id @default(cuid())
+   840→   840→   840→   840→  jobName       String
+   841→   841→   841→   841→  status        String   // "running" | "success" | "failed"
+   842→   842→   842→   842→  startedAt     DateTime @default(now())
+   843→   843→   843→   843→  finishedAt    DateTime?
+   844→   844→   844→   844→  durationMs    Int?
+   845→   845→   845→   845→  businessesProcessed Int @default(0)
+   846→   846→   846→   846→  recordsWritten     Int @default(0)
+   847→   847→   847→   847→  errorMessage       String?
+   848→   848→   848→   848→  log           String?
+   849→   849→   849→   849→
+   850→   850→   850→   850→  @@index([jobName, startedAt])
+   851→   851→   851→   851→  @@index([status])
+   852→   852→   852→   852→  @@index([startedAt])
+   853→   853→   853→   853→}
+   854→   854→   854→   854→
+   855→   855→   855→   855→// ── AI Response Cache (Gap 9) ──
+   856→   856→   856→   856→model AIResponseCache {
+   857→   857→   857→   857→  id              String   @id @default(cuid())
+   858→   858→   858→   858→  businessId      String
+   859→   859→   859→   859→  feature         String
+   860→   860→   860→   860→  normalizedQuery String
+   861→   861→   861→   861→  dataHash        String
+   862→   862→   862→   862→  response        String
+   863→   863→   863→   863→  tokensUsed      Int      @default(0)
+   864→   864→   864→   864→  createdAt       DateTime @default(now())
+   865→   865→   865→   865→  expiresAt       DateTime
+   866→   866→   866→   866→
+   867→   867→   867→   867→  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+   868→   868→   868→   868→
+   869→   869→   869→   869→  @@unique([businessId, feature, normalizedQuery, dataHash])
+   870→   870→   870→   870→  @@index([businessId, feature, normalizedQuery])
+   871→   871→   871→   871→  @@index([expiresAt])
+   872→   872→   872→   872→  @@index([businessId, expiresAt])
+   873→   873→   873→   873→}
+   874→   874→   874→   874→
+   875→   875→   875→   875→// ── FEFO Override Audit Trail (Gap 11) ──
+   876→   876→   876→   876→// Records every time staff overrides FEFO (picks a later-expiring batch
+   877→   877→   877→   877→// instead of the soonest-expiring one). Required for DGDA compliance.
+   878→   878→   878→   878→model FefoOverride {
+   879→   879→   879→   879→  id              String   @id @default(cuid())
+   880→   880→   880→   880→  businessId      String
+   881→   881→   881→   881→  saleId          String?
+   882→   882→   882→   882→  saleItemId      String?
+   883→   883→   883→   883→  productId       String
+   884→   884→   884→   884→  productName     String   // snapshot
+   885→   885→   885→   885→  selectedBatchId String   // the batch actually dispensed
+   886→   886→   886→   886→  selectedBatchNo String   // snapshot
+   887→   887→   887→   887→  expectedBatchId String   // the FEFO-first batch that was skipped
+   888→   888→   888→   888→  expectedBatchNo String   // snapshot
+   889→   889→   889→   889→  userId          String?  // who made the override
+   890→   890→   890→   890→  userName        String?  // snapshot
+   891→   891→   891→   891→  reason          String   // required, min 10 chars
+   892→   892→   892→   892→  createdAt       DateTime @default(now())
+   893→   893→   893→   893→
+   894→   894→   894→   894→  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+   895→   895→   895→   895→
+   896→   896→   896→   896→  @@index([businessId, createdAt])
+   897→   897→   897→   897→  @@index([saleId])
+   898→   898→   898→   898→  @@index([productId])
+   899→   899→   899→   899→}
+   900→   900→   900→   900→
+   901→   901→   901→   901→// ── AI Configuration (Phase 1: configurable cost-control knobs) ──
+   902→   902→   902→   902→// Stores per-feature AI limits that the founder can tune from the super-admin
+   903→   903→   903→   903→// panel without redeploying. Falls back to hardcoded defaults in src/lib/ai-config.ts
+   904→   904→   904→   904→// if the row is missing or the DB is unreachable.
+   905→   905→   905→   905→//
+   906→   906→   906→   906→// Features:
+   907→   907→   907→   907→//   - "chat"             → maxOutputTokens (default 1024)
+   908→   908→   908→   908→//   - "insights"         → maxOutputTokens (default 2048)
+   909→   909→   909→   909→//   - "expiry-optimizer" → maxOutputTokens (default 2048) + maxInputBatches (default 50)
+   910→   910→   910→   910→//   - "product-assistant"→ maxOutputTokens (default 512)  + maxInputProducts (default 20)
+   911→   911→   911→   911→model AiConfig {
+   912→   912→   912→   912→  id               String   @id @default(cuid())
+   913→   913→   913→   913→  feature          String   @unique
+   914→   914→   914→   914→  maxOutputTokens  Int      @default(1024)
+   915→   915→   915→   915→  maxInputBatches  Int?     // only used by expiry-optimizer
+   916→   916→   916→   916→  maxInputProducts Int?     // only used by product-assistant:check_interactions
+   917→   917→   917→   917→  maxInputImages   Int?     // only used by shelf-scanner (max photos per scan)
+   918→   918→   918→   918→  systemPrompt     String?  @db.Text // shelf-scanner: custom system prompt (null = default)
+   919→   919→   919→   919→  userPromptTemplate String? @db.Text // shelf-scanner: user prompt with {{imageCount}} placeholder
+   920→   920→   920→   920→  temperature      Float?   // shelf-scanner: LLM temperature (null = 0.1)
+   921→   921→   921→   921→  disableThinking  Boolean? // shelf-scanner: disable Gemini 2.5+ internal reasoning (null = true)
+   922→   922→   922→   922→  updatedAt        DateTime @updatedAt
+   923→   923→   923→   923→  updatedBy        String?  // super-admin username
+   924→   924→   924→   924→
+   925→   925→   925→   925→  @@map("ai_configs")
+   926→   926→   926→   926→}
+   927→   927→   927→   927→
+   928→   928→   928→   928→// ── Kill Switch Audit Log (Phase 4) ──
+   929→   929→   929→   929→// Records every time a kill-switch trigger fires. Each row = one trigger event.
+   930→   930→   930→   930→// isActive=true means the kill-switch is currently blocking AI for that scope
+   931→   931→   931→   931→// (per-pharmacy for triggers 1+2, platform-wide for triggers 3+4).
+   932→   932→   932→   932→// Super-admin resets by setting isActive=false via /api/super-admin/kill-switch/[id]/reset.
+   933→   933→   933→   933→model KillSwitch {
+   934→   934→   934→   934→  id             String   @id @default(cuid())
+   935→   935→   935→   935→  trigger        String   // "per_pharmacy_monthly" | "per_pharmacy_24h" | "platform_monthly" | "zai_error_rate"
+   936→   936→   936→   936→  thresholdValue Float    @default(0) // the threshold that was configured at trigger time
+   937→   937→   937→   937→  actualValue    Float    @default(0) // the actual value that triggered it
+   938→   938→   938→   938→  triggeredAt    DateTime @default(now())
+   939→   939→   939→   939→  triggeredBy    String   // businessId for triggers 1+2, "platform" for triggers 3+4
+   940→   940→   940→   940→  isActive       Boolean  @default(true)
+   941→   941→   941→   941→  deactivatedAt  DateTime?
+   942→   942→   942→   942→  deactivatedBy  String?  // super-admin username
+   943→   943→   943→   943→  notes          String?
+   944→   944→   944→   944→
+   945→   945→   945→   945→  @@index([trigger, isActive])
+   946→   946→   946→   946→  @@index([triggeredAt])
+   947→   947→   947→   947→  @@index([triggeredBy])
+   948→   948→   948→   948→  @@map("kill_switches")
+   949→   949→   949→   949→}
+   950→   950→   950→   950→
+   951→   951→   951→   951→// ── Kill Switch Thresholds (Phase 4: dynamic, editable from super admin) ──
+   952→   952→   952→   952→// The founder can tune these from /admin without redeploying. Each trigger has
+   953→   953→   953→   953→// its own row with a configurable threshold value.
+   954→   954→   954→   954→//
+   955→   955→   955→   955→// Triggers:
+   956→   956→   956→   956→//   "per_pharmacy_monthly"  → max BDT per pharmacy per month (default 200)
+   957→   957→   957→   957→//   "per_pharmacy_24h"      → max tokens per pharmacy per 24h (default 50000)
+   958→   958→   958→   958→//   "platform_monthly"      → max BDT platform-wide per month (default 100000)
+   959→   959→   959→   959→//   "zai_error_rate"        → max error rate % in 1 hour (default 10)
+   960→   960→   960→   960→model KillSwitchThreshold {
+   961→   961→   961→   961→  id            String   @id @default(cuid())
+   962→   962→   962→   962→  trigger       String   @unique
+   963→   963→   963→   963→  thresholdValue Float   @default(0)
+   964→   964→   964→   964→  unit          String   @default("") // "BDT", "tokens", "BDT", "%" for display
+   965→   965→   965→   965→  isActive      Boolean  @default(true) // founder can disable a trigger entirely
+   966→   966→   966→   966→  updatedAt     DateTime @updatedAt
+   967→   967→   967→   967→  updatedBy     String?
+   968→   968→   968→   968→
+   969→   969→   969→   969→  @@map("kill_switch_thresholds")
+   970→   970→   970→   970→}
+   971→   971→   971→   971→
+   972→   972→   972→   972→// ── Notification Recipients (Phase 4: up to 3 emails for kill-switch alerts) ──
+   973→   973→   973→   973→// The founder can configure up to 3 email addresses from /admin. When a
+   974→   974→   974→   974→// kill-switch triggers, an email is sent to ALL active recipients.
+   975→   975→   975→   975→// If no recipients are configured, the alert is logged to NotificationLog only.
+   976→   976→   976→   976→model NotificationRecipient {
+   977→   977→   977→   977→  id        String   @id @default(cuid())
+   978→   978→   978→   978→  email     String   @unique
+   979→   979→   979→   979→  label     String?  // e.g., "Founder", "CTO", "On-call engineer"
+   980→   980→   980→   980→  isActive  Boolean  @default(true)
+   981→   981→   981→   981→  createdAt DateTime @default(now())
+   982→   982→   982→   982→  updatedAt DateTime @updatedAt
+   983→   983→   983→   983→
+   984→   984→   984→   984→  @@map("notification_recipients")
+   985→   985→   985→   985→}
+   986→   986→   986→   986→
+   987→   987→   987→   987→// ═══════════════════════════════════════════════════════════════════════════
+   988→   988→   988→   988→// ── AI REPORT SCHEDULING SYSTEM (Phase A) ──
+   989→   989→   989→   989→// 7 models for the weekly client-hook feature:
+   990→   990→   990→   990→//   1. ReportSchedule   — founder's schedule config (weekly/monthly/date_range)
+   991→   991→   991→   991→//   2. ReportOccasion   — point events (Eid, Friday, Puja)
+   992→   992→   992→   992→//   3. ReportSeason     — recurring seasonal periods (Winter, Monsoon, Summer)
+   993→   993→   993→   993→//   4. HolidayCalendar  — specific occasion dates per year (Eid 2026 = 2026-04-10)
+   994→   994→   994→   994→//   5. EpidemicAlert    — active outbreaks (dengue, COVID) that override predictions
+   995→   995→   995→   995→//   6. GeneratedReport  — the report itself (one per business per schedule run)
+   996→   996→   996→   996→//   7. ReportDelivery   — delivery tracking (email + WhatsApp)
+   997→   997→   997→   997→// ═══════════════════════════════════════════════════════════════════════════
+   998→   998→   998→   998→
+   999→   999→   999→   999→// ── 1. ReportSchedule ──
+  1000→  1000→  1000→  1000→// Founder's schedule configuration. Each row defines one recurring schedule
+  1001→  1001→  1001→  1001→// (e.g., "Weekly Monday report for all Pro+AI clients considering Eid + Winter").
+  1002→  1002→  1002→  1002→// Platform-wide — generates reports for multiple businesses.
+  1003→  1003→  1003→  1003→model ReportSchedule {
+  1004→  1004→  1004→  1004→  id                String    @id @default(cuid())
+  1005→  1005→  1005→  1005→  name              String    // e.g., "Weekly Eid-Aware Report"
+  1006→  1006→  1006→  1006→  description       String?
+  1007→  1007→  1007→  1007→  frequency         String    // "weekly" | "monthly" | "date_range"
+  1008→  1008→  1008→  1008→  dayOfWeek         Int?      // For weekly: 0=Sun, 1=Mon, ..., 6=Sat
+  1009→  1009→  1009→  1009→  dayOfMonth        Int?      // For monthly: 1-28 (avoids 29/30/31 to prevent skipped months)
+  1010→  1010→  1010→  1010→  startDate         DateTime? // For date_range: first report date
+  1011→  1011→  1011→  1011→  endDate           DateTime? // For date_range: last report date
+  1012→  1012→  1012→  1012→  occasions         String    @default("[]") // JSON array of occasion IDs to consider (empty = all active)
+  1013→  1013→  1013→  1013→  considerSeasons   Boolean   @default(true) // Whether to apply seasonal adjustments
+  1014→  1014→  1014→  1014→  considerEpidemics Boolean   @default(true) // Whether to apply active epidemic alerts
+  1015→  1015→  1015→  1015→  targetClientMode  String    @default("all") // "all" | "selected"
+  1016→  1016→  1016→  1016→  targetClientIds   String?   // JSON array of businessIds. Null if "all"
+  1017→  1017→  1017→  1017→  deliveryChannels  String    @default("[\"email\"]") // JSON: ["email"] | ["whatsapp"] | ["email","whatsapp"]
+  1018→  1018→  1018→  1018→  reportPeriodDays  Int       @default(7) // How many days ahead to predict (7=weekly, 14=biweekly)
+  1019→  1019→  1019→  1019→  // Phase 6: multi-project filtering. Null = all projects (backward compatible).
+  1020→  1020→  1020→  1020→  // When set, the schedule checker only targets businesses of this type.
+  1021→  1021→  1021→  1021→  businessTypeId    String?
+  1022→  1022→  1022→  1022→  isActive          Boolean   @default(true)
+  1023→  1023→  1023→  1023→  lastRunAt         DateTime?
+  1024→  1024→  1024→  1024→  nextRunAt         DateTime?
+  1025→  1025→  1025→  1025→  createdBy         String?   // super-admin username
+  1026→  1026→  1026→  1026→  createdAt         DateTime  @default(now())
+  1027→  1027→  1027→  1027→  updatedAt         DateTime  @updatedAt
+  1028→  1028→  1028→  1028→
+  1029→  1029→  1029→  1029→  generatedReports GeneratedReport[]
+  1030→  1030→  1030→  1030→
+  1031→  1031→  1031→  1031→  @@index([isActive, nextRunAt])
+  1032→  1032→  1032→  1032→  @@index([frequency])
+  1033→  1033→  1033→  1033→  @@index([businessTypeId])
+  1034→  1034→  1034→  1034→  @@map("report_schedules")
+  1035→  1035→  1035→  1035→}
+  1036→  1036→  1036→  1036→
+  1037→  1037→  1037→  1037→// ── 2. ReportOccasion ──
+  1038→  1038→  1038→  1038→// Point-in-time events (Eid, Friday, Puja, government holidays).
+  1039→  1039→  1039→  1039→// Duration is short (1-7 days). Recurrence is predictable (annual/weekly).
+  1040→  1040→  1040→  1040→// Pre-seeded with 14+ Bangladesh occasions.
+  1041→  1041→  1041→  1041→model ReportOccasion {
+  1042→  1042→  1042→  1042→  id              String   @id @default(cuid())
+  1043→  1043→  1043→  1043→  name            String   // "Eid-ul-Fitr", "Friday", etc.
+  1044→  1044→  1044→  1044→  slug            String   @unique // "eid-ul-fitr", "friday"
+  1045→  1045→  1045→  1045→  type            String   // "religious" | "national" | "weekly" | "custom"
+  1046→  1046→  1046→  1046→  datePattern     String   // "fixed_date" | "lunar_approximate" | "recurring_weekly"
+  1047→  1047→  1047→  1047→  fixedMonth      Int?     // For fixed_date: 1-12
+  1048→  1048→  1048→  1048→  fixedDay        Int?     // For fixed_date: 1-31
+  1049→  1049→  1049→  1049→  weeklyDayOfWeek Int?     // For recurring_weekly: 0=Sun, 5=Fri, 6=Sat
+  1050→  1050→  1050→  1050→  impactWeight    Float    @default(1.0) // 1.0=normal, 2.5=150% boost, 0.3=70% reduction
+  1051→  1051→  1051→  1051→  durationDays    Int      @default(1) // How long the spike lasts (Eid=7, Friday=1)
+  1052→  1052→  1052→  1052→  leadDays        Int      @default(0) // Days BEFORE occasion the spike starts (Eid shopping=5 days before)
+  1053→  1053→  1053→  1053→  description     String?
+  1054→  1054→  1054→  1054→  isActive        Boolean  @default(true)
+  1055→  1055→  1055→  1055→  createdAt       DateTime @default(now())
+  1056→  1056→  1056→  1056→  updatedAt       DateTime @updatedAt
+  1057→  1057→  1057→  1057→
+  1058→  1058→  1058→  1058→  holidayCalendar HolidayCalendar[]
+  1059→  1059→  1059→  1059→
+  1060→  1060→  1060→  1060→  @@map("report_occasions")
+  1061→  1061→  1061→  1061→}
+  1062→  1062→  1062→  1062→
+  1063→  1063→  1063→  1063→// ── 3. ReportSeason ──
+  1064→  1064→  1064→  1064→// Recurring seasonal periods that shift baseline demand for months at a time.
+  1065→  1065→  1065→  1065→// Unlike occasions (point events), seasons are extended periods (2-3 months)
+  1066→  1066→  1066→  1066→// with a "multiplier" that adjusts the baseline demand for affected product
+  1067→  1067→  1067→  1067→// categories throughout the season.
+  1068→  1068→  1068→  1068→//
+  1069→  1069→  1069→  1069→// Pre-seeded with 4 Bangladesh seasons:
+  1070→  1070→  1070→  1070→//   - Winter (Dec-Feb): respiratory meds spike 1.5x
+  1071→  1071→  1071→  1071→//   - Summer (Mar-May): ORS, antacids, heatstroke meds 1.3x (overlaps Ramadan/Eid)
+  1072→  1072→  1072→  1072→//   - Monsoon (Jun-Sep): dengue/malaria/water-borne disease meds 2.0x
+  1073→  1073→  1073→  1073→//   - Autumn (Oct-Nov): transition, baseline 1.0x
+  1074→  1074→  1074→  1074→//
+  1075→  1075→  1075→  1075→// A season's effect is COMPOUND with occasions: Eid in Monsoon = Eid spike (2.8x)
+  1076→  1076→  1076→  1076→// applied to the Monsoon-adjusted baseline (2.0x) = 5.6x for dengue meds during
+  1077→  1077→  1077→  1077→// Eid in monsoon. The prediction algorithm handles this layering.
+  1078→  1078→  1078→  1078→model ReportSeason {
+  1079→  1079→  1079→  1079→  id              String   @id @default(cuid())
+  1080→  1080→  1080→  1080→  name            String   // "Winter", "Summer", "Monsoon", "Autumn"
+  1081→  1081→  1081→  1081→  slug            String   @unique // "winter", "monsoon"
+  1082→  1082→  1082→  1082→  startMonth      Int      // 1-12 (e.g., Winter = 12)
+  1083→  1083→  1083→  1083→  startDay        Int      @default(1) // 1-31
+  1084→  1084→  1084→  1084→  endMonth        Int      // 1-12 (e.g., Winter = 2)
+  1085→  1085→  1085→  1085→  endDay          Int      @default(28) // 1-31
+  1086→  1086→  1086→  1086→  impactWeight    Float    @default(1.0) // 1.0=normal, 1.5=50% boost, 0.8=20% reduction
+  1087→  1087→  1087→  1087→  affectedCategories String @default("[]") // JSON array of category names most affected
+  1088→  1088→  1088→  1088→  description     String?
+  1089→  1089→  1089→  1089→  isActive        Boolean  @default(true)
+  1090→  1090→  1090→  1090→  createdAt       DateTime @default(now())
+  1091→  1091→  1091→  1091→  updatedAt       DateTime @updatedAt
+  1092→  1092→  1092→  1092→
+  1093→  1093→  1093→  1093→  @@map("report_seasons")
+  1094→  1094→  1094→  1094→}
+  1095→  1095→  1095→  1095→
+  1096→  1096→  1096→  1096→// ── 4. HolidayCalendar ──
+  1097→  1097→  1097→  1097→// Stores the specific dates of occasions for each year.
+  1098→  1098→  1098→  1098→// Necessary because lunar occasions (Eid) shift each year and must be confirmed.
+  1099→  1099→  1099→  1099→// The prediction algorithm queries this to know which dates in the next 7-14
+  1100→  1100→  1100→  1100→// days have occasions, then looks up the same occasions in historical sales.
+  1101→  1101→  1101→  1101→model HolidayCalendar {
+  1102→  1102→  1102→  1102→  id          String   @id @default(cuid())
+  1103→  1103→  1103→  1103→  occasionId  String
+  1104→  1104→  1104→  1104→  date        DateTime // Specific date of this occurrence (e.g., 2026-06-17 for Eid-ul-Adha 2026)
+  1105→  1105→  1105→  1105→  isConfirmed Boolean  @default(false) // Lunar dates are estimates until founder confirms
+  1106→  1106→  1106→  1106→  year        Int      // Derived from date — used for yearly filtering
+  1107→  1107→  1107→  1107→  notes       String?
+  1108→  1108→  1108→  1108→  createdAt   DateTime @default(now())
+  1109→  1109→  1109→  1109→  updatedAt   DateTime @updatedAt
+  1110→  1110→  1110→  1110→
+  1111→  1111→  1111→  1111→  occasion ReportOccasion @relation(fields: [occasionId], references: [id], onDelete: Cascade)
+  1112→  1112→  1112→  1112→
+  1113→  1113→  1113→  1113→  @@unique([occasionId, date])
+  1114→  1114→  1114→  1114→  @@index([date])
+  1115→  1115→  1115→  1115→  @@index([year])
+  1116→  1116→  1116→  1116→  @@map("holiday_calendar")
+  1117→  1117→  1117→  1117→}
+  1118→  1118→  1118→  1118→
+  1119→  1119→  1119→  1119→// ── 5. EpidemicAlert ──
+  1120→  1120→  1120→  1120→// Active disease outbreaks that override normal prediction patterns.
+  1121→  1121→  1121→  1121→// Unlike occasions and seasons (which are predictable), epidemics are
+  1122→  1122→  1122→  1122→// unpredictable events declared by the founder when an outbreak is detected
+  1123→  1123→  1123→  1123→// (e.g., "Dengue outbreak in Dhaka — severity high — antimalarials + IV fluids
+  1124→  1124→  1124→  1124→// spike 4x"). The alert has a start/end date and is "active" during that window.
+  1125→  1125→  1125→  1125→// The prediction algorithm applies the epidemic multiplier ON TOP of seasonal
+  1126→  1126→  1126→  1126→// and occasion adjustments, because during an outbreak, demand for affected
+  1127→  1127→  1127→  1127→// products spikes regardless of season.
+  1128→  1128→  1128→  1128→//
+  1129→  1129→  1129→  1129→// Pre-seeded with 2 example alerts (inactive by default):
+  1130→  1130→  1130→  1130→//   - Dengue outbreak (annual, founder activates when detected)
+  1131→  1131→  1131→  1131→//   - COVID-19 (historical, inactive)
+  1132→  1132→  1132→  1132→model EpidemicAlert {
+  1133→  1133→  1133→  1133→  id                String    @id @default(cuid())
+  1134→  1134→  1134→  1134→  name              String    // "Dengue Outbreak 2026", "COVID-19 Wave"
+  1135→  1135→  1135→  1135→  slug              String    @unique
+  1136→  1136→  1136→  1136→  diseaseType       String    // "dengue" | "covid" | "cholera" | "nipah" | "flu" | "custom"
+  1137→  1137→  1137→  1137→  severity          String    @default("moderate") // "mild" | "moderate" | "severe" | "critical"
+  1138→  1138→  1138→  1138→  impactWeight      Float     @default(2.0) // Multiplier for affected products (2.0 = 100% boost)
+  1139→  1139→  1139→  1139→  affectedCategories String   @default("[]") // JSON array of category names most affected
+  1140→  1140→  1140→  1140→  affectedProducts  String    @default("[]") // JSON array of specific product names (optional)
+  1141→  1141→  1141→  1141→  startDate         DateTime
+  1142→  1142→  1142→  1142→  endDate           DateTime  // When the alert is expected to end (founder extends if needed)
+  1143→  1143→  1143→  1143→  isActive          Boolean   @default(true) // Founder can deactivate without deleting
+  1144→  1144→  1144→  1144→  declaredBy        String?   // super-admin username
+  1145→  1145→  1145→  1145→  notes             String?   // e.g., "Dhaka city reports 500+ cases per week"
+  1146→  1146→  1146→  1146→  createdAt         DateTime  @default(now())
+  1147→  1147→  1147→  1147→  updatedAt         DateTime  @updatedAt
+  1148→  1148→  1148→  1148→
+  1149→  1149→  1149→  1149→  @@index([isActive, startDate, endDate])
+  1150→  1150→  1150→  1150→  @@index([diseaseType])
+  1151→  1151→  1151→  1151→  @@map("epidemic_alerts")
+  1152→  1152→  1152→  1152→}
+  1153→  1153→  1153→  1153→
+  1154→  1154→  1154→  1154→// ── 6. GeneratedReport ──
+  1155→  1155→  1155→  1155→// One row per business per schedule run. Contains the full report content as
+  1156→  1156→  1156→  1156→// JSON fields, plus cost tracking and status. This is the table the report
+  1157→  1157→  1157→  1157→// viewer UI queries.
+  1158→  1158→  1158→  1158→model GeneratedReport {
+  1159→  1159→  1159→  1159→  id                   String    @id @default(cuid())
+  1160→  1160→  1160→  1160→  scheduleId           String
+  1161→  1161→  1161→  1161→  businessId           String
+  1162→  1162→  1162→  1162→  reportDate           DateTime  // When the report was generated
+  1163→  1163→  1163→  1163→  reportPeriodStart    DateTime  // First day of prediction period (e.g., next Monday)
+  1164→  1164→  1164→  1164→  reportPeriodEnd      DateTime  // Last day of prediction period (e.g., next Sunday)
+  1165→  1165→  1165→  1165→  executiveSummary     String?   // 2-3 sentence AI-generated summary
+  1166→  1166→  1166→  1166→  spikePredictions     String?   // JSON array of top 3 spike predictions
+  1167→  1167→  1167→  1167→  topItems             String?   // JSON array of 20 items with predictedQty, profit, supplier, stock status
+  1168→  1168→  1168→  1168→  stockRisks           String?   // JSON array of stock risk items with purchase recommendations
+  1169→  1169→  1169→  1169→  appliedInfluences    String    @default("{}") // JSON: which occasions/seasons/epidemics were considered
+  1170→  1170→  1170→  1170→  aiTokensUsed         Int       @default(0)
+  1171→  1171→  1171→  1171→  aiCostEstimate       Float     @default(0.0)
+  1172→  1172→  1172→  1172→  generationStatus     String    @default("pending") // "pending" | "generating" | "completed" | "failed"
+  1173→  1173→  1173→  1173→  errorMessage         String?
+  1174→  1174→  1174→  1174→  pdfUrl               String?
+  1175→  1175→  1175→  1175→  predictionConfidence String    @default("medium") // "low" | "medium" | "high"
+  1176→  1176→  1176→  1176→  createdAt            DateTime  @default(now())
+  1177→  1177→  1177→  1177→  updatedAt            DateTime  @updatedAt
+  1178→  1178→  1178→  1178→
+  1179→  1179→  1179→  1179→  schedule ReportSchedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  1180→  1180→  1180→  1180→  business Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  1181→  1181→  1181→  1181→  deliveries ReportDelivery[]
+  1182→  1182→  1182→  1182→
+  1183→  1183→  1183→  1183→  @@index([scheduleId, reportDate])
+  1184→  1184→  1184→  1184→  @@index([businessId, reportDate])
+  1185→  1185→  1185→  1185→  @@index([generationStatus])
+  1186→  1186→  1186→  1186→  @@index([reportDate])
+  1187→  1187→  1187→  1187→  @@map("generated_reports")
+  1188→  1188→  1188→  1188→}
+  1189→  1189→  1189→  1189→
+  1190→  1190→  1190→  1190→// ── 7. ReportDelivery ──
+  1191→  1191→  1191→  1191→// Tracks delivery of each report via each channel. One GeneratedReport can
+  1192→  1192→  1192→  1192→// have multiple ReportDelivery rows (one per channel). This is the table the
+  1193→  1193→  1193→  1193→// delivery status UI queries.
+  1194→  1194→  1194→  1194→model ReportDelivery {
+  1195→  1195→  1195→  1195→  id                String    @id @default(cuid())
+  1196→  1196→  1196→  1196→  reportId          String
+  1197→  1197→  1197→  1197→  channel           String    // "email" | "whatsapp"
+  1198→  1198→  1198→  1198→  recipient         String    // email address or phone number
+  1199→  1199→  1199→  1199→  status            String    @default("queued") // "queued" | "sent" | "delivered" | "read" | "failed"
+  1200→  1200→  1200→  1200→  sentAt            DateTime?
+  1201→  1201→  1201→  1201→  deliveredAt       DateTime?
+  1202→  1202→  1202→  1202→  readAt            DateTime?
+  1203→  1203→  1203→  1203→  errorMessage      String?
+  1204→  1204→  1204→  1204→  retryCount        Int       @default(0)
+  1205→  1205→  1205→  1205→  providerMessageId String?
+  1206→  1206→  1206→  1206→  createdAt         DateTime  @default(now())
+  1207→  1207→  1207→  1207→  updatedAt         DateTime  @updatedAt
+  1208→  1208→  1208→  1208→
+  1209→  1209→  1209→  1209→  report GeneratedReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  1210→  1210→  1210→  1210→
+  1211→  1211→  1211→  1211→  @@index([reportId])
+  1212→  1212→  1212→  1212→  @@index([status])
+  1213→  1213→  1213→  1213→  @@index([channel, status])
+  1214→  1214→  1214→  1214→  @@map("report_deliveries")
+  1215→  1215→  1215→  1215→}
+  1216→  1216→  1216→  1216→
+  1217→  1217→  1217→  1217→// ── P1: Subscription Billing Models ──
+  1218→  1218→  1218→  1218→// Per-shop billing: each Business has its own invoices + payment transactions.
+  1219→  1219→  1219→  1219→// The admin (BusinessUser.isAdmin=true) handles the subscription per shop.
+  1220→  1220→  1220→  1220→
+  1221→  1221→  1221→  1221→// One per billing period per business (monthly or annual).
+  1222→  1222→  1222→  1222→// Generated by a monthly cron or on-demand from the super-admin panel (P3/P4).
+  1223→  1223→  1223→  1223→model SubscriptionInvoice {
+  1224→  1224→  1224→  1224→  id            String   @id @default(cuid())
+  1225→  1225→  1225→  1225→  businessId    String
+  1226→  1226→  1226→  1226→  tier          String   // "free" / "pro" / "pro_ai"
+  1227→  1227→  1227→  1227→  billingPeriod String   // "month" / "year"
+  1228→  1228→  1228→  1228→  amount        Float    // BDT
+  1229→  1229→  1229→  1229→  status        String   @default("pending") // "pending" / "paid" / "overdue" / "cancelled"
+  1230→  1230→  1230→  1230→  dueDate       DateTime
+  1231→  1231→  1231→  1231→  paidAt        DateTime?
+  1232→  1232→  1232→  1232→  paymentMethod String?  // "bkash" / "nagad" / "ssl_commerz" / "manual" (set when paid)
+  1233→  1233→  1233→  1233→  createdAt     DateTime @default(now())
+  1234→  1234→  1234→  1234→  updatedAt     DateTime @updatedAt
+  1235→  1235→  1235→  1235→
+  1236→  1236→  1236→  1236→  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  1237→  1237→  1237→  1237→  payments PaymentTransaction[]
+  1238→  1238→  1238→  1238→
+  1239→  1239→  1239→  1239→  @@index([businessId])
+  1240→  1240→  1240→  1240→  @@index([status])
+  1241→  1241→  1241→  1241→  @@index([dueDate])
+  1242→  1242→  1242→  1242→  @@map("subscription_invoices")
+  1243→  1243→  1243→  1243→}
+  1244→  1244→  1244→  1244→
+  1245→  1245→  1245→  1245→// One per payment attempt by a user.
+  1246→  1246→  1246→  1246→// User submits bKash/Nagad TRX ID + amount → creates pending transaction.
+  1247→  1247→  1247→  1247→// Auto-matching engine (P3) updates status from pending to matched when
+  1248→  1248→  1248→  1248→// a ReceivedPayment with the same TRX ID + amount is uploaded by the super-admin.
+  1249→  1249→  1249→  1249→model PaymentTransaction {
+  1250→  1250→  1250→  1250→  id            String   @id @default(cuid())
+  1251→  1251→  1251→  1251→  businessId    String
+  1252→  1252→  1252→  1252→  invoiceId     String?
+  1253→  1253→  1253→  1253→  method        String   // "bkash" / "nagad" / "ssl_commerz" / "manual"
+  1254→  1254→  1254→  1254→  trxId         String   // bKash/Nagad transaction ID (10 chars) or SSL Commerz tranId
+  1255→  1255→  1255→  1255→  amount        Float    // BDT
+  1256→  1256→  1256→  1256→  status        String   @default("pending") // "pending" / "matched" / "rejected" / "refunded"
+  1257→  1257→  1257→  1257→  submittedBy   String?  // user phone who submitted
+  1258→  1258→  1258→  1258→  submittedAt   DateTime @default(now())
+  1259→  1259→  1259→  1259→  matchedAt     DateTime?
+  1260→  1260→  1260→  1260→  matchedBy     String?  // super-admin id who matched (or "auto" for auto-match)
+  1261→  1261→  1261→  1261→  notes         String?
+  1262→  1262→  1262→  1262→  createdAt     DateTime @default(now())
+  1263→  1263→  1263→  1263→  updatedAt     DateTime @updatedAt
+  1264→  1264→  1264→  1264→
+  1265→  1265→  1265→  1265→  business Business             @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  1266→  1266→  1266→  1266→  invoice  SubscriptionInvoice? @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  1267→  1267→  1267→  1267→
+  1268→  1268→  1268→  1268→  @@index([businessId])
+  1269→  1269→  1269→  1269→  @@index([status])
+  1270→  1270→  1270→  1270→  @@index([trxId])
+  1271→  1271→  1271→  1271→  @@index([method])
+  1272→  1272→  1272→  1272→  @@map("payment_transactions")
+  1273→  1273→  1273→  1273→}
+  1274→  1274→  1274→  1274→
+  1275→  1275→  1275→  1275→// Super-admin's record of money received in bKash/Nagad.
+  1276→  1276→  1276→  1276→// The super-admin uploads these via the panel (P3). The auto-matching engine
+  1277→  1277→  1277→  1277→// searches for a pending PaymentTransaction with the same TRX ID + amount (±5 BDT).
+  1278→  1278→  1278→  1278→model ReceivedPayment {
+  1279→  1279→  1279→  1279→  id                    String   @id @default(cuid())
+  1280→  1280→  1280→  1280→  method                String   // "bkash" / "nagad"
+  1281→  1281→  1281→  1281→  trxId                 String   // transaction ID from bKash/Nagad statement
+  1282→  1282→  1282→  1282→  amount                Float    // BDT
+  1283→  1283→  1283→  1283→  receivedAt            DateTime @default(now())
+  1284→  1284→  1284→  1284→  uploadedBy            String?  // super-admin id
+  1285→  1285→  1285→  1285→  matchedTransactionId  String?  // set when a user submission matches
+  1286→  1286→  1286→  1286→  createdAt             DateTime @default(now())
+  1287→  1287→  1287→  1287→
+  1288→  1288→  1288→  1288→  @@index([trxId])
+  1289→  1289→  1289→  1289→  @@index([method])
+  1290→  1290→  1290→  1290→  @@index([matchedTransactionId])
+  1291→  1291→  1291→  1291→  @@map("received_payments")
+  1292→  1292→  1292→  1292→}
+  1293→  1293→  1293→  1293→
+  1294→  1294→  1294→  1294→// ── P5: Payment Configuration (singleton) ──
+  1295→  1295→  1295→  1295→// Stores SSL Commerz credentials + active payment method toggles + bKash/Nagad
+  1296→  1296→  1296→  1296→// account numbers. Editable from /admin/packages. Falls back to env vars if no row.
+  1297→  1297→  1297→  1297→model PaymentConfig {
+  1298→  1298→  1298→  1298→  id              String   @id @default("default")
+  1299→  1299→  1299→  1299→  // SSL Commerz
+  1300→  1300→  1300→  1300→  sslStoreId      String?
+  1301→  1301→  1301→  1301→  sslStorePasswd  String?
+  1302→  1302→  1302→  1302→  sslMode         String   @default("sandbox") // "sandbox" | "production"
+  1303→  1303→  1303→  1303→  // Payment method toggles
+  1304→  1304→  1304→  1304→  bkashActive     Boolean  @default(true)
+  1305→  1305→  1305→  1305→  nagadActive     Boolean  @default(true)
+  1306→  1306→  1306→  1306→  sslActive       Boolean  @default(false)
+  1307→  1307→  1307→  1307→  // Account numbers shown to users on the Pay Subscription page
+  1308→  1308→  1308→  1308→  bkashNumber     String?
+  1309→  1309→  1309→  1309→  nagadNumber     String?
+  1310→  1310→  1310→  1310→  // Tier prices (editable from admin, falls back to feature-gate.ts defaults)
+  1311→  1311→  1311→  1311→  proMonthly      Float    @default(800)
+  1312→  1312→  1312→  1312→  proAnnual       Float    @default(8000)
+  1313→  1313→  1313→  1313→  proAiMonthly    Float    @default(1500)
+  1314→  1314→  1314→  1314→  proAiAnnual     Float    @default(15000)
+  1315→  1315→  1315→  1315→  updatedAt       DateTime @updatedAt
+  1316→  1316→  1316→  1316→  updatedBy       String?
+  1317→  1317→  1317→  1317→
+  1318→  1318→  1318→  1318→  @@map("payment_config")
+  1319→  1319→  1319→  1319→}
+  1320→  1320→  1320→  1320→
+  1321→  1321→  1321→  1321→// ── P6: Subscription Adjustment Audit Trail ──
+  1322→  1322→  1322→  1322→// Logs every manual change to a business's subscription: refunds, extensions,
+  1323→  1323→  1323→  1323→// reductions, plan changes. Required reason field for audit compliance.
+  1324→  1324→  1324→  1324→model SubscriptionAdjustment {
+  1325→  1325→  1325→  1325→  id            String   @id @default(cuid())
+  1326→  1326→  1326→  1326→  businessId    String
+  1327→  1327→  1327→  1327→  type          String   // "refund" | "extension" | "reduction" | "plan_change"
+  1328→  1328→  1328→  1328→  daysAdjusted  Int      // positive = extension, negative = reduction
+  1329→  1329→  1329→  1329→  amount        Float    @default(0) // BDT (for refunds)
+  1330→  1330→  1330→  1330→  reason        String   // required — why the adjustment was made
+  1331→  1331→  1331→  1331→  oldTier       String?
+  1332→  1332→  1332→  1332→  newTier       String?
+  1333→  1333→  1333→  1333→  createdBy     String?  // super-admin id
+  1334→  1334→  1334→  1334→  createdAt     DateTime @default(now())
+  1335→  1335→  1335→  1335→
+  1336→  1336→  1336→  1336→  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  1337→  1337→  1337→  1337→
+  1338→  1338→  1338→  1338→  @@index([businessId])
+  1339→  1339→  1339→  1339→  @@map("subscription_adjustments")
+  1340→  1340→  1340→  1340→}
+  1341→  1341→  1341→  1341→
+  1342→  1342→  1342→  1342→// ── SMTP Configuration (Phase 6: dynamic, editable from super admin panel) ──
+  1343→  1343→  1343→  1343→// Stores SMTP credentials in the DB so the founder can configure email delivery
+  1344→  1344→  1344→  1344→// from /admin/api-setup → SMTP tab without touching environment variables.
+  1345→  1345→  1345→  1345→// Only one row exists (singleton pattern: id = "default").
+  1346→  1346→  1346→  1346→// Password is stored as-is (the DB itself should be access-controlled).
+  1347→  1347→  1347→  1347→// Falls back to environment variables (SMTP_HOST etc.) if no row exists.
+  1348→  1348→  1348→  1348→model SmtpConfig {
+  1349→  1349→  1349→  1349→  id        String   @id @default("default")
+  1350→  1350→  1350→  1350→  host      String
+  1351→  1351→  1351→  1351→  port      Int      @default(587)
+  1352→  1352→  1352→  1352→  user      String
+  1353→  1353→  1353→  1353→  password  String
+  1354→  1354→  1354→  1354→  fromEmail String?
+  1355→  1355→  1355→  1355→  fromName  String   @default("InventoryOS")
+  1356→  1356→  1356→  1356→  isActive  Boolean  @default(true)
+  1357→  1357→  1357→  1357→  updatedAt DateTime @updatedAt
+  1358→  1358→  1358→  1358→  updatedBy String?
+  1359→  1359→  1359→  1359→
+  1360→  1360→  1360→  1360→  @@map("smtp_configs")
+  1361→  1361→  1361→  1361→}
+  1362→  1362→  1362→  1362→
+  1363→  1363→  1363→  1363→// ═══════════════════════════════════════════════════════════════════════════
+  1364→  1364→  1364→  1364→// ── MASTER PRODUCT CATALOG (Phase 1) ──
+  1365→  1365→  1365→  1365→// Shared platform-level product catalog. 14,000+ products sourced from
+  1366→  1366→  1366→  1366→// MedEx/Kaggle dataset. Pharmacies "subscribe" to products instead of
+  1367→  1367→  1367→  1367→// entering them manually.
+  1368→  1368→  1368→  1368→// ═══════════════════════════════════════════════════════════════════════════
+  1369→  1369→  1369→  1369→
+  1370→  1370→  1370→  1370→// ── MasterManufacturer ──
+  1371→  1371→  1371→  1371→// Pharmaceutical companies (Square, Beximco, Incepta, etc.)
+  1372→  1372→  1372→  1372→model MasterManufacturer {
+  1373→  1373→  1373→  1373→  id           String   @id @default(cuid())
+  1374→  1374→  1374→  1374→  name         String   @unique
+  1375→  1375→  1375→  1375→  shortCode    String?
+  1376→  1376→  1376→  1376→  country      String   @default("Bangladesh")
+  1377→  1377→  1377→  1377→  isActive     Boolean  @default(true)
+  1378→  1378→  1378→  1378→  productCount Int      @default(0)
+  1379→  1379→  1379→  1379→  createdAt    DateTime @default(now())
+  1380→  1380→  1380→  1380→  updatedAt    DateTime @updatedAt
+  1381→  1381→  1381→  1381→
+  1382→  1382→  1382→  1382→  products MasterProduct[]
+  1383→  1383→  1383→  1383→
+  1384→  1384→  1384→  1384→  @@map("master_manufacturers")
+  1385→  1385→  1385→  1385→}
+  1386→  1386→  1386→  1386→
+  1387→  1387→  1387→  1387→// ── MasterProduct ──
+  1388→  1388→  1388→  1388→// The shared product catalog. ~14,000 products from 232 manufacturers.
+  1389→  1389→  1389→  1389→// No businessId — this is platform-level reference data.
+  1390→  1390→  1390→  1390→// Pharmacies subscribe to these via Product.masterProductId.
+  1391→  1391→  1391→  1391→model MasterProduct {
+  1392→  1392→  1392→  1392→  id              String   @id @default(cuid())
+  1393→  1393→  1393→  1393→  name            String   // Brand name (e.g., "Napa Extra")
+  1394→  1394→  1394→  1394→  genericName     String?  // Generic name (e.g., "Paracetamol + Caffeine")
+  1395→  1395→  1395→  1395→  strength        String?  // e.g., "500mg"
+  1396→  1396→  1396→  1396→  dosageForm      String?  // Tablet, Capsule, Syrup, Injection, etc.
+  1397→  1397→  1397→  1397→  manufacturerId  String?
+  1398→  1398→  1398→  1398→  manufacturerStr String?  // Denormalized manufacturer name (for quick search)
+  1399→  1399→  1399→  1399→  categoryName    String?  // e.g., "Pain & Fever"
+  1400→  1400→  1400→  1400→  scheduleType    String?  // OTC, Schedule_H, Schedule_H1, Schedule_X, Narcotic
+  1401→  1401→  1401→  1401→  hsnCode         String?
+  1402→  1402→  1402→  1402→  vatRate         Float    @default(0)
+  1403→  1403→  1403→  1403→  defaultMrp      Float?   // Default MRP in BDT
+  1404→  1404→  1404→  1404→  dgdaRegNo       String?  @unique
+  1405→  1405→  1405→  1405→  barcode         String?
+  1406→  1406→  1406→  1406→  unit            String   @default("piece") // piece, tablet, ml, g
+  1407→  1407→  1407→  1407→  stripSize       Int?
+  1408→  1408→  1408→  1408→  boxSize         Int?
+  1409→  1409→  1409→  1409→  isActive        Boolean  @default(true)
+  1410→  1410→  1410→  1410→  createdAt       DateTime @default(now())
+  1411→  1411→  1411→  1411→  updatedAt       DateTime @updatedAt
+  1412→  1412→  1412→  1412→
+  1413→  1413→  1413→  1413→  manufacturer MasterManufacturer? @relation(fields: [manufacturerId], references: [id], onDelete: SetNull)
+  1414→  1414→  1414→  1414→  shelfScanItems ShelfScanItem[]
+  1415→  1415→  1415→  1415→
+  1416→  1416→  1416→  1416→  @@index([name])
+  1417→  1417→  1417→  1417→  @@index([genericName])
+  1418→  1418→  1418→  1418→  @@index([manufacturerStr])
+  1419→  1419→  1419→  1419→  @@index([categoryName])
+  1420→  1420→  1420→  1420→  @@index([dosageForm])
+  1421→  1421→  1421→  1421→  @@index([barcode])
+  1422→  1422→  1422→  1422→  @@index([isActive])
+  1423→  1423→  1423→  1423→  @@map("master_products")
+  1424→  1424→  1424→  1424→}
+  1425→  1425→  1425→  1425→
+  1426→  1426→  1426→  1426→// ── Shelf Scanner (AI vision stock counting) ──
+  1427→  1427→  1427→  1427→// A ShelfScan is created when a user uploads 2–3 shelf photos. The vision model
+  1428→  1428→  1428→  1428→// detects medicines; each detection becomes a ShelfScanItem linked to a client
+  1429→  1429→  1429→  1429→// Product (if matched) and/or a MasterProduct (catalog match). Stock updates
+  1430→  1430→  1430→  1430→// from a scan are applied via POST /api/businesses/[id]/stock/bulk-update which
+  1431→  1431→  1431→  1431→// writes Inventory.quantity + an ADJUSTMENT Transaction — never MasterProduct.
+  1432→  1432→  1432→  1432→model ShelfScan {
+  1433→  1433→  1433→  1433→  id            String   @id @default(cuid())
+  1434→  1434→  1434→  1434→  businessId    String
+  1435→  1435→  1435→  1435→  imageCount    Int
+  1436→  1436→  1436→  1436→  detectedCount Int      @default(0)
+  1437→  1437→  1437→  1437→  matchedCount  Int      @default(0)
+  1438→  1438→  1438→  1438→  rawResult     String?  // full LLM JSON output, for debugging/replay
+  1439→  1439→  1439→  1439→  tokensUsed    Int      @default(0)
+  1440→  1440→  1440→  1440→  createdBy     String?  // BusinessUser ID who initiated the scan
+  1441→  1441→  1441→  1441→  stockCountZoneSessionId String? // linked Stock Count Day zone session
+  1442→  1442→  1442→  1442→  createdAt     DateTime @default(now())
+  1443→  1443→  1443→  1443→
+  1444→  1444→  1444→  1444→  business Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  1445→  1445→  1445→  1445→  zoneSession StockCountZoneSession? @relation(fields: [stockCountZoneSessionId], references: [id], onDelete: SetNull)
+  1446→  1446→  1446→  1446→  items    ShelfScanItem[]
+  1447→  1447→  1447→  1447→
+  1448→  1448→  1448→  1448→  @@index([businessId])
+  1449→  1449→  1449→  1449→  @@index([stockCountZoneSessionId])
+  1450→  1450→  1450→  1450→  @@index([createdAt])
+  1451→  1451→  1451→  1451→  @@map("shelf_scans")
+  1452→  1452→  1452→  1452→}
+  1453→  1453→  1453→  1453→
+  1454→  1454→  1454→  1454→model ShelfScanItem {
+  1455→  1455→  1455→  1455→  id                   String   @id @default(cuid())
+  1456→  1456→  1456→  1456→  shelfScanId          String
+  1457→  1457→  1457→  1457→  productId            String?  // matched client Product (null until linked/quick-added)
+  1458→  1458→  1458→  1458→  masterProductId      String?  // matched MasterProduct (null if no catalog match)
+  1459→  1459→  1459→  1459→  detectedName         String
+  1460→  1460→  1460→  1460→  detectedStrength     String?
+  1461→  1461→  1461→  1461→  detectedForm         String?
+  1462→  1462→  1462→  1462→  detectedManufacturer String?
+  1463→  1463→  1463→  1463→  confidence           Float    @default(0)    // 0.0–1.0 from the vision model
+  1464→  1464→  1464→  1464→  matchedMethod        String   @default("ai") // "ai" | "master-catalog" | "manual" | "quick-add" | "unmatched"
+  1465→  1465→  1465→  1465→  previousQuantity     Float    @default(0)    // Inventory.quantity at match time
+  1466→  1466→  1466→  1466→  newQuantity          Float?                  // entered by user; null = skipped
+  1467→  1467→  1467→  1467→  appliedAt            DateTime?               // stamped when bulk-update writes the Transaction
+  1468→  1468→  1468→  1468→  createdAt            DateTime @default(now())
+  1469→  1469→  1469→  1469→
+  1470→  1470→  1470→  1470→  shelfScan      ShelfScan      @relation(fields: [shelfScanId], references: [id], onDelete: Cascade)
+  1471→  1471→  1471→  1471→  product        Product?       @relation(fields: [productId], references: [id], onDelete: SetNull)
+  1472→  1472→  1472→  1472→  masterProduct  MasterProduct? @relation(fields: [masterProductId], references: [id], onDelete: SetNull)
+  1473→  1473→  1473→  1473→
+  1474→  1474→  1474→  1474→  @@index([shelfScanId])
+  1475→  1475→  1475→  1475→  @@index([productId])
+  1476→  1476→  1476→  1476→  @@index([masterProductId])
+  1477→  1477→  1477→  1477→  @@map("shelf_scan_items")
+  1478→  1478→  1478→  1478→}
+  1479→  1479→  1479→  1479→
+  1480→  1480→  1480→  1480→// ══════════════════════════════════════════════════════════════════════════════
+  1481→  1481→  1481→  1481→// Stock Counting Day (SCD) — monthly full-stock count while shop stays open
+  1482→  1482→  1482→  1482→// ══════════════════════════════════════════════════════════════════════════════
+  1483→  1483→  1483→  1483→
+  1484→  1484→  1484→  1484→// Permanent shop areas (reused every month). A product may belong to 2+ zones.
+  1485→  1485→  1485→  1485→model StorageZone {
+  1486→  1486→  1486→  1486→  id         String   @id @default(cuid())
+  1487→  1487→  1487→  1487→  businessId String
+  1488→  1488→  1488→  1488→  name       String
+  1489→  1489→  1489→  1489→  sortOrder  Int      @default(0)
+  1490→  1490→  1490→  1490→  color      String   @default("#0d9488")
+  1491→  1491→  1491→  1491→  isActive   Boolean  @default(true)
+  1492→  1492→  1492→  1492→  createdAt  DateTime @default(now())
+  1493→  1493→  1493→  1493→  updatedAt  DateTime @updatedAt
+  1494→  1494→  1494→  1494→
+  1495→  1495→  1495→  1495→  business    Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  1496→  1496→  1496→  1496→  assignments ProductZoneAssignment[]
+  1497→  1497→  1497→  1497→  zoneSessions StockCountZoneSession[]
+  1498→  1498→  1498→  1498→  countLines  StockCountLine[]
+  1499→  1499→  1499→  1499→  assignmentSnapshots ZoneAssignmentSnapshot[]  // P3: enables zone inheritance
+  1500→  1500→  1500→  1500→
+  1501→  1501→  1501→  1501→  @@unique([businessId, name])
+  1502→  1502→  1502→  1502→  @@index([businessId])
+  1503→  1503→  1503→  1503→  @@map("storage_zones")
+  1504→  1504→  1504→  1504→}
+  1505→  1505→  1505→  1505→
+  1506→  1506→  1506→  1506→model ProductZoneAssignment {
+  1507→  1507→  1507→  1507→  id         String   @id @default(cuid())
+  1508→  1508→  1508→  1508→  businessId String
+  1509→  1509→  1509→  1509→  productId  String
+  1510→  1510→  1510→  1510→  zoneId     String
+  1511→  1511→  1511→  1511→  createdAt  DateTime @default(now())
+  1512→  1512→  1512→  1512→
+  1513→  1513→  1513→  1513→  business Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  1514→  1514→  1514→  1514→  product  Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  1515→  1515→  1515→  1515→  zone     StorageZone @relation(fields: [zoneId], references: [id], onDelete: Cascade)
+  1516→  1516→  1516→  1516→
+  1517→  1517→  1517→  1517→  @@unique([productId, zoneId])
+  1518→  1518→  1518→  1518→  @@index([businessId])
+  1519→  1519→  1519→  1519→  @@index([zoneId])
+  1520→  1520→  1520→  1520→  @@map("product_zone_assignments")
+  1521→  1521→  1521→  1521→}
+  1522→  1522→  1522→  1522→
+  1523→  1523→  1523→  1523→// One monthly (or ad-hoc) full count session per business.
+  1524→  1524→  1524→  1524→model StockCountDay {
+  1525→  1525→  1525→  1525→  id          String    @id @default(cuid())
+  1526→  1526→  1526→  1526→  businessId  String
+  1527→  1527→  1527→  1527→  name        String
+  1528→  1528→  1528→  1528→  status      String    @default("draft") // draft | active | closed | applied
+  1529→  1529→  1529→  1529→  startedAt   DateTime?
+  1530→  1530→  1530→  1530→  closedAt    DateTime?
+  1531→  1531→  1531→  1531→  appliedAt   DateTime?
+  1532→  1532→  1532→  1532→  startedBy   String?
+  1533→  1533→  1533→  1533→  closedBy    String?
+  1534→  1534→  1534→  1534→  appliedBy   String?
+  1535→  1535→  1535→  1535→  notes       String?
+  1536→  1536→  1536→  1536→  createdAt   DateTime  @default(now())
+  1537→  1537→  1537→  1537→  updatedAt   DateTime  @updatedAt
+  1538→  1538→  1538→  1538→
+  1539→  1539→  1539→  1539→  business     Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  1540→  1540→  1540→  1540→  zoneSessions StockCountZoneSession[]
+  1541→  1541→  1541→  1541→  lines        StockCountLine[]
+  1542→  1542→  1542→  1542→  summaries    StockCountProductSummary[]
+  1543→  1543→  1543→  1543→  sales        Sale[]
+  1544→  1544→  1544→  1544→  // P3: snapshot of zone assignments at creation time (enables inheritance)
+  1545→  1545→  1545→  1545→  assignmentSnapshots ZoneAssignmentSnapshot[]
+  1546→  1546→  1546→  1546→
+  1547→  1547→  1547→  1547→  @@index([businessId])
+  1548→  1548→  1548→  1548→  @@index([status])
+  1549→  1549→  1549→  1549→  @@map("stock_count_days")
+  1550→  1550→  1550→  1550→}
+  1551→  1551→  1551→  1551→
+  1552→  1552→  1552→  1552→// Progress of each storage zone within a Stock Count Day.
+  1553→  1553→  1553→  1553→model StockCountZoneSession {
+  1554→  1554→  1554→  1554→  id         String    @id @default(cuid())
+  1555→  1555→  1555→  1555→  scdId      String
+  1556→  1556→  1556→  1556→  zoneId     String
+  1557→  1557→  1557→  1557→  businessId String
+  1558→  1558→  1558→  1558→  status     String    @default("pending") // pending | counting | review | closed
+  1559→  1559→  1559→  1559→  closedAt   DateTime?
+  1560→  1560→  1560→  1560→  closedBy   String?
+  1561→  1561→  1561→  1561→  sortOrder  Int       @default(0)
+  1562→  1562→  1562→  1562→  createdAt  DateTime  @default(now())
+  1563→  1563→  1563→  1563→  updatedAt  DateTime  @updatedAt
+  1564→  1564→  1564→  1564→
+  1565→  1565→  1565→  1565→  scd        StockCountDay @relation(fields: [scdId], references: [id], onDelete: Cascade)
+  1566→  1566→  1566→  1566→  zone       StorageZone @relation(fields: [zoneId], references: [id], onDelete: Cascade)
+  1567→  1567→  1567→  1567→  lines      StockCountLine[]
+  1568→  1568→  1568→  1568→  shelfScans ShelfScan[]
+  1569→  1569→  1569→  1569→
+  1570→  1570→  1570→  1570→  @@unique([scdId, zoneId])
+  1571→  1571→  1571→  1571→  @@index([businessId])
+  1572→  1572→  1572→  1572→  @@index([scdId])
+  1573→  1573→  1573→  1573→  @@map("stock_count_zone_sessions")
+  1574→  1574→  1574→  1574→}
+  1575→  1575→  1575→  1575→
+  1576→  1576→  1576→  1576→// Per-product rollup for the whole SCD (sales + total counted across zones).
+  1577→  1577→  1577→  1577→model StockCountProductSummary {
+  1578→  1578→  1578→  1578→  id               String   @id @default(cuid())
+  1579→  1579→  1579→  1579→  scdId            String
+  1580→  1580→  1580→  1580→  businessId       String
+  1581→  1581→  1581→  1581→  productId        String
+  1582→  1582→  1582→  1582→  systemQtyAtStart Float    @default(0)
+  1583→  1583→  1583→  1583→  soldDuringScd    Float    @default(0)
+  1584→  1584→  1584→  1584→  totalCountedQty  Float?   // sum of zone lines once counted
+  1585→  1585→  1585→  1585→  variance         Float?
+  1586→  1586→  1586→  1586→  // P2: variance reason capture for audit trail
+  1587→  1587→  1587→  1587→  varianceReason   String?  // theft | damage | data_error | expired | other
+  1588→  1588→  1588→  1588→  varianceNote     String?  // optional free-text up to 500 chars
+  1589→  1589→  1589→  1589→  updatedAt        DateTime @updatedAt
+  1590→  1590→  1590→  1590→
+  1591→  1591→  1591→  1591→  scd     StockCountDay @relation(fields: [scdId], references: [id], onDelete: Cascade)
+  1592→  1592→  1592→  1592→  product Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  1593→  1593→  1593→  1593→
+  1594→  1594→  1594→  1594→  @@unique([scdId, productId])
+  1595→  1595→  1595→  1595→  @@index([businessId])
+  1596→  1596→  1596→  1596→  @@map("stock_count_product_summaries")
+  1597→  1597→  1597→  1597→}
+  1598→  1598→  1598→  1598→
+  1599→  1599→  1599→  1599→// Count line per product per zone (same product → separate lines in 2 zones).
+  1600→  1600→  1600→  1600→model StockCountLine {
+  1601→  1601→  1601→  1601→  id                String    @id @default(cuid())
+  1602→  1602→  1602→  1602→  scdId             String
+  1603→  1603→  1603→  1603→  zoneSessionId     String
+  1604→  1604→  1604→  1604→  zoneId            String
+  1605→  1605→  1605→  1605→  businessId        String
+  1606→  1606→  1606→  1606→  productId         String
+  1607→  1607→  1607→  1607→  countedQty        Float?
+  1608→  1608→  1608→  1608→  systemQtyAtStart  Float     @default(0)
+  1609→  1609→  1609→  1609→  soldDuringScd     Float     @default(0)
+  1610→  1610→  1610→  1610→  status            String    @default("pending") // pending | counted | skipped
+  1611→  1611→  1611→  1611→  detectedName      String?
+  1612→  1612→  1612→  1612→  confidence        Float?
+  1613→  1613→  1613→  1613→  shelfScanItemId   String?
+  1614→  1614→  1614→  1614→  countedBy         String?
+  1615→  1615→  1615→  1615→  countedAt         DateTime?
+  1616→  1616→  1616→  1616→  notes             String?
+  1617→  1617→  1617→  1617→  // P3: true if assignment was auto-created by scan-to-assign
+  1618→  1618→  1618→  1618→  autoAssigned      Boolean   @default(false)
+  1619→  1619→  1619→  1619→  createdAt         DateTime  @default(now())
+  1620→  1620→  1620→  1620→  updatedAt         DateTime  @updatedAt
+  1621→  1621→  1621→  1621→
+  1622→  1622→  1622→  1622→  scd         StockCountDay         @relation(fields: [scdId], references: [id], onDelete: Cascade)
+  1623→  1623→  1623→  1623→  zoneSession StockCountZoneSession @relation(fields: [zoneSessionId], references: [id], onDelete: Cascade)
+  1624→  1624→  1624→  1624→  zone        StorageZone           @relation(fields: [zoneId], references: [id], onDelete: Cascade)
+  1625→  1625→  1625→  1625→  product     Product               @relation(fields: [productId], references: [id], onDelete: Cascade)
+  1626→  1626→  1626→  1626→
+  1627→  1627→  1627→  1627→  @@unique([scdId, zoneSessionId, productId])
+  1628→  1628→  1628→  1628→  @@index([businessId])
+  1629→  1629→  1629→  1629→  @@index([scdId])
+  1630→  1630→  1630→  1630→  @@index([productId])
+  1631→  1631→  1631→  1631→  @@map("stock_count_lines")
+  1632→  1632→  1632→  1632→}
+  1633→  1633→  1633→  1633→
+  1634→  1634→  1634→  1634→// P3: Snapshot of ProductZoneAssignment rows at SCD creation time.
+  1635→  1635→  1635→  1635→// Enables zone inheritance — new SCDs can read the previous SCD's snapshot
+  1636→  1636→  1636→  1636→// to pre-populate zone count lines without re-assigning every product.
+  1637→  1637→  1637→  1637→model ZoneAssignmentSnapshot {
+  1638→  1638→  1638→  1638→  id          String   @id @default(cuid())
+  1639→  1639→  1639→  1639→  scdId       String
+  1640→  1640→  1640→  1640→  businessId  String
+  1641→  1641→  1641→  1641→  productId   String
+  1642→  1642→  1642→  1642→  zoneId      String
+  1643→  1643→  1643→  1643→  createdAt   DateTime @default(now())
+  1644→  1644→  1644→  1644→
+  1645→  1645→  1645→  1645→  scd       StockCountDay @relation(fields: [scdId], references: [id], onDelete: Cascade)
+  1646→  1646→  1646→  1646→  business  Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  1647→  1647→  1647→  1647→  product   Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  1648→  1648→  1648→  1648→  zone      StorageZone   @relation(fields: [zoneId], references: [id], onDelete: Cascade)
+  1649→  1649→  1649→  1649→
+  1650→  1650→  1650→  1650→  @@unique([scdId, productId, zoneId])
+  1651→  1651→  1651→  1651→  @@index([businessId])
+  1652→  1652→  1652→  1652→  @@index([scdId])
+  1653→  1653→  1653→  1653→  @@index([productId])
+  1654→  1654→  1654→  1654→  @@index([zoneId])
+  1655→  1655→  1655→  1655→  @@map("zone_assignment_snapshots")
+  1656→  1656→  1656→  1656→}
+  1657→  1657→  1657→  1657→
+  1658→  1658→  1658→  1658→// ── AI Provider Configuration ──
+  1659→  1659→  1659→  1659→// Controls which vision/LLM provider is active. Only one row should have
+  1660→  1660→  1660→  1660→// isActive=true at a time. The super-admin panel lets the founder switch
+  1661→  1661→  1661→  1661→// providers (e.g., Gemini free now → Z.ai paid later) without a redeploy.
+  1662→  1662→  1662→  1662→// The apiKey is stored plaintext — this is the user's own server, and they
+  1663→  1663→  1663→  1663→// control access. For a hosted SaaS, encrypt this field.
+  1664→  1664→  1664→  1664→model AiProvider {
+  1665→  1665→  1665→  1665→  id        String   @id @default(cuid())
+  1666→  1666→  1666→  1666→  provider  String   @unique  // "gemini" | "zai" | "openai"
+  1667→  1667→  1667→  1667→  apiKey    String?           // provider API key (plaintext for MVP)
+  1668→  1668→  1668→  1668→  baseUrl   String?           // optional override (e.g. for Z.ai internal endpoint)
+  1669→  1669→  1669→  1669→  model     String?           // model name (e.g. "glm-ocr", "glm-4.6v-flash", "gemini-2.0-flash")
+  1670→  1670→  1670→  1670→  isActive  Boolean  @default(false)
+  1671→  1671→  1671→  1671→  updatedAt DateTime @updatedAt
+  1672→  1672→  1672→  1672→  updatedBy String?
+  1673→  1673→  1673→  1673→
+  1674→  1674→  1674→  1674→  @@map("ai_providers")
+  1675→  1675→  1675→  1675→}
+  1676→  1676→  1676→  1676→
