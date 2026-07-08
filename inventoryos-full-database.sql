@@ -6,6 +6,76 @@
 
 BEGIN;
 
+-- ═══════════════════════════════════════════════════════════════════════════════
+-- DROP ALL EXISTING TABLES (reverse dependency order with CASCADE)
+-- ═══════════════════════════════════════════════════════════════════════════════
+DROP TABLE IF EXISTS "shelf_scan_items" CASCADE;
+DROP TABLE IF EXISTS "report_deliveries" CASCADE;
+DROP TABLE IF EXISTS "PurchaseItem" CASCADE;
+DROP TABLE IF EXISTS "ReturnItem" CASCADE;
+DROP TABLE IF EXISTS "zone_assignment_snapshots" CASCADE;
+DROP TABLE IF EXISTS "shelf_scans" CASCADE;
+DROP TABLE IF EXISTS "stock_count_lines" CASCADE;
+DROP TABLE IF EXISTS "stock_count_product_summaries" CASCADE;
+DROP TABLE IF EXISTS "Return" CASCADE;
+DROP TABLE IF EXISTS "Payment" CASCADE;
+DROP TABLE IF EXISTS "SaleItem" CASCADE;
+DROP TABLE IF EXISTS "Batch" CASCADE;
+DROP TABLE IF EXISTS "Transaction" CASCADE;
+DROP TABLE IF EXISTS "Inventory" CASCADE;
+DROP TABLE IF EXISTS "stock_count_zone_sessions" CASCADE;
+DROP TABLE IF EXISTS "product_zone_assignments" CASCADE;
+DROP TABLE IF EXISTS "payment_transactions" CASCADE;
+DROP TABLE IF EXISTS "Sale" CASCADE;
+DROP TABLE IF EXISTS "Purchase" CASCADE;
+DROP TABLE IF EXISTS "Session" CASCADE;
+DROP TABLE IF EXISTS "Product" CASCADE;
+DROP TABLE IF EXISTS "generated_reports" CASCADE;
+DROP TABLE IF EXISTS "stock_count_days" CASCADE;
+DROP TABLE IF EXISTS "storage_zones" CASCADE;
+DROP TABLE IF EXISTS "subscription_adjustments" CASCADE;
+DROP TABLE IF EXISTS "subscription_invoices" CASCADE;
+DROP TABLE IF EXISTS "Supplier" CASCADE;
+DROP TABLE IF EXISTS "DiscountRule" CASCADE;
+DROP TABLE IF EXISTS "FefoOverride" CASCADE;
+DROP TABLE IF EXISTS "AIResponseCache" CASCADE;
+DROP TABLE IF EXISTS "BusinessDailyStats" CASCADE;
+DROP TABLE IF EXISTS "AIUsageLog" CASCADE;
+DROP TABLE IF EXISTS "Customer" CASCADE;
+DROP TABLE IF EXISTS "NotificationLog" CASCADE;
+DROP TABLE IF EXISTS "AlertPreference" CASCADE;
+DROP TABLE IF EXISTS "Category" CASCADE;
+DROP TABLE IF EXISTS "BusinessUser" CASCADE;
+DROP TABLE IF EXISTS "holiday_calendar" CASCADE;
+DROP TABLE IF EXISTS "master_products" CASCADE;
+DROP TABLE IF EXISTS "report_schedules" CASCADE;
+DROP TABLE IF EXISTS "Business" CASCADE;
+DROP TABLE IF EXISTS "PhoneAuthToken" CASCADE;
+DROP TABLE IF EXISTS "TrustedDevice" CASCADE;
+DROP TABLE IF EXISTS "ai_providers" CASCADE;
+DROP TABLE IF EXISTS "master_manufacturers" CASCADE;
+DROP TABLE IF EXISTS "smtp_configs" CASCADE;
+DROP TABLE IF EXISTS "payment_config" CASCADE;
+DROP TABLE IF EXISTS "received_payments" CASCADE;
+DROP TABLE IF EXISTS "epidemic_alerts" CASCADE;
+DROP TABLE IF EXISTS "report_seasons" CASCADE;
+DROP TABLE IF EXISTS "report_occasions" CASCADE;
+DROP TABLE IF EXISTS "notification_recipients" CASCADE;
+DROP TABLE IF EXISTS "kill_switch_thresholds" CASCADE;
+DROP TABLE IF EXISTS "kill_switches" CASCADE;
+DROP TABLE IF EXISTS "ai_configs" CASCADE;
+DROP TABLE IF EXISTS "CronJobLog" CASCADE;
+DROP TABLE IF EXISTS "SuperAdminSession" CASCADE;
+DROP TABLE IF EXISTS "SuperAdmin" CASCADE;
+DROP TABLE IF EXISTS "OtpVerification" CASCADE;
+DROP TABLE IF EXISTS "User" CASCADE;
+DROP TABLE IF EXISTS "BusinessType" CASCADE;
+
+-- ═══════════════════════════════════════════════════════════════════════════════
+-- DROP existing trigger function if it exists
+-- ═══════════════════════════════════════════════════════════════════════════════
+DROP FUNCTION IF EXISTS "update_updatedAt_column"() CASCADE;
+
 -- ── Helper: auto-update "updatedAt" columns on every row modification ─────────
 CREATE OR REPLACE FUNCTION "update_updatedAt_column"()
 RETURNS TRIGGER AS $$
