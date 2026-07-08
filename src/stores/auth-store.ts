@@ -20,7 +20,8 @@ export interface AuthSession {
   user: {
     id: string;
     name: string;
-    email: string;
+    email?: string;
+    phone?: string;
     avatar?: string;
   };
   business: BusinessInfo;
