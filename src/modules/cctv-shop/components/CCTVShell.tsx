@@ -51,6 +51,7 @@ import { CCTVTaskDetail } from './CCTVTaskDetail';
 import { CCTVNbrSetup } from './CCTVNbrSetup';
 import { CCTVMushakInvoicesList } from './CCTVMushakInvoicesList';
 import { CCTVMushakInvoiceDetail } from './CCTVMushakInvoiceDetail';
+import { CCTVMushakRegisters } from './CCTVMushakRegisters';
 
 function PlaceholderView({ title, icon }: { title: string; icon?: string }) {
   const { goBack } = useCCTVNavStore();
@@ -127,6 +128,7 @@ const viewMeta: Record<string, { title: string; icon: string }> = {
   'nbr-setup': { title: 'NBR & Tax Setup', icon: '🏛️' },
   'mushak-invoices': { title: 'Mushak 6.3 Invoices', icon: '📄' },
   'mushak-invoice-detail': { title: 'Invoice Detail', icon: '📄' },
+  'mushak-registers': { title: 'Mushak Registers', icon: '📊' },
   'create-mushak': { title: 'Generate Mushak', icon: '➕' },
 };
 
@@ -245,6 +247,8 @@ export function CCTVShell() {
         return <CCTVMushakInvoicesList />;
       case 'mushak-invoice-detail':
         return <CCTVMushakInvoiceDetail />;
+      case 'mushak-registers':
+        return <CCTVMushakRegisters />;
       default: {
         const meta = viewMeta[activeView];
         return <PlaceholderView title={meta?.title || activeView} icon={meta?.icon} />;

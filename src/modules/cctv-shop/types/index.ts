@@ -433,6 +433,7 @@ export type CCTVViewType =
   | 'nbr-setup'
   | 'mushak-invoices'
   | 'mushak-invoice-detail'
+  | 'mushak-registers'
   | 'create-mushak';
 
 // ── 3A: Payment Integration ──
