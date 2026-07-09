@@ -707,3 +707,25 @@ Stage Summary:
 - Camera markers rendered with type-specific icons, positioned via 0-100% coordinate system
 - Cable routes rendered as SVG polylines overlaid on the floor plan image
 - Full project lifecycle: PLANNING → SURVEY → PROCUREMENT → INSTALLATION → TESTING → HANDOVER → COMPLETED
+---
+Task ID: 4B
+Agent: Main Agent
+Task: Segment 4B - Storage Estimation Calculator
+
+Work Log:
+- Added 'storage-calculator' to CCTVViewType union in types/index.ts
+- Created CCTVStorageCalculator.tsx (~765 lines) - full-featured client-side HDD estimation calculator
+- Supported inputs: cameras (1-64), resolution (720p-12MP), FPS (10-30), compression (H.264/H.265), retention (7-90 days), hours/day (8-24)
+- Implemented industry-standard formula: Storage(GB) = (Bitrate_Mbps × 3600 × Hours × Days) / (8 × 1024)
+- Built H.265 vs H.264 savings comparison panel
+- Added save/load configuration feature, copy-to-clipboard results, bitrate reference table
+- Estimated HDD cost in BDT with 20% safety margin
+- Wired into Shell (switch case + viewMeta), Dashboard (quick action), Project Detail (equipment tab CTA)
+- Fixed duplicate viewMeta key, added hoursPerDay to CalculationResult interface
+- ESLint clean, zero new TypeScript errors
+- Committed locally as 35f41de
+
+Stage Summary:
+- CCTVStorageCalculator.tsx created - fully functional storage estimation tool
+- Accessible from Dashboard Quick Actions ("Storage Calc") and Project Detail → Equipment tab
+- Git push failed due to sandbox having no credentials (same as previous sessions)
