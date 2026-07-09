@@ -235,3 +235,21 @@ Stage Summary:
 - New files: CCTVJobCardDetail.tsx, CCTVCreateJobCard.tsx, 2 serial-items API routes
 - Modified: CCTVJobCardsList.tsx (lint fix), CCTVShell.tsx (wiring), index.ts (exports)
 - 3 pre-existing API routes leveraged (job-cards CRUD + status transitions)
+
+---
+Task ID: 2A-fix
+Agent: Main Agent
+Task: Fix 4 bugs found during code review of Segment 2A
+
+Work Log:
+- Read CCTVCreateJobCard.tsx — confirmed 3 fixes already applied (unused imports, unlinkDevice)
+- Read job-cards route.ts POST handler — found photoUrls missing from destructuring and Prisma create
+- Applied fix: added photoUrls to destructuring and `photoUrls: typeof photoUrls === 'string' ? photoUrls : null` to create data
+- CCTVJobCardDetail.tsx already had 2 fixes applied (removed unused useCallback, inlined fetch with cancellation flag, fixed StatusHistoryEntry.timestamp→date)
+- Ran lint: 0 new CCTV errors (6 pre-existing errors in admin/lib files unchanged)
+- Committed: `1fdfe78` "fix(cctv): add photoUrls to job card create API + fix lint errors"
+- Pushed to GitHub: 01b6a98..1fdfe78
+
+Stage Summary:
+- All 4 code review bugs fixed and pushed
+- Segment 2A (Job Card Management) is fully complete and verified
