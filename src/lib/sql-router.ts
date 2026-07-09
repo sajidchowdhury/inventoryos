@@ -720,7 +720,6 @@ export async function routeQuery(
       };
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      // eslint-disable-next-line no-console
       console.error(`[sql-router] pattern "${pattern.name}" threw:`, msg);
       // Don't surface the error to the user — let the LLM try instead.
       return { handled: false };

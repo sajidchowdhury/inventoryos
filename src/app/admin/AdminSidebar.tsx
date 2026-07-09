@@ -7,7 +7,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  LayoutDashboard, Settings, Pill, Rocket, Package, Users,
+  LayoutDashboard, Settings, Pill, Rocket, Package, Users, ShieldCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 

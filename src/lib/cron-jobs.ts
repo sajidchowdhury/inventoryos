@@ -103,7 +103,6 @@ function logLine(lines: string[], message: string): void {
   const ts = new Date().toISOString();
   lines.push(`[${ts}] ${message}`);
   // Echo to stdout so container logs capture job progress
-  // eslint-disable-next-line no-console
   console.log(`[cron] ${message}`);
 }
 

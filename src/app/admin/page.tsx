@@ -14,6 +14,7 @@ import {
   CreditCard, Bell, Rocket,
 } from "lucide-react";
 import { useAdmin } from "./AdminContext";
+import { Button } from "@/components/ui/button";
 
 interface BusinessesSummary { total: number; active: number; suspended: number; proAi: number; }
 interface AiUsageData { summary?: { totalCostToday?: number; totalCostThisMonth?: number; totalCalls?: number; }; }

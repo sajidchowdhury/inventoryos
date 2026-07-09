@@ -81,7 +81,7 @@ export async function GET(req: NextRequest) {
     }
 
     // ── Build Status ──
-    const fs = require("fs");
+    const fs = await import("fs");
     let buildStatus = { hasStandalone: false, hasNextDir: false };
     try {
       buildStatus.hasNextDir = fs.existsSync(".next");

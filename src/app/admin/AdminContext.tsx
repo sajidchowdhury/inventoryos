@@ -28,11 +28,16 @@ export function AdminProvider({ children }: { children: ReactNode }) {
   const [toast, setToast] = useState<{ kind: "ok" | "err"; msg: string } | null>(null);
 
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem(TOKEN_KEY);
-      if (saved) setTokenState(saved);
-    } catch {}
-    setHydrated(true);
+    let cancelled = false;
+    const init = async () => {
+      try {
+        const saved = localStorage.getItem(TOKEN_KEY);
+        if (saved && !cancelled) setTokenState(saved);
+      } catch {}
+      if (!cancelled) setHydrated(true);
+    };
+    init();
+    return () => { cancelled = true; };
   }, []);
 
   const setToken = (newToken: string | null) => {
