@@ -160,6 +160,10 @@ model Business {
   cctvKitDefinitions      CCTVKitDefinition[]
   cctvSerialItemHistories CCTVSerialItemHistory[]
 
+  // CCTV Module (Phase 1D: Multi-Branch Inventory and Transfers)
+  cctvBranches            CCTVBranch[]
+  cctvTransfers           CCTVTransfer[]
+
   @@index([userId])
   @@index([businessTypeId])
   @@index([subscriptionStage])  // P1: fast filtering by lifecycle stage
@@ -1821,9 +1825,11 @@ model CCTVSerialItem {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  business Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  product  CCTVProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
-  history  CCTVSerialItemHistory[]
+  business      Business              @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  product       CCTVProduct           @relation(fields: [productId], references: [id], onDelete: Cascade)
+  branch        CCTVBranch?           @relation(fields: [branchId], references: [id])
+  history       CCTVSerialItemHistory[]
+  transferItems CCTVTransferItem[]
 
   @@unique([businessId, serialNumber])
   @@index([businessId])
@@ -1945,4 +1951,98 @@ model CCTVKitComponent {
   @@index([businessId])
   @@index([productId])
   @@map("cctv_kit_components")
+}
+
+// ── CCTV Branch (1D: Multi-Branch Inventory) ──
+// Electronics retailers often operate from multiple locations.
+// A Branch represents a physical location: warehouse, showroom, service center.
+// Serial items are assigned to a branch to track stock per location.
+model CCTVBranch {
+  id           String   @id @default(cuid())
+  businessId   String
+
+  name         String                 // "Dhaka Warehouse", "Chittagong Showroom"
+  code         String                 // Short code: "DHK", "CTG", "SAV"
+  address      String?                // Full address
+  phone        String?                // Branch contact number
+  isDefault    Boolean  @default(false)  // Main branch (auto-created on business setup)
+  isActive     Boolean  @default(true)
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  business       Business          @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  serialItems    CCTVSerialItem[]  // Items currently at this branch
+  transfersFrom  CCTVTransfer[]    @relation("TransferFrom")
+  transfersTo    CCTVTransfer[]    @relation("TransferTo")
+
+  @@unique([businessId, code])
+  @@index([businessId])
+  @@index([isActive])
+  @@map("cctv_branches")
+}
+
+// ── CCTV Transfer (1D: Stock Movement Between Branches) ──
+// When stock moves from one branch to another, a Transfer record is created.
+// Status lifecycle: DRAFT → IN_TRANSIT → RECEIVED  (or CANCELLED)
+model CCTVTransfer {
+  id             String   @id @default(cuid())
+  businessId     String
+  transferCode   String                 // Auto-generated: "TRF-2025-001"
+
+  status         String   @default("DRAFT")
+  // "DRAFT"       — being prepared, items can be added/removed
+  // "IN_TRANSIT"  — sent out, source items changed to IN_TRANSIT
+  // "RECEIVED"    — destination confirmed receipt, items now IN_STOCK at dest
+  // "CANCELLED"   — transfer cancelled, items returned to source as IN_STOCK
+
+  fromBranchId   String                 // Source branch
+  toBranchId     String                 // Destination branch
+
+  notes          String?                // Reason for transfer
+  createdById    String?                // BusinessUser who initiated
+  receivedById   String?                // BusinessUser who confirmed receipt
+  receivedAt     DateTime?              // When destination confirmed
+  cancelledAt    DateTime?              // When cancelled
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  business     Business             @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  fromBranch   CCTVBranch           @relation("TransferFrom", fields: [fromBranchId], references: [id])
+  toBranch     CCTVBranch           @relation("TransferTo", fields: [toBranchId], references: [id])
+  items        CCTVTransferItem[]
+
+  @@unique([businessId, transferCode])
+  @@index([businessId])
+  @@index([fromBranchId])
+  @@index([toBranchId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("cctv_transfers")
+}
+
+// ── CCTV Transfer Item (1D: Individual Items in a Transfer) ──
+// Each serial item being moved in a transfer gets its own row.
+model CCTVTransferItem {
+  id             String   @id @default(cuid())
+  transferId     String
+  businessId     String
+  serialItemId   String                 // The actual serial item being moved
+
+  status         String   @default("IN_TRANSIT")
+  // "IN_TRANSIT"  — item is in transit
+  // "RECEIVED"    — confirmed received at destination
+  // "RETURNED"    — transfer cancelled, item returned to source
+
+  createdAt      DateTime @default(now())
+
+  transfer   CCTVTransfer    @relation(fields: [transferId], references: [id], onDelete: Cascade)
+  serialItem CCTVSerialItem  @relation(fields: [serialItemId], references: [id])
+
+  @@unique([transferId, serialItemId])
+  @@index([transferId])
+  @@index([businessId])
+  @@index([serialItemId])
+  @@map("cctv_transfer_items")
 }

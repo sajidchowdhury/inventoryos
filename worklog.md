@@ -102,3 +102,26 @@ Stage Summary:
 - CCTVStockInView.tsx: 722 insertions, 502 deletions (full rewrite)
 - No new files — enhanced existing 1B component into production-grade 1C
 - Two-phase UX: Setup → Batch Scanning (no page navigation, pure state switch)
+
+---
+Task ID: 5
+Agent: UI Component Builder
+Task: 1D UI Components — Branches, Transfers, Create Transfer, Transfer Detail
+
+Work Log:
+- Read worklog.md and studied existing component patterns (CCTVProductsList, CCTVInventoryHub, CCTVShell, cctv-nav-store)
+- Identified conventions: fadeUp animation, back button style, card style, gradient CTAs, status badge pills, empty state patterns
+- Created 5 UI component files following all project conventions:
+  1. CCTVBranchesList.tsx — Branch list with back header, "Add Branch" button, animated branch cards (name, code, address, phone, item count, default badge), empty state with CTA, AlertDialog for creating branches (name, auto-suggested code, address, phone)
+  2. CCTVBranchDetail.tsx — Branch detail with 3-stat row (In Stock, In Transit, Transfers), branch info card, "View Inventory" link, recent transfers list (last 5, sent/received), "New Transfer" button, dropdown menu with Edit/Delete actions
+  3. CCTVTransfersList.tsx — Transfers list with filter tabs (All/Draft/In Transit/Received/Cancelled), animated transfer cards (code, status badge, from→to with arrow, item count, date), empty state per filter, AnimatePresence for tab transitions
+  4. CCTVCreateTransfer.tsx — 4-step wizard (Select From → Select To → Add Items → Confirm) with animated progress bar, step transitions, radio card branch selectors, item search with debounce, barcode scanner input, staging list with remove, notes field, create transfer API call
+  5. CCTVTransferDetail.tsx — Transfer detail with large colored status card, from→to branch display, date/notes/items list, per-item status badges, status-based action buttons (DRAFT: Send+Cancel, IN_TRANSIT: Confirm Receipt+Cancel, RECEIVED: Completed badge, CANCELLED: Cancelled badge), AlertDialogs for send/cancel confirmations
+- Used BUSINESS_ID = 'bus_placeholder' as temporary placeholder for all API calls
+- All components are 'use client' with named exports
+- Zero lint errors in new files (6 pre-existing errors in other files unrelated to this task)
+
+Stage Summary:
+- Components: CCTVBranchesList, CCTVBranchDetail, CCTVTransfersList, CCTVCreateTransfer, CCTVTransferDetail
+- All 5 files in /src/modules/cctv-shop/components/
+- Shell, bottom nav, types, and barrel export to be updated separately

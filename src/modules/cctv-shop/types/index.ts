@@ -105,6 +105,60 @@ export interface StockInRow {
   error?: string;
 }
 
+// ── 1D: Multi-Branch Inventory and Transfers ──
+
+export type TransferStatus = 'DRAFT' | 'IN_TRANSIT' | 'RECEIVED' | 'CANCELLED';
+export type TransferItemStatus = 'IN_TRANSIT' | 'RECEIVED' | 'RETURNED';
+
+export interface CCTVBranch {
+  id: string;
+  name: string;
+  code: string;
+  address?: string;
+  phone?: string;
+  isDefault: boolean;
+  isActive: boolean;
+  sortOrder: number;
+  businessId: string;
+  _count?: {
+    serialItems: number;
+    transfersFrom: number;
+    transfersTo: number;
+  };
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CCTVTransferItem {
+  id: string;
+  transferId: string;
+  businessId: string;
+  serialItemId: string;
+  status: TransferItemStatus;
+  createdAt: string;
+  serialItem?: CCTVSerialItem;
+}
+
+export interface CCTVTransfer {
+  id: string;
+  businessId: string;
+  transferCode: string;
+  status: TransferStatus;
+  fromBranchId: string;
+  toBranchId: string;
+  notes?: string;
+  createdById?: string;
+  receivedById?: string;
+  receivedAt?: string;
+  cancelledAt?: string;
+  createdAt: string;
+  updatedAt: string;
+  fromBranch?: CCTVBranch;
+  toBranch?: CCTVBranch;
+  items?: CCTVTransferItem[];
+  _count?: { items: number };
+}
+
 export type CCTVViewType =
   | 'dashboard'
   | 'inventory-hub'
@@ -137,6 +191,11 @@ export type CCTVViewType =
   | 'purchase-orders'
   | 'suppliers'
   | 'categories'
+  | 'branches'
+  | 'branch-detail'
+  | 'transfers'
+  | 'create-transfer'
+  | 'transfer-detail'
   | 'ai-hub'
   | 'ai-chat'
   | 'ai-insights'

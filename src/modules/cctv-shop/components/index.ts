@@ -17,3 +17,8 @@ export { CCTVAMCList } from './CCTVAMCList';
 export { CCTVCustomersList } from './CCTVCustomersList';
 export { CCTVProfileView } from './CCTVProfileView';
 export { CCTVStockInView } from './CCTVStockInView';
+export { CCTVBranchesList } from './CCTVBranchesList';
+export { CCTVBranchDetail } from './CCTVBranchDetail';
+export { CCTVTransfersList } from './CCTVTransfersList';
+export { CCTVCreateTransfer } from './CCTVCreateTransfer';
+export { CCTVTransferDetail } from './CCTVTransferDetail';

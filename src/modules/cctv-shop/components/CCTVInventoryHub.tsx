@@ -163,6 +163,8 @@ export function CCTVInventoryHub() {
           { label: 'Categories', desc: 'Organize by type & brand', view: 'categories' as const, icon: '🏷️', color: 'bg-purple-50 border-purple-200' },
           { label: 'Purchase Orders', desc: 'Supplier orders', view: 'purchase-orders' as const, icon: '🛒', color: 'bg-amber-50 border-amber-200' },
           { label: 'Suppliers', desc: 'Manage suppliers', view: 'suppliers' as const, icon: '🏭', color: 'bg-emerald-50 border-emerald-200' },
+          { label: 'Branches', desc: 'Multi-branch locations', view: 'branches' as const, icon: '🏪', color: 'bg-orange-50 border-orange-200' },
+          { label: 'Transfers', desc: 'Move stock between branches', view: 'transfers' as const, icon: '🚚', color: 'bg-cyan-50 border-cyan-200' },
         ].map((item, i) => (
           <motion.button
             key={item.view}

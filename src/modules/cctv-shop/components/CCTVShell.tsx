@@ -20,6 +20,11 @@ import { CCTVAMCList } from './CCTVAMCList';
 import { CCTVCustomersList } from './CCTVCustomersList';
 import { CCTVProfileView } from './CCTVProfileView';
 import { CCTVStockInView } from './CCTVStockInView';
+import { CCTVBranchesList } from './CCTVBranchesList';
+import { CCTVBranchDetail } from './CCTVBranchDetail';
+import { CCTVTransfersList } from './CCTVTransfersList';
+import { CCTVCreateTransfer } from './CCTVCreateTransfer';
+import { CCTVTransferDetail } from './CCTVTransferDetail';
 
 function PlaceholderView({ title, icon }: { title: string; icon?: string }) {
   const { goBack } = useCCTVNavStore();
@@ -67,6 +72,11 @@ const viewMeta: Record<string, { title: string; icon: string }> = {
   'create-amc': { title: 'Create AMC', icon: '➕' },
   'purchase-orders': { title: 'Purchase Orders', icon: '🛒' },
   'suppliers': { title: 'Suppliers', icon: '🏭' },
+  'branches': { title: 'Branches', icon: '🏪' },
+  'branch-detail': { title: 'Branch Details', icon: '📍' },
+  'transfers': { title: 'Transfers', icon: '🚚' },
+  'create-transfer': { title: 'New Transfer', icon: '📤' },
+  'transfer-detail': { title: 'Transfer Details', icon: '📋' },
   'ai-chat': { title: 'AI Chat', icon: '🤖' },
   'ai-insights': { title: 'AI Insights', icon: '📊' },
   'sales-history': { title: 'Sales History', icon: '📈' },
@@ -105,6 +115,16 @@ export function CCTVShell() {
         return <CCTVSerialItemsList />;
       case 'stock-in':
         return <CCTVStockInView />;
+      case 'branches':
+        return <CCTVBranchesList />;
+      case 'branch-detail':
+        return <CCTVBranchDetail />;
+      case 'transfers':
+        return <CCTVTransfersList />;
+      case 'create-transfer':
+        return <CCTVCreateTransfer />;
+      case 'transfer-detail':
+        return <CCTVTransferDetail />;
       case 'job-cards':
         return <CCTVJobCardsList />;
       case 'warranties':
