@@ -8,7 +8,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -153,10 +153,12 @@ model Business {
   paymentTransactions  PaymentTransaction[]
   subscriptionAdjustments SubscriptionAdjustment[]  // P6: audit trail
 
-  // CCTV Module
-  cctvCategories CCTVCategory[]
-  cctvProducts   CCTVProduct[]
-  cctvSerialItems CCTVSerialItem[]
+  // CCTV Module (Phase 1A: Serialized Inventory Foundation)
+  cctvCategories          CCTVCategory[]
+  cctvProducts            CCTVProduct[]
+  cctvSerialItems         CCTVSerialItem[]
+  cctvKitDefinitions      CCTVKitDefinition[]
+  cctvSerialItemHistories CCTVSerialItemHistory[]
 
   @@index([userId])
   @@index([businessTypeId])
@@ -920,8 +922,8 @@ model AiConfig {
   maxInputBatches  Int?     // only used by expiry-optimizer
   maxInputProducts Int?     // only used by product-assistant:check_interactions
   maxInputImages   Int?     // only used by shelf-scanner (max photos per scan)
-  systemPrompt     String?  @db.Text // shelf-scanner: custom system prompt (null = default)
-  userPromptTemplate String? @db.Text // shelf-scanner: user prompt with {{imageCount}} placeholder
+  systemPrompt     String?  // shelf-scanner: custom system prompt (null = default)
+  userPromptTemplate String? // shelf-scanner: user prompt with {{imageCount}} placeholder
   temperature      Float?   // shelf-scanner: LLM temperature (null = 0.1)
   disableThinking  Boolean? // shelf-scanner: disable Gemini 2.5+ internal reasoning (null = true)
   updatedAt        DateTime @updatedAt
@@ -1739,9 +1741,10 @@ model CCTVProduct {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  business  Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  category  CCTVCategory?   @relation(fields: [categoryId], references: [id])
+  business  Business            @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  category  CCTVCategory?       @relation(fields: [categoryId], references: [id])
   serialItems CCTVSerialItem[]
+  kitComponents CCTVKitComponent[]
 
   @@index([businessId])
   @@index([categoryId])
@@ -1751,50 +1754,195 @@ model CCTVProduct {
   @@map("cctv_products")
 }
 
-// ── CCTV Serial Items ──
-// Each individually tracked item with its own serial number and status
+// ── CCTV Serial Items (1A Core: Serialized Asset Tracking) ──
+// Each individually tracked unit — the heart of the CCTV inventory system.
+// For high-value electronics, every unit is tracked by serial/IMEI, not bulk count.
+// Stock count is DERIVED by counting units with status IN_STOCK (no aggregate field).
 model CCTVSerialItem {
   id             String   @id @default(cuid())
   businessId     String
   productId      String
-  serialNumber   String               // Unique serial number
 
-  // Status
-  status         String   @default("in-stock")
-  // "in-stock" | "sold" | "installed" | "in-repair" | "warranty-claim" | "defective" | "returned"
+  // ── Identification ──
+  serialNumber   String               // Unique serial number (for cameras, NVRs, etc.)
+  imei           String?              // IMEI number (for mobile phones — 15 digits)
+  // At least one of serialNumber or imei must be provided
+  // IMEI is validated for uniqueness globally across the business
 
-  // Pricing (may differ from product default)
+  // ── Status Lifecycle ──
+  status         String   @default("IN_STOCK")
+  // Valid values:
+  //   "IN_STOCK"         — available for sale
+  //   "IN_TRANSIT"        — moving between branches (Phase 1D)
+  //   "SOLD"              — sold to customer
+  //   "INSTALLED"         — installed at a CCTV project site
+  //   "IN_REPAIR"         — at workshop for repair
+  //   "RETURNED"          — returned by customer
+  //   "WARRANTY_ACTIVE"   — under active warranty (post-repair or post-sale)
+  //   "WARRANTY_EXPIRED"  — warranty period ended
+  //   "DEFECTIVE"         — confirmed DOA or unrepairable
+  //   "DISPOSED"          — written off / scrapped
+
+  // ── Physical Condition ──
+  grade          String?              // "A" (new/sealed), "B" (open box), "C" (refurbished), "D" (used)
+  conditionNotes String?              // Pre-existing scratches, dents, screen cracks at intake
+
+  // ── Pricing (may differ from product catalog default) ──
   costPrice      Float?
   sellPrice      Float?
 
-  // Dates
-  purchaseDate   DateTime?
-  warrantyStart  DateTime?             // When warranty begins
-  warrantyEnd    DateTime?             // When warranty expires
+  // ── Procurement Reference ──
+  purchaseId     String?              // Links to the Purchase order this unit came from
+  supplierId     String?              // Quick-lookup: which supplier supplied this unit
+  purchaseDate   DateTime?            // Date of purchase (denormalized for quick display)
 
-  // Customer link (when sold/installed)
+  // ── Warranty ──
+  warrantyMonths Int      @default(0) // Warranty duration in months (from product or override)
+  warrantyStart  DateTime?            // Warranty start date (typically set on sale date)
+  warrantyEnd    DateTime?            // Calculated: warrantyStart + warrantyMonths
+
+  // ── Customer Link (set when SOLD or INSTALLED) ──
   customerId     String?
   customerName   String?              // Denormalized for quick display
   customerPhone  String?
 
-  // Sale/Job reference
-  saleId         String?              // Reference to future Sale model
-  jobCardId      String?              // Reference to future JobCard model
+  // ── Sale / Job / Project References ──
+  saleId         String?              // Reference to Sale when sold
+  jobCardId      String?              // Reference to future JobCard model (Phase 2)
+  projectId      String?              // Reference to future CCTVProject model (Phase 4)
 
-  // Notes
+  // ── Location Tracking ──
+  branchId       String?              // Current branch (Phase 1D: multi-branch)
+  currentLocation String?             // Free-text: "Showroom Shelf A3", "Warehouse Rack 2"
+
+  // ── Metadata ──
   notes          String?
-
   isActive       Boolean  @default(true)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
   business Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)
   product  CCTVProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+  history  CCTVSerialItemHistory[]
 
   @@unique([businessId, serialNumber])
   @@index([businessId])
   @@index([productId])
   @@index([status])
+  @@index([imei])
+  @@index([customerId])
+  @@index([saleId])
   @@index([warrantyEnd])
+  @@index([purchaseId])
+  @@index([branchId])
   @@map("cctv_serial_items")
+}
+
+// ── CCTV Serial Item History (1A: Append-Only Audit Log) ──
+// Every status change on a SerialUnit is recorded here.
+// This is the single source of truth for the unit's lifecycle.
+// NEVER update or delete rows — always INSERT new entries.
+model CCTVSerialItemHistory {
+  id             String   @id @default(cuid())
+  businessId     String
+  serialItemId   String
+
+  // What changed
+  fromStatus     String?              // Previous status (null for creation event)
+  toStatus       String               // New status after this event
+  event          String               // What happened:
+                                        //   "STOCKED"    — unit received into inventory
+                                        //   "STATUS_CHANGED" — general status transition
+                                        //   "SOLD"       — sold to customer
+                                        //   "INSTALLED"  — installed at project site
+                                        //   "REPAIR_START" — sent for repair
+                                        //   "REPAIR_COMPLETE" — returned from repair
+                                        //   "RETURNED"   — returned by customer
+                                        //   "WARRANTY_CLAIM" — warranty service initiated
+                                        //   "DISPOSED"   — written off
+                                        //   "TRANSFERRED" — moved between branches
+
+  // Who did it
+  userId         String?              // BusinessUser who triggered this change
+
+  // Context
+  referenceId    String?              // ID of related entity (Sale, JobCard, Transfer, etc.)
+  referenceType  String?              // "SALE", "JOB_CARD", "TRANSFER", "PROJECT", "PURCHASE"
+  notes          String?              // Free-text reason: "Customer returned — screen cracked"
+
+  createdAt      DateTime @default(now())
+
+  business   Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  serialItem CCTVSerialItem  @relation(fields: [serialItemId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@index([serialItemId])
+  @@index([toStatus])
+  @@index([createdAt])
+  @@map("cctv_serial_item_history")
+}
+
+// ── CCTV Kit Definition (1A: Product Bundles) ──
+// A Kit is a virtual bundle — e.g., "4-Camera CCTV Package" that includes
+// 4× Camera + 1× NVR + 1× HDD + 4× Cable + 1× Power Supply.
+// Kits do NOT hold physical stock — they reference component products.
+// When a kit is sold, the system validates all component SerialUnits are available.
+model CCTVKitDefinition {
+  id           String   @id @default(cuid())
+  businessId   String
+  name         String                 // "4-Camera Home Security Kit"
+  slug         String                 // "4-camera-home-security-kit"
+  description  String?                // Short description of what's included
+
+  // Pricing (overrides sum of component prices if set)
+  kitPrice     Float?                 // Bundle price (null = sum of component sell prices)
+  discountPercent Float  @default(0)  // % discount when bought as kit vs individually
+
+  // Metadata
+  imageUrl     String?                // Kit image
+  isActive     Boolean  @default(true)
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  business   Business              @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  components CCTVKitComponent[]
+
+  @@unique([businessId, slug])
+  @@index([businessId])
+  @@index([isActive])
+  @@map("cctv_kit_definitions")
+}
+
+// ── CCTV Kit Component (1A: Items Within a Bundle) ──
+// Each row links a product (and optional quantity) to its parent Kit.
+// When selling a kit, the system checks that for each component,
+// there are enough IN_STOCK SerialUnits (if serial-tracked) or sufficient
+// stock quantity (if not serial-tracked).
+model CCTVKitComponent {
+  id               String   @id @default(cuid())
+  kitId            String
+  businessId       String
+  productId        String             // References CCTVProduct
+
+  // How many of this product are needed in the kit
+  quantity         Int      @default(1)
+
+  // Optional: label shown in the kit breakdown
+  // e.g., "Main Camera", "Optional Add-on Camera"
+  componentLabel   String?
+
+  // Is this component required? (for future optional add-on support)
+  isRequired       Boolean  @default(true)
+
+  sortOrder        Int      @default(0)
+  createdAt        DateTime @default(now())
+
+  kit     CCTVKitDefinition @relation(fields: [kitId], references: [id], onDelete: Cascade)
+  product CCTVProduct       @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([kitId])
+  @@index([businessId])
+  @@index([productId])
+  @@map("cctv_kit_components")
 }
