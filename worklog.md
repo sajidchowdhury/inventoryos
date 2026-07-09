@@ -665,3 +665,45 @@ Stage Summary:
 - Project codes auto-generated as PRJ-001, PRJ-002, etc.
 - Camera positions use 0-100% coordinate system
 - Cable routes store polyline points as JSON string
+---
+Task ID: 4
+Agent: Main Agent
+Task: Segment 4A - Project and Site Survey Management
+
+Work Log:
+- Added 4 new Prisma models: CCTVProject, CCTVSiteSurvey, CCTVCameraPosition, CCTVCableRoute
+- Added reverse relations on Business, CCTVSale (project field)
+- Ran db:push successfully to create 4 new tables
+- Added ProjectStatus, ProjectType, CameraType, CableType types + interfaces to types/index.ts
+- Created 6 API route files via subagent:
+  - projects/route.ts (GET list with filters, POST create with auto-generated PRJ-001 codes)
+  - projects/[projectId]/route.ts (GET, PUT with auto completedAt, DELETE soft)
+  - projects/[projectId]/surveys/route.ts (GET list with nested data, POST create)
+  - projects/[projectId]/surveys/[surveyId]/route.ts (GET, PUT, DELETE)
+  - camera-positions/route.ts (GET, POST with 0-100 validation, PUT, DELETE)
+  - cable-routes/route.ts (GET, POST with JSON points validation, PUT, DELETE)
+- Rewrote CCTVProjectsList.tsx: real API, debounced search, status filter tabs, progress bars, skeleton loading
+- Created CCTVCreateProject.tsx: full form with project info, client info, timeline, site details, notes sections
+- Created CCTVProjectDetail.tsx (~1000 lines): 3-tab layout (Overview/Site Survey/Equipment) with:
+  - Overview: client card, timeline card, site card, notes
+  - Site Survey: floor plan upload (base64), interactive camera placement (tap to place), cable route drawing (tap polyline), camera/cable lists, survey metadata editor
+  - Status picker dialog with 8 status options
+  - Camera placement dialog (type, resolution, notes)
+  - Cable route save dialog (type, length, label)
+- Fixed duplicate CCTVEMIList import in CCTVShell (pre-existing)
+- Fixed duplicate case 'emi' in switch statement (pre-existing)
+- Fixed loadSurvey before declaration lint error
+- Fixed setState-in-effect lint error by using inline async wrapper pattern
+- Lint: 0 errors, 0 warnings
+- TSC: 0 new CCTV errors (only pre-existing framer-motion ease string type)
+- Server compiles and returns 200
+- Committed as 861a779
+
+Stage Summary:
+- 4 new database tables created (cctv_projects, cctv_site_surveys, cctv_camera_positions, cctv_cable_routes)
+- 6 API route files for full CRUD operations
+- 3 UI components: projects list, create form, detail with interactive site survey
+- Interactive floor plan with tap-to-place camera markers and cable route polylines
+- Camera markers rendered with type-specific icons, positioned via 0-100% coordinate system
+- Cable routes rendered as SVG polylines overlaid on the floor plan image
+- Full project lifecycle: PLANNING → SURVEY → PROCUREMENT → INSTALLATION → TESTING → HANDOVER → COMPLETED
