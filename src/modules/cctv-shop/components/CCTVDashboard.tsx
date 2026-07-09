@@ -75,6 +75,8 @@ export function CCTVDashboard() {
   ];
 
   const quickActions = [
+    { label: 'New Sale', icon: ShoppingCart, view: 'new-sale' as const, color: 'bg-green-500' },
+    { label: 'Sales History', icon: TrendingUp, view: 'sales-history' as const, color: 'bg-violet-500' },
     { label: 'New Product', icon: Plus, view: 'add-product' as const, color: 'bg-blue-500' },
     { label: 'Job Card', icon: ClipboardCheck, view: 'create-job-card' as const, color: 'bg-amber-500' },
     { label: 'New AMC', icon: ShieldCheck, view: 'create-amc' as const, color: 'bg-teal-500' },

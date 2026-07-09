@@ -173,6 +173,9 @@ model Business {
   cctvCommissionRules     CCTVCommissionRule[]
   cctvCommissionRecords   CCTVCommissionRecord[]
   cctvOutsourcedVendors   CCTVOutsourcedVendor[]
+  cctvSales               CCTVSale[]
+  cctvSaleItems           CCTVSaleItem[]
+  cctvPayments            CCTVPayment[]
 
   @@index([userId])
   @@index([businessTypeId])
@@ -1759,6 +1762,7 @@ model CCTVProduct {
   category  CCTVCategory?       @relation(fields: [categoryId], references: [id])
   serialItems CCTVSerialItem[]
   kitComponents CCTVKitComponent[]
+  saleItems    CCTVSaleItem[]
 
   @@index([businessId])
   @@index([categoryId])
@@ -1843,6 +1847,7 @@ model CCTVSerialItem {
   transferItems CCTVTransferItem[]
   jobCards      CCTVJobCard[]
   jobCardParts  CCTVJobCardPart[]
+  saleItems     CCTVSaleItem[]
 
   @@unique([businessId, serialNumber])
   @@index([businessId])
@@ -2297,4 +2302,90 @@ model CCTVOutsourcedVendor {
 
   @@index([businessId])
   @@map("cctv_outsourced_vendors")
+}
+
+// ── CCTV Sale (3A: Payment Integration) ──
+// Sale header. Payment status auto-calculated from linked CCTVPayment rows.
+// Supports split payment across multiple methods.
+model CCTVSale {
+  id              String   @id @default(cuid())
+  businessId      String
+  saleCode        String                  // "SAL-2025-001"
+  status          String   @default("PENDING")  // PENDING / PARTIALLY_PAID / PAID
+
+  // Customer info (denormalised for fast queries)
+  customerId      String?                 // link to Customer model if exists
+  customerName    String   @default("Walk-in Customer")
+  customerPhone   String?
+
+  // Totals
+  subtotal        Float    @default(0)    // sum of sale items before discount
+  discountAmount  Float    @default(0)    // flat discount in BDT
+  totalDue        Float                  // final amount customer owes
+
+  // Metadata
+  notes           String?
+  isActive        Boolean  @default(true)
+  completedAt     DateTime?               // set when status becomes PAID
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  business        Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  items           CCTVSaleItem[]
+  payments        CCTVPayment[]
+
+  @@unique([businessId, saleCode])
+  @@index([businessId])
+  @@index([status])
+  @@map("cctv_sales")
+}
+
+// ── CCTV Sale Item (3A: Payment Integration) ──
+// Individual product line in a sale. For serial-tracked products, optionally
+// links to a specific serial item (which gets marked SOLD).
+model CCTVSaleItem {
+  id              String   @id @default(cuid())
+  businessId      String
+  saleId          String
+  productId       String
+  serialItemId    String?                 // for serial-tracked products
+  productName     String                  // denormalised product name
+  productBrand    String?                 // denormalised brand
+  quantity        Int
+  unitPrice       Float                   // sell price at time of sale
+  totalPrice      Float                   // unitPrice * quantity
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+
+  business        Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  sale            CCTVSale        @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  product         CCTVProduct     @relation(fields: [productId], references: [id])
+  serialItem      CCTVSerialItem? @relation(fields: [serialItemId], references: [id])
+
+  @@index([businessId])
+  @@index([saleId])
+  @@map("cctv_sale_items")
+}
+
+// ── CCTV Payment (3A: Payment Integration) ──
+// Individual payment row. A single sale can have multiple payments (split payment).
+// Method types: CASH, CARD, BKASH, NAGAD, ROCKET
+model CCTVPayment {
+  id              String   @id @default(cuid())
+  businessId      String
+  saleId          String
+  method          String                  // CASH / CARD / BKASH / NAGAD / ROCKET
+  amount          Float                   // amount paid in BDT
+  referenceNumber String?                 // card terminal ref OR MFS transaction ID
+  receivedBy      String?                 // staff member who received payment
+  notes           String?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+
+  business        Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  sale            CCTVSale        @relation(fields: [saleId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@index([saleId])
+  @@map("cctv_payments")
 }

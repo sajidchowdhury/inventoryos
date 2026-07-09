@@ -33,6 +33,8 @@ import { CCTVCreateJobCard } from './CCTVCreateJobCard';
 import { CCTVTechniciansList } from './CCTVTechniciansList';
 import { CCTVTechnicianDetail } from './CCTVTechnicianDetail';
 import { CCTVCommissionReport } from './CCTVCommissionReport';
+import { CCTVSalesHistory } from './CCTVSalesHistory';
+import { CCTVSaleDetail } from './CCTVSaleDetail';
 
 function PlaceholderView({ title, icon }: { title: string; icon?: string }) {
   const { goBack } = useCCTVNavStore();
@@ -172,6 +174,13 @@ export function CCTVShell() {
         return <CCTVTechnicianDetail />;
       case 'commission-report':
         return <CCTVCommissionReport />;
+      // Payment & Sales (3A)
+      case 'new-sale':
+        return <CCTVSellView />;
+      case 'sales-history':
+        return <CCTVSalesHistory />;
+      case 'sale-detail':
+        return <CCTVSaleDetail />;
       default: {
         const meta = viewMeta[activeView];
         return <PlaceholderView title={meta?.title || activeView} icon={meta?.icon} />;

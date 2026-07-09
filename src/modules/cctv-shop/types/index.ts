@@ -424,3 +424,58 @@ export type CCTVViewType =
   | 'technician-detail'
   | 'commission-report'
   | 'help';
+
+// ── 3A: Payment Integration ──
+
+export type PaymentMethod = 'CASH' | 'CARD' | 'BKASH' | 'NAGAD' | 'ROCKET';
+export type SaleStatus = 'PENDING' | 'PARTIALLY_PAID' | 'PAID';
+
+export interface CCTVSale {
+  id: string;
+  businessId: string;
+  saleCode: string;
+  status: SaleStatus;
+  customerId?: string;
+  customerName: string;
+  customerPhone?: string;
+  subtotal: number;
+  discountAmount: number;
+  totalDue: number;
+  notes?: string;
+  isActive: boolean;
+  completedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+  items?: CCTVSaleItem[];
+  payments?: CCTVPayment[];
+  _count?: { items: number; payments: number };
+}
+
+export interface CCTVSaleItem {
+  id: string;
+  businessId: string;
+  saleId: string;
+  productId: string;
+  serialItemId?: string;
+  productName: string;
+  productBrand?: string;
+  quantity: number;
+  unitPrice: number;
+  totalPrice: number;
+  createdAt: string;
+  product?: CCTVProduct;
+  serialItem?: CCTVSerialItem;
+}
+
+export interface CCTVPayment {
+  id: string;
+  businessId: string;
+  saleId: string;
+  method: PaymentMethod;
+  amount: number;
+  referenceNumber?: string;
+  receivedBy?: string;
+  notes?: string;
+  isActive: boolean;
+  createdAt: string;
+}

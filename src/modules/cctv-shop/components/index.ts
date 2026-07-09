@@ -30,3 +30,6 @@ export { CCTVKitForm } from './CCTVKitForm';
 export { CCTVTechniciansList } from './CCTVTechniciansList';
 export { CCTVTechnicianDetail } from './CCTVTechnicianDetail';
 export { CCTVCommissionReport } from './CCTVCommissionReport';
+export { CCTVSellView } from './CCTVSellView';
+export { CCTVSalesHistory } from './CCTVSalesHistory';
+export { CCTVSaleDetail } from './CCTVSaleDetail';

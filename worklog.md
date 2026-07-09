@@ -415,3 +415,99 @@ Work Log:
 Stage Summary:
 - Segment 2E complete: vendor model, CRUD APIs, vendor picker UI, overdue tracking, dashboard alert
 - Full outsourcing lifecycle: pick vendor → outsource → track overdue → return to TESTING
+
+---
+Task ID: 4
+Agent: API Builder
+Task: Segment 3A — Payment API Routes
+
+Work Log:
+- Read worklog.md for conventions and studied existing job-cards/route.ts pattern
+- Verified Prisma schema: CCTVSale, CCTVSaleItem, CCTVPayment, CCTVProduct, CCTVSerialItem, CCTVSerialItemHistory models
+- Created 4 API route files:
+  1. `sales/route.ts` — GET (list with status/search/date filters + _count) + POST (create sale in transaction: auto-generate SAL-YYYY-NNN code, validate products + serial items, calculate subtotal/totalDue, create items with denormalized product info, mark serial items SOLD + history, decrease non-serial-tracked product stock, create payments, auto-calculate sale status PENDING/PARTIALLY_PAID/PAID)
+  2. `sales/[saleId]/route.ts` — GET (single sale with items+product+serialItem + payments) + DELETE (soft-delete sale/items/payments, restore SOLD serial items to IN_STOCK with RETURNED history, increment non-serial-tracked product stock, all in transaction)
+  3. `sales/[saleId]/payments/route.ts` — POST (add payment: validate method CASH/CARD/BKASH/NAGAD/ROCKET, validate amount>0, check sale exists+active+not PAID, create payment, recalculate status from all active payments sum, set completedAt when PAID, transaction)
+  4. `sales/payments-summary/route.ts` — GET (date range with current month default, return totalSales/totalRevenue/totalDiscount/paidCount/pendingCount/partiallyPaidCount/paymentMethodBreakdown by method)
+- All routes use Next.js 16 params Promise pattern, multi-tenant businessId filtering
+- Lint: 0 new errors (6 pre-existing errors in admin/lib files unchanged)
+
+Stage Summary:
+- 4 API route files created for CCTV sales and payments (Segment 3A backend)
+- Complete sale lifecycle: create with items+payments, read detail, soft-delete with stock restoration
+- Split payment support with automatic status recalculation
+- Payments summary with method breakdown for reporting
+
+---
+Task ID: 5
+Agent: UI Builder
+Task: Segment 3A — POS Sell View with Multi-Method Payment
+
+Work Log:
+- Read worklog.md, existing CCTVSellView stub, CCTVJobCardDetail (design patterns), types/index.ts (CCTVSale, CCTVPayment, PaymentMethod, SaleStatus), CCTVBottomNav
+- Completely rewrote CCTVSellView.tsx (255 → 827 lines) with 2-step POS flow:
+  - **Step 1 (Cart Building)**: Customer name+phone fields (walk-in fallback), debounced product search (300ms) with AbortController fetching from API, serial-tracked product detection (qty locked to 1), cart with +/-/trash controls, discount field, subtotal/discount/total summary
+  - **Step 2 (Payment Collection)**: Large violet gradient total due hero with animated progress bar, 5 large tap method selector cards (CASH green, CARD blue, BKASH pink, NAGAD orange, ROCKET purple), amount input pre-filled with remaining balance, conditional reference number inputs (Card Terminal Ref for CARD, Transaction ID for BKASH/NAGAD/ROCKET), added payments list with remove, paid-in-full/partial/remaining status indicators
+- Complete Sale button with 3 states: disabled (no payments), amber "Partial Payment", green "Paid in Full"
+- Framer-motion slide-left/slide-right transitions between steps
+- Form validation: empty cart, amount ≤ 0, excess amount, missing reference numbers
+- Loading states: Skeleton during search, Loader2 spinner during submission
+- Error handling: toast on validation failures, network errors, API errors
+- POST to /api/businesses/${BUSINESS_ID}/cctv/sales with items array + payments array + optional customer fields
+- On success: toast + full form reset + goBack navigation
+- Fixed lint warning: removed unnecessary eslint-disable directive, added `remaining` to deps array
+- Zero new lint errors (6 pre-existing errors in admin/lib files unchanged)
+
+Stage Summary:
+- CCTVSellView.tsx fully rewritten as production POS with multi-method Bangladesh payment support
+- 5 payment methods: CASH, CARD, BKASH, NAGAD, ROCKET with proper reference fields
+- 2-step animated flow: Cart Building → Payment Collection
+- All conventions followed: fadeUp animation, violet gradient CTAs, white rounded-2xl cards, useToast, useCCTVNavStore, BUSINESS_ID, formatBDT, shadcn Input/Badge/Skeleton
+---
+Task ID: 6b
+Agent: UI Builder
+Task: Segment 3A — Sale Detail View
+
+Work Log:
+- Created CCTVSaleDetail.tsx component with full receipt-style layout
+- Implemented status card with gradient backgrounds per SaleStatus (PAID=green, PARTIALLY_PAID=amber, PENDING=slate)
+- Customer card with tap-to-call phone link and Walk-in Customer fallback
+- Items card with receipt-style layout: product name, brand in gray, serial number for serial-tracked items, qty × unit price = total, line separators, subtotal/discount/total breakdown
+- Payments card with color-coded method badges (CASH=green, CARD=blue, BKASH=pink, NAGAD=orange, ROCKET=purple), reference numbers, timestamps, paid/balance summary
+- Add Payment dialog for PARTIALLY_PAID sales: 5-option method selector as tap cards, amount input, conditional reference field, POST to /payments endpoint, refresh on success
+- Cancel Sale button for PENDING status (no payments): red AlertDialog confirmation, DELETE endpoint, goBack on success
+- Skeleton loading state, empty state, and not-found state
+- Exported CCTVSaleDetail from components/index.ts
+- Lint passes with zero errors on new file
+
+Stage Summary:
+- CCTVSaleDetail.tsx is a complete sale receipt view with payment management
+- Follows all project conventions: 'use client', named export, fadeUp animation, purple theme, shadcn/ui, BUSINESS_ID, formatBDT, useCCTVNavStore, useToast
+- Supports full payment lifecycle: view, add payment (partial), cancel sale (pending)
+
+---
+Task ID: 6
+Agent: Main Agent
+Task: Segment 3A — Sales History, Shell Wiring, Dashboard Integration
+
+Work Log:
+- Created CCTVSalesHistory.tsx: list with stats banner (total/revenue/pending), filter tabs (All/Paid/Partial/Pending), debounced search, animated sale cards with status badges, empty states with CTA
+- Used useMemo for client-side filtering (avoids setState-in-effect lint error)
+- Wired CCTVSellView (new-sale), CCTVSalesHistory (sales-history), CCTVSaleDetail (sale-detail) into CCTVShell.tsx switch cases
+- Added imports + viewMeta entries in CCTVShell
+- Updated barrel export (index.ts) with 3 new components
+- Added "New Sale" and "Sales History" quick actions to CCTVDashboard
+- Added isActive + createdAt fields to CCTVSaleItem Prisma model (needed for soft-delete)
+- Ran db:push + Prisma client regeneration
+- Fixed unused imports in CCTVSalesHistory (User, ShoppingBag, TrendingUp, Clock, SaleStatus)
+- Lint: 0 new CCTV errors, tsc: 0 new CCTV errors
+- Committed: 1af299b
+
+Stage Summary:
+- Segment 3A fully complete: 3 Prisma models, 4 API routes, 3 UI components, full wiring
+- Multi-method payment: CASH, CARD (terminal ref), BKASH/NAGAD/ROCKET (transaction ID)
+- Split payment support with auto-calculated sale status
+- 2-step POS: Cart Building → Payment Collection
+- Sales history with filter tabs and revenue stats
+- Sale detail receipt with add-payment for partial sales, cancel for pending
+- 14 files changed, 2507 insertions, 180 deletions
