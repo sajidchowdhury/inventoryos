@@ -28,3 +28,37 @@ Stage Summary:
 - 4 CCTV models now in schema: CCTVCategory (existing), CCTVProduct (existing), CCTVSerialItem (enhanced), CCTVSerialItemHistory (new), CCTVKitDefinition (new), CCTVKitComponent (new)
 - Database schema pushed and Prisma client regenerated
 - No git push/commit per user instruction
+
+---
+Task ID: 2
+Agent: Main Agent
+Task: Implement 1B IMEI-First Stock-In Workflow
+
+Work Log:
+- Updated CCTVViewType to add 'stock-in' view
+- Enhanced types/index.ts with proper status types (SerialItemStatus, SerialHistoryEvent, SerialGrade, StockInRow)
+- Added CCTVStockInView to CCTVShell.tsx routing, CCTVBottomNav.tsx hubGroups, and barrel export
+- Built CCTVStockInView.tsx — scanner-friendly stock-in UI:
+  - Step 1: Product picker (searchable list of serial-tracked products)
+  - Step 2: Barcode/serial scanner input (autofocus, Enter to submit, hidden input pattern for BT/USB scanners)
+  - Step 3: Staged items list with duplicate detection (red highlighting), grade badges, cost display
+  - Batch scanning with target count + progress bar
+  - IMEI field for phone products
+  - Commit button sends staged data to API, shows success/error result
+- Created API route POST /api/businesses/[id]/cctv/stock-in:
+  - Validates product exists and belongs to business
+  - Checks duplicate serial numbers within batch AND against database
+  - Checks duplicate IMEI numbers within batch AND against database
+  - Returns 409 with detailed duplicate report if any found
+  - Creates CCTVSerialItem records with IN_STOCK status
+  - Creates CCTVSerialItemHistory entries (event: STOCKED) for audit trail
+  - Auto-syncs product stock count
+  - Reduced warranty for Grade C/D items (refurbished/used)
+- Added Stock In CTA card to Inventory Hub (green gradient, alongside Add Product)
+- Verified zero compilation errors in dev server
+
+Stage Summary:
+- Files created: CCTVStockInView.tsx, stock-in/route.ts
+- Files modified: types/index.ts, CCTVShell.tsx, CCTVBottomNav.tsx, index.ts, CCTVInventoryHub.tsx
+- No git push/commit per user instruction
+- Browser verification: compiles cleanly, no runtime errors (auth gate prevents full E2E without session data)

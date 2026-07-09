@@ -11,6 +11,8 @@ import {
   Plug,
   AlertTriangle,
   ChevronRight,
+  Download,
+  Package,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
@@ -68,6 +70,39 @@ export function CCTVInventoryHub() {
           </div>
         </div>
       </motion.div>
+
+      {/* Quick Actions */}
+      <div className="grid grid-cols-2 gap-2.5 mb-6">
+        <motion.button
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15 }}
+          onClick={() => navigate('stock-in')}
+          className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 p-4 text-left active:scale-[0.98] transition-transform shadow-lg shadow-emerald-500/20"
+        >
+          <div className="absolute top-0 right-0 w-16 h-16 bg-white/10 rounded-full -translate-y-1/3 translate-x-1/3" />
+          <div className="relative z-10 flex items-center gap-2 mb-2">
+            <Download className="w-5 h-5 text-white" />
+            <span className="text-white font-bold text-sm">Stock In</span>
+          </div>
+          <p className="text-white/70 text-[11px]">Scan serials & IMEI</p>
+        </motion.button>
+
+        <motion.button
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          onClick={() => navigate('add-product')}
+          className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 p-4 text-left active:scale-[0.98] transition-transform shadow-lg shadow-violet-500/20"
+        >
+          <div className="absolute top-0 right-0 w-16 h-16 bg-white/10 rounded-full -translate-y-1/3 translate-x-1/3" />
+          <div className="relative z-10 flex items-center gap-2 mb-2">
+            <Package className="w-5 h-5 text-white" />
+            <span className="text-white font-bold text-sm">Add Product</span>
+          </div>
+          <p className="text-white/70 text-[11px]">New item to catalog</p>
+        </motion.button>
+      </div>
 
       {/* Search */}
       <div className="relative mb-6">

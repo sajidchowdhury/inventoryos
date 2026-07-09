@@ -19,6 +19,7 @@ import { CCTVEMIList } from './CCTVEMIList';
 import { CCTVAMCList } from './CCTVAMCList';
 import { CCTVCustomersList } from './CCTVCustomersList';
 import { CCTVProfileView } from './CCTVProfileView';
+import { CCTVStockInView } from './CCTVStockInView';
 
 function PlaceholderView({ title, icon }: { title: string; icon?: string }) {
   const { goBack } = useCCTVNavStore();
@@ -50,6 +51,7 @@ function PlaceholderView({ title, icon }: { title: string; icon?: string }) {
 
 const viewMeta: Record<string, { title: string; icon: string }> = {
   'new-sale': { title: 'New Sale', icon: '🛒' },
+  'stock-in': { title: 'Stock In', icon: '📥' },
   'add-product': { title: 'Add Product', icon: '➕' },
   'edit-product': { title: 'Edit Product', icon: '✏️' },
   'product-detail': { title: 'Product Details', icon: '📦' },
@@ -101,6 +103,8 @@ export function CCTVShell() {
         return <CCTVProductDetail />;
       case 'serial-items':
         return <CCTVSerialItemsList />;
+      case 'stock-in':
+        return <CCTVStockInView />;
       case 'job-cards':
         return <CCTVJobCardsList />;
       case 'warranties':

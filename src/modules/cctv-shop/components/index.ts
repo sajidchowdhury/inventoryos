@@ -16,3 +16,4 @@ export { CCTVEMIList } from './CCTVEMIList';
 export { CCTVAMCList } from './CCTVAMCList';
 export { CCTVCustomersList } from './CCTVCustomersList';
 export { CCTVProfileView } from './CCTVProfileView';
+export { CCTVStockInView } from './CCTVStockInView';
