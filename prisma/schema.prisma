@@ -179,6 +179,11 @@ model Business {
   cctvEmiPlans            CCTVEmiPlan[]
   cctvEmiInstallments     CCTVEmiInstallment[]
 
+  // CCTV Module (Phase 3C: Customer Loyalty and CRM)
+  cctvLoyaltyConfigs      CCTVLoyaltyConfig[]
+  cctvLoyaltyTransactions CCTVLoyaltyTransaction[]
+  cctvLoyaltyOffers       CCTVLoyaltyOffer[]
+
   @@index([userId])
   @@index([businessTypeId])
   @@index([subscriptionStage])  // P1: fast filtering by lifecycle stage
@@ -481,6 +486,10 @@ model Customer {
   totalSpent  Float    @default(0)
   visitCount  Int      @default(0)
   lastVisitAt DateTime?
+  // 3C: Customer Loyalty and CRM
+  loyaltyPoints          Int     @default(0)
+  loyaltyTier            String  @default("BRONZE") // BRONZE / SILVER / GOLD / PLATINUM
+  preferredPaymentMethod String?              // CASH / CARD / BKASH / NAGAD / ROCKET
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -2479,4 +2488,90 @@ model CCTVEmiInstallment {
   @@index([status])
   @@index([dueDate])
   @@map("cctv_emi_installments")
+}
+
+// ── CCTV Loyalty Config (3C: Customer Loyalty and CRM) ──
+// Per-business loyalty program settings. One config per business.
+// Controls earn rates, redemption rates, and tier thresholds.
+model CCTVLoyaltyConfig {
+  id              String   @id @default(cuid())
+  businessId      String   @unique
+
+  // Earn rules: customer earns 1 point for every earnRateAmount BDT spent
+  earnRatePoints  Int     @default(1)    // points earned per threshold
+  earnRateAmount  Float   @default(100)  // BDT spent per earn event
+
+  // Redeem rules: redeemRateValue BDT discount per redeemPointsRequired points
+  redeemPointsRequired Int   @default(100) // points needed
+  redeemRateValue     Float @default(10)  // BDT value received
+
+  // Tier thresholds based on totalSpent (cumulative)
+  tierBronze      Float   @default(0)       // default tier
+  tierSilver      Float   @default(50000)   // >= 50K BDT
+  tierGold        Float   @default(200000)  // >= 200K BDT
+  tierPlatinum    Float   @default(500000)  // >= 500K BDT
+
+  isActive        Boolean @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  business        Business              @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  offers          CCTVLoyaltyOffer[]
+
+  @@index([businessId])
+  @@map("cctv_loyalty_configs")
+}
+
+// ── CCTV Loyalty Transaction (3C: Customer Loyalty and CRM) ──
+// Append-only ledger of all points movements for a customer.
+// Types: EARN (from purchase), REDEEM (spent at checkout), BONUS (from offer), ADJUST (manual)
+model CCTVLoyaltyTransaction {
+  id              String   @id @default(cuid())
+  businessId      String
+  customerId      String
+
+  type            String   // EARN / REDEEM / BONUS / ADJUST
+  points          Int      // positive = earn/bonus, negative = redeem
+  balanceAfter    Int      // running balance snapshot after this transaction
+
+  saleId          String?  // link to CCTVSale when earned from purchase
+  offerId         String?  // link to CCTVLoyaltyOffer when from a promotion
+  description     String?
+  createdById     String?
+  createdAt       DateTime @default(now())
+
+  business        Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@index([customerId])
+  @@index([type])
+  @@map("cctv_loyalty_transactions")
+}
+
+// ── CCTV Loyalty Offer (3C: Customer Loyalty and CRM) ──
+// Time-limited promotional offers configured by shop owner.
+// DOUBLE_POINTS: 2x points on all purchases during the period.
+// BONUS_POINTS: flat bonus points on next purchase.
+model CCTVLoyaltyOffer {
+  id              String   @id @default(cuid())
+  businessId      String
+  configId        String
+
+  name            String
+  offerType       String   // DOUBLE_POINTS / BONUS_POINTS
+  multiplier      Float   @default(2)    // 2x for DOUBLE_POINTS
+  bonusPoints     Int?                  // flat bonus for BONUS_POINTS
+  startDate       DateTime
+  endDate         DateTime
+  description     String?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  business        Business          @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  config          CCTVLoyaltyConfig  @relation(fields: [configId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@index([configId])
+  @@map("cctv_loyalty_offers")
 }

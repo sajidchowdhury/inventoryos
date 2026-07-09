@@ -397,6 +397,7 @@ export type CCTVViewType =
   | 'emi'
   | 'emi-detail'
   | 'create-emi'
+  | 'loyalty-center'
   | 'amc'
   | 'amc-detail'
   | 'create-amc'
@@ -532,6 +533,80 @@ export interface CCTVEmiInstallment {
   status: InstallmentStatus;
   waiverAmount: number;
   notes?: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ── 3C: Customer Loyalty and CRM ──
+
+export type LoyaltyTier = 'BRONZE' | 'SILVER' | 'GOLD' | 'PLATINUM';
+export type LoyaltyTransactionType = 'EARN' | 'REDEEM' | 'BONUS' | 'ADJUST';
+export type LoyaltyOfferType = 'DOUBLE_POINTS' | 'BONUS_POINTS';
+
+export interface CCTVCustomer {
+  id: string;
+  businessId: string;
+  name: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  totalSpent: number;
+  visitCount: number;
+  lastVisitAt?: string;
+  loyaltyPoints: number;
+  loyaltyTier: LoyaltyTier;
+  preferredPaymentMethod?: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  _count?: {
+    sales: number;
+    emiPlans: number;
+  };
+}
+
+export interface CCTVLoyaltyConfig {
+  id: string;
+  businessId: string;
+  earnRatePoints: number;
+  earnRateAmount: number;
+  redeemPointsRequired: number;
+  redeemRateValue: number;
+  tierBronze: number;
+  tierSilver: number;
+  tierGold: number;
+  tierPlatinum: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  _count?: { offers: number };
+}
+
+export interface CCTVLoyaltyTransaction {
+  id: string;
+  businessId: string;
+  customerId: string;
+  type: LoyaltyTransactionType;
+  points: number;
+  balanceAfter: number;
+  saleId?: string;
+  offerId?: string;
+  description?: string;
+  createdAt: string;
+}
+
+export interface CCTVLoyaltyOffer {
+  id: string;
+  businessId: string;
+  configId: string;
+  name: string;
+  offerType: LoyaltyOfferType;
+  multiplier: number;
+  bonusPoints?: number;
+  startDate: string;
+  endDate: string;
+  description?: string;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;

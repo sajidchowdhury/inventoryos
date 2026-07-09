@@ -285,6 +285,166 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         createdSale.completedAt = completedAt;
       }
 
+      // 3C: Auto-create/lookup customer + earn loyalty points
+      let linkedCustomerId = customerId || null;
+      const trimmedPhone = customerPhone?.trim() || null;
+      const trimmedName = customerName?.trim() || "Walk-in Customer";
+
+      if (trimmedPhone && !linkedCustomerId) {
+        // Look up existing customer by phone
+        const existingCustomer = await tx.customer.findFirst({
+          where: { businessId, phone: trimmedPhone, isActive: true },
+        });
+        if (existingCustomer) {
+          linkedCustomerId = existingCustomer.id;
+        } else {
+          // Create new customer
+          const newCustomer = await tx.customer.create({
+            data: {
+              businessId,
+              name: trimmedName,
+              phone: trimmedPhone,
+              loyaltyPoints: 0,
+              loyaltyTier: "BRONZE",
+              totalSpent: 0,
+              visitCount: 0,
+              isActive: true,
+            },
+          });
+          linkedCustomerId = newCustomer.id;
+        }
+      }
+
+      // Update sale with linked customerId if found/created
+      if (linkedCustomerId && !customerId) {
+        await tx.cCTVSale.update({
+          where: { id: createdSale.id },
+          data: { customerId: linkedCustomerId },
+        });
+        createdSale.customerId = linkedCustomerId;
+      }
+
+      // Earn loyalty points if we have a linked customer and loyalty is active
+      if (linkedCustomerId) {
+        const loyaltyConfig = await tx.cCTVLoyaltyConfig.findUnique({
+          where: { businessId },
+        });
+
+        if (loyaltyConfig && loyaltyConfig.isActive && loyaltyConfig.earnRateAmount > 0) {
+          const earnedPoints = Math.floor(totalDue / loyaltyConfig.earnRateAmount) * loyaltyConfig.earnRatePoints;
+
+          if (earnedPoints > 0) {
+            // Check for active double-points offers
+            const now = new Date();
+            const activeOffer = await tx.cCTVLoyaltyOffer.findFirst({
+              where: {
+                businessId,
+                configId: loyaltyConfig.id,
+                offerType: "DOUBLE_POINTS",
+                isActive: true,
+                startDate: { lte: now },
+                endDate: { gte: now },
+              },
+            });
+
+            const multiplier = activeOffer ? activeOffer.multiplier : 1;
+            const finalPoints = Math.floor(earnedPoints * multiplier);
+
+            const updatedCustomer = await tx.customer.update({
+              where: { id: linkedCustomerId },
+              data: {
+                loyaltyPoints: { increment: finalPoints },
+                totalSpent: { increment: totalDue },
+                visitCount: { increment: 1 },
+                lastVisitAt: now,
+              },
+            });
+
+            // Recalculate tier
+            const newTotal = (updatedCustomer.totalSpent || 0);
+            let tier = "BRONZE";
+            if (newTotal >= (loyaltyConfig.tierPlatinum || 500000)) tier = "PLATINUM";
+            else if (newTotal >= (loyaltyConfig.tierGold || 200000)) tier = "GOLD";
+            else if (newTotal >= (loyaltyConfig.tierSilver || 50000)) tier = "SILVER";
+
+            if (tier !== updatedCustomer.loyaltyTier) {
+              await tx.customer.update({
+                where: { id: linkedCustomerId },
+                data: { loyaltyTier: tier },
+              });
+            }
+
+            // Create loyalty transaction
+            await tx.cCTVLoyaltyTransaction.create({
+              data: {
+                businessId,
+                customerId: linkedCustomerId,
+                type: "EARN",
+                points: finalPoints,
+                balanceAfter: (updatedCustomer.loyaltyPoints || 0) + finalPoints,
+                saleId: createdSale.id,
+                offerId: activeOffer?.id || null,
+                description: activeOffer
+                  ? `Earned ${finalPoints} pts (${activeOffer.name}) on ${saleCode}`
+                  : `Earned ${finalPoints} pts on ${saleCode}`,
+              },
+            });
+
+            // Check for BONUS_POINTS offers
+            const bonusOffer = await tx.cCTVLoyaltyOffer.findFirst({
+              where: {
+                businessId,
+                configId: loyaltyConfig.id,
+                offerType: "BONUS_POINTS",
+                isActive: true,
+                startDate: { lte: now },
+                endDate: { gte: now },
+              },
+            });
+
+            if (bonusOffer && bonusOffer.bonusPoints && bonusOffer.bonusPoints > 0) {
+              const bonusBalance = (updatedCustomer.loyaltyPoints || 0) + finalPoints + bonusOffer.bonusPoints;
+              await tx.customer.update({
+                where: { id: linkedCustomerId },
+                data: { loyaltyPoints: { increment: bonusOffer.bonusPoints } },
+              });
+              await tx.cCTVLoyaltyTransaction.create({
+                data: {
+                  businessId,
+                  customerId: linkedCustomerId,
+                  type: "BONUS",
+                  points: bonusOffer.bonusPoints,
+                  balanceAfter: bonusBalance,
+                  saleId: createdSale.id,
+                  offerId: bonusOffer.id,
+                  description: `Bonus ${bonusOffer.bonusPoints} pts (${bonusOffer.name})`,
+                },
+              });
+            }
+          } else {
+            // No points earned but still update visit stats
+            await tx.customer.update({
+              where: { id: linkedCustomerId },
+              data: {
+                totalSpent: { increment: totalDue },
+                visitCount: { increment: 1 },
+                lastVisitAt: new Date(),
+              },
+            });
+          }
+        } else {
+          // No loyalty config — just update visit stats
+          await tx.customer.update({
+            where: { id: linkedCustomerId },
+            data: {
+              totalSpent: { increment: totalDue },
+              visitCount: { increment: 1 },
+              lastVisitAt: new Date(),
+            },
+          });
+        }
+      }
+
       return createdSale;
     });
 

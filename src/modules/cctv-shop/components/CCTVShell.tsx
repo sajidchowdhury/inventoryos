@@ -38,6 +38,8 @@ import { CCTVSaleDetail } from './CCTVSaleDetail';
 import { CCTVEMIList } from './CCTVEMIList';
 import { CCTVEmiDetail } from './CCTVEmiDetail';
 import { CCTVCreatEmi } from './CCTVCreatEmi';
+import { CCTVCustomerDetail } from './CCTVCustomerDetail';
+import { CCTVLoyaltyCenter } from './CCTVLoyaltyCenter';
 
 function PlaceholderView({ title, icon }: { title: string; icon?: string }) {
   const { goBack } = useCCTVNavStore();
@@ -106,6 +108,7 @@ const viewMeta: Record<string, { title: string; icon: string }> = {
   'settings': { title: 'Settings', icon: '⚙️' },
   'help': { title: 'Help & Support', icon: '💬' },
   'subscription': { title: 'Subscription', icon: '👑' },
+  'loyalty-center': { title: 'Loyalty Program', icon: '⭐' },
 };
 
 export function CCTVShell() {
@@ -191,6 +194,11 @@ export function CCTVShell() {
         return <CCTVSalesHistory />;
       case 'sale-detail':
         return <CCTVSaleDetail />;
+      // Customer Loyalty & CRM (3C)
+      case 'customer-detail':
+        return <CCTVCustomerDetail />;
+      case 'loyalty-center':
+        return <CCTVLoyaltyCenter />;
       default: {
         const meta = viewMeta[activeView];
         return <PlaceholderView title={meta?.title || activeView} icon={meta?.icon} />;

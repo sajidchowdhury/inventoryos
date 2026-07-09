@@ -1,46 +1,146 @@
 'use client';
 
-import { useState } from 'react';
-import { motion } from 'framer-motion';
+import { useState, useEffect, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
-  ArrowLeft, Search, X, Phone, User, ShoppingCart,
-  IndianRupee, Clock,
+  ArrowLeft,
+  Search,
+  X,
+  Phone,
+  User,
+  ShoppingCart,
+  Coins,
+  Shield,
 } from 'lucide-react';
 import { useCCTVNavStore } from '@/stores/cctv-nav-store';
 import { cn } from '@/lib/utils';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Badge } from '@/components/ui/badge';
+
+// ── Constants ──
+
+const BUSINESS_ID = 'bus_placeholder';
 
 const fadeUp = {
   initial: { opacity: 0, y: 16 },
   animate: { opacity: 1, y: 0, transition: { duration: 0.35, ease: 'easeOut' } },
 };
 
-const mockCustomers = [
-  { id: '1', name: 'Rahim Electronics', phone: '01712-345678', totalPurchases: 245000, lastPurchase: '2025-01-10', balance: 15000 },
-  { id: '2', name: 'City Shopping Mall Ltd', phone: '01815-987654', totalPurchases: 890000, lastPurchase: '2025-01-14', balance: 45000 },
-  { id: '3', name: 'BD Bank, Motijheel', phone: '01923-456789', totalPurchases: 1250000, lastPurchase: '2025-01-12', balance: 0 },
-  { id: '4', name: 'Green Tower Residency', phone: '01634-567890', totalPurchases: 156000, lastPurchase: '2025-01-08', balance: 8000 },
-  { id: '5', name: 'Metro General Hospital', phone: '01567-890123', totalPurchases: 320000, lastPurchase: '2024-12-20', balance: 0 },
-  { id: '6', name: 'Pacific Telecom', phone: '01845-678901', totalPurchases: 540000, lastPurchase: '2025-01-13', balance: 72000 },
-  { id: '7', name: 'Sunrise School & College', phone: '01789-012345', totalPurchases: 198000, lastPurchase: '2025-01-05', balance: 12000 },
-  { id: '8', name: 'Bashundhara City', phone: '01934-123456', totalPurchases: 670000, lastPurchase: '2025-01-11', balance: 0 },
+type LoyaltyTier = 'BRONZE' | 'SILVER' | 'GOLD' | 'PLATINUM';
+
+interface CustomerRecord {
+  id: string;
+  name: string;
+  phone: string;
+  totalSpent: number;
+  visitCount: number;
+  loyaltyPoints: number;
+  loyaltyTier: LoyaltyTier;
+  preferredPaymentMethod: string;
+  createdAt: string;
+  cctvSalesCount: number;
+  cctvTotalSpent: number;
+}
+
+const TIER_TABS: { label: string; value: string }[] = [
+  { label: 'All', value: '' },
+  { label: 'Bronze', value: 'BRONZE' },
+  { label: 'Silver', value: 'SILVER' },
+  { label: 'Gold', value: 'GOLD' },
+  { label: 'Platinum', value: 'PLATINUM' },
 ];
+
+const TIER_BADGE_COLORS: Record<string, string> = {
+  BRONZE: 'bg-amber-100 text-amber-700',
+  SILVER: 'bg-gray-100 text-gray-600',
+  GOLD: 'bg-yellow-100 text-yellow-700',
+  PLATINUM: 'bg-violet-100 text-violet-700',
+};
+
+const TIER_AVATAR_COLORS: Record<string, string> = {
+  BRONZE: 'bg-amber-500',
+  SILVER: 'bg-gray-500',
+  GOLD: 'bg-yellow-500',
+  PLATINUM: 'bg-violet-500',
+};
+
+// ── Helpers ──
+
+function formatBDT(n: number): string {
+  return `৳${n.toLocaleString()}`;
+}
+
+// ── Component ──
 
 export function CCTVCustomersList() {
   const { navigate, goBack } = useCCTVNavStore();
+
+  const [customers, setCustomers] = useState<CustomerRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [activeTier, setActiveTier] = useState('');
+  const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
 
-  const filtered = mockCustomers.filter(
-    (c) =>
-      !search ||
-      c.name.toLowerCase().includes(search.toLowerCase()) ||
-      c.phone.includes(search)
-  );
+  // ── Debounced search (300ms via useEffect + AbortController) ──
+  useEffect(() => {
+    const controller = new AbortController();
+    const timer = setTimeout(() => {
+      setSearch(searchInput);
+    }, 300);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [searchInput]);
 
-  const activeCount = mockCustomers.filter((c) => c.balance > 0).length;
+  // ── Fetch customers from API ──
+  useEffect(() => {
+    let cancelled = false;
+    const controller = new AbortController();
+
+    const fetchCustomers = async () => {
+      setLoading(true);
+
+      const params = new URLSearchParams();
+      if (search) params.set('search', search);
+      if (activeTier) params.set('tier', activeTier);
+      params.set('sortBy', 'cctvTotalSpent');
+      params.set('sortDir', 'desc');
+
+      try {
+        const res = await fetch(
+          `/api/businesses/${BUSINESS_ID}/cctv/customers?${params.toString()}`,
+          { signal: controller.signal },
+        );
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        if (!cancelled) setCustomers(await res.json());
+      } catch (err: unknown) {
+        if (err instanceof DOMException && err.name === 'AbortError') return;
+        if (!cancelled) setCustomers([]);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    fetchCustomers();
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [search, activeTier]);
+
+  // ── Derived stats via useMemo ──
+  const stats = useMemo(() => {
+    const totalCustomers = customers.length;
+    const loyaltyMembers = customers.filter((c) => c.loyaltyTier !== 'BRONZE').length;
+    return { totalCustomers, loyaltyMembers };
+  }, [customers]);
+
+  // ── Render ──
 
   return (
     <motion.div {...fadeUp} className="space-y-4 pb-4">
-      {/* Header */}
+      {/* ── Header ── */}
       <div className="flex items-center gap-3 pt-1">
         <button
           onClick={goBack}
@@ -51,96 +151,196 @@ export function CCTVCustomersList() {
         <h1 className="text-lg font-bold text-gray-900 flex-1">Customers</h1>
       </div>
 
-      {/* Quick stats */}
-      <div className="flex items-center gap-4 text-xs text-gray-500 px-1">
-        <span className="font-semibold text-gray-700">{mockCustomers.length} Customers</span>
-        <span>·</span>
-        <span className="text-violet-600 font-medium">{activeCount} with balance</span>
-      </div>
+      {/* ── Quick stats row ── */}
+      {!loading && customers.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0, transition: { duration: 0.3, delay: 0.1 } }}
+          className="flex items-center gap-2.5 text-xs text-gray-500 px-1 flex-wrap"
+        >
+          <span className="font-semibold text-gray-700">
+            {stats.totalCustomers} Customers
+          </span>
+          <span className="text-gray-300">·</span>
+          <span className="text-violet-600 font-medium">
+            0 with balance
+          </span>
+          <span className="text-gray-300">·</span>
+          <span className="text-amber-600 font-medium">
+            {stats.loyaltyMembers} loyalty
+          </span>
+        </motion.div>
+      )}
 
-      {/* Search */}
+      {/* ── Search input ── */}
       <div className="relative">
         <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-violet-400" />
         <input
           type="text"
           placeholder="Search by name or phone..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
           className="w-full h-11 pl-10 pr-10 rounded-2xl bg-white border border-gray-200 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-400/40 focus:border-violet-400 transition-all"
         />
-        {search && (
-          <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+        {searchInput && (
+          <button
+            onClick={() => {
+              setSearchInput('');
+              setSearch('');
+            }}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+          >
             <X className="w-4 h-4" />
           </button>
         )}
       </div>
 
-      {/* Customer list */}
-      <div className="space-y-2.5 max-h-96 overflow-y-auto">
-        {filtered.map((customer, i) => {
-          const lastPurchase = new Date(customer.lastPurchase).toLocaleDateString('en-US', {
-            month: 'short', day: 'numeric', year: 'numeric',
-          });
-
-          return (
-            <motion.button
-              key={customer.id}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0, transition: { duration: 0.3, delay: i * 0.04 } }}
-              onClick={() => navigate('customer-detail', customer.id)}
-              className="w-full bg-white rounded-2xl border border-gray-100 p-4 shadow-sm text-left active:scale-[0.98] transition-transform"
-            >
-              <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shrink-0">
-                  <span className="text-white text-sm font-bold">
-                    {customer.name.charAt(0).toUpperCase()}
-                  </span>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-gray-900 truncate">{customer.name}</p>
-                  <div className="flex items-center gap-1 mt-0.5">
-                    <Phone className="w-3 h-3 text-gray-400" />
-                    <span className="text-xs text-gray-500">{customer.phone}</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-3 mt-3 pt-3 border-t border-gray-50">
-                <div>
-                  <p className="text-[10px] text-gray-400 flex items-center gap-0.5">
-                    <ShoppingCart className="w-2.5 h-2.5" /> Purchases
-                  </p>
-                  <p className="text-xs font-semibold text-gray-900 mt-0.5">৳{(customer.totalPurchases / 1000).toFixed(0)}K</p>
-                </div>
-                <div>
-                  <p className="text-[10px] text-gray-400 flex items-center gap-0.5">
-                    <Clock className="w-2.5 h-2.5" /> Last Order
-                  </p>
-                  <p className="text-xs font-medium text-gray-700 mt-0.5">{lastPurchase}</p>
-                </div>
-                <div>
-                  <p className="text-[10px] text-gray-400 flex items-center gap-0.5">
-                    <IndianRupee className="w-2.5 h-2.5" /> Balance
-                  </p>
-                  <p className={cn(
-                    'text-xs font-semibold mt-0.5',
-                    customer.balance > 0 ? 'text-red-600' : 'text-emerald-600'
-                  )}>
-                    {customer.balance > 0 ? `৳${customer.balance.toLocaleString()}` : 'Clear'}
-                  </p>
-                </div>
-              </div>
-            </motion.button>
-          );
-        })}
+      {/* ── Tier filter tabs ── */}
+      <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4">
+        {TIER_TABS.map((tab) => (
+          <button
+            key={tab.value}
+            onClick={() => setActiveTier(tab.value)}
+            className={cn(
+              'px-3 py-1.5 rounded-full text-[11px] font-semibold whitespace-nowrap transition-all shrink-0',
+              activeTier === tab.value
+                ? 'bg-gradient-to-r from-violet-500 to-purple-600 text-white shadow-sm'
+                : 'bg-white text-gray-600 border border-gray-100 hover:bg-gray-50',
+            )}
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
 
-      {filtered.length === 0 && (
-        <div className="text-center py-10">
-          <User className="w-10 h-10 text-gray-300 mx-auto mb-2" />
-          <p className="text-sm text-gray-400">No customers found</p>
-        </div>
-      )}
+      {/* ── Customer cards ── */}
+      <div className="space-y-2.5 max-h-96 overflow-y-auto">
+        {loading ? (
+          /* Skeleton loading state */
+          Array.from({ length: 5 }).map((_, i) => (
+            <div
+              key={i}
+              className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm space-y-3"
+            >
+              <div className="flex items-start gap-3">
+                <Skeleton className="w-10 h-10 rounded-xl shrink-0" />
+                <div className="flex-1 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-4 w-14 rounded-full" />
+                  </div>
+                  <Skeleton className="h-3 w-24" />
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-3 pt-3 border-t border-gray-50">
+                <Skeleton className="h-3 w-16" />
+                <Skeleton className="h-3 w-20" />
+                <Skeleton className="h-3 w-14" />
+              </div>
+            </div>
+          ))
+        ) : customers.length === 0 ? (
+          /* Empty state */
+          <div className="text-center py-10">
+            <User className="w-10 h-10 text-gray-300 mx-auto mb-2" />
+            <p className="text-sm font-medium text-gray-500">No customers found</p>
+            <p className="text-xs text-gray-400 mt-1">
+              {activeTier || search
+                ? 'Try a different filter or search term'
+                : 'Customers will appear here after their first purchase'}
+            </p>
+          </div>
+        ) : (
+          /* Customer list */
+          <AnimatePresence mode="popLayout">
+            {customers.map((customer, i) => {
+              const avatarColor =
+                TIER_AVATAR_COLORS[customer.loyaltyTier] || 'bg-gray-400';
+              const badgeColor =
+                TIER_BADGE_COLORS[customer.loyaltyTier] || 'bg-gray-100 text-gray-600';
+
+              return (
+                <motion.button
+                  key={customer.id}
+                  layout
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{
+                    opacity: 1,
+                    y: 0,
+                    transition: { duration: 0.25, delay: i * 0.04 },
+                  }}
+                  exit={{ opacity: 0, x: -20 }}
+                  onClick={() => navigate('customer-detail', customer.id)}
+                  className="w-full bg-white rounded-2xl border border-gray-100 p-4 shadow-sm text-left active:scale-[0.98] transition-transform"
+                >
+                  {/* Top row: avatar + name/phone + badge */}
+                  <div className="flex items-start gap-3">
+                    <div
+                      className={cn(
+                        'w-10 h-10 rounded-xl flex items-center justify-center shrink-0',
+                        avatarColor,
+                      )}
+                    >
+                      <span className="text-white text-sm font-bold">
+                        {customer.name.charAt(0).toUpperCase()}
+                      </span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-semibold text-gray-900 truncate">
+                          {customer.name}
+                        </p>
+                        <Badge
+                          className={cn(
+                            'text-[10px] px-1.5 py-0 rounded-full border-0 font-semibold leading-4',
+                            badgeColor,
+                          )}
+                        >
+                          {customer.loyaltyTier}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-1 mt-0.5">
+                        <Phone className="w-3 h-3 text-gray-400" />
+                        <span className="text-xs text-gray-500">
+                          {customer.phone}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Stats row */}
+                  <div className="grid grid-cols-3 gap-3 mt-3 pt-3 border-t border-gray-50">
+                    <div>
+                      <p className="text-[10px] text-gray-400 flex items-center gap-0.5">
+                        <ShoppingCart className="w-2.5 h-2.5" /> Purchases
+                      </p>
+                      <p className="text-xs font-semibold text-gray-900 mt-0.5">
+                        {customer.cctvSalesCount}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-gray-400 flex items-center gap-0.5">
+                        <Coins className="w-2.5 h-2.5" /> Total Spent
+                      </p>
+                      <p className="text-xs font-semibold text-gray-900 mt-0.5">
+                        {formatBDT(customer.cctvTotalSpent)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-gray-400 flex items-center gap-0.5">
+                        <Shield className="w-2.5 h-2.5" /> Points
+                      </p>
+                      <p className="text-xs font-semibold text-violet-600 mt-0.5">
+                        {customer.loyaltyPoints.toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
+                </motion.button>
+              );
+            })}
+          </AnimatePresence>
+        )}
+      </div>
     </motion.div>
   );
 }
