@@ -125,3 +125,43 @@ Stage Summary:
 - Components: CCTVBranchesList, CCTVBranchDetail, CCTVTransfersList, CCTVCreateTransfer, CCTVTransferDetail
 - All 5 files in /src/modules/cctv-shop/components/
 - Shell, bottom nav, types, and barrel export to be updated separately
+
+---
+Task ID: 4
+Agent: Main Agent
+Task: 1D API Routes — Branches CRUD + Transfers CRUD + send/receive/cancel
+
+Work Log:
+- Created 8 API route files for branches and transfers
+- branches/route.ts: GET (list with IN_STOCK count) + POST (create with auto-code)
+- branches/[branchId]/route.ts: GET (with inventory breakdown + recent transfers) + PUT (update, handle default) + DELETE (soft-delete, prevent if default/has items)
+- branches/[branchId]/inventory/route.ts: GET (paginated, searchable, filterable)
+- transfers/route.ts: GET (list with fromBranch/toBranch/itemCount) + POST (create DRAFT, validate items IN_STOCK at fromBranch, auto-generate TRF-YYYY-NNN code)
+- transfers/[transferId]/route.ts: GET (full detail with items + product info)
+- transfers/[transferId]/send/route.ts: POST (DRAFT→IN_TRANSIT, change serial items to IN_TRANSIT, create history, sync stock)
+- transfers/[transferId]/receive/route.ts: POST (IN_TRANSIT→RECEIVED, move items to IN_STOCK at dest branch, create history, sync stock)
+- transfers/[transferId]/cancel/route.ts: POST (DRAFT/IN_TRANSIT→CANCELLED, return items to IN_STOCK, create history, sync stock)
+- All routes use Next.js 16 params Promise pattern, multi-tenant businessId filtering
+
+Stage Summary:
+- 8 API routes in /src/app/api/businesses/[id]/cctv/ (branches/ and transfers/ directories)
+- Complete transfer lifecycle with audit trail
+
+---
+Task ID: 10
+Agent: Main Agent
+Task: 1D Wiring — Shell, BottomNav, InventoryHub, barrel export, types
+
+Work Log:
+- Added CCTVBranchesList, CCTVBranchDetail, CCTVTransfersList, CCTVCreateTransfer, CCTVTransferDetail imports to CCTVShell.tsx
+- Added 6 new viewMeta entries (branches, branch-detail, transfers, create-transfer, transfer-detail)
+- Added 6 switch cases in renderView()
+- Updated hubGroups in CCTVBottomNav to include new branch/transfer views
+- Added "Branches" and "Transfers" menu items to CCTVInventoryHub
+- Updated barrel export (index.ts) with 5 new component exports
+- Updated types/index.ts: TransferStatus, TransferItemStatus, CCTVBranch, CCTVTransferItem, CCTVTransfer interfaces + 6 new CCTVViewType entries
+
+Stage Summary:
+- All 5 components fully wired into navigation system
+- Zero lint errors, zero compilation errors
+- Git commit 7f30db9 pushed to GitHub
