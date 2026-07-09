@@ -27,3 +27,6 @@ export { CCTVTransferDetail } from './CCTVTransferDetail';
 export { CCTVKitsList } from './CCTVKitsList';
 export { CCTVKitDetail } from './CCTVKitDetail';
 export { CCTVKitForm } from './CCTVKitForm';
+export { CCTVTechniciansList } from './CCTVTechniciansList';
+export { CCTVTechnicianDetail } from './CCTVTechnicianDetail';
+export { CCTVCommissionReport } from './CCTVCommissionReport';

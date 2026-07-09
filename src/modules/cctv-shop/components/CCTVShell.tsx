@@ -30,6 +30,9 @@ import { CCTVKitDetail } from './CCTVKitDetail';
 import { CCTVKitForm } from './CCTVKitForm';
 import { CCTVJobCardDetail } from './CCTVJobCardDetail';
 import { CCTVCreateJobCard } from './CCTVCreateJobCard';
+import { CCTVTechniciansList } from './CCTVTechniciansList';
+import { CCTVTechnicianDetail } from './CCTVTechnicianDetail';
+import { CCTVCommissionReport } from './CCTVCommissionReport';
 
 function PlaceholderView({ title, icon }: { title: string; icon?: string }) {
   const { goBack } = useCCTVNavStore();
@@ -91,6 +94,9 @@ const viewMeta: Record<string, { title: string; icon: string }> = {
   'sales-history': { title: 'Sales History', icon: '📈' },
   'mushak-report': { title: 'Mushak Report', icon: '📑' },
   'reports': { title: 'Reports', icon: '📊' },
+  'technicians': { title: 'Technicians', icon: '👨‍🔧' },
+  'technician-detail': { title: 'Technician Details', icon: '👨‍🔧' },
+  'commission-report': { title: 'Commission Report', icon: '💰' },
   'settings': { title: 'Settings', icon: '⚙️' },
   'help': { title: 'Help & Support', icon: '💬' },
   'subscription': { title: 'Subscription', icon: '👑' },
@@ -159,6 +165,13 @@ export function CCTVShell() {
         return <CCTVCustomersList />;
       case 'profile':
         return <CCTVProfileView />;
+      // Technician & Commissions (2C)
+      case 'technicians':
+        return <CCTVTechniciansList />;
+      case 'technician-detail':
+        return <CCTVTechnicianDetail />;
+      case 'commission-report':
+        return <CCTVCommissionReport />;
       default: {
         const meta = viewMeta[activeView];
         return <PlaceholderView title={meta?.title || activeView} icon={meta?.icon} />;
