@@ -617,3 +617,32 @@ Stage Summary:
 - 2 offer types: DOUBLE_POINTS (multiplier) and BONUS_POINTS (flat bonus)
 - Configurable earn/redeem rates per business
 - 22 files changed, 3662 insertions, 91 deletions
+---
+Task ID: 3D
+Agent: Main Agent
+Task: Segment 3D — Warranty Tracking and Alerts
+
+Work Log:
+- Created CCTVWarrantyClaim Prisma model (6-state: PENDING/APPROVED/REJECTED/IN_PROGRESS/COMPLETED/CANCELLED)
+- Added warrantyClaims relation on CCTVSerialItem and Business model
+- Ran db:push + Prisma client regeneration
+- Added 3D types: WarrantyStatus, WarrantyClaimStatus, CCTVWarranty, CCTVWarrantyClaim
+- Created 4 API route files via subagent:
+  - warranties/route.ts: GET list sold serial items with warrantyEnd, compute warrantyStatus (ACTIVE/EXPIRING_SOON/EXPIRED) and daysRemaining, search + status filter
+  - warranties/summary/route.ts: GET counts by warranty status + claim status breakdown
+  - warranty-claims/route.ts: GET (list with serialItem relation), POST (create claim, validate active warranty)
+  - warranty-claims/[claimId]/route.ts: GET (detail), PUT (state machine transitions with timestamps), DELETE (soft-delete)
+- Rewrote CCTVWarrantiesList.tsx: real API, summary stats cards, pending claims alert, debounced search, status filter tabs, warranty cards with color-coded days remaining
+- Created CCTVWarrantyDetail.tsx: large gradient status card (green/amber/red), product info, customer card with tap-to-call, new claim dialog, claims history with action buttons (approve/reject/start/complete), serial item timeline
+- Added warranty alert card to CCTVDashboard: shows expiring soon (amber), expired (red), pending claims (red), navigates to warranties list
+- Wired warranty-detail into CCTVShell switch cases
+- Added barrel export for CCTVWarrantyDetail
+- Lint: 0 errors, tsc: 0 new CCTV errors
+- Committed: e0a84f9
+
+Stage Summary:
+- Segment 3D fully complete: 1 Prisma model, 4 API routes, 2 UI components (1 rewrite), dashboard alert
+- Warranty tracking: serial items with warrantyEnd auto-classified as ACTIVE/EXPIRING_SOON/EXPIRED
+- Warranty claim lifecycle: create → approve/reject → start repair → complete (state machine)
+- Dashboard alerts for expiring warranties and pending claims
+- 14 files changed, 1959 insertions, 110 deletions
