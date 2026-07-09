@@ -5,6 +5,8 @@ export { CCTVInventoryHub } from './CCTVInventoryHub';
 export { CCTVAIHub } from './CCTVAIHub';
 export { CCTVMoreHub } from './CCTVMoreHub';
 export { CCTVProductsList } from './CCTVProductsList';
+export { CCTVProductForm } from './CCTVProductForm';
+export { CCTVProductDetail } from './CCTVProductDetail';
 export { CCTVSerialItemsList } from './CCTVSerialItemsList';
 export { CCTVSellView } from './CCTVSellView';
 export { CCTVJobCardsList } from './CCTVJobCardsList';

@@ -153,6 +153,11 @@ model Business {
   paymentTransactions  PaymentTransaction[]
   subscriptionAdjustments SubscriptionAdjustment[]  // P6: audit trail
 
+  // CCTV Module
+  cctvCategories CCTVCategory[]
+  cctvProducts   CCTVProduct[]
+  cctvSerialItems CCTVSerialItem[]
+
   @@index([userId])
   @@index([businessTypeId])
   @@index([subscriptionStage])  // P1: fast filtering by lifecycle stage
@@ -1672,4 +1677,124 @@ model AiProvider {
   updatedBy String?
 
   @@map("ai_providers")
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CCTV SHOP MODULE
+// ═══════════════════════════════════════════════════════════════
+
+// ── CCTV Categories ──
+model CCTVCategory {
+  id         String   @id @default(cuid())
+  businessId String
+  name       String               // "Cameras", "DVR/NVR", "Accessories", "Cables"
+  slug       String               // "cameras", "dvr-nvr"
+  icon       String   @default("Package")  // Lucide icon name
+  color      String   @default("#7c3aed")  // Brand color
+  sortOrder  Int      @default(0)
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  business  Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  products  CCTVProduct[]
+
+  @@unique([businessId, slug])
+  @@index([businessId])
+  @@map("cctv_categories")
+}
+
+// ── CCTV Products ──
+model CCTVProduct {
+  id           String   @id @default(cuid())
+  businessId   String
+  categoryId   String?
+  name         String               // "DS-2CD2143G2" (model name)
+  brand        String               // "Hikvision", "Dahua", "TP-Link"
+  model        String?              // Full model: "Hikvision DS-2CD2143G2-I 4MP"
+  sku          String?              // Internal SKU
+  description  String?              // Short description
+  hsnCode      String?              // VAT HSN code
+
+  // Pricing
+  costPrice    Float   @default(0)
+  sellPrice    Float   @default(0)
+  mrp          Float?              // Maximum Retail Price
+  vatRate      Float   @default(0)  // VAT percentage
+
+  // Stock
+  stock        Int     @default(0)  // Total stock (non-serial items)
+  unit         String   @default("piece")  // piece, box, pair, set, roll, meter
+  minStock     Int     @default(0)  // Low stock alert
+  maxStock     Int     @default(0)  // Overstock warning
+
+  // Serial tracking
+  serialTracked  Boolean  @default(false)  // Does this product track individual serials?
+  warrantyMonths Int     @default(0)       // Warranty period in months
+
+  // Media
+  imageUrl     String?
+
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  business  Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  category  CCTVCategory?   @relation(fields: [categoryId], references: [id])
+  serialItems CCTVSerialItem[]
+
+  @@index([businessId])
+  @@index([categoryId])
+  @@index([brand])
+  @@index([name])
+  @@index([serialTracked])
+  @@map("cctv_products")
+}
+
+// ── CCTV Serial Items ──
+// Each individually tracked item with its own serial number and status
+model CCTVSerialItem {
+  id             String   @id @default(cuid())
+  businessId     String
+  productId      String
+  serialNumber   String               // Unique serial number
+
+  // Status
+  status         String   @default("in-stock")
+  // "in-stock" | "sold" | "installed" | "in-repair" | "warranty-claim" | "defective" | "returned"
+
+  // Pricing (may differ from product default)
+  costPrice      Float?
+  sellPrice      Float?
+
+  // Dates
+  purchaseDate   DateTime?
+  warrantyStart  DateTime?             // When warranty begins
+  warrantyEnd    DateTime?             // When warranty expires
+
+  // Customer link (when sold/installed)
+  customerId     String?
+  customerName   String?              // Denormalized for quick display
+  customerPhone  String?
+
+  // Sale/Job reference
+  saleId         String?              // Reference to future Sale model
+  jobCardId      String?              // Reference to future JobCard model
+
+  // Notes
+  notes          String?
+
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  business Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  product  CCTVProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([businessId, serialNumber])
+  @@index([businessId])
+  @@index([productId])
+  @@index([status])
+  @@index([warrantyEnd])
+  @@map("cctv_serial_items")
 }

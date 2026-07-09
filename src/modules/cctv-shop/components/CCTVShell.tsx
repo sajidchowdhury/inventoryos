@@ -8,6 +8,8 @@ import { CCTVInventoryHub } from './CCTVInventoryHub';
 import { CCTVAIHub } from './CCTVAIHub';
 import { CCTVMoreHub } from './CCTVMoreHub';
 import { CCTVProductsList } from './CCTVProductsList';
+import { CCTVProductForm } from './CCTVProductForm';
+import { CCTVProductDetail } from './CCTVProductDetail';
 import { CCTVSerialItemsList } from './CCTVSerialItemsList';
 import { CCTVSellView } from './CCTVSellView';
 import { CCTVJobCardsList } from './CCTVJobCardsList';
@@ -92,6 +94,11 @@ export function CCTVShell() {
       // Core views
       case 'products':
         return <CCTVProductsList />;
+      case 'add-product':
+      case 'edit-product':
+        return <CCTVProductForm />;
+      case 'product-detail':
+        return <CCTVProductDetail />;
       case 'serial-items':
         return <CCTVSerialItemsList />;
       case 'job-cards':
