@@ -48,6 +48,7 @@ import { CCTVStorageCalculator } from './CCTVStorageCalculator';
 import { CCTVInstallationTasks } from './CCTVInstallationTasks';
 import { CCTVCreateTask } from './CCTVCreateTask';
 import { CCTVTaskDetail } from './CCTVTaskDetail';
+import { CCTVNbrSetup } from './CCTVNbrSetup';
 
 function PlaceholderView({ title, icon }: { title: string; icon?: string }) {
   const { goBack } = useCCTVNavStore();
@@ -121,6 +122,7 @@ const viewMeta: Record<string, { title: string; icon: string }> = {
   'installation-tasks': { title: 'Installation Tasks', icon: '📋' },
   'create-task': { title: 'New Task', icon: '➕' },
   'task-detail': { title: 'Task Details', icon: '🔧' },
+  'nbr-setup': { title: 'NBR & Tax Setup', icon: '🏛️' },
 };
 
 export function CCTVShell() {
@@ -230,6 +232,9 @@ export function CCTVShell() {
       // Warranty Tracking & Alerts (3D)
       case 'warranty-detail':
         return <CCTVWarrantyDetail />;
+      // NBR Compliance – BIN Setup (5A)
+      case 'nbr-setup':
+        return <CCTVNbrSetup />;
       default: {
         const meta = viewMeta[activeView];
         return <PlaceholderView title={meta?.title || activeView} icon={meta?.icon} />;

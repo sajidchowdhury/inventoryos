@@ -24,6 +24,7 @@ import {
   ExternalLink,
   Star,
   HardDrive,
+  Landmark,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores/auth-store';
@@ -104,6 +105,7 @@ export function CCTVDashboard() {
     { label: 'Customers', icon: Users, view: 'customers' as const, color: 'bg-orange-500' },
     { label: 'Loyalty', icon: Star, view: 'loyalty-center' as const, color: 'bg-fuchsia-500' },
     { label: 'Storage Calc', icon: HardDrive, view: 'storage-calculator' as const, color: 'bg-slate-500' },
+    { label: 'NBR Setup', icon: Landmark, view: 'nbr-setup' as const, color: 'bg-amber-600' },
     { label: 'All Reports', icon: BarChart3, view: 'reports' as const, color: 'bg-purple-500' },
   ];
 

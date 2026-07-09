@@ -194,6 +194,9 @@ model Business {
   cctvInstallationTasks   CCTVInstallationTask[]
   cctvTaskChecklists      CCTVTaskChecklist[]
 
+  // CCTV Module (Phase 5A: NBR Compliance - BIN Setup)
+  cctvNbrConfigs          CCTVNbrConfig[]
+
   @@index([userId])
   @@index([businessTypeId])
   @@index([subscriptionStage])  // P1: fast filtering by lifecycle stage
@@ -2910,4 +2913,63 @@ model CCTVTaskChecklist {
   @@index([businessId])
   @@index([taskId])
   @@map("cctv_task_checklists")
+}
+
+// ── 5A: NBR Compliance – BIN & Tax Configuration ──
+// One config per business; created on first access.
+model CCTVNbrConfig {
+  id                   String   @id @default(cuid())
+  businessId           String   @unique
+
+  // Business Identification Number (issued by NBR, Bangladesh)
+  bin                  String?
+  taxRegistrationStatus String  @default("UNREGISTERED") // UNREGISTERED / REGISTERED / EXEMPT
+  applicableVatRate    Float    @default(15.0)            // default 15% VAT
+
+  // Mushak invoice auto-numbering
+  mushakInvoicePrefix  String   @default("MUSHAK")       // e.g. "MUSHAK" → MUSHAK-0001
+  mushakInvoiceSeq     Int      @default(0)              // last used sequence number
+
+  // Business legal details (for Mushak 6.3)
+  legalName            String?  // registered business name (may differ from shop name)
+  legalAddress         String?  // registered address
+  tradeLicenseNo       String?  // trade license number
+
+  // Configuration flags
+  isVatEnabled         Boolean  @default(false)          // master switch for VAT calculation
+  autoMushakInvoice    Boolean  @default(false)          // auto-generate Mushak 6.3 on sale
+
+  isActive             Boolean  @default(true)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  business             Business              @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  hsCodeMappings       CCTVHsCodeMapping[]
+
+  @@index([businessId])
+  @@map("cctv_nbr_configs")
+}
+
+// ── 5A: HS Code Mappings per Product Category ──
+// Pre-populated with BD electronics defaults; editable per business.
+model CCTVHsCodeMapping {
+  id                   String   @id @default(cuid())
+  businessId           String
+  configId             String
+
+  category             String                        // e.g. "Cameras", "NVRs", "Cables"
+  hsCode               String                        // e.g. "8525.89", "8521.90"
+  description          String?                       // e.g. "Television cameras, digital cameras"
+  vatRate              Float    @default(15.0)       // per-category override (null = use config default)
+  isDefault            Boolean  @default(false)       // true = system-seeded default
+  isActive             Boolean  @default(true)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  config               CCTVNbrConfig        @relation(fields: [configId], references: [id], onDelete: Cascade)
+
+  @@unique([configId, category])
+  @@index([businessId])
+  @@index([configId])
+  @@map("cctv_hs_code_mappings")
 }

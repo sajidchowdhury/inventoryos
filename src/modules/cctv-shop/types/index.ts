@@ -429,7 +429,8 @@ export type CCTVViewType =
   | 'storage-calculator'
   | 'installation-tasks'
   | 'create-task'
-  | 'task-detail';
+  | 'task-detail'
+  | 'nbr-setup';
 
 // ── 3A: Payment Integration ──
 
@@ -858,3 +859,55 @@ export interface CCTVTaskChecklist {
   isActive: boolean;
   createdAt: string;
 }
+
+// ── 5A: NBR Compliance – BIN & Tax Configuration ──
+
+export type TaxRegistrationStatus = 'UNREGISTERED' | 'REGISTERED' | 'EXEMPT';
+
+export interface CCTVNbrConfig {
+  id: string;
+  businessId: string;
+  bin?: string;
+  taxRegistrationStatus: TaxRegistrationStatus;
+  applicableVatRate: number;
+  mushakInvoicePrefix: string;
+  mushakInvoiceSeq: number;
+  legalName?: string;
+  legalAddress?: string;
+  tradeLicenseNo?: string;
+  isVatEnabled: boolean;
+  autoMushakInvoice: boolean;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  hsCodeMappings?: CCTVHsCodeMapping[];
+  _count?: { hsCodeMappings: number };
+}
+
+export interface CCTVHsCodeMapping {
+  id: string;
+  businessId: string;
+  configId: string;
+  category: string;
+  hsCode: string;
+  description?: string;
+  vatRate: number;
+  isDefault: boolean;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Default HS codes for Bangladesh electronics
+export const DEFAULT_HS_CODES: Omit<CCTVHsCodeMapping, 'id' | 'businessId' | 'configId' | 'isActive' | 'createdAt' | 'updatedAt'>[] = [
+  { category: 'Cameras', hsCode: '8525.89', description: 'Television cameras, digital cameras, CCTV cameras', vatRate: 15, isDefault: true },
+  { category: 'NVRs', hsCode: '8521.90', description: 'Video recording or reproducing apparatus (NVR/DVR)', vatRate: 15, isDefault: true },
+  { category: 'DVRs', hsCode: '8521.90', description: 'Digital video recorders', vatRate: 15, isDefault: true },
+  { category: 'Cables', hsCode: '8544.42', description: 'Electrical connectors, coaxial cables, Cat5e/Cat6', vatRate: 15, isDefault: true },
+  { category: 'Hard Drives', hsCode: '8471.70', description: 'Magnetic or optical storage units (HDD/SSD)', vatRate: 15, isDefault: true },
+  { category: 'Monitors', hsCode: '8528.72', description: 'Color monitors/TVs with tuner', vatRate: 15, isDefault: true },
+  { category: 'Power Supplies', hsCode: '8504.40', description: 'Static converters / power supply units', vatRate: 15, isDefault: true },
+  { category: 'Routers & Switches', hsCode: '8517.62', description: 'Machines for reception of data (routers, switches)', vatRate: 15, isDefault: true },
+  { category: 'Accessories', hsCode: '8518.90', description: 'CCTV accessories – mounts, housings, connectors', vatRate: 15, isDefault: true },
+  { category: 'Mobile Phones', hsCode: '8517.13', description: 'Smartphones', vatRate: 15, isDefault: true },
+];

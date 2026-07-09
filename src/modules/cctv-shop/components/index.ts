@@ -47,3 +47,4 @@ export { CCTVStorageCalculator } from './CCTVStorageCalculator';
 export { CCTVInstallationTasks } from './CCTVInstallationTasks';
 export { CCTVCreateTask } from './CCTVCreateTask';
 export { CCTVTaskDetail } from './CCTVTaskDetail';
+export { CCTVNbrSetup } from './CCTVNbrSetup';
