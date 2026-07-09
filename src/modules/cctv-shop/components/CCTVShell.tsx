@@ -28,6 +28,8 @@ import { CCTVTransferDetail } from './CCTVTransferDetail';
 import { CCTVKitsList } from './CCTVKitsList';
 import { CCTVKitDetail } from './CCTVKitDetail';
 import { CCTVKitForm } from './CCTVKitForm';
+import { CCTVJobCardDetail } from './CCTVJobCardDetail';
+import { CCTVCreateJobCard } from './CCTVCreateJobCard';
 
 function PlaceholderView({ title, icon }: { title: string; icon?: string }) {
   const { goBack } = useCCTVNavStore();
@@ -141,6 +143,10 @@ export function CCTVShell() {
         return <CCTVKitForm />;
       case 'job-cards':
         return <CCTVJobCardsList />;
+      case 'job-card-detail':
+        return <CCTVJobCardDetail />;
+      case 'create-job-card':
+        return <CCTVCreateJobCard />;
       case 'warranties':
         return <CCTVWarrantiesList />;
       case 'projects':

@@ -10,6 +10,8 @@ export { CCTVProductDetail } from './CCTVProductDetail';
 export { CCTVSerialItemsList } from './CCTVSerialItemsList';
 export { CCTVSellView } from './CCTVSellView';
 export { CCTVJobCardsList } from './CCTVJobCardsList';
+export { CCTVJobCardDetail } from './CCTVJobCardDetail';
+export { CCTVCreateJobCard } from './CCTVCreateJobCard';
 export { CCTVWarrantiesList } from './CCTVWarrantiesList';
 export { CCTVProjectsList } from './CCTVProjectsList';
 export { CCTVEMIList } from './CCTVEMIList';

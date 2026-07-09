@@ -209,6 +209,69 @@ export interface KitAvailabilityResult {
   maxComplete: number;       // how many full kits can be assembled
 }
 
+// ── 2A: Job Card Management ──
+
+export type JobCardStatus =
+  | 'RECEIVED'
+  | 'DIAGNOSING'
+  | 'AWAITING_PARTS'
+  | 'IN_PROGRESS'
+  | 'TESTING'
+  | 'READY_FOR_DELIVERY'
+  | 'DELIVERED'
+  | 'OUTSOURCED'
+  | 'CANCELLED';
+
+export type JobType = 'REPAIR' | 'INSTALLATION' | 'MAINTENANCE' | 'DIAGNOSTIC';
+export type JobPriority = 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT';
+
+export interface CCTVJobCard {
+  id: string;
+  businessId: string;
+  jobCode: string;
+  status: JobCardStatus;
+  jobType: JobType;
+  customerId?: string;
+  customerName: string;
+  customerPhone: string;
+  serialItemId?: string;
+  productId?: string;
+  deviceName?: string;
+  serialNumber?: string;
+  imei?: string;
+  conditionNotes?: string;
+  photoUrls?: string;
+  reportedFault: string;
+  diagnosis?: string;
+  repairNotes?: string;
+  estimatedCost?: number;
+  finalCost?: number;
+  laborCharge?: number;
+  assignedToId?: string;
+  assignedToName?: string;
+  receivedAt: string;
+  diagnosedAt?: string;
+  startedAt?: string;
+  testedAt?: string;
+  readyAt?: string;
+  deliveredAt?: string;
+  outsourcedAt?: string;
+  collectorName?: string;
+  collectorNid?: string;
+  collectorPhone?: string;
+  otpVerified: boolean;
+  vendorName?: string;
+  vendorPhone?: string;
+  vendorCost?: number;
+  expectedReturn?: string;
+  priority: JobPriority;
+  internalNotes?: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  serialItem?: CCTVSerialItem;
+}
+
 export type CCTVViewType =
   | 'dashboard'
   | 'inventory-hub'

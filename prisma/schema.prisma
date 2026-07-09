@@ -164,6 +164,9 @@ model Business {
   cctvBranches            CCTVBranch[]
   cctvTransfers           CCTVTransfer[]
 
+  // CCTV Module (Phase 2A: Job Card Management)
+  cctvJobCards            CCTVJobCard[]
+
   @@index([userId])
   @@index([businessTypeId])
   @@index([subscriptionStage])  // P1: fast filtering by lifecycle stage
@@ -1830,6 +1833,7 @@ model CCTVSerialItem {
   branch        CCTVBranch?           @relation(fields: [branchId], references: [id])
   history       CCTVSerialItemHistory[]
   transferItems CCTVTransferItem[]
+  jobCards      CCTVJobCard[]
 
   @@unique([businessId, serialNumber])
   @@index([businessId])
@@ -2045,4 +2049,108 @@ model CCTVTransferItem {
   @@index([businessId])
   @@index([serialItemId])
   @@map("cctv_transfer_items")
+}
+
+// ── CCTV Job Card (2A: Central Repair Document) ──
+// The JobCard is the central document for every repair/service job.
+// Created from stock-in screen, customer purchase history, or manual entry.
+// Full lifecycle: RECEIVED → DIAGNOSING → AWAITING_PARTS → IN_PROGRESS → TESTING → READY_FOR_DELIVERY → DELIVERED
+// Special status: OUTSOURCED (sent to external vendor)
+model CCTVJobCard {
+  id             String   @id @default(cuid())
+  businessId     String
+  jobCode        String                 // Auto-generated: "JC-2025-001"
+
+  // ── Status Lifecycle ──
+  status         String   @default("RECEIVED")
+  // "RECEIVED"           — device dropped off by customer
+  // "DIAGNOSING"         — technician is diagnosing the fault
+  // "AWAITING_PARTS"     — parts needed, not in stock (Phase 2B)
+  // "IN_PROGRESS"        — repair work underway
+  // "TESTING"            — repair done, being tested
+  // "READY_FOR_DELIVERY" — tested, ready for customer pickup
+  // "DELIVERED"          — returned to customer
+  // "OUTSOURCED"         — sent to external vendor (Phase 2E)
+  // "CANCELLED"          — job cancelled (customer declined, etc.)
+
+  // ── Job Type ──
+  jobType        String   @default("REPAIR")
+  // "REPAIR"             — fixing a broken device
+  // "INSTALLATION"       — installing at a site
+  // "MAINTENANCE"        — routine maintenance/checkup
+  // "DIAGNOSTIC"         — diagnosis only, no repair
+
+  // ── Customer Information ──
+  customerId     String?                // Link to future Customer model
+  customerName   String                 // Denormalized: customer name
+  customerPhone  String                 // Customer contact phone
+
+  // ── Device Reference ──
+  serialItemId   String?                // Link to the device's SerialItem (if applicable)
+  productId      String?                // Quick reference to product (if no serial item)
+  deviceName     String?                // "Hikvision DS-2CD2143G2" (denormalized)
+  serialNumber   String?                // Device serial number (denormalized)
+  imei           String?                // Device IMEI (denormalized)
+
+  // ── Physical Condition at Intake ──
+  conditionNotes String?                // Pre-existing: scratches, dents, screen cracks
+  photoUrls      String?                // JSON array of photo URLs (documented condition)
+
+  // ── Fault & Repair ──
+  reportedFault  String                 // Customer's reported problem
+  diagnosis      String?                // Technician's diagnosis after inspection
+  repairNotes    String?                // What was done / what needs to be done
+  estimatedCost  Float?                 // Estimated repair cost in BDT
+  finalCost      Float?                 // Actual repair cost charged
+  laborCharge    Float?                 // Separate labor charge
+
+  // ── Assignment ──
+  assignedToId   String?                // BusinessUser ID of assigned technician
+  assignedToName String?                // Denormalized technician name
+
+  // ── Timestamps ──
+  receivedAt     DateTime @default(now())  // When device was received
+  diagnosedAt    DateTime?               // When diagnosis was completed
+  startedAt      DateTime?               // When repair work started
+  testedAt       DateTime?               // When testing was completed
+  readyAt        DateTime?               // When marked ready for delivery
+  deliveredAt    DateTime?               // When returned to customer
+  outsourcedAt   DateTime?               // When sent to external vendor
+
+  // ── Delivery (Phase 2D) ──
+  collectorName  String?                // Person who picked up
+  collectorNid   String?                // NID of collector
+  collectorPhone String?                // Phone of collector
+  otpVerified    Boolean  @default(false)
+
+  // ── Outsourcing (Phase 2E) ──
+  vendorName     String?                // External vendor name
+  vendorPhone    String?                // Vendor contact
+  vendorCost     Float?                 // Cost quoted by vendor
+  expectedReturn DateTime?              // Expected return date from vendor
+
+  // ── Priority ──
+  priority       String   @default("NORMAL")
+  // "LOW", "NORMAL", "HIGH", "URGENT"
+
+  // ── Internal ──
+  internalNotes  String?                // Notes not visible to customer
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  business    Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  serialItem  CCTVSerialItem?  @relation(fields: [serialItemId], references: [id])
+
+  @@unique([businessId, jobCode])
+  @@index([businessId])
+  @@index([status])
+  @@index([jobType])
+  @@index([customerId])
+  @@index([serialItemId])
+  @@index([assignedToId])
+  @@index([customerPhone])
+  @@index([receivedAt])
+  @@index([priority])
+  @@map("cctv_job_cards")
 }
