@@ -81,7 +81,7 @@ export function AIHub() {
   const { setActiveView } = useNavStore();
 
   return (
-    <motion.div {...fadeIn} className="space-y-4 pb-4 pharmacy-bg min-h-screen">
+    <motion.div {...fadeIn} className="space-y-4 pb-4">
       {/* ── Header ── */}
       <div className="flex items-center gap-2">
         <Button variant="ghost" size="icon" className="shrink-0" onClick={() => setActiveView("dashboard")}>

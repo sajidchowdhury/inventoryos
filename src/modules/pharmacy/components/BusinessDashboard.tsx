@@ -64,7 +64,7 @@ export function BusinessDashboard() {
 
   if (loading || !data) {
     return (
-      <motion.div {...fadeIn} className="pharmacy-bg min-h-screen -mx-4 -my-4 px-4 py-4 space-y-4">
+      <motion.div {...fadeIn} className="space-y-4">
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="icon" onClick={() => setActiveView("dashboard")}>
             <ArrowLeft className="h-5 w-5" />
@@ -92,7 +92,7 @@ export function BusinessDashboard() {
     : 0;
 
   return (
-    <motion.div {...fadeIn} className="pharmacy-bg min-h-screen -mx-4 -my-4 px-4 py-4 space-y-4 pb-6">
+    <motion.div {...fadeIn} className="space-y-4 pb-6">
       {/* Header */}
       <div className="flex items-center gap-2">
         <Button variant="ghost" size="icon" className="shrink-0 shadow-pharmacy" onClick={() => setActiveView("dashboard")}>

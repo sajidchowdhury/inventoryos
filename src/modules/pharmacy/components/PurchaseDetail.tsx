@@ -131,7 +131,7 @@ export function PurchaseDetail() {
 
   if (loading) {
     return (
-      <motion.div {...fadeIn} className="space-y-4 pb-4 pharmacy-bg min-h-screen">
+      <motion.div {...fadeIn} className="space-y-4 pb-4">
         <div className="flex items-center gap-2 stagger-in">
           <Button variant="ghost" size="icon" className="rounded-xl" onClick={() => setActiveView("purchases")}><ArrowLeft className="h-5 w-5" /></Button>
           <h1 className="text-lg font-bold flex-1">Loading...</h1>
@@ -150,7 +150,7 @@ export function PurchaseDetail() {
 
   if (!purchase) {
     return (
-      <motion.div {...fadeIn} className="space-y-4 pb-4 pharmacy-bg min-h-screen">
+      <motion.div {...fadeIn} className="space-y-4 pb-4">
         <div className="flex items-center gap-2 stagger-in">
           <Button variant="ghost" size="icon" className="rounded-xl" onClick={() => setActiveView("purchases")}><ArrowLeft className="h-5 w-5" /></Button>
           <h1 className="text-lg font-bold flex-1">Not found</h1>
@@ -163,7 +163,7 @@ export function PurchaseDetail() {
   const balanceDue = Math.max(0, purchase.totalAmount - purchase.paidAmount);
 
   return (
-    <motion.div {...fadeIn} className="space-y-4 pb-4 pharmacy-bg min-h-screen">
+    <motion.div {...fadeIn} className="space-y-4 pb-4">
       {/* Header */}
       <div className="flex items-center gap-2 stagger-in print:hidden">
         <Button variant="ghost" size="icon" className="shrink-0 rounded-xl" onClick={() => setActiveView("purchases")}>

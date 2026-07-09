@@ -32,7 +32,7 @@ function getInitials(name?: string | null) {
 }
 
 export function ProfileView() {
-  const { session, reset, businesses } = useAuthStore();
+  const { session, reset } = useAuthStore();
   const setActiveView = useNavStore((s) => s.setActiveView);
   const [passwordOpen, setPasswordOpen] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -40,14 +40,13 @@ export function ProfileView() {
   if (!session) return null;
 
   const { business, user } = session;
-  const displayName = user.fullName || user.username;
+  const displayName = user.fullName || user.username || user.name;
 
   const handleLogout = () => {
     reset();
   };
 
   const handleSave = () => {
-    // Profile is read-only at this stage — show confirmation
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
@@ -55,10 +54,10 @@ export function ProfileView() {
   return (
     <motion.div
       {...fadeIn}
-      className="pharmacy-bg min-h-screen -mx-4 -my-4 px-4 py-4 space-y-4 pb-6"
+      className="space-y-4 pb-6"
     >
-      {/* ── Header — gradient emerald card ── */}
-      <Card className="stagger-in overflow-hidden border-0 shadow-pharmacy-lg">
+      {/* ── Header ── */}
+      <Card className="overflow-hidden border-0 shadow-pharmacy-lg">
         <div className="relative bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 p-5">
           <div className="absolute -top-8 -right-8 h-28 w-28 rounded-full bg-white/10" />
           <div className="absolute -bottom-10 -left-6 h-24 w-24 rounded-full bg-white/5" />
@@ -68,7 +67,7 @@ export function ProfileView() {
             </div>
             <div className="flex-1 min-w-0 text-white">
               <h2 className="text-lg font-bold leading-tight truncate">{displayName}</h2>
-              <p className="text-[11px] text-emerald-50/90 capitalize mt-0.5">{user.role} access</p>
+              <p className="text-[11px] text-emerald-50/90 capitalize mt-0.5">{user.role || "Owner"} access</p>
               {business.name && (
                 <p className="text-[10px] text-emerald-100/80 truncate mt-0.5 flex items-center gap-1">
                   <Building2 className="h-2.5 w-2.5" /> {business.name}
@@ -80,7 +79,7 @@ export function ProfileView() {
       </Card>
 
       {/* ── Business Info ── */}
-      <Card className="card-hover shadow-pharmacy stagger-in border-0 overflow-hidden">
+      <Card className="card-hover shadow-pharmacy border-0 overflow-hidden">
         <CardContent className="p-4 space-y-3">
           <div className="flex items-center gap-2">
             <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center shrink-0">
@@ -107,7 +106,7 @@ export function ProfileView() {
               <Phone className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
               <div className="flex-1 min-w-0">
                 <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Phone</p>
-                <p className="font-medium">{useAuthStore.getState().phone || "Not set"}</p>
+                <p className="font-medium">{business.phone || "Not set"}</p>
               </div>
             </div>
             <div className="flex items-start gap-2 text-xs">
@@ -122,7 +121,7 @@ export function ProfileView() {
       </Card>
 
       {/* ── Account Info ── */}
-      <Card className="card-hover shadow-pharmacy stagger-in border-0 overflow-hidden">
+      <Card className="card-hover shadow-pharmacy border-0 overflow-hidden">
         <CardContent className="p-4 space-y-3">
           <div className="flex items-center gap-2">
             <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center shrink-0">
@@ -134,12 +133,12 @@ export function ProfileView() {
             <div className="flex items-center gap-2 text-xs">
               <User className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
               <p className="text-[10px] text-muted-foreground uppercase tracking-wide w-20">Username</p>
-              <p className="font-semibold flex-1 truncate">@{user.username}</p>
+              <p className="font-semibold flex-1 truncate">@{user.username || user.name}</p>
             </div>
             <div className="flex items-center gap-2 text-xs">
               <Shield className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
               <p className="text-[10px] text-muted-foreground uppercase tracking-wide w-20">Role</p>
-              <Badge className="text-[10px] bg-emerald-100 text-emerald-700 hover:bg-emerald-100 capitalize">{user.role}</Badge>
+              <Badge className="text-[10px] bg-emerald-100 text-emerald-700 hover:bg-emerald-100 capitalize">{user.role || "Owner"}</Badge>
             </div>
             <div className="flex items-center gap-2 text-xs">
               <Clock className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
@@ -151,7 +150,7 @@ export function ProfileView() {
       </Card>
 
       {/* ── Subscription ── */}
-      <Card className="card-hover shadow-pharmacy stagger-in border-0 overflow-hidden">
+      <Card className="card-hover shadow-pharmacy border-0 overflow-hidden">
         <CardContent className="p-4 space-y-3">
           <div className="flex items-center gap-2">
             <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shrink-0">
@@ -185,8 +184,8 @@ export function ProfileView() {
         </CardContent>
       </Card>
 
-      {/* ── Quick Settings list (preserves original nav) ── */}
-      <Card className="shadow-pharmacy stagger-in border-0 overflow-hidden">
+      {/* ── Quick Settings ── */}
+      <Card className="shadow-pharmacy border-0 overflow-hidden">
         <CardContent className="p-0 divide-y">
           <button
             className="w-full p-3.5 flex items-center gap-3 hover:bg-muted/50 transition-colors text-left"
@@ -225,7 +224,7 @@ export function ProfileView() {
       </Card>
 
       {/* ── Action buttons ── */}
-      <div className="grid grid-cols-2 gap-2 stagger-in">
+      <div className="grid grid-cols-2 gap-2">
         <Button
           variant="outline"
           className="gap-2 h-11 border-emerald-500 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800"
@@ -242,23 +241,6 @@ export function ProfileView() {
         </Button>
       </div>
 
-      {/* ── Switch Business ── */}
-      {businesses.length > 1 && (
-        <Button
-          variant="outline"
-          className="w-full gap-2 h-11"
-          onClick={() => {
-            useAuthStore.getState().setSelectedBusiness(null);
-            useAuthStore.getState().setUsername("");
-            useAuthStore.getState().setPassword("");
-            useAuthStore.getState().setSession(null);
-            useAuthStore.getState().setStep("discovery");
-          }}
-        >
-          <Building2 className="h-4 w-4" /> Switch Business ({businesses.length} registered)
-        </Button>
-      )}
-
       {/* ── Logout ── */}
       <Button
         className="w-full gap-2 h-11 bg-gradient-to-r from-rose-500 to-red-600 hover:from-rose-600 hover:to-red-700 text-white border-0 shadow-md shadow-rose-500/20"
@@ -268,7 +250,7 @@ export function ProfileView() {
       </Button>
 
       <p className="text-center text-[10px] text-muted-foreground pt-1">
-        InventoryOS v1.0 — Phase 1a
+        InventoryOS · Pharmacy Management
       </p>
 
       {/* ── Change Password Dialog ── */}

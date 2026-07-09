@@ -264,7 +264,7 @@ export function CategoryManager() {
   const totalProducts = allCategories.reduce((sum, c) => sum + (c._count?.products ?? 0), 0);
 
   return (
-    <motion.div {...fadeIn} className="space-y-4 pb-4 pharmacy-bg min-h-screen rounded-xl -mx-1 px-1 py-1">
+    <motion.div {...fadeIn} className="space-y-4 pb-4 rounded-xl -mx-1 px-1 py-1">
       {/* Header */}
       <div className="flex items-center gap-2 stagger-in">
         <Button variant="ghost" size="icon" className="shrink-0 shadow-pharmacy rounded-full" onClick={() => setActiveView("dashboard")}>

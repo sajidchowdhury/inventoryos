@@ -384,7 +384,7 @@ export function PurchaseForm() {
 
   if (success) {
     return (
-      <motion.div {...fadeIn} className="space-y-4 pb-4 pharmacy-bg min-h-screen">
+      <motion.div {...fadeIn} className="space-y-4 pb-4">
         <div className="flex items-center gap-2 stagger-in">
           <Button variant="ghost" size="icon" className="shrink-0 rounded-xl" onClick={() => setActiveView("purchases")}>
             <ArrowLeft className="h-5 w-5" />
@@ -409,7 +409,7 @@ export function PurchaseForm() {
   }
 
   return (
-    <motion.div {...fadeIn} className="space-y-4 pb-4 pharmacy-bg min-h-screen">
+    <motion.div {...fadeIn} className="space-y-4 pb-4">
       {/* Header */}
       <div className="flex items-center gap-2 stagger-in">
         <Button variant="ghost" size="icon" className="shrink-0 rounded-xl" onClick={() => setActiveView("purchases")}>

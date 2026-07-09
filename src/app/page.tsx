@@ -13,6 +13,12 @@ import {
   Building2,
   UserCheck,
   Package,
+  Shield,
+  Smartphone,
+  BarChart3,
+  Sparkles,
+  Users,
+  Zap,
 } from 'lucide-react';
 import { useAuthStore, type AuthSession } from '@/stores/auth-store';
 import { moduleRegistry, getActiveModules } from '@/lib/modules';
@@ -45,8 +51,8 @@ const scaleIn = {
 function AnimatedStat({ label, value, delay }: { label: string; value: string; delay: number }) {
   const numericPart = value.replace(/[^0-9]/g, '');
   const suffix = value.replace(/[0-9,]/g, '');
-  const targetNum = parseInt(numericPart.replace(/,/g, ''), 10) || 0;
-  const spring = useSpring(0, { duration: 700, bounce: 0 });
+  const targetNum = parseInt(numericPart, 10) || 0;
+  const spring = useSpring(0, { stiffness: 100, damping: 30 });
   const [display, setDisplay] = useState('0');
   const [visible, setVisible] = useState(false);
 
@@ -107,7 +113,6 @@ function SparkleParticles({ color }: { color: string }) {
   );
 }
 
-
 /* ─── Back Button ─── */
 function BackButton({ onClick }: { onClick: () => void }) {
   return (
@@ -122,7 +127,7 @@ function BackButton({ onClick }: { onClick: () => void }) {
 }
 
 /* ═══════════════════════════════════════════
-   STEP: LANDING (Premium Animated)
+   LANDING PAGE — Creative, Clean, Responsive
    ═══════════════════════════════════════════ */
 function LandingStep({ onFreshSelect, onOwnerFlow, onStaffFlow }: {
   onFreshSelect: (slug: string) => void;
@@ -138,80 +143,146 @@ function LandingStep({ onFreshSelect, onOwnerFlow, onStaffFlow }: {
 
   return (
     <div className="min-h-screen flex flex-col bg-white relative overflow-hidden">
-      {/* ── Hero Background Orbs ── */}
+      {/* ── Background Pattern ── */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        {/* Subtle grid */}
+        <div
+          className="absolute inset-0 opacity-[0.03]"
+          style={{
+            backgroundImage: 'radial-gradient(circle, #6b7280 1px, transparent 1px)',
+            backgroundSize: '24px 24px',
+          }}
+        />
+        {/* Gradient orbs */}
         <motion.div
           initial={{ opacity: 0, scale: 0.5 }}
-          animate={{ opacity: 0.4, scale: 1 }}
-          transition={{ duration: 1.5, ease: 'easeOut' }}
-          className="hero-orb w-72 h-72 bg-violet-400 -top-20 -right-20"
+          animate={{ opacity: 0.15, scale: 1 }}
+          transition={{ duration: 2, ease: 'easeOut' }}
+          className="hero-orb w-80 h-80 bg-violet-400 -top-32 -right-32"
           style={{ position: 'absolute' }}
         />
         <motion.div
           initial={{ opacity: 0, scale: 0.5 }}
-          animate={{ opacity: 0.3, scale: 1 }}
-          transition={{ duration: 1.5, delay: 0.3, ease: 'easeOut' }}
-          className="hero-orb w-56 h-56 bg-fuchsia-400 top-1/3 -left-16"
+          animate={{ opacity: 0.1, scale: 1 }}
+          transition={{ duration: 2, delay: 0.4, ease: 'easeOut' }}
+          className="hero-orb w-64 h-64 bg-emerald-400 top-1/2 -left-24"
           style={{ position: 'absolute' }}
         />
         <motion.div
           initial={{ opacity: 0, scale: 0.5 }}
-          animate={{ opacity: 0.2, scale: 1 }}
-          transition={{ duration: 1.5, delay: 0.6, ease: 'easeOut' }}
-          className="hero-orb w-48 h-48 bg-amber-400 bottom-32 right-4"
+          animate={{ opacity: 0.08, scale: 1 }}
+          transition={{ duration: 2, delay: 0.8, ease: 'easeOut' }}
+          className="hero-orb w-48 h-48 bg-amber-400 bottom-20 right-10"
           style={{ position: 'absolute' }}
         />
+      </div>
+
+      {/* ── Nav Bar ── */}
+      <div className="relative z-10 px-6 pt-6 pb-2">
+        <motion.div
+          initial={{ opacity: 0, y: -20, scale: 0.95 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.5, type: 'spring', stiffness: 200, damping: 20 }}
+          className="flex items-center justify-between"
+        >
+          {/* Logo */}
+          <div className="flex items-center gap-2.5">
+            <motion.div
+              animate={{ y: [0, -4, 0] }}
+              transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+              className="relative"
+            >
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 via-purple-500 to-fuchsia-500 flex items-center justify-center shadow-lg shadow-violet-500/20">
+                <Package className="w-5 h-5 text-white" />
+              </div>
+            </motion.div>
+            <div>
+              <h1 className="text-lg font-extrabold text-gray-900 tracking-tight leading-none">
+                Inventory<span className="bg-gradient-to-r from-violet-600 to-fuchsia-600 bg-clip-text text-transparent">OS</span>
+              </h1>
+            </div>
+          </div>
+
+          {/* Trust badge */}
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-100">
+            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="text-[10px] font-semibold text-emerald-700">Live</span>
+          </div>
+        </motion.div>
       </div>
 
       {/* ── Hero Section ── */}
-      <div className="relative z-10 px-6 pt-14 pb-6">
+      <div className="relative z-10 px-6 pt-8 pb-6 md:pt-12 md:pb-8 max-w-2xl mx-auto w-full">
         <motion.div
-          initial={{ opacity: 0, y: -30, scale: 0.9 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          transition={{ duration: 0.6, type: 'spring', stiffness: 200, damping: 20 }}
-          className="flex items-center gap-3 mb-5"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+          className="text-center"
         >
-          {/* Floating Logo */}
           <motion.div
-            animate={{ y: [0, -5, 0] }}
-            transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
-            className="relative"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.15, duration: 0.5 }}
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-violet-50 border border-violet-100 mb-5"
           >
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-violet-500 via-purple-500 to-fuchsia-500 flex items-center justify-center shadow-xl shadow-violet-500/30 gradient-shift">
-              <Package className="w-7 h-7 text-white" />
-            </div>
-            {/* Pulse ring */}
-            <motion.div
-              animate={{ scale: [1, 1.3, 1], opacity: [0.5, 0, 0.5] }}
-              transition={{ duration: 2.5, repeat: Infinity, ease: 'easeOut' }}
-              className="absolute inset-0 rounded-2xl border-2 border-violet-400"
-            />
+            <Sparkles className="w-3.5 h-3.5 text-violet-500" />
+            <span className="text-xs font-semibold text-violet-700">Smart Inventory Platform</span>
           </motion.div>
-          <div>
-            <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">
-              Inventory<span className="bg-gradient-to-r from-violet-600 to-fuchsia-600 bg-clip-text text-transparent">OS</span>
-            </h1>
-            <p className="text-[11px] text-gray-400 -mt-0.5 font-medium">Inventory for every business</p>
-          </div>
+
+          <h2 className="text-3xl md:text-5xl font-extrabold text-gray-900 tracking-tight leading-tight">
+            Inventory for{' '}
+            <span className="bg-gradient-to-r from-violet-600 via-purple-600 to-fuchsia-600 bg-clip-text text-transparent">
+              every business
+            </span>
+          </h2>
+
+          <p className="text-sm md:text-base text-gray-500 mt-3 max-w-md mx-auto leading-relaxed">
+            Powerful, AI-powered inventory management tailored to your industry. Set up in minutes, scale forever.
+          </p>
         </motion.div>
 
-        <motion.p
-          initial={{ opacity: 0, y: 10 }}
+        {/* ── Feature Pills ── */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2, duration: 0.5 }}
-          className="text-sm text-gray-500 leading-relaxed"
+          transition={{ delay: 0.3, duration: 0.5 }}
+          className="flex flex-wrap justify-center gap-2 mt-6"
         >
-          Choose your business type and get started in minutes
-        </motion.p>
+          {[
+            { icon: <Smartphone className="w-3.5 h-3.5" />, text: 'Mobile First' },
+            { icon: <Shield className="w-3.5 h-3.5" />, text: 'Secure' },
+            { icon: <Zap className="w-3.5 h-3.5" />, text: 'AI Powered' },
+            { icon: <Users className="w-3.5 h-3.5" />, text: 'Team Ready' },
+          ].map((pill, i) => (
+            <motion.div
+              key={pill.text}
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.35 + i * 0.06 }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-50 border border-gray-100 text-gray-600"
+            >
+              {pill.icon}
+              <span className="text-[11px] font-medium">{pill.text}</span>
+            </motion.div>
+          ))}
+        </motion.div>
       </div>
 
       {/* ── Business Cards ── */}
-      <div className="relative z-10 flex-1 px-4 pb-4">
+      <div className="relative z-10 flex-1 px-4 md:px-6 pb-4 max-w-2xl mx-auto w-full">
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.4 }}
+          className="text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-3 px-2"
+        >
+          Choose your business type
+        </motion.p>
         <motion.div
           variants={stagger}
           initial="initial"
           animate="animate"
-          className="space-y-3"
+          className="space-y-3 md:grid md:grid-cols-2 md:gap-4 md:space-y-0"
         >
           {activeModules.map((mod, idx) => {
             const isExpanded = expandedSlug === mod.slug;
@@ -245,46 +316,31 @@ function LandingStep({ onFreshSelect, onOwnerFlow, onStaffFlow }: {
                   className={`w-full rounded-2xl text-left transition-all duration-300 relative overflow-hidden ${
                     isExpanded
                       ? 'bg-white shadow-xl border-0 z-10'
-                      : 'bg-white border-2 border-gray-100 shadow-sm hover:shadow-md'
+                      : 'bg-white border border-gray-200/80 shadow-sm hover:shadow-md hover:border-gray-300/80'
                   }`}
-                  style={isExpanded ? { boxShadow: `0 8px 40px -8px rgba(139, 92, 246, 0.3)` } : undefined}
+                  style={isExpanded ? { boxShadow: `0 8px 40px -8px rgba(139, 92, 246, 0.25)` } : undefined}
                 >
-                  {/* Subtle gradient wash when expanded */}
-                  {isExpanded && (
-                    <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 0.03 }}
-                      className={`absolute inset-0 bg-gradient-to-br ${mod.gradient} pointer-events-none`}
-                    />
-                  )}
-
-                  <div className="p-4 relative z-10">
+                  <div className="p-4 md:p-5 relative z-10">
                     <div className="flex items-center gap-3">
-                      {/* Animated Icon */}
                       <motion.div
                         layout
                         animate={isExpanded ? {
-                          scale: [1, 1.2, 1],
-                          rotate: [0, -8, 8, 0],
+                          scale: [1, 1.15, 1],
+                          rotate: [0, -6, 6, 0],
                         } : {}}
-                        transition={{
-                          duration: 0.6,
-                          ease: 'easeInOut',
-                        }}
-                        className={`w-13 h-13 rounded-2xl bg-gradient-to-br ${mod.gradient} flex items-center justify-center shadow-md flex-shrink-0 glow-pulse`}
+                        transition={{ duration: 0.5, ease: 'easeInOut' }}
+                        className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${mod.gradient} flex items-center justify-center shadow-md flex-shrink-0 glow-pulse`}
                         style={{
-                          width: 52,
-                          height: 52,
                           '--glow-color': mod.color === 'emerald'
-                            ? 'rgba(16, 185, 129, 0.4)'
-                            : 'rgba(139, 92, 246, 0.4)',
+                            ? 'rgba(16, 185, 129, 0.35)'
+                            : 'rgba(139, 92, 246, 0.35)',
                         } as React.CSSProperties}
                       >
                         <span className="text-2xl">{mod.icon}</span>
                       </motion.div>
 
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-bold text-gray-900">{mod.name}</h3>
+                        <h3 className="font-bold text-gray-900 text-base">{mod.name}</h3>
                         <p className="text-xs text-gray-500 mt-0.5">{mod.tagline}</p>
                       </div>
 
@@ -308,7 +364,6 @@ function LandingStep({ onFreshSelect, onOwnerFlow, onStaffFlow }: {
                       transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
                       className="overflow-hidden"
                     >
-                      {/* Sparkle particles */}
                       <SparkleParticles color={mod.color === 'emerald' ? '#10b981' : '#8b5cf6'} />
 
                       <motion.div
@@ -317,13 +372,12 @@ function LandingStep({ onFreshSelect, onOwnerFlow, onStaffFlow }: {
                         transition={{ delay: 0.1, duration: 0.4 }}
                         className={`${mod.bgColor} rounded-2xl p-5 border ${mod.borderColor} mx-1 mb-1 relative overflow-hidden`}
                       >
-                        {/* Background pattern */}
                         <div className="absolute top-0 right-0 w-32 h-32 opacity-5">
                           <div className={`w-full h-full rounded-full bg-gradient-to-br ${mod.gradient}`} />
                         </div>
 
                         <div className="relative z-10">
-                          {/* Stats Row with Count-up */}
+                          {/* Stats Row */}
                           {mod.stats.length > 0 && (
                             <motion.div
                               initial={{ opacity: 0, scale: 0.95 }}
@@ -342,7 +396,7 @@ function LandingStep({ onFreshSelect, onOwnerFlow, onStaffFlow }: {
                             </motion.div>
                           )}
 
-                          {/* Features with stagger fly-in */}
+                          {/* Features */}
                           {mod.features.length > 0 && (
                             <div className="space-y-2.5 mb-5">
                               {mod.features.slice(0, 5).map((f, i) => (
@@ -390,14 +444,13 @@ function LandingStep({ onFreshSelect, onOwnerFlow, onStaffFlow }: {
                             </div>
                           )}
 
-                          {/* CTA Button with Shimmer */}
+                          {/* CTA Button */}
                           <motion.div
                             initial={{ opacity: 0, y: 12 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: 0.6 }}
                           >
                             <motion.div whileTap={{ scale: 0.97 }} className="relative overflow-hidden rounded-xl">
-                              {/* Shimmer overlay */}
                               <div
                                 className="absolute inset-0 opacity-0 hover:opacity-100 transition-opacity pointer-events-none"
                                 style={{
@@ -411,8 +464,7 @@ function LandingStep({ onFreshSelect, onOwnerFlow, onStaffFlow }: {
                                   e.stopPropagation();
                                   onFreshSelect(mod.slug);
                                 }}
-                                className={`w-full h-13 rounded-xl bg-gradient-to-r ${mod.gradient} text-white font-semibold shadow-lg relative overflow-hidden`}
-                                style={{ height: 52 }}
+                                className={`w-full h-12 rounded-xl bg-gradient-to-r ${mod.gradient} text-white font-semibold shadow-lg relative overflow-hidden`}
                               >
                                 <motion.span
                                   initial={{ x: -20, opacity: 0 }}
@@ -442,35 +494,40 @@ function LandingStep({ onFreshSelect, onOwnerFlow, onStaffFlow }: {
         </motion.div>
       </div>
 
-      {/* ── Bottom: Existing User Options ── */}
+      {/* ── Footer: Existing User Options ── */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.5, duration: 0.5 }}
-        className="relative z-10 px-4 pb-8 pt-3 border-t border-gray-100 bg-white/80 backdrop-blur-md"
+        className="relative z-10 px-4 md:px-6 pb-6 pt-4 border-t border-gray-100 bg-white/80 backdrop-blur-md"
       >
-        <p className="text-[11px] text-gray-400 text-center mb-3 font-medium">Already have an account?</p>
-        <div className="flex gap-3">
-          <motion.div whileTap={{ scale: 0.97 }} className="flex-1">
-            <Button
-              variant="outline"
-              onClick={onOwnerFlow}
-              className="w-full h-11 rounded-xl border-gray-200 text-gray-700 font-medium text-sm hover:bg-gray-50"
-            >
-              <Building2 className="w-4 h-4 mr-1.5" />
-              I own a business
-            </Button>
-          </motion.div>
-          <motion.div whileTap={{ scale: 0.97 }} className="flex-1">
-            <Button
-              variant="outline"
-              onClick={onStaffFlow}
-              className="w-full h-11 rounded-xl border-gray-200 text-gray-700 font-medium text-sm hover:bg-gray-50"
-            >
-              <UserCheck className="w-4 h-4 mr-1.5" />
-              I am staff
-            </Button>
-          </motion.div>
+        <div className="max-w-2xl mx-auto">
+          <p className="text-[11px] text-gray-400 text-center mb-3 font-medium">Already have an account?</p>
+          <div className="flex gap-3 max-w-sm mx-auto">
+            <motion.div whileTap={{ scale: 0.97 }} className="flex-1">
+              <Button
+                variant="outline"
+                onClick={onOwnerFlow}
+                className="w-full h-11 rounded-xl border-gray-200 text-gray-700 font-medium text-sm hover:bg-gray-50"
+              >
+                <Building2 className="w-4 h-4 mr-1.5" />
+                I own a business
+              </Button>
+            </motion.div>
+            <motion.div whileTap={{ scale: 0.97 }} className="flex-1">
+              <Button
+                variant="outline"
+                onClick={onStaffFlow}
+                className="w-full h-11 rounded-xl border-gray-200 text-gray-700 font-medium text-sm hover:bg-gray-50"
+              >
+                <UserCheck className="w-4 h-4 mr-1.5" />
+                I am staff
+              </Button>
+            </motion.div>
+          </div>
+          <p className="text-center text-[10px] text-gray-300 mt-4">
+            InventoryOS &copy; {new Date().getFullYear()}
+          </p>
         </div>
       </motion.div>
     </div>
@@ -478,7 +535,7 @@ function LandingStep({ onFreshSelect, onOwnerFlow, onStaffFlow }: {
 }
 
 /* ═══════════════════════════════════════════
-   STEP: PHONE NUMBER (Fresh User)
+   STEP: PHONE NUMBER (Fresh User) — 10 digits after +880
    ═══════════════════════════════════════════ */
 function PhoneStep({ selectedSlug, onBack, onVerified }: {
   selectedSlug: string;
@@ -492,7 +549,7 @@ function PhoneStep({ selectedSlug, onBack, onVerified }: {
   const mod = moduleRegistry.find((m) => m.slug === selectedSlug);
 
   const handleSendOTP = async () => {
-    if (phone.length < 11) return;
+    if (phone.length < 10) return;
     setLoading(true);
     // TODO: Call real OTP API
     await new Promise((r) => setTimeout(r, 1000));
@@ -530,7 +587,7 @@ function PhoneStep({ selectedSlug, onBack, onVerified }: {
 
   return (
     <div className="min-h-screen flex flex-col bg-white px-6">
-      <motion.div {...slideInRight} className="pt-14 pb-6">
+      <motion.div {...slideInRight} className="pt-6 pb-6">
         <BackButton onClick={onBack} />
       </motion.div>
 
@@ -538,7 +595,7 @@ function PhoneStep({ selectedSlug, onBack, onVerified }: {
         variants={stagger}
         initial="initial"
         animate="animate"
-        className="flex-1"
+        className="flex-1 max-w-sm mx-auto w-full"
       >
         {/* Module badge */}
         <motion.div variants={fadeUp} className="flex items-center gap-2 mb-4">
@@ -557,7 +614,7 @@ function PhoneStep({ selectedSlug, onBack, onVerified }: {
         </motion.h1>
         <motion.p variants={fadeUp} className="text-sm text-gray-500 mt-1">
           {otpSent
-            ? `We sent a code to ${phone}`
+            ? `We sent a code to +880 ${phone}`
             : "We'll send a verification code to confirm your number"}
         </motion.p>
 
@@ -568,18 +625,24 @@ function PhoneStep({ selectedSlug, onBack, onVerified }: {
               <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-gray-500 font-medium">+880</span>
               <Input
                 type="tel"
-                placeholder="1XXX-XXXXXX"
+                placeholder="1XXX XXXXXX"
                 value={phone}
-                onChange={(e) => setPhone(e.target.value.replace(/[^0-9]/g, ''))}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/[^0-9]/g, '').slice(0, 10);
+                  setPhone(val);
+                }}
                 className="h-14 rounded-xl bg-gray-50 border-gray-200 pl-14 text-lg font-semibold focus-visible:ring-violet-500/30"
-                maxLength={11}
+                maxLength={10}
                 autoFocus
               />
             </div>
+            <p className="text-[11px] text-gray-400 mt-1.5 pl-1">
+              {phone.length}/10 digits
+            </p>
             <motion.div variants={fadeUp} className="mt-6">
               <Button
                 onClick={handleSendOTP}
-                disabled={loading || phone.length < 11}
+                disabled={loading || phone.length < 10}
                 className={`w-full h-12 rounded-xl bg-gradient-to-r ${mod?.gradient || 'from-violet-500 to-purple-600'} text-white font-semibold shadow-lg disabled:opacity-50`}
               >
                 {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : (
@@ -634,30 +697,35 @@ function PhoneStep({ selectedSlug, onBack, onVerified }: {
 }
 
 /* ═══════════════════════════════════════════
-   STEP: SETUP BUSINESS (Fresh User — no re-selection)
+   STEP: SETUP BUSINESS (Fresh User)
+   ── Includes username + password for first time ──
    ═══════════════════════════════════════════ */
 function SetupBusinessStep({ selectedSlug, phone, onBack, onComplete }: {
   selectedSlug: string;
   phone: string;
   onBack: () => void;
-  onComplete: (businessName: string) => void;
+  onComplete: (data: { businessName: string; username: string; password: string }) => void;
 }) {
   const [businessName, setBusinessName] = useState('');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
   const mod = moduleRegistry.find((m) => m.slug === selectedSlug);
 
   const handleCreate = async () => {
-    if (!businessName.trim()) return;
+    if (!businessName.trim() || !username.trim() || !password.trim()) return;
+    if (password.length < 4) return;
     setLoading(true);
     // TODO: Call real API to create business
     await new Promise((r) => setTimeout(r, 600));
     setLoading(false);
-    onComplete(businessName.trim());
+    onComplete({ businessName: businessName.trim(), username: username.trim(), password });
   };
 
   return (
     <div className="min-h-screen flex flex-col bg-white px-6">
-      <motion.div {...slideInRight} className="pt-14 pb-4">
+      <motion.div {...slideInRight} className="pt-6 pb-4">
         <BackButton onClick={onBack} />
       </motion.div>
 
@@ -665,9 +733,9 @@ function SetupBusinessStep({ selectedSlug, phone, onBack, onComplete }: {
         variants={stagger}
         initial="initial"
         animate="animate"
-        className="flex-1"
+        className="flex-1 max-w-sm mx-auto w-full"
       >
-        {/* Module icon — spring entrance with glow */}
+        {/* Module icon */}
         <motion.div
           initial={{ scale: 0, rotate: -20 }}
           animate={{ scale: 1, rotate: 0 }}
@@ -677,15 +745,14 @@ function SetupBusinessStep({ selectedSlug, phone, onBack, onComplete }: {
           <motion.div
             animate={{ scale: [1, 1.05, 1] }}
             transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
-            className={`w-20 h-20 rounded-3xl bg-gradient-to-br ${mod?.gradient} flex items-center justify-center shadow-xl`}
+            className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${mod?.gradient} flex items-center justify-center shadow-xl`}
           >
-            <span className="text-4xl">{mod?.icon}</span>
+            <span className="text-3xl">{mod?.icon}</span>
           </motion.div>
-          {/* Glow ring */}
           <motion.div
             animate={{ scale: [1, 1.15, 1], opacity: [0.4, 0, 0.4] }}
             transition={{ duration: 2.5, repeat: Infinity }}
-            className={`absolute inset-0 rounded-3xl border-2 border-violet-400`}
+            className="absolute inset-0 rounded-2xl border-2 border-violet-400"
           />
         </motion.div>
 
@@ -693,26 +760,64 @@ function SetupBusinessStep({ selectedSlug, phone, onBack, onComplete }: {
           Set up your {mod?.name}
         </motion.h1>
         <motion.p variants={fadeUp} className="text-sm text-gray-500 mt-1">
-          Give your shop a name to get started
+          Name your shop and create your account
         </motion.p>
 
-        <motion.div variants={fadeUp} className="mt-8">
-          <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Shop Name</label>
-          <Input
-            placeholder={`e.g. Dhaka ${mod?.name} Center`}
-            value={businessName}
-            onChange={(e) => setBusinessName(e.target.value)}
-            className="h-14 rounded-xl bg-gray-50 border-gray-200 text-lg font-semibold focus-visible:ring-violet-500/30"
-            autoFocus
-          />
-        </motion.div>
+        <div className="mt-8 space-y-4">
+          {/* Shop Name */}
+          <motion.div variants={fadeUp}>
+            <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Shop Name</label>
+            <Input
+              placeholder={`e.g. Dhaka ${mod?.name} Center`}
+              value={businessName}
+              onChange={(e) => setBusinessName(e.target.value)}
+              className="h-12 rounded-xl bg-gray-50 border-gray-200 focus-visible:ring-violet-500/30"
+              autoFocus
+            />
+          </motion.div>
 
-        {/* Feature preview with stagger fly-in */}
+          {/* Username */}
+          <motion.div variants={fadeUp}>
+            <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Username</label>
+            <Input
+              placeholder="Choose a username"
+              value={username}
+              onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
+              className="h-12 rounded-xl bg-gray-50 border-gray-200 focus-visible:ring-violet-500/30"
+            />
+          </motion.div>
+
+          {/* Password */}
+          <motion.div variants={fadeUp}>
+            <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Password</label>
+            <div className="relative">
+              <Input
+                type={showPass ? 'text' : 'password'}
+                placeholder="Create a password (min 4 chars)"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="h-12 rounded-xl bg-gray-50 border-gray-200 pr-10 focus-visible:ring-violet-500/30"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPass(!showPass)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
+              >
+                {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+            {password.length > 0 && password.length < 4 && (
+              <p className="text-[11px] text-rose-500 mt-1 pl-1">Password must be at least 4 characters</p>
+            )}
+          </motion.div>
+        </div>
+
+        {/* Feature preview */}
         {mod?.features.length ? (
           <motion.div variants={fadeUp} className="mt-6">
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">You&apos;ll get</p>
             <div className="space-y-2">
-              {mod.features.slice(0, 5).map((f, i) => (
+              {mod.features.slice(0, 4).map((f, i) => (
                 <motion.div
                   key={f.name}
                   initial={{ opacity: 0, x: -15 }}
@@ -720,12 +825,11 @@ function SetupBusinessStep({ selectedSlug, phone, onBack, onComplete }: {
                   transition={{ delay: 0.3 + i * 0.07 }}
                   className="flex items-center gap-3"
                 >
-                  <div className={`w-7 h-7 rounded-lg bg-gradient-to-br ${mod?.gradient} flex items-center justify-center flex-shrink-0`}>
-                    <Check className="w-3.5 h-3.5 text-white" />
+                  <div className={`w-6 h-6 rounded-md bg-gradient-to-br ${mod?.gradient} flex items-center justify-center flex-shrink-0`}>
+                    <Check className="w-3 h-3 text-white" />
                   </div>
                   <div>
                     <span className="text-sm font-medium text-gray-800">{f.name}</span>
-                    <span className="text-xs text-gray-400 ml-1">— {f.description}</span>
                   </div>
                 </motion.div>
               ))}
@@ -736,9 +840,8 @@ function SetupBusinessStep({ selectedSlug, phone, onBack, onComplete }: {
         <motion.div variants={fadeUp} className="mt-8 pb-8">
           <Button
             onClick={handleCreate}
-            disabled={loading || !businessName.trim()}
-            className={`w-full rounded-2xl bg-gradient-to-r ${mod?.gradient || 'from-violet-500 to-purple-600'} text-white font-semibold text-base shadow-lg disabled:opacity-50 active:scale-[0.98] transition-transform`}
-            style={{ height: 52 }}
+            disabled={loading || !businessName.trim() || !username.trim() || password.length < 4}
+            className={`w-full h-12 rounded-xl bg-gradient-to-r ${mod?.gradient || 'from-violet-500 to-purple-600'} text-white font-semibold shadow-lg disabled:opacity-50 active:scale-[0.98] transition-transform`}
           >
             {loading ? (
               <Loader2 className="w-5 h-5 animate-spin" />
@@ -756,17 +859,19 @@ function SetupBusinessStep({ selectedSlug, phone, onBack, onComplete }: {
 }
 
 /* ═══════════════════════════════════════════
-   STEP: OWNER LOGIN
+   STEP: OWNER LOGIN — with password field
    ═══════════════════════════════════════════ */
 function OwnerLoginStep({ onBack, onLogin }: {
   onBack: () => void;
   onLogin: () => void;
 }) {
   const [phone, setPhone] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const handleSendOTP = async () => {
-    if (phone.length < 11) return;
+  const handleLogin = async () => {
+    if (phone.length < 10 || !password) return;
     setLoading(true);
     await new Promise((r) => setTimeout(r, 800));
     setLoading(false);
@@ -775,36 +880,58 @@ function OwnerLoginStep({ onBack, onLogin }: {
 
   return (
     <div className="min-h-screen flex flex-col bg-white px-6">
-      <motion.div {...slideInRight} className="pt-14 pb-6">
+      <motion.div {...slideInRight} className="pt-6 pb-6">
         <BackButton onClick={onBack} />
         <h1 className="text-2xl font-bold text-gray-900 mt-6">Welcome back</h1>
         <p className="text-sm text-gray-500 mt-1">Sign in to your InventoryOS account</p>
       </motion.div>
 
-      <motion.div variants={stagger} initial="initial" animate="animate" className="flex-1">
-        <motion.div variants={fadeUp} className="mt-8">
+      <motion.div variants={stagger} initial="initial" animate="animate" className="flex-1 max-w-sm mx-auto w-full space-y-4">
+        <motion.div variants={fadeUp}>
           <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Phone Number</label>
           <div className="relative">
             <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-gray-500 font-medium">+880</span>
             <Input
               type="tel"
-              placeholder="1XXX-XXXXXX"
+              placeholder="1XXX XXXXXX"
               value={phone}
-              onChange={(e) => setPhone(e.target.value.replace(/[^0-9]/g, ''))}
-              className="h-14 rounded-xl bg-gray-50 border-gray-200 pl-14 text-lg font-semibold focus-visible:ring-violet-500/30"
-              maxLength={11}
+              onChange={(e) => {
+                const val = e.target.value.replace(/[^0-9]/g, '').slice(0, 10);
+                setPhone(val);
+              }}
+              className="h-12 rounded-xl bg-gray-50 border-gray-200 pl-14 text-lg font-semibold focus-visible:ring-violet-500/30"
+              maxLength={10}
               autoFocus
             />
           </div>
         </motion.div>
-        <motion.div variants={fadeUp} className="mt-6">
+        <motion.div variants={fadeUp}>
+          <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Password</label>
+          <div className="relative">
+            <Input
+              type={showPass ? 'text' : 'password'}
+              placeholder="Enter your password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="h-12 rounded-xl bg-gray-50 border-gray-200 pr-10 focus-visible:ring-violet-500/30"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPass(!showPass)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
+            >
+              {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
+          </div>
+        </motion.div>
+        <motion.div variants={fadeUp} className="pt-2 pb-8">
           <Button
-            onClick={handleSendOTP}
-            disabled={loading || phone.length < 11}
+            onClick={handleLogin}
+            disabled={loading || phone.length < 10 || !password}
             className="w-full h-12 rounded-xl bg-gradient-to-r from-violet-500 to-purple-600 text-white font-semibold shadow-lg disabled:opacity-50"
           >
             {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : (
-              <>Continue <ArrowRight className="w-4 h-4 ml-2" /></>
+              <>Sign In <ArrowRight className="w-4 h-4 ml-2" /></>
             )}
           </Button>
         </motion.div>
@@ -836,13 +963,13 @@ function StaffLoginStep({ onBack, onLogin }: {
 
   return (
     <div className="min-h-screen flex flex-col bg-white px-6">
-      <motion.div {...slideInRight} className="pt-14 pb-6">
+      <motion.div {...slideInRight} className="pt-6 pb-6">
         <BackButton onClick={onBack} />
         <h1 className="text-2xl font-bold text-gray-900 mt-6">Staff Login</h1>
         <p className="text-sm text-gray-500 mt-1">Enter your shop code and credentials</p>
       </motion.div>
 
-      <motion.div variants={stagger} initial="initial" animate="animate" className="flex-1 space-y-4">
+      <motion.div variants={stagger} initial="initial" animate="animate" className="flex-1 max-w-sm mx-auto w-full space-y-4">
         <motion.div variants={fadeUp}>
           <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Shop Code</label>
           <Input
@@ -921,19 +1048,22 @@ function LandingPage() {
     setStep({ type: 'setup', slug: current.slug, phone });
   };
 
-  const handleSetupComplete = (businessName: string) => {
+  const handleSetupComplete = (data: { businessName: string; username: string; password: string }) => {
     const current = step as { type: 'setup'; slug: string; phone: string };
     const mod = moduleRegistry.find((m) => m.slug === current.slug);
 
     const session: AuthSession = {
       user: {
         id: 'usr_' + Date.now(),
-        name: 'Owner',
-        phone: current.phone,
+        name: data.username,
+        fullName: data.username,
+        username: data.username,
+        phone: '+880' + current.phone,
+        role: 'owner',
       },
       business: {
         id: 'biz_' + Date.now(),
-        name: businessName,
+        name: data.businessName,
         shopCode: `${mod?.slug.toUpperCase().replace('-', '').slice(0, 4)}-${String(Math.floor(Math.random() * 9000) + 1000)}`,
         address: '',
         phone: '+880' + current.phone,
@@ -949,10 +1079,17 @@ function LandingPage() {
     setSession(session);
   };
 
-  /* Owner: phone login → dashboard (simulated) */
+  /* Owner: phone + password login → dashboard (simulated) */
   const handleOwnerLogin = () => {
     const session: AuthSession = {
-      user: { id: 'usr_owner', name: 'Shop Owner', phone: '+8801XXX' },
+      user: {
+        id: 'usr_owner',
+        name: 'Shop Owner',
+        fullName: 'Shop Owner',
+        username: 'owner',
+        phone: '+8801XXX',
+        role: 'owner',
+      },
       business: {
         id: 'biz_owner',
         name: 'My Pharmacy',
@@ -968,7 +1105,13 @@ function LandingPage() {
   /* Staff: shop code + credentials → dashboard (simulated) */
   const handleStaffLogin = () => {
     const session: AuthSession = {
-      user: { id: 'usr_staff', name: 'Staff User', phone: '' },
+      user: {
+        id: 'usr_staff',
+        name: 'Staff User',
+        fullName: 'Staff User',
+        username: 'staff',
+        role: 'staff',
+      },
       business: {
         id: 'biz_staff',
         name: 'Dhaka CCTV Center',

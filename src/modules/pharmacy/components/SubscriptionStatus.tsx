@@ -193,7 +193,7 @@ export function SubscriptionStatus() {
   // ── Loading state ──
   if (loading) {
     return (
-      <motion.div {...fadeIn} className="space-y-4 pharmacy-bg min-h-screen rounded-xl -mx-1 px-1 py-1">
+      <motion.div {...fadeIn} className="space-y-4 rounded-xl -mx-1 px-1 py-1">
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="icon" className="shadow-pharmacy rounded-full">
             <ArrowLeft className="h-5 w-5" />
@@ -215,7 +215,7 @@ export function SubscriptionStatus() {
 
   if (error || !data) {
     return (
-      <motion.div {...fadeIn} className="space-y-4 pharmacy-bg min-h-screen rounded-xl -mx-1 px-1 py-1">
+      <motion.div {...fadeIn} className="space-y-4 rounded-xl -mx-1 px-1 py-1">
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="icon" className="shadow-pharmacy rounded-full" onClick={() => setActiveView("profile")}>
             <ArrowLeft className="h-5 w-5" />
@@ -261,7 +261,7 @@ export function SubscriptionStatus() {
   const successRatePct = successRate !== null && successRate !== undefined ? Math.round(successRate * 100) : null;
 
   return (
-    <motion.div {...fadeIn} className="space-y-4 pb-4 pharmacy-bg min-h-screen rounded-xl -mx-1 px-1 py-1">
+    <motion.div {...fadeIn} className="space-y-4 pb-4 rounded-xl -mx-1 px-1 py-1">
       {/* Header */}
       <div className="flex items-center gap-2 stagger-in">
         <Button variant="ghost" size="icon" className="shrink-0 shadow-pharmacy rounded-full" onClick={() => setActiveView("profile")}>

@@ -129,7 +129,7 @@ export function SaleDetail() {
 
   if (loading) {
     return (
-      <motion.div {...fadeIn} className="space-y-4 pharmacy-bg min-h-screen">
+      <motion.div {...fadeIn} className="space-y-4">
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="icon" onClick={() => setActiveView("sales")}><ArrowLeft className="h-5 w-5" /></Button>
           <h1 className="text-lg font-bold flex-1">Loading...</h1>
@@ -154,7 +154,7 @@ export function SaleDetail() {
 
   if (!sale) {
     return (
-      <motion.div {...fadeIn} className="space-y-4 pharmacy-bg min-h-screen">
+      <motion.div {...fadeIn} className="space-y-4">
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="icon" onClick={() => setActiveView("sales")}><ArrowLeft className="h-5 w-5" /></Button>
           <h1 className="text-lg font-bold flex-1">Sale not found</h1>
@@ -166,7 +166,7 @@ export function SaleDetail() {
   const isCancelled = sale.status === "cancelled";
 
   return (
-    <motion.div {...fadeIn} className="space-y-4 pb-4 pharmacy-bg min-h-screen">
+    <motion.div {...fadeIn} className="space-y-4 pb-4">
       {/* Header — Gradient emerald card */}
       <Card className="stagger-in overflow-hidden border-0 shadow-pharmacy-lg print:border-0 print:shadow-none">
         <div className="bg-gradient-to-br from-emerald-600 via-emerald-500 to-emerald-600 px-5 py-5 text-white">

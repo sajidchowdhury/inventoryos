@@ -101,7 +101,7 @@ export function SalesAnalytics() {
 
   if (loading) {
     return (
-      <motion.div {...fadeIn} className="space-y-4 pb-4 pharmacy-bg min-h-screen">
+      <motion.div {...fadeIn} className="space-y-4 pb-4">
         <div className="flex items-center gap-2 stagger-in">
           <Button variant="ghost" size="icon" className="shrink-0 rounded-xl" onClick={() => setActiveView("dashboard")}>
             <ArrowLeft className="h-5 w-5" />
@@ -157,7 +157,7 @@ export function SalesAnalytics() {
 
   if (!data) {
     return (
-      <motion.div {...fadeIn} className="space-y-4 pb-4 pharmacy-bg min-h-screen">
+      <motion.div {...fadeIn} className="space-y-4 pb-4">
         <div className="flex items-center gap-2 stagger-in">
           <Button variant="ghost" size="icon" className="shrink-0 rounded-xl" onClick={() => setActiveView("dashboard")}>
             <ArrowLeft className="h-5 w-5" />
@@ -191,7 +191,7 @@ export function SalesAnalytics() {
   const dowMaxTotal = Math.max(...data.dayOfWeek.map((x) => x.total), 1);
 
   return (
-    <motion.div {...fadeIn} className="space-y-4 pb-4 pharmacy-bg min-h-screen">
+    <motion.div {...fadeIn} className="space-y-4 pb-4">
       {/* Header */}
       <div className="flex items-center gap-2 stagger-in">
         <Button variant="ghost" size="icon" className="shrink-0 rounded-xl" onClick={() => setActiveView("dashboard")}>

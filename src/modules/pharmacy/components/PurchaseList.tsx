@@ -122,7 +122,7 @@ export function PurchaseList() {
   ];
 
   return (
-    <motion.div {...fadeIn} className="space-y-4 pb-4 pharmacy-bg min-h-screen">
+    <motion.div {...fadeIn} className="space-y-4 pb-4">
       {/* Header */}
       <div className="flex items-center gap-2 stagger-in">
         <Button variant="ghost" size="icon" className="shrink-0 rounded-xl" onClick={() => setActiveView("dashboard")}>

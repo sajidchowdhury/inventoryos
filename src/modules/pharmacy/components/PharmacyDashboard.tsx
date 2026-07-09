@@ -5,17 +5,14 @@ import { motion } from "framer-motion";
 import {
   ShoppingCart, Package, AlertTriangle, TrendingUp,
   Check, Boxes,
-  Clock, Pill, Users, DollarSign, RotateCcw, BarChart3,
+  Clock, Users, DollarSign, RotateCcw, BarChart3,
   Copy, Store, ShoppingBag, Truck,
 } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { useAuthStore } from "@/lib/auth-store";
 import { useNavStore } from "@/lib/nav-store";
 import { ExpiryAlertsWidget } from "./ExpiryAlertsWidget";
 import { NotificationCenter } from "./NotificationCenter";
-import { cn } from "@/lib/utils";
 
 interface DashboardStats {
   totalProducts: number;
@@ -39,11 +36,6 @@ export function PharmacyDashboard() {
   const [stats, setStats] = useState<DashboardStats>({
     totalProducts: 0, lowStockCount: 0, expiringSoonCount: 0, overstockCount: 0, totalCategories: 0,
   });
-  const [recentProducts, setRecentProducts] = useState<Array<{
-    id: string; name: string; genericName: string | null; manufacturer: string | null;
-    inventory: { quantity: number } | null;
-    category: { name: string; color: string } | null;
-  }>>([]);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
 
@@ -55,7 +47,7 @@ export function PharmacyDashboard() {
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch {
-      // clipboard unavailable — silent fail
+      // clipboard unavailable
     }
   };
 
@@ -74,9 +66,6 @@ export function PharmacyDashboard() {
       if (prodData.success) {
         const products = prodData.products || [];
         const totalProducts = prodData.pagination?.total ?? products.length;
-
-        // Prefer the dashboard API's accurate counts when available; fall back
-        // to the legacy product-list-based estimate otherwise.
         const lowStock = dashData?.inventory?.lowStockProducts
           ?? products.filter((p: { inventory: { quantity: number } | null }) => (p.inventory?.quantity ?? 0) <= 5).length;
         const expiringSoon = dashData?.expiry?.nearExpiryBatches ?? 0;
@@ -89,7 +78,6 @@ export function PharmacyDashboard() {
           overstockCount: overstock,
           totalCategories: catData.allCategories?.length ?? 0,
         });
-        setRecentProducts(products);
       }
     } catch (err) {
       console.error("Dashboard fetch error:", err);
@@ -101,16 +89,12 @@ export function PharmacyDashboard() {
   useEffect(() => { fetchDashboard(); }, [fetchDashboard]);
 
   return (
-    <motion.div {...fadeIn} className="space-y-4 pb-4 pharmacy-bg">
+    <motion.div {...fadeIn} className="space-y-5">
 
-      {/* ═══════════════════════════════════════════════════════ */}
-      {/* HEADER BANNER — consolidated pharmacy name + shop code   */}
-      {/* + notification bell, all in one full-width gradient     */}
-      {/* ═══════════════════════════════════════════════════════ */}
-      <div
-        className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-600 via-emerald-500 to-teal-500 shadow-lg shadow-emerald-500/20 stagger-in"
-      >
-        {/* Decorative circles */}
+      {/* ═══════════════════════════════════════
+          HEADER BANNER
+      ═══════════════════════════════════════ */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-600 via-emerald-500 to-teal-500 shadow-lg shadow-emerald-500/20">
         <div className="absolute top-0 right-0 w-40 h-40 opacity-10 pointer-events-none">
           <svg viewBox="0 0 100 100" fill="white">
             <circle cx="70" cy="30" r="40" />
@@ -118,11 +102,10 @@ export function PharmacyDashboard() {
           </svg>
         </div>
         <div className="relative z-10 p-5 flex items-center justify-between gap-3">
-          {/* Left: title + shop code badge */}
           <div className="flex-1 min-w-0">
             <h1 className="text-white text-xl font-bold leading-tight">
               {session?.business?.name || "Pharmacy"}{" "}
-              <span className="text-white/90 font-semibold">Inventory</span>
+              <span className="text-white/80 font-medium text-base">Inventory</span>
             </h1>
             {session?.business?.shopCode && (
               <button
@@ -140,12 +123,10 @@ export function PharmacyDashboard() {
               </button>
             )}
           </div>
-          {/* Right: notification bell */}
           <div className="shrink-0">
             <NotificationCenter />
           </div>
         </div>
-        {/* Copied toast */}
         {copied && (
           <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-20 rounded-full bg-white text-emerald-700 text-[10px] font-semibold px-2.5 py-1 shadow-lg">
             Copied!
@@ -153,18 +134,12 @@ export function PharmacyDashboard() {
         )}
       </div>
 
-      {/* ═══════════════════════════════════════════════════════ */}
-      {/* 4-CARD STATS GRID — Products, Low Stock, Expiring, Overstock */}
-      {/* Colored left borders, card-hover effect, NO financials   */}
-      {/* ═══════════════════════════════════════════════════════ */}
-      {/* ═══════════════════════════════════════════════════════ */}
-      {/* 4 REPORT SHORTCUTS — no data shown, just links to reports  */}
-      {/* (home screen is visible to all staff — no sensitive numbers) */}
-      {/* ═══════════════════════════════════════════════════════ */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      {/* ═══════════════════════════════════════
+          4 REPORT SHORTCUTS
+      ═══════════════════════════════════════ */}
+      <div className="grid grid-cols-2 gap-3">
         <div
-          className="card-hover bg-white rounded-2xl p-4 shadow-pharmacy relative overflow-hidden stagger-in"
-          style={{ animationDelay: "0.10s" }}
+          className="card-hover bg-white rounded-2xl p-4 shadow-pharmacy relative overflow-hidden"
           onClick={() => setActiveView("analytics")}
         >
           <div className="absolute top-0 left-0 w-1 h-full bg-blue-500 rounded-l-2xl" />
@@ -179,8 +154,7 @@ export function PharmacyDashboard() {
         </div>
 
         <div
-          className="card-hover bg-white rounded-2xl p-4 shadow-pharmacy relative overflow-hidden stagger-in"
-          style={{ animationDelay: "0.15s" }}
+          className="card-hover bg-white rounded-2xl p-4 shadow-pharmacy relative overflow-hidden"
           onClick={() => setActiveView("expiry")}
         >
           <div className="absolute top-0 left-0 w-1 h-full bg-rose-500 rounded-l-2xl" />
@@ -195,8 +169,7 @@ export function PharmacyDashboard() {
         </div>
 
         <div
-          className="card-hover bg-white rounded-2xl p-4 shadow-pharmacy relative overflow-hidden stagger-in"
-          style={{ animationDelay: "0.20s" }}
+          className="card-hover bg-white rounded-2xl p-4 shadow-pharmacy relative overflow-hidden"
           onClick={() => setActiveView("reports-hub")}
         >
           <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500 rounded-l-2xl" />
@@ -211,8 +184,7 @@ export function PharmacyDashboard() {
         </div>
 
         <div
-          className="card-hover bg-white rounded-2xl p-4 shadow-pharmacy relative overflow-hidden stagger-in"
-          style={{ animationDelay: "0.25s" }}
+          className="card-hover bg-white rounded-2xl p-4 shadow-pharmacy relative overflow-hidden"
           onClick={() => setActiveView("profit-loss")}
         >
           <div className="absolute top-0 left-0 w-1 h-full bg-amber-500 rounded-l-2xl" />
@@ -227,118 +199,107 @@ export function PharmacyDashboard() {
         </div>
       </div>
 
-      {/* ═══════════════════════════════════════════════════════ */}
-      {/* PRIMARY CTA — New Sale button                           */}
-      {/* ═══════════════════════════════════════════════════════ */}
+      {/* ═══════════════════════════════════════
+          NEW SALE CTA
+      ═══════════════════════════════════════ */}
       <Button
         size="lg"
-        className="w-full h-14 gap-2 text-base shadow-lg shadow-emerald-500/20 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 rounded-2xl stagger-in"
-        style={{ animationDelay: "0.25s" }}
+        className="w-full h-14 gap-2 text-base shadow-lg shadow-emerald-500/20 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 rounded-2xl"
         onClick={() => setActiveView("dispense")}
       >
         <ShoppingCart className="h-5 w-5" />
         New Sale
       </Button>
 
-      {/* ═══════════════════════════════════════════════════════ */}
-      {/* QUICK ACTIONS — 4-grid with colorful icons               */}
-      {/* AI button gets special purple gradient                   */}
-      {/* ═══════════════════════════════════════════════════════ */}
-      <div className="grid grid-cols-4 gap-3 stagger-in" style={{ animationDelay: "0.30s" }}>
+      {/* ═══════════════════════════════════════
+          QUICK ACTIONS — 8-grid
+      ═══════════════════════════════════════ */}
+      <div className="grid grid-cols-4 gap-3">
         <button
-          className="card-hover flex flex-col items-center gap-2 p-4 rounded-2xl bg-white shadow-pharmacy"
+          className="card-hover flex flex-col items-center gap-2 p-3 rounded-2xl bg-white shadow-pharmacy"
           onClick={() => setActiveView("products")}
         >
-          <div className="w-11 h-11 rounded-xl bg-blue-50 flex items-center justify-center">
+          <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
             <Package className="h-5 w-5 text-blue-600" />
           </div>
-          <span className="text-xs font-medium text-gray-700">Products</span>
+          <span className="text-[11px] font-medium text-gray-700">Products</span>
         </button>
 
         <button
-          className="card-hover flex flex-col items-center gap-2 p-4 rounded-2xl bg-white shadow-pharmacy"
+          className="card-hover flex flex-col items-center gap-2 p-3 rounded-2xl bg-white shadow-pharmacy"
           onClick={() => setActiveView("add-purchase")}
         >
-          <div className="w-11 h-11 rounded-xl bg-amber-50 flex items-center justify-center">
+          <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center">
             <Boxes className="h-5 w-5 text-amber-600" />
           </div>
-          <span className="text-xs font-medium text-gray-700">Restock</span>
+          <span className="text-[11px] font-medium text-gray-700">Restock</span>
         </button>
 
         <button
-          className="card-hover flex flex-col items-center gap-2 p-4 rounded-2xl bg-white shadow-pharmacy"
+          className="card-hover flex flex-col items-center gap-2 p-3 rounded-2xl bg-white shadow-pharmacy"
           onClick={() => setActiveView("returns")}
         >
-          <div className="w-11 h-11 rounded-xl bg-rose-50 flex items-center justify-center">
+          <div className="w-10 h-10 rounded-xl bg-rose-50 flex items-center justify-center">
             <RotateCcw className="h-5 w-5 text-rose-600" />
           </div>
-          <span className="text-xs font-medium text-gray-700">Return</span>
+          <span className="text-[11px] font-medium text-gray-700">Return</span>
         </button>
 
-        {/* Reports — goes to Business Dashboard with all reports */}
         <button
-          className="card-hover flex flex-col items-center gap-2 p-4 rounded-2xl bg-white shadow-pharmacy"
+          className="card-hover flex flex-col items-center gap-2 p-3 rounded-2xl bg-white shadow-pharmacy"
           onClick={() => setActiveView("reports-hub")}
         >
-          <div className="w-11 h-11 rounded-xl bg-sky-50 flex items-center justify-center">
+          <div className="w-10 h-10 rounded-xl bg-sky-50 flex items-center justify-center">
             <BarChart3 className="h-5 w-5 text-sky-600" />
           </div>
-          <span className="text-xs font-medium text-gray-700">Reports</span>
+          <span className="text-[11px] font-medium text-gray-700">Reports</span>
         </button>
-      </div>
 
-      {/* ═══════════════════════════════════════════════════════ */}
-      {/* 2ND ROW — Operations (moved from More hub)               */}
-      {/* ═══════════════════════════════════════════════════════ */}
-      <div className="grid grid-cols-4 gap-3 stagger-in" style={{ animationDelay: "0.35s" }}>
         <button
-          className="card-hover flex flex-col items-center gap-2 p-4 rounded-2xl bg-white shadow-pharmacy"
+          className="card-hover flex flex-col items-center gap-2 p-3 rounded-2xl bg-white shadow-pharmacy"
           onClick={() => setActiveView("customers")}
         >
-          <div className="w-11 h-11 rounded-xl bg-blue-50 flex items-center justify-center">
-            <Users className="h-5 w-5 text-blue-600" />
+          <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center">
+            <Users className="h-5 w-5 text-indigo-600" />
           </div>
-          <span className="text-xs font-medium text-gray-700">Customers</span>
+          <span className="text-[11px] font-medium text-gray-700">Customers</span>
         </button>
 
         <button
-          className="card-hover flex flex-col items-center gap-2 p-4 rounded-2xl bg-white shadow-pharmacy"
+          className="card-hover flex flex-col items-center gap-2 p-3 rounded-2xl bg-white shadow-pharmacy"
           onClick={() => setActiveView("payments")}
         >
-          <div className="w-11 h-11 rounded-xl bg-amber-50 flex items-center justify-center">
+          <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center">
             <DollarSign className="h-5 w-5 text-amber-600" />
           </div>
-          <span className="text-xs font-medium text-gray-700">Payment</span>
+          <span className="text-[11px] font-medium text-gray-700">Payment</span>
         </button>
 
         <button
-          className="card-hover flex flex-col items-center gap-2 p-4 rounded-2xl bg-white shadow-pharmacy"
+          className="card-hover flex flex-col items-center gap-2 p-3 rounded-2xl bg-white shadow-pharmacy"
           onClick={() => setActiveView("purchases")}
         >
-          <div className="w-11 h-11 rounded-xl bg-orange-50 flex items-center justify-center">
+          <div className="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center">
             <ShoppingBag className="h-5 w-5 text-orange-600" />
           </div>
-          <span className="text-xs font-medium text-gray-700">Purchase</span>
+          <span className="text-[11px] font-medium text-gray-700">Purchase</span>
         </button>
 
         <button
-          className="card-hover flex flex-col items-center gap-2 p-4 rounded-2xl bg-white shadow-pharmacy"
+          className="card-hover flex flex-col items-center gap-2 p-3 rounded-2xl bg-white shadow-pharmacy"
           onClick={() => setActiveView("suppliers")}
         >
-          <div className="w-11 h-11 rounded-xl bg-purple-50 flex items-center justify-center">
+          <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center">
             <Truck className="h-5 w-5 text-purple-600" />
           </div>
-          <span className="text-xs font-medium text-gray-700">Supplier</span>
+          <span className="text-[11px] font-medium text-gray-700">Supplier</span>
         </button>
       </div>
 
-      {/* ═══════════════════════════════════════════════════════ */}
-      {/* INVENTORY HEALTH CARD — pulse animation                   */}
-      {/* ═══════════════════════════════════════════════════════ */}
-      <div
-        className="bg-white rounded-2xl p-5 shadow-pharmacy border-l-4 border-emerald-500 stagger-in"
-        style={{ animationDelay: "0.40s" }}
-      >
+      {/* ═══════════════════════════════════════
+          INVENTORY HEALTH CARD
+      ═══════════════════════════════════════ */}
+      <div className="bg-white rounded-2xl p-5 shadow-pharmacy border-l-4 border-emerald-500">
         <div className="flex items-start gap-3">
           <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center shrink-0 animate-pulse-soft">
             <Check className="h-5 w-5 text-emerald-600" />
@@ -354,21 +315,10 @@ export function PharmacyDashboard() {
         </div>
       </div>
 
-      {/* ═══════════════════════════════════════════════════════ */}
-      {/* EXPIRY ALERTS WIDGET                                     */}
-      {/* ═══════════════════════════════════════════════════════ */}
-      <div className="stagger-in" style={{ animationDelay: "0.45s" }}>
-        <ExpiryAlertsWidget />
-      </div>
+      {/* ═══════════════════════════════════════
+          EXPIRY ALERTS
+      ═══════════════════════════════════════ */}
+      <ExpiryAlertsWidget />
     </motion.div>
-  );
-}
-
-// ── Brain icon (inline since lucide doesn't export it in all versions) ──
-function Brain({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-    </svg>
   );
 }

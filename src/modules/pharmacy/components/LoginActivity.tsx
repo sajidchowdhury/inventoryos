@@ -107,7 +107,7 @@ export function LoginActivity() {
     return (
       <motion.div
         {...fadeIn}
-        className="pharmacy-bg min-h-screen -mx-4 -my-4 px-4 py-4 space-y-4 pb-6"
+        className="space-y-4 pb-6"
       >
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="icon" onClick={() => setActiveView("users")} className="shadow-pharmacy">
@@ -136,7 +136,7 @@ export function LoginActivity() {
   return (
     <motion.div
       {...fadeIn}
-      className="pharmacy-bg min-h-screen -mx-4 -my-4 px-4 py-4 space-y-4 pb-6"
+      className="space-y-4 pb-6"
     >
       {/* ── Header ── */}
       <div className="flex items-center gap-2">

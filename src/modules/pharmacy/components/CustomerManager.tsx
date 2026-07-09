@@ -202,7 +202,7 @@ export function CustomerManager() {
   const activeCount = customers.filter(c => c.visitCount > 0).length;
 
   return (
-    <motion.div {...fadeIn} className="pharmacy-bg min-h-screen space-y-4 p-4 pb-6">
+    <motion.div {...fadeIn} className="space-y-4 p-4 pb-6">
       {/* Header */}
       <div className="flex items-center gap-2">
         <Button

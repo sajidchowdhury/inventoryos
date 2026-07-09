@@ -81,7 +81,7 @@ export function ProfitLossReport() {
 
   if (loading) {
     return (
-      <motion.div {...fadeIn} className="pharmacy-bg min-h-screen -mx-4 -my-4 px-4 py-4 space-y-4">
+      <motion.div {...fadeIn} className="space-y-4">
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="icon" onClick={() => setActiveView("business-dashboard")}>
             <ArrowLeft className="h-5 w-5" />
@@ -104,7 +104,7 @@ export function ProfitLossReport() {
   const rankColors = ["from-amber-400 to-yellow-500", "from-slate-300 to-slate-400", "from-orange-400 to-amber-600"];
 
   return (
-    <motion.div {...fadeIn} className="pharmacy-bg min-h-screen -mx-4 -my-4 px-4 py-4 space-y-4 pb-6">
+    <motion.div {...fadeIn} className="space-y-4 pb-6">
       {/* Header */}
       <div className="flex items-center gap-2 print:hidden">
         <Button variant="ghost" size="icon" className="shrink-0 shadow-pharmacy" onClick={() => setActiveView("business-dashboard")}>

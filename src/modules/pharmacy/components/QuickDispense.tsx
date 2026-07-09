@@ -265,7 +265,7 @@ export function QuickDispense() {
   // Success screen
   if (dispenseResult) {
     return (
-      <motion.div {...fadeIn} className="space-y-4 pb-4 pharmacy-bg min-h-screen">
+      <motion.div {...fadeIn} className="space-y-4 pb-4">
         <Card className="stagger-in overflow-hidden border-0 shadow-pharmacy-lg">
           {/* Gradient hero header */}
           <div className="bg-gradient-to-br from-emerald-600 via-emerald-500 to-emerald-600 px-6 py-10 text-center text-white">
@@ -329,7 +329,7 @@ export function QuickDispense() {
   }
 
   return (
-    <motion.div {...fadeIn} className="space-y-4 pb-4 pharmacy-bg min-h-screen">
+    <motion.div {...fadeIn} className="space-y-4 pb-4">
       {/* Header */}
       <div className="flex items-center gap-2 stagger-in">
         <Button variant="ghost" size="icon" className="shrink-0 rounded-xl" onClick={() => setActiveView("dashboard")}>

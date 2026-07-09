@@ -7,6 +7,7 @@ import { ShelfScanner } from "./ShelfScanner";
 import { StockCountDayHub } from "./StockCountDayHub";
 import { ReportsHub } from "./ReportsHub";
 import { MoreHub } from "./MoreHub";
+import { AIHub } from "./AIHub";
 import { ProductList } from "./ProductList";
 import { ProductDetail } from "./ProductDetail";
 import { ProductForm } from "./ProductForm";
@@ -43,7 +44,6 @@ import { SessionManager } from "./SessionManager";
 import { LoginActivity } from "./LoginActivity";
 import { AIInsights } from "./AIInsights";
 import { AIChat } from "./AIChat";
-import { AIHub } from "./AIHub";
 import { ReorderSuggestions } from "./ReorderSuggestions";
 import { DemandForecast } from "./DemandForecast";
 import { ExpiryOptimizer } from "./ExpiryOptimizer";
@@ -203,11 +203,13 @@ export function PharmacyShell() {
   };
 
   return (
-    <div className="flex flex-col min-h-0 flex-1">
-      <div className="flex-1 pb-16">
-        {renderView()}
+    <div className="pharmacy-shell-wrap">
+      <div className="flex flex-col min-h-0 flex-1">
+        <div className="flex-1 pb-20 px-4 pt-4">
+          {renderView()}
+        </div>
+        <BottomNav />
       </div>
-      <BottomNav />
     </div>
   );
 }
@@ -215,7 +217,6 @@ export function PharmacyShell() {
 // Lazy imports to avoid circular dependencies
 import { CategoryManager } from "./CategoryManager";
 import { CsvImport } from "./CsvImport";
-import { TransactionLog } from "./TransactionLog";
 
 function CategoryManagerLazy() { return <CategoryManager />; }
 function CsvImportLazy() { return <CsvImport />; }

@@ -6,9 +6,6 @@ import {
 import { useNavStore, type PharmacyView } from "@/lib/nav-store";
 import { cn } from "@/lib/utils";
 
-// ── Phase 1: New 5-tab navigation ──
-// Home, Stock, Sell, AI (NEW — purple glow), More
-// Reports hub moved to More tab — AI gets its own tab
 const navItems: { view: PharmacyView; label: string; icon: typeof LayoutDashboard; primary?: boolean; hub?: boolean; isAI?: boolean }[] = [
   { view: "dashboard", label: "Home", icon: LayoutDashboard },
   { view: "inventory-hub", label: "Stock", icon: Package, hub: true },
@@ -17,21 +14,19 @@ const navItems: { view: PharmacyView; label: string; icon: typeof LayoutDashboar
   { view: "more-hub", label: "More", icon: MoreHorizontal, hub: true },
 ];
 
-// Views that belong to each hub tab
 const hubGroups: Record<string, PharmacyView[]> = {
   "inventory-hub": ["products", "product-detail", "add-product", "edit-product", "batches", "add-batch", "edit-batch", "expiry", "categories", "import", "shelf-scanner", "stock-count-day", "catalog-picker"],
   "ai-hub": ["ai-insights", "ai-chat", "ai-reorder", "ai-forecast", "ai-expiry-opt"],
-  "more-hub": ["customers", "customer-detail", "add-customer", "edit-customer", "customer-credit", "suppliers", "supplier-detail", "purchases", "purchase-detail", "add-purchase", "payments", "returns", "discount-rules", "users", "sessions", "login-activity", "alerts", "alert-settings", "reports-hub", "report", "profile", "analytics", "business-dashboard", "profit-loss", "inventory-value", "business-report", "tax-report", "audit-trail", "data-export", "transactions"],
+  "more-hub": ["customers", "customer-detail", "add-customer", "edit-customer", "customer-credit", "suppliers", "supplier-detail", "purchases", "purchase-detail", "add-purchase", "payments", "returns", "discount-rules", "users", "sessions", "login-activity", "alerts", "alert-settings", "reports-hub", "report", "profile", "analytics", "business-dashboard", "profit-loss", "inventory-value", "business-report", "tax-report", "audit-trail", "data-export", "transactions", "subscription"],
 };
 
 export function BottomNav() {
   const { activeView, setActiveView } = useNavStore();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-gray-100 bg-white/90 backdrop-blur-xl shadow-nav">
-      <div className="max-w-md mx-auto flex items-center justify-around h-14">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-gray-100/80 bg-white/95 backdrop-blur-xl shadow-nav">
+      <div className="max-w-[480px] mx-auto flex items-center justify-around h-16">
         {navItems.map((item) => {
-          // Check if current view belongs to this hub
           let isActive = activeView === item.view;
           if (item.hub && hubGroups[item.view]) {
             isActive = isActive || hubGroups[item.view].includes(activeView);
@@ -44,14 +39,14 @@ export function BottomNav() {
                 key={item.view}
                 className={cn(
                   "flex flex-col items-center justify-center gap-0.5 flex-1 h-full transition-colors",
-                  isActive ? "text-emerald-600" : "text-gray-400 hover:text-gray-700"
+                  isActive ? "text-emerald-600" : "text-gray-400 hover:text-gray-600"
                 )}
                 onClick={() => setActiveView(item.view)}
               >
                 <div className={cn(
-                  "h-9 w-9 rounded-full flex items-center justify-center -mt-3 shadow-md transition-all active:scale-95",
+                  "h-10 w-10 rounded-full flex items-center justify-center -mt-4 shadow-lg transition-all active:scale-95",
                   isActive
-                    ? "bg-gradient-to-br from-emerald-500 to-emerald-600 text-white shadow-emerald-500/25"
+                    ? "bg-gradient-to-br from-emerald-500 to-emerald-600 text-white shadow-emerald-500/30"
                     : "bg-emerald-50 text-emerald-600"
                 )}>
                   <item.icon className="h-5 w-5" />
@@ -79,7 +74,6 @@ export function BottomNav() {
                   "relative h-7 w-7 flex items-center justify-center transition-all",
                   isActive && "animate-pulse-soft"
                 )}>
-                  {/* Glow background */}
                   {isActive && (
                     <div className="absolute inset-0 rounded-lg bg-purple-100 blur-sm" />
                   )}
@@ -102,7 +96,7 @@ export function BottomNav() {
               key={item.view}
               className={cn(
                 "relative flex flex-col items-center justify-center gap-0.5 flex-1 h-full transition-all",
-                isActive ? "text-emerald-600" : "text-gray-400 hover:text-gray-700"
+                isActive ? "text-emerald-600" : "text-gray-400 hover:text-gray-600"
               )}
               onClick={() => setActiveView(item.view)}
             >

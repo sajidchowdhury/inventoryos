@@ -112,7 +112,7 @@ export function AuditTrail() {
   });
 
   return (
-    <motion.div {...fadeIn} className="pharmacy-bg min-h-screen -mx-4 -my-4 px-4 py-4 space-y-4 pb-6">
+    <motion.div {...fadeIn} className="space-y-4 pb-6">
       {/* Header */}
       <div className="flex items-center gap-2">
         <Button variant="ghost" size="icon" className="shrink-0 shadow-pharmacy" onClick={() => setActiveView("business-dashboard")}>

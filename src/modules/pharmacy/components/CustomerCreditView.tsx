@@ -86,7 +86,7 @@ export function CustomerCreditView() {
 
   if (loading) {
     return (
-      <motion.div {...fadeIn} className="pharmacy-bg min-h-screen space-y-4 p-4 pb-6">
+      <motion.div {...fadeIn} className="space-y-4 p-4 pb-6">
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="icon" className="rounded-xl hover:bg-emerald-50" onClick={() => setActiveView("customers")}>
             <ArrowLeft className="h-5 w-5" />
@@ -124,7 +124,7 @@ export function CustomerCreditView() {
 
   if (!data) {
     return (
-      <motion.div {...fadeIn} className="pharmacy-bg min-h-screen space-y-4 p-4 pb-6">
+      <motion.div {...fadeIn} className="space-y-4 p-4 pb-6">
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="icon" className="rounded-xl hover:bg-emerald-50" onClick={() => setActiveView("customers")}>
             <ArrowLeft className="h-5 w-5" />
@@ -139,7 +139,7 @@ export function CustomerCreditView() {
   const hasOutstanding = credit.totalDue > 0;
 
   return (
-    <motion.div {...fadeIn} className="pharmacy-bg min-h-screen space-y-4 p-4 pb-6">
+    <motion.div {...fadeIn} className="space-y-4 p-4 pb-6">
       {/* Top bar */}
       <div className="flex items-center gap-2">
         <Button

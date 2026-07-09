@@ -30,7 +30,7 @@ const accentMap: Record<SectionAccent, { bar: string; dot: string }> = {
 };
 
 interface MoreItem {
-  icon: typeof Users;
+  icon: typeof Bell;
   label: string;
   desc: string;
   view: PharmacyView;
@@ -44,10 +44,6 @@ interface MoreSection {
   items: MoreItem[];
 }
 
-// ── Slimmed down: only items not reachable from Home or Admin ──
-// Customers/Payments/Returns/Discount moved to Home dashboard
-// User Management/Profile/Alert Settings accessible via Admin
-// All reports accessible via Business Dashboard (Home → Reports)
 const sections: MoreSection[] = [
   {
     title: "Admin",
@@ -78,21 +74,20 @@ export function MoreHub() {
   const { reset, session } = useAuthStore();
   const setActiveView = useNavStore((s) => s.setActiveView);
 
-  const fullName = session?.user?.fullName || session?.user?.username || "User";
+  const fullName = session?.user?.fullName || session?.user?.name || "User";
   const role = session?.user?.role || "";
   const businessName = session?.business?.name || "";
 
   return (
     <motion.div
       {...fadeIn}
-      className="pharmacy-bg min-h-screen -mx-4 -my-4 px-4 py-4 space-y-5 pb-6"
+      className="space-y-5 pb-6"
     >
       <h1 className="text-xl font-bold tracking-tight">More</h1>
 
-      {/* ── Profile Card — gradient emerald header ── */}
-      <Card className="stagger-in overflow-hidden border-0 shadow-pharmacy-lg">
+      {/* ── Profile Card ── */}
+      <Card className="overflow-hidden border-0 shadow-pharmacy-lg">
         <div className="relative bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 p-5">
-          {/* Decorative bubbles */}
           <div className="absolute -top-8 -right-8 h-28 w-28 rounded-full bg-white/10" />
           <div className="absolute -bottom-10 -left-6 h-24 w-24 rounded-full bg-white/5" />
           <div className="relative z-10 flex items-center gap-3">
@@ -101,7 +96,7 @@ export function MoreHub() {
             </div>
             <div className="flex-1 min-w-0 text-white">
               <p className="text-base font-bold leading-tight truncate">{fullName}</p>
-              <p className="text-[11px] text-emerald-50/90 capitalize mt-0.5">{role}</p>
+              <p className="text-[11px] text-emerald-50/90 capitalize mt-0.5">{role || "Owner"}</p>
               {businessName && (
                 <p className="text-[10px] text-emerald-100/80 truncate mt-0.5">{businessName}</p>
               )}
@@ -123,7 +118,6 @@ export function MoreHub() {
         const accent = accentMap[section.accent];
         return (
           <div key={section.title} className="space-y-2.5">
-            {/* Colored section header */}
             <div className="flex items-center gap-2">
               <span className={cn("h-5 w-1.5 rounded-full bg-gradient-to-b", accent.bar)} />
               <span className={cn("h-1.5 w-1.5 rounded-full", accent.dot)} />
@@ -136,10 +130,10 @@ export function MoreHub() {
               {section.items.map((item) => (
                 <Card
                   key={`${section.title}-${item.label}`}
-                  className="card-hover shadow-pharmacy cursor-pointer border-0 overflow-hidden stagger-in"
+                  className="card-hover shadow-pharmacy cursor-pointer border-0 overflow-hidden"
                   onClick={() => setActiveView(item.view)}
                 >
-                  <CardContent className="p-3 flex items-center gap-3">
+                  <CardContent className="p-3.5 flex items-center gap-3">
                     <div
                       className={cn(
                         "h-9 w-9 rounded-xl bg-gradient-to-br flex items-center justify-center shrink-0 shadow-sm",
@@ -168,7 +162,7 @@ export function MoreHub() {
         );
       })}
 
-      {/* ── Logout — gradient rose ── */}
+      {/* ── Logout ── */}
       <Button
         className="w-full gap-2 h-11 mt-2 bg-gradient-to-r from-rose-500 to-red-600 hover:from-rose-600 hover:to-red-700 text-white border-0 shadow-md shadow-rose-500/20"
         onClick={reset}
