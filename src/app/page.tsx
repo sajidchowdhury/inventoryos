@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { useAuthStore, type AuthSession } from '@/stores/auth-store';
 import { moduleRegistry, getActiveModules } from '@/lib/modules';
-import { CCTVShell } from '@/modules/cctv-shop/components';
+import { ModuleShellRenderer } from '@/lib/module-loader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
@@ -1041,30 +1041,10 @@ function LandingPage() {
 }
 
 /* ═══════════════════════════════════════════
-   DASHBOARD STEP (post-auth)
+   DASHBOARD STEP (post-auth) — Dynamic module loading
    ═══════════════════════════════════════════ */
 function DashboardStep() {
-  const session = useAuthStore((s) => s.session);
-  if (!session) return null;
-  const slug = session.business.businessType.slug;
-
-  switch (slug) {
-    case 'cctv-shop':
-      return <CCTVShell />;
-    case 'pharmacy':
-    default:
-      return (
-        <div className="min-h-screen bg-gray-50/80 flex items-center justify-center">
-          <div className="text-center px-6">
-            <div className="w-16 h-16 rounded-2xl bg-emerald-100 flex items-center justify-center mx-auto mb-4">
-              <span className="text-3xl">💊</span>
-            </div>
-            <h2 className="text-lg font-bold text-gray-900">Pharmacy Module</h2>
-            <p className="text-sm text-gray-500 mt-1">Coming soon</p>
-          </div>
-        </div>
-      );
-  }
+  return <ModuleShellRenderer />;
 }
 
 /* ═══════════════════════════════════════════
