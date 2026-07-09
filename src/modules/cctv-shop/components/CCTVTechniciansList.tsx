@@ -77,10 +77,11 @@ export function CCTVTechniciansList() {
         body: JSON.stringify({ displayName: createName, phone: createPhone, specialization: createSpec }),
       });
       if (res.ok) {
+        const newTech = await res.json();
         toast({ title: 'Technician added' });
         setCreateName(''); setCreatePhone(''); setCreateSpec('');
         setShowCreate(false);
-        setTechnicians((prev) => [(await res.json()), ...prev]);
+        setTechnicians((prev) => [newTech, ...prev]);
       } else {
         const err = await res.json();
         toast({ title: 'Failed', description: err.error, variant: 'destructive' });

@@ -6,6 +6,7 @@ import {
   ArrowLeft, Pencil, X, Save, Loader2, Phone, User, Package,
   Wrench, Camera, FileText, AlertCircle, Clock,
   Zap, ShieldCheck, ExternalLink, Hash, Search, Plus, Trash2,
+  Lock, CheckCircle2, KeyRound,
 } from 'lucide-react';
 import { useCCTVNavStore } from '@/stores/cctv-nav-store';
 import { cn } from '@/lib/utils';
@@ -80,9 +81,7 @@ const VALID_TRANSITIONS: Record<string, { status: string; label: string; color: 
     { status: 'READY_FOR_DELIVERY', label: 'Ready for Pickup', color: 'bg-emerald-500 hover:bg-emerald-600' },
     { status: 'IN_PROGRESS', label: 'Back to Repair', color: 'bg-violet-500 hover:bg-violet-600' },
   ],
-  READY_FOR_DELIVERY: [
-    { status: 'DELIVERED', label: 'Mark Delivered', color: 'bg-green-500 hover:bg-green-600' },
-  ],
+  READY_FOR_DELIVERY: [], // 2D: DELIVERED is now handled via OTP flow, not direct transition
   OUTSOURCED: [
     { status: 'TESTING', label: 'Start Testing', color: 'bg-cyan-500 hover:bg-cyan-600' },
     { status: 'IN_PROGRESS', label: 'Start Repair', color: 'bg-violet-500 hover:bg-violet-600' },
@@ -138,6 +137,13 @@ export function CCTVJobCardDetail() {
   const [vendorPhone, setVendorPhone] = useState('');
   const [vendorCost, setVendorCost] = useState('');
   const [expectedReturn, setExpectedReturn] = useState('');
+
+  // 2D: OTP Delivery state
+  const [otpStep, setOtpStep] = useState<'idle' | 'collector-info' | 'otp-input' | 'verified' | 'delivering'>('idle');
+  const [otpCode, setOtpCode] = useState('');
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [otpError, setOtpError] = useState('');
+  const [otpGenerated, setOtpGenerated] = useState(false);
 
   // Spare parts
   const [parts, setParts] = useState<CCTVJobCardPart[]>([]);
@@ -251,6 +257,14 @@ export function CCTVJobCardDetail() {
   // ── Status Transition Handlers ──
 
   const openTransitionDialog = (transition: { status: string; label: string; color: string }) => {
+    // For DELIVERED, redirect to OTP flow instead of simple dialog
+    if (transition.status === 'DELIVERED') {
+      setOtpStep(job?.otpVerified ? 'verified' : 'collector-info');
+      setOtpCode('');
+      setOtpError('');
+      setOtpGenerated(!!job?.otpCode);
+      return;
+    }
     setTransitionTarget(transition);
     setTransitionNotes('');
     setCollectorName('');
@@ -260,6 +274,97 @@ export function CCTVJobCardDetail() {
     setVendorPhone('');
     setVendorCost('');
     setExpectedReturn('');
+  };
+
+  // ── 2D: OTP Handlers ──
+
+  const handleGenerateOtp = async () => {
+    if (!contextId) return;
+    setOtpLoading(true);
+    setOtpError('');
+    try {
+      const res = await fetch(`/api/businesses/${BUSINESS_ID}/cctv/job-cards/${contextId}/otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'generate',
+          collectorName: collectorName || undefined,
+          collectorPhone: collectorPhone || undefined,
+          collectorNid: collectorNid || undefined,
+        }),
+      });
+      if (res.ok) {
+        setOtpStep('otp-input');
+        setOtpGenerated(true);
+        toast({ title: 'OTP Generated', description: 'Enter the 6-digit code to verify delivery.' });
+        fetchJob(); // refresh to get updated collector info
+      } else {
+        const err = await res.json();
+        setOtpError(err.error || 'Failed to generate OTP');
+      }
+    } catch {
+      setOtpError('Network error');
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    if (!contextId || otpCode.length !== 6) {
+      setOtpError('Please enter the 6-digit OTP');
+      return;
+    }
+    setOtpLoading(true);
+    setOtpError('');
+    try {
+      const res = await fetch(`/api/businesses/${BUSINESS_ID}/cctv/job-cards/${contextId}/otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'verify', code: otpCode }),
+      });
+      if (res.ok) {
+        setOtpStep('verified');
+        toast({ title: 'OTP Verified', description: 'Delivery authorized. You can now mark as delivered.' });
+        fetchJob();
+      } else {
+        const err = await res.json();
+        setOtpError(err.error || 'Verification failed');
+      }
+    } catch {
+      setOtpError('Network error');
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
+  const handleFinalDeliver = async () => {
+    if (!contextId) return;
+    setOtpLoading(true);
+    try {
+      const statusRes = await fetch(`/api/businesses/${BUSINESS_ID}/cctv/job-cards/${contextId}/status`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'DELIVERED' }),
+      });
+      if (statusRes.ok) {
+        toast({ title: 'Delivered!', description: 'Job card marked as delivered successfully.' });
+        setOtpStep('idle');
+        fetchJob();
+      } else {
+        const err = await statusRes.json();
+        toast({ title: 'Delivery Failed', description: err.error || 'Could not mark as delivered', variant: 'destructive' });
+      }
+    } catch {
+      toast({ title: 'Error', description: 'Network error', variant: 'destructive' });
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
+  const cancelOtpFlow = () => {
+    setOtpStep('idle');
+    setOtpCode('');
+    setOtpError('');
   };
 
   const handleConfirmTransition = async () => {
@@ -277,20 +382,6 @@ export function CCTVJobCardDetail() {
         toast({ title: 'Error', description: 'Failed to update status.', variant: 'destructive' });
         setDialogLoading(false);
         return;
-      }
-
-      // Follow-up PUT for DELIVERED (collector info)
-      if (transitionTarget.status === 'DELIVERED') {
-        await fetch(`/api/businesses/${BUSINESS_ID}/cctv/job-cards/${contextId}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            collectorName: collectorName || undefined,
-            collectorPhone: collectorPhone || undefined,
-            collectorNid: collectorNid || undefined,
-            otpVerified: true,
-          }),
-        });
       }
 
       // Follow-up PUT for OUTSOURCED (vendor info)
@@ -448,6 +539,12 @@ export function CCTVJobCardDetail() {
             <div className="mt-4 pt-3 border-t border-white/20 space-y-1.5 text-sm">
               {job.deliveredAt && <p className="text-white/90"><span className="text-white/60">Delivered:</span> {formatDate(job.deliveredAt)}</p>}
               {job.collectorName && <p className="text-white/90"><span className="text-white/60">Collector:</span> {job.collectorName}{job.collectorPhone && ` (${job.collectorPhone})`}</p>}
+              {job.otpVerified && (
+                <p className="text-white/80 text-xs flex items-center gap-1 mt-1">
+                  <ShieldCheck className="w-3 h-3" /> OTP Verified
+                  {job.otpVerifiedAt && ` at ${formatDate(job.otpVerifiedAt)}`}
+                </p>
+              )}
             </div>
           )}
         </motion.div>
@@ -495,31 +592,6 @@ export function CCTVJobCardDetail() {
                       onChange={(e) => setTransitionNotes(e.target.value)}
                       className="min-h-[72px] text-sm rounded-xl"
                     />
-
-                    {/* Extra fields for DELIVERED */}
-                    {t.status === 'DELIVERED' && (
-                      <div className="space-y-2.5 pt-1 border-t border-gray-100">
-                        <p className="text-xs font-semibold text-gray-600">Collector Information</p>
-                        <Input
-                          placeholder="Collector Name"
-                          value={collectorName}
-                          onChange={(e) => setCollectorName(e.target.value)}
-                          className="h-9 text-sm rounded-xl"
-                        />
-                        <Input
-                          placeholder="Collector Phone"
-                          value={collectorPhone}
-                          onChange={(e) => setCollectorPhone(e.target.value)}
-                          className="h-9 text-sm rounded-xl"
-                        />
-                        <Input
-                          placeholder="Collector NID"
-                          value={collectorNid}
-                          onChange={(e) => setCollectorNid(e.target.value)}
-                          className="h-9 text-sm rounded-xl"
-                        />
-                      </div>
-                    )}
 
                     {/* Extra fields for OUTSOURCED */}
                     {t.status === 'OUTSOURCED' && (
@@ -992,6 +1064,208 @@ export function CCTVJobCardDetail() {
             </div>
           )}
         </motion.div>
+
+        {/* ─── 6.6 Secure Delivery Card (2D: OTP) ─── */}
+        {job.status === 'READY_FOR_DELIVERY' && !editMode && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.24 }}
+            className="bg-white rounded-2xl border border-emerald-200 p-4 shadow-sm"
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-emerald-50 flex items-center justify-center">
+                  <Lock className="w-4 h-4 text-emerald-600" />
+                </div>
+                <h3 className="text-sm font-bold text-gray-800">Secure Delivery</h3>
+                {job.otpVerified && (
+                  <Badge className="text-[9px] px-1.5 py-0 h-5 bg-emerald-100 text-emerald-700 border-0 font-semibold">
+                    Verified
+                  </Badge>
+                )}
+              </div>
+              {otpStep === 'idle' && (
+                <span className="text-[10px] text-gray-400">OTP required</span>
+              )}
+            </div>
+
+            {otpStep === 'idle' && (
+              <div>
+                <p className="text-xs text-gray-500 mb-3">Verify collector identity with OTP before marking this job as delivered.</p>
+                <button
+                  onClick={() => {
+                    // Pre-fill collector from job data if available
+                    if (job.collectorName) setCollectorName(job.collectorName);
+                    if (job.collectorPhone) setCollectorPhone(job.collectorPhone);
+                    if (job.collectorNid) setCollectorNid(job.collectorNid);
+                    setOtpStep('collector-info');
+                    setOtpCode('');
+                    setOtpError('');
+                  }}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl bg-gradient-to-br from-emerald-500 to-green-600 text-white text-xs font-semibold shadow-lg shadow-emerald-500/20 active:scale-[0.98] transition-transform"
+                >
+                  <KeyRound className="w-4 h-4" />
+                  Start Delivery Verification
+                </button>
+              </div>
+            )}
+
+            {otpStep === 'collector-info' && (
+              <div className="space-y-2.5">
+                <p className="text-xs text-gray-500">Enter the collector's details, then generate OTP.</p>
+                <Input
+                  placeholder="Collector Name *"
+                  value={collectorName}
+                  onChange={(e) => setCollectorName(e.target.value)}
+                  className="h-9 text-sm rounded-xl"
+                />
+                <Input
+                  placeholder="Collector Phone"
+                  value={collectorPhone}
+                  onChange={(e) => setCollectorPhone(e.target.value)}
+                  className="h-9 text-sm rounded-xl"
+                />
+                <Input
+                  placeholder="Collector NID"
+                  value={collectorNid}
+                  onChange={(e) => setCollectorNid(e.target.value)}
+                  className="h-9 text-sm rounded-xl"
+                />
+                {otpError && <p className="text-[11px] text-red-500">{otpError}</p>}
+                <div className="flex gap-2">
+                  <button
+                    onClick={cancelOtpFlow}
+                    className="flex-1 px-3 py-2.5 rounded-xl border border-gray-200 text-xs font-semibold text-gray-600 active:bg-gray-50 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleGenerateOtp}
+                    disabled={otpLoading || !collectorName.trim()}
+                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-gradient-to-br from-emerald-500 to-green-600 text-white text-xs font-semibold shadow-sm disabled:opacity-50 active:scale-[0.98] transition-transform"
+                  >
+                    {otpLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <KeyRound className="w-3.5 h-3.5" />}
+                    Generate OTP
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {otpStep === 'otp-input' && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-violet-100 flex items-center justify-center">
+                    <KeyRound className="w-4 h-4 text-violet-600" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-gray-800">Enter OTP Code</p>
+                    <p className="text-[10px] text-gray-400">6-digit code sent to collector</p>
+                  </div>
+                </div>
+
+                {/* OTP Input with individual digit boxes */}
+                <div
+                  className="flex justify-center gap-2 cursor-text"
+                  onClick={() => {
+                    const el = document.querySelector<HTMLInputElement>('[data-otp-input]');
+                    el?.focus();
+                  }}
+                >
+                  {[0, 1, 2, 3, 4, 5].map((i) => (
+                    <div
+                      key={i}
+                      className={cn(
+                        'w-10 h-12 rounded-xl border-2 flex items-center justify-center text-lg font-bold transition-all select-none',
+                        otpCode.length > i
+                          ? 'border-emerald-400 bg-emerald-50 text-emerald-700'
+                          : 'border-gray-200 bg-gray-50 text-gray-300',
+                        otpCode.length === i && 'border-violet-400 ring-2 ring-violet-100',
+                      )}
+                    >
+                      {otpCode[i] || '·'}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Actual OTP input - visually hidden but focusable */}
+                <input
+                  data-otp-input
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={6}
+                  value={otpCode}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\D/g, '').slice(0, 6);
+                    setOtpCode(val);
+                    setOtpError('');
+                    // Auto-verify when 6 digits entered
+                    if (val.length === 6) {
+                      setTimeout(() => handleVerifyOtp(), 200);
+                    }
+                  }}
+                  className="opacity-0 absolute w-0 h-0 overflow-hidden"
+                  aria-label="OTP code"
+                  autoFocus
+                />
+
+                {otpError && (
+                  <div className="flex items-center gap-1.5 text-[11px] text-red-500 bg-red-50 rounded-lg px-3 py-2">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                    {otpError}
+                  </div>
+                )}
+
+                <div className="flex gap-2">
+                  <button
+                    onClick={cancelOtpFlow}
+                    className="flex-1 px-3 py-2.5 rounded-xl border border-gray-200 text-xs font-semibold text-gray-600 active:bg-gray-50 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleVerifyOtp}
+                    disabled={otpLoading || otpCode.length !== 6}
+                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 text-white text-xs font-semibold shadow-sm disabled:opacity-50 active:scale-[0.98] transition-transform"
+                  >
+                    {otpLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ShieldCheck className="w-3.5 h-3.5" />}
+                    Verify OTP
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {otpStep === 'verified' && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-3 bg-emerald-50 rounded-xl p-3">
+                  <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-emerald-800">Identity Verified</p>
+                    <p className="text-[10px] text-emerald-600">
+                      {job.collectorName || 'Collector'} · {job.collectorPhone || 'No phone'}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={handleFinalDeliver}
+                  disabled={otpLoading}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-2xl bg-gradient-to-br from-green-500 to-emerald-600 text-white text-sm font-bold shadow-lg shadow-green-500/20 disabled:opacity-50 active:scale-[0.98] transition-transform"
+                >
+                  {otpLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                  Confirm Delivery
+                </button>
+                <button
+                  onClick={cancelOtpFlow}
+                  className="w-full text-center text-[11px] text-gray-400 font-medium py-1 active:text-gray-600"
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
+          </motion.div>
+        )}
 
         {/* ─── 7. Cost Card ─── */}
         <motion.div

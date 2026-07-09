@@ -261,7 +261,10 @@ export interface CCTVJobCard {
   collectorName?: string;
   collectorNid?: string;
   collectorPhone?: string;
+  otpCode?: string;
+  otpGeneratedAt?: string;
   otpVerified: boolean;
+  otpVerifiedAt?: string;
   vendorName?: string;
   vendorPhone?: string;
   vendorCost?: number;

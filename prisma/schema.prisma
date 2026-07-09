@@ -2130,7 +2130,10 @@ model CCTVJobCard {
   collectorName  String?                // Person who picked up
   collectorNid   String?                // NID of collector
   collectorPhone String?                // Phone of collector
+  otpCode        String?                // 6-digit OTP (hardcoded 999999)
+  otpGeneratedAt DateTime?              // When OTP was generated
   otpVerified    Boolean  @default(false)
+  otpVerifiedAt  DateTime?              // When OTP was verified
   satisfactionRating Int?               // 1-5 customer satisfaction (Phase 2C)
 
   // ── Outsourcing (Phase 2E) ──

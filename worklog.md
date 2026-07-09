@@ -339,3 +339,41 @@ Stage Summary:
 - Segment 2C fully complete: 3 models, 6 API routes, 3 UI components, auto-commission engine
 - Commission auto-calculated on job delivery using configurable rules
 - 3 commission rule types: FIXED_PER_TYPE, PERCENT_LABOR, PERCENT_PROFIT
+
+---
+Task ID: 2D
+Agent: Main Agent
+Task: Segment 2D — OTP-Based Secure Delivery
+
+Work Log:
+- Pulled latest from origin/main to get all previous segments (2A, 2B, 2C)
+- Updated Prisma schema: added otpCode, otpGeneratedAt, otpVerifiedAt fields to CCTVJobCard
+- Updated types/index.ts: added otpCode?, otpGeneratedAt?, otpVerifiedAt? to CCTVJobCard interface
+- Created OTP API route (POST /api/businesses/[id]/cctv/job-cards/[jobCardId]/otp):
+  - action: 'generate' — sets OTP to hardcoded 999999, stores collector info, sets otpGeneratedAt
+  - action: 'verify' — validates code against stored OTP, checks 10-min expiry, sets otpVerified + otpVerifiedAt
+  - Validates job card status is READY_FOR_DELIVERY
+- Updated status route: added OTP verification gate — blocks DELIVERED transition if otpVerified is false (returns 403 with needOtp flag)
+- Built Secure Delivery UI in CCTVJobCardDetail.tsx:
+  - Removed DELIVERED from VALID_TRANSITIONS (no longer a direct status button)
+  - Removed old DELIVERED collector info dialog and follow-up PUT
+  - Added 3-step OTP delivery flow in a dedicated "Secure Delivery" card (emerald border):
+    1. **Collector Info**: Name (required), Phone, NID fields + "Generate OTP" button
+    2. **OTP Input**: 6-digit visual digit boxes with hidden input, auto-verify on 6th digit, cursor indicator on active box
+    3. **Verified**: Green checkmark, collector summary, "Confirm Delivery" button that calls status API
+  - Each step has Cancel button to abort
+  - OTP error display with AlertCircle icon
+  - Updated DELIVERED status card to show "OTP Verified" badge with timestamp
+  - Added Lock, CheckCircle2, KeyRound icons to imports
+- Ran db:push — schema synced, Prisma client regenerated
+- Lint: 0 new CCTV errors (6 pre-existing in admin/lib files)
+- Dev server compiles cleanly
+- Committed: bee4727 "feat(cctv): Segment 2D - OTP-Based Secure Delivery"
+- Push blocked by missing git credentials in this environment
+
+Stage Summary:
+- Segment 2D fully complete: schema, types, 1 API route, status route update, delivery UI
+- 3-step OTP flow: Collector Info → Enter OTP (999999) → Confirm Delivery
+- OTP hardcoded to 999999 for development
+- 10-minute OTP expiry with proper error messages
+- Backend enforces OTP verification before DELIVERED transition (403 if not verified)

@@ -51,6 +51,14 @@ export async function POST(
       }, { status: 409 });
     }
 
+    // 2D: Require OTP verified before DELIVERED
+    if (newStatus === "DELIVERED" && !jobCard.otpVerified) {
+      return NextResponse.json({
+        error: "OTP must be verified before marking as delivered. Please generate and verify the delivery OTP first.",
+        needOtp: true,
+      }, { status: 403 });
+    }
+
     // Build update data with appropriate timestamp
     const updateData: Record<string, unknown> = { status: newStatus };
     const timestampField = STATUS_TIMESTAMPS[newStatus];
