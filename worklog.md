@@ -273,3 +273,32 @@ Work Log:
 Stage Summary:
 - 2 API route files created for CCTV spare parts integration (Segment 2B backend)
 - Full consumption/undo-consumption lifecycle with audit trail
+
+---
+Task ID: 4
+Agent: Main Agent
+Task: Segment 2B — Complete Spare Parts Integration (schema + types + UI)
+
+Work Log:
+- Added `CONSUMED` status to CCTVSerialItem status comment in Prisma schema
+- Added `CONSUMED` event to CCTVSerialItemHistory event comment in Prisma schema
+- Created `CCTVJobCardPart` model (junction: jobCardId, serialItemId, unitCost, quantity, notes) with @@unique([jobCardId, serialItemId])
+- Added `parts` relation on CCTVJobCard, `jobCardParts` on CCTVSerialItem, `cctvJobCardParts` on Business
+- Ran `bun run db:push` — schema synced successfully, Prisma client regenerated
+- Added `CCTVJobCardPart` interface to types/index.ts, added `parts?: CCTVJobCardPart[]` to CCTVJobCard
+- `CONSUMED` was already present in SerialItemStatus and SerialHistoryEvent types
+- Updated job card detail GET API to include parts (with serialItem+product)
+- Built Spare Parts card UI in CCTVJobCardDetail.tsx:
+  - Search IN_STOCK serial items with 300ms debounce (useRef-based timer)
+  - Dropdown shows product name, serial number, cost
+  - Add part: POST API → updates parts list + toasts + refreshes job
+  - Remove part: DELETE API → removes from list + toasts
+  - Parts total row at bottom
+  - Add/Remove buttons only visible in DIAGNOSING/AWAITING_PARTS/IN_PROGRESS statuses
+- Lint: 0 new CCTV errors
+- Committed: `d592c8d` "feat(cctv): Segment 2B - Spare Parts Integration"
+- Pushed to GitHub: 75832d5..d592c8d
+
+Stage Summary:
+- Segment 2B fully complete: schema, types, 2 API routes, UI panel, all committed and pushed
+- 8 files changed, 497 insertions
