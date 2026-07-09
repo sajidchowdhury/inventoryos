@@ -42,6 +42,7 @@ import { CCTVLoyaltyCenter } from './CCTVLoyaltyCenter';
 import { CCTVWarrantyDetail } from './CCTVWarrantyDetail';
 import { CCTVCreateProject } from './CCTVCreateProject';
 import { CCTVProjectDetail } from './CCTVProjectDetail';
+import { CCTVStorageCalculator } from './CCTVStorageCalculator';
 
 function PlaceholderView({ title, icon }: { title: string; icon?: string }) {
   const { goBack } = useCCTVNavStore();
@@ -111,7 +112,7 @@ const viewMeta: Record<string, { title: string; icon: string }> = {
   'help': { title: 'Help & Support', icon: '💬' },
   'subscription': { title: 'Subscription', icon: '👑' },
   'loyalty-center': { title: 'Loyalty Program', icon: '⭐' },
-  'warranty-detail': { title: 'Warranty Details', icon: '🛡️' },
+  'storage-calculator': { title: 'Storage Calculator', icon: '💾' },
 };
 
 export function CCTVShell() {
@@ -204,6 +205,9 @@ export function CCTVShell() {
         return <CCTVCustomerDetail />;
       case 'loyalty-center':
         return <CCTVLoyaltyCenter />;
+      // Storage Calculator (4B)
+      case 'storage-calculator':
+        return <CCTVStorageCalculator />;
       // Warranty Tracking & Alerts (3D)
       case 'warranty-detail':
         return <CCTVWarrantyDetail />;

@@ -425,7 +425,8 @@ export type CCTVViewType =
   | 'technicians'
   | 'technician-detail'
   | 'commission-report'
-  | 'help';
+  | 'help'
+  | 'storage-calculator';
 
 // ── 3A: Payment Integration ──
 

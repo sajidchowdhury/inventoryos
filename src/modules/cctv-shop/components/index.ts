@@ -41,3 +41,4 @@ export { CCTVLoyaltyCenter } from './CCTVLoyaltyCenter';
 export { CCTVWarrantyDetail } from './CCTVWarrantyDetail';
 export { CCTVCreateProject } from './CCTVCreateProject';
 export { CCTVProjectDetail } from './CCTVProjectDetail';
+export { CCTVStorageCalculator } from './CCTVStorageCalculator';

@@ -23,6 +23,7 @@ import {
   AlertTriangle,
   ExternalLink,
   Star,
+  HardDrive,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores/auth-store';
@@ -101,6 +102,7 @@ export function CCTVDashboard() {
     { label: 'Warranties', icon: ShieldCheck, view: 'warranties' as const, color: 'bg-emerald-500' },
     { label: 'Customers', icon: Users, view: 'customers' as const, color: 'bg-orange-500' },
     { label: 'Loyalty', icon: Star, view: 'loyalty-center' as const, color: 'bg-fuchsia-500' },
+    { label: 'Storage Calc', icon: HardDrive, view: 'storage-calculator' as const, color: 'bg-slate-500' },
     { label: 'All Reports', icon: BarChart3, view: 'reports' as const, color: 'bg-purple-500' },
   ];
 
