@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
   ShoppingCart,
@@ -20,6 +20,8 @@ import {
   ShieldCheck,
   ArrowRight,
   Sparkles,
+  AlertTriangle,
+  ExternalLink,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores/auth-store';
@@ -37,6 +39,24 @@ export function CCTVDashboard() {
   const session = useAuthStore((s) => s.session);
   const { navigate } = useCCTVNavStore();
   const [copied, setCopied] = React.useState(false);
+
+  // 2E: Outsourced job tracking
+  const [outsourceAlerts, setOutsourceAlerts] = React.useState<{ total: number; overdue: number }>({ total: 0, overdue: 0 });
+
+  React.useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch('/api/businesses/bus_placeholder/cctv/job-cards?status=OUTSOURCED&limit=100');
+        if (res.ok) {
+          const jobs = await res.json();
+          const overdue = jobs.filter((j: { expectedReturn: string | null }) =>
+            j.expectedReturn && new Date(j.expectedReturn) < new Date()
+          ).length;
+          setOutsourceAlerts({ total: jobs.length, overdue });
+        }
+      } catch { /* silent */ }
+    })();
+  }, []);
 
   const shopCode = session?.business.shopCode || 'CCTV-001';
   const shopName = session?.business.name || 'My CCTV Shop';
@@ -208,6 +228,43 @@ export function CCTVDashboard() {
             })}
           </div>
         </motion.div>
+
+        {/* ── 2E: Outsourced Repair Alert ── */}
+        {outsourceAlerts.total > 0 && (
+          <motion.div variants={fadeUp}>
+            <button
+              onClick={() => navigate('job-cards')}
+              className={cn(
+                'w-full flex items-center gap-3 p-3.5 rounded-2xl border text-left active:scale-[0.98] transition-transform',
+                outsourceAlerts.overdue > 0
+                  ? 'bg-red-50 border-red-200'
+                  : 'bg-orange-50 border-orange-200',
+              )}
+            >
+              <div className={cn(
+                'w-10 h-10 rounded-xl flex items-center justify-center shrink-0',
+                outsourceAlerts.overdue > 0 ? 'bg-red-100' : 'bg-orange-100',
+              )}>
+                {outsourceAlerts.overdue > 0
+                  ? <AlertTriangle className="w-5 h-5 text-red-600" />
+                  : <Building2 className="w-5 h-5 text-orange-600" />}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-bold text-gray-900">
+                  {outsourceAlerts.overdue > 0
+                    ? `${outsourceAlerts.overdue} Overdue Vendor Return${outsourceAlerts.overdue > 1 ? 's' : ''}`
+                    : `${outsourceAlerts.total} Job${outsourceAlerts.total > 1 ? 's' : ''} Outsourced`}
+                </p>
+                <p className="text-[10px] text-gray-500 mt-0.5">
+                  {outsourceAlerts.overdue > 0
+                    ? `Expected return date passed for ${outsourceAlerts.overdue > 1 ? 'some jobs' : 'a job'}`
+                    : 'Track vendor repair progress'}
+                </p>
+              </div>
+              <ExternalLink className="w-4 h-4 text-gray-400 shrink-0" />
+            </button>
+          </motion.div>
+        )}
 
         {/* ── CCTV Overview — Scrollable Cards ── */}
         <motion.div variants={fadeUp}>

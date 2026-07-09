@@ -172,6 +172,7 @@ model Business {
   cctvTechnicians         CCTVTechnician[]
   cctvCommissionRules     CCTVCommissionRule[]
   cctvCommissionRecords   CCTVCommissionRecord[]
+  cctvOutsourcedVendors   CCTVOutsourcedVendor[]
 
   @@index([userId])
   @@index([businessTypeId])
@@ -2137,8 +2138,9 @@ model CCTVJobCard {
   satisfactionRating Int?               // 1-5 customer satisfaction (Phase 2C)
 
   // ── Outsourcing (Phase 2E) ──
-  vendorName     String?                // External vendor name
-  vendorPhone    String?                // Vendor contact
+  vendorId       String?                // Link to CCTVOutsourcedVendor
+  vendorName     String?                // External vendor name (denormalized)
+  vendorPhone    String?                // Vendor contact (denormalized)
   vendorCost     Float?                 // Cost quoted by vendor
   expectedReturn DateTime?              // Expected return date from vendor
 
@@ -2156,6 +2158,7 @@ model CCTVJobCard {
   serialItem  CCTVSerialItem?  @relation(fields: [serialItemId], references: [id])
   parts       CCTVJobCardPart[]
   commissionRecord CCTVCommissionRecord?
+  outsourcedVendor CCTVOutsourcedVendor? @relation(fields: [vendorId], references: [id])
 
   @@unique([businessId, jobCode])
   @@index([businessId])
@@ -2167,6 +2170,7 @@ model CCTVJobCard {
   @@index([customerPhone])
   @@index([receivedAt])
   @@index([priority])
+  @@index([vendorId])
   @@map("cctv_job_cards")
 }
 
@@ -2271,4 +2275,26 @@ model CCTVCommissionRecord {
   @@index([month])
   @@index([createdAt])
   @@map("cctv_commission_records")
+}
+
+// ── CCTV Outsourced Vendor (2E: Outsourced Repair Tracking) ──
+// Reusable vendor directory for outsourced repairs.
+// Vendors like Motalib Plaza specialists can be referenced from JobCards.
+model CCTVOutsourcedVendor {
+  id             String   @id @default(cuid())
+  businessId     String
+  name           String               // "Motalib Plaza Chip Repair"
+  phone          String?
+  address        String?              // Shop location / floor
+  specialization String?              // "Motherboard repair", "Chip-level"
+  notes          String?
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  business       Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  jobCards       CCTVJobCard[]
+
+  @@index([businessId])
+  @@map("cctv_outsourced_vendors")
 }

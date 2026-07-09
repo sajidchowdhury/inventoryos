@@ -6,7 +6,7 @@ import {
   ArrowLeft, Pencil, X, Save, Loader2, Phone, User, Package,
   Wrench, Camera, FileText, AlertCircle, Clock,
   Zap, ShieldCheck, ExternalLink, Hash, Search, Plus, Trash2,
-  Lock, CheckCircle2, KeyRound,
+  Lock, CheckCircle2, KeyRound, AlertTriangle, Building2, ChevronDown,
 } from 'lucide-react';
 import { useCCTVNavStore } from '@/stores/cctv-nav-store';
 import { cn } from '@/lib/utils';
@@ -25,7 +25,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
-import type { CCTVJobCard, CCTVJobCardPart, JobPriority } from '@/modules/cctv-shop/types';
+import type { CCTVJobCard, CCTVJobCardPart, JobPriority, CCTVOutsourcedVendor } from '@/modules/cctv-shop/types';
 
 const BUSINESS_ID = 'bus_placeholder';
 
@@ -137,6 +137,14 @@ export function CCTVJobCardDetail() {
   const [vendorPhone, setVendorPhone] = useState('');
   const [vendorCost, setVendorCost] = useState('');
   const [expectedReturn, setExpectedReturn] = useState('');
+  const [selectedVendorId, setSelectedVendorId] = useState('');
+  const [vendorList, setVendorList] = useState<Array<{ id: string; name: string; phone?: string; specialization?: string }>>([]);
+  const [showVendorPicker, setShowVendorPicker] = useState(false);
+  const [showNewVendorForm, setShowNewVendorForm] = useState(false);
+  const [newVendorName, setNewVendorName] = useState('');
+  const [newVendorPhone, setNewVendorPhone] = useState('');
+  const [newVendorSpec, setNewVendorSpec] = useState('');
+  const [newVendorSaving, setNewVendorSaving] = useState(false);
 
   // 2D: OTP Delivery state
   const [otpStep, setOtpStep] = useState<'idle' | 'collector-info' | 'otp-input' | 'verified' | 'delivering'>('idle');
@@ -265,6 +273,26 @@ export function CCTVJobCardDetail() {
       setOtpGenerated(!!job?.otpCode);
       return;
     }
+    // For OUTSOURCED, fetch vendors and pre-fill
+    if (transition.status === 'OUTSOURCED') {
+      setTransitionTarget(transition);
+      setTransitionNotes('');
+      setVendorName('');
+      setVendorPhone('');
+      setVendorCost('');
+      setExpectedReturn('');
+      setSelectedVendorId('');
+      setShowVendorPicker(false);
+      setShowNewVendorForm(false);
+      // Fetch vendor list for picker
+      (async () => {
+        try {
+          const res = await fetch(`/api/businesses/${BUSINESS_ID}/cctv/outsourced-vendors`);
+          if (res.ok) setVendorList(await res.json());
+        } catch { /* silent */ }
+      })();
+      return;
+    }
     setTransitionTarget(transition);
     setTransitionNotes('');
     setCollectorName('');
@@ -390,6 +418,7 @@ export function CCTVJobCardDetail() {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
+            vendorId: selectedVendorId || undefined,
             vendorName: vendorName || undefined,
             vendorPhone: vendorPhone || undefined,
             vendorCost: vendorCost ? Number(vendorCost) : undefined,
@@ -531,7 +560,17 @@ export function CCTVJobCardDetail() {
             <div className="mt-4 pt-3 border-t border-white/20 space-y-1.5 text-sm">
               {job.vendorName && <p className="text-white/90"><span className="text-white/60">Vendor:</span> {job.vendorName}{job.vendorPhone && ` (${job.vendorPhone})`}</p>}
               {job.vendorCost != null && <p className="text-white/90"><span className="text-white/60">Vendor Cost:</span> {formatBDT(job.vendorCost)}</p>}
-              {job.expectedReturn && <p className="text-white/90"><span className="text-white/60">Expected Return:</span> {job.expectedReturn}</p>}
+              {job.expectedReturn && (
+                <p className={cn(
+                  'text-white/90 flex items-center gap-1.5',
+                  job.expectedReturn && new Date(job.expectedReturn) < new Date() && 'text-yellow-200 font-semibold',
+                )}>
+                  {job.expectedReturn && new Date(job.expectedReturn) < new Date() && <AlertTriangle className="w-3.5 h-3.5" />}
+                  <span className="text-white/60">Expected Return:</span> {new Date(job.expectedReturn).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                  {job.expectedReturn && new Date(job.expectedReturn) < new Date() && ' (Overdue!)'}
+                </p>
+              )}
+              {job.outsourcedAt && <p className="text-white/70 text-xs"><span className="text-white/50">Sent:</span> {formatDate(job.outsourcedAt)}</p>}
             </div>
           )}
 
@@ -593,22 +632,152 @@ export function CCTVJobCardDetail() {
                       className="min-h-[72px] text-sm rounded-xl"
                     />
 
-                    {/* Extra fields for OUTSOURCED */}
+                    {/* Extra fields for OUTSOURCED — 2E: Vendor Picker */}
                     {t.status === 'OUTSOURCED' && (
-                      <div className="space-y-2.5 pt-1 border-t border-gray-100">
+                      <div className="space-y-3 pt-1 border-t border-gray-100">
                         <p className="text-xs font-semibold text-gray-600">Vendor Information</p>
-                        <Input
-                          placeholder="Vendor Name"
-                          value={vendorName}
-                          onChange={(e) => setVendorName(e.target.value)}
-                          className="h-9 text-sm rounded-xl"
-                        />
-                        <Input
-                          placeholder="Vendor Phone"
-                          value={vendorPhone}
-                          onChange={(e) => setVendorPhone(e.target.value)}
-                          className="h-9 text-sm rounded-xl"
-                        />
+
+                        {/* Vendor Picker / Manual toggle */}
+                        {!showNewVendorForm && !showVendorPicker && vendorList.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => setShowVendorPicker(true)}
+                            className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-600 hover:bg-gray-100 transition-colors"
+                          >
+                            <span className="flex items-center gap-2">
+                              <Building2 className="w-4 h-4 text-orange-500" />
+                              {selectedVendorId
+                                ? vendorList.find(v => v.id === selectedVendorId)?.name || 'Select Vendor'
+                                : 'Select from saved vendors'}
+                            </span>
+                            <ChevronDown className="w-4 h-4" />
+                          </button>
+                        )}
+
+                        {/* Vendor dropdown list */}
+                        {showVendorPicker && (
+                          <div className="rounded-xl border border-gray-200 max-h-40 overflow-y-auto">
+                            {vendorList.map(v => (
+                              <button
+                                key={v.id}
+                                type="button"
+                                onClick={() => {
+                                  setSelectedVendorId(v.id);
+                                  setVendorName(v.name);
+                                  setVendorPhone(v.phone || '');
+                                  setShowVendorPicker(false);
+                                }}
+                                className={cn(
+                                  'w-full flex items-center justify-between px-3 py-2.5 text-left hover:bg-orange-50 transition-colors border-b border-gray-50 last:border-0',
+                                  selectedVendorId === v.id && 'bg-orange-50',
+                                )}
+                              >
+                                <div>
+                                  <p className="text-xs font-semibold text-gray-800">{v.name}</p>
+                                  {v.specialization && <p className="text-[10px] text-gray-400">{v.specialization}</p>}
+                                </div>
+                                {v.phone && <span className="text-[10px] text-gray-400">{v.phone}</span>}
+                              </button>
+                            ))}
+                            <button
+                              type="button"
+                              onClick={() => { setShowVendorPicker(false); setShowNewVendorForm(true); }}
+                              className="w-full flex items-center gap-2 px-3 py-2.5 text-xs text-violet-600 font-semibold hover:bg-violet-50 transition-colors"
+                            >
+                              <Plus className="w-3.5 h-3.5" /> Add New Vendor
+                            </button>
+                          </div>
+                        )}
+
+                        {/* New vendor inline form */}
+                        {showNewVendorForm && (
+                          <div className="space-y-2 p-3 rounded-xl bg-violet-50 border border-violet-100">
+                            <div className="flex items-center justify-between">
+                              <p className="text-[11px] font-semibold text-violet-700">New Vendor</p>
+                              <button type="button" onClick={() => setShowNewVendorForm(false)} className="text-gray-400 hover:text-gray-600">
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                            <Input
+                              placeholder="Vendor Name *"
+                              value={newVendorName}
+                              onChange={(e) => setNewVendorName(e.target.value)}
+                              className="h-8 text-xs rounded-lg"
+                            />
+                            <Input
+                              placeholder="Phone"
+                              value={newVendorPhone}
+                              onChange={(e) => setNewVendorPhone(e.target.value)}
+                              className="h-8 text-xs rounded-lg"
+                            />
+                            <Input
+                              placeholder="Specialization (e.g. Chip-level repair)"
+                              value={newVendorSpec}
+                              onChange={(e) => setNewVendorSpec(e.target.value)}
+                              className="h-8 text-xs rounded-lg"
+                            />
+                            <button
+                              type="button"
+                              disabled={newVendorSaving || !newVendorName.trim()}
+                              onClick={async () => {
+                                setNewVendorSaving(true);
+                                try {
+                                  const res = await fetch(`/api/businesses/${BUSINESS_ID}/cctv/outsourced-vendors`, {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ name: newVendorName, phone: newVendorPhone, specialization: newVendorSpec }),
+                                  });
+                                  if (res.ok) {
+                                    const created = await res.json();
+                                    setVendorList(prev => [created, ...prev]);
+                                    setSelectedVendorId(created.id);
+                                    setVendorName(created.name);
+                                    setVendorPhone(created.phone || '');
+                                    setNewVendorName('');
+                                    setNewVendorPhone('');
+                                    setNewVendorSpec('');
+                                    setShowNewVendorForm(false);
+                                    toast({ title: 'Vendor saved' });
+                                  }
+                                } catch { /* silent */ }
+                                finally { setNewVendorSaving(false); }
+                              }}
+                              className="w-full text-[11px] font-semibold text-white bg-violet-500 rounded-lg py-1.5 disabled:opacity-50"
+                            >
+                              {newVendorSaving ? <Loader2 className="w-3 h-3 animate-spin mx-auto" /> : 'Save Vendor'}
+                            </button>
+                          </div>
+                        )}
+
+                        {/* Manual entry or override */}
+                        {(vendorList.length === 0 || selectedVendorId) && (
+                          <div className="space-y-2">
+                            {selectedVendorId && <p className="text-[10px] text-gray-400">Auto-filled from selected vendor. Edit to override.</p>}
+                            <Input
+                              placeholder="Vendor Name"
+                              value={vendorName}
+                              onChange={(e) => setVendorName(e.target.value)}
+                              className="h-9 text-sm rounded-xl"
+                            />
+                            <Input
+                              placeholder="Vendor Phone"
+                              value={vendorPhone}
+                              onChange={(e) => setVendorPhone(e.target.value)}
+                              className="h-9 text-sm rounded-xl"
+                            />
+                          </div>
+                        )}
+
+                        {!showNewVendorForm && !showVendorPicker && (
+                          <button
+                            type="button"
+                            onClick={() => setShowNewVendorForm(true)}
+                            className="text-[11px] text-violet-600 font-semibold flex items-center gap-1"
+                          >
+                            <Plus className="w-3 h-3" /> Add new vendor
+                          </button>
+                        )}
+
                         <Input
                           placeholder="Vendor Cost (৳)"
                           type="number"
@@ -616,13 +785,15 @@ export function CCTVJobCardDetail() {
                           onChange={(e) => setVendorCost(e.target.value)}
                           className="h-9 text-sm rounded-xl"
                         />
-                        <Input
-                          placeholder="Expected Return Date"
-                          type="date"
-                          value={expectedReturn}
-                          onChange={(e) => setExpectedReturn(e.target.value)}
-                          className="h-9 text-sm rounded-xl"
-                        />
+                        <div>
+                          <p className="text-[10px] text-gray-400 mb-1">Expected Return Date</p>
+                          <Input
+                            type="date"
+                            value={expectedReturn}
+                            onChange={(e) => setExpectedReturn(e.target.value)}
+                            className="h-9 text-sm rounded-xl"
+                          />
+                        </div>
                       </div>
                     )}
                   </div>

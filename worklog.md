@@ -377,3 +377,41 @@ Stage Summary:
 - OTP hardcoded to 999999 for development
 - 10-minute OTP expiry with proper error messages
 - Backend enforces OTP verification before DELIVERED transition (403 if not verified)
+
+---
+Task ID: 2E
+Agent: Main Agent
+Task: Segment 2E — Outsourced Repair Tracking
+
+Work Log:
+- Added CCTVOutsourcedVendor model to Prisma schema (name, phone, address, specialization, notes, isActive)
+- Added vendorId FK on CCTVJobCard, indexed, with relation to CCTVOutsourcedVendor
+- Added cctvOutsourcedVendors relation on Business model
+- Ran db:push + Prisma client regeneration
+- Added CCTVOutsourcedVendor interface to types, vendorId to CCTVJobCard
+- Created 2 API route files:
+  - outsourced-vendors/route.ts: GET (list with search, includeInactive flag) + POST (create with duplicate name check)
+  - outsourced-vendors/[vendorId]/route.ts: GET (with active outsourced jobs), PUT (update with duplicate check), DELETE (soft-delete, prevent if active jobs)
+- Updated job card detail GET to include outsourcedVendor relation
+- Updated job card PUT updatable fields to include vendorId
+- Enhanced outsource dialog in CCTVJobCardDetail:
+  - Vendor picker: dropdown from saved vendors (fetched on dialog open)
+  - Inline new vendor creation (name, phone, specialization)
+  - Auto-fill name/phone on vendor select, manual override
+  - vendorId passed in follow-up PUT
+- Added overdue indicator on OUTSOURCED status card:
+  - AlertTriangle icon + yellow text when past expected return date
+  - Formatted return date display + 'Overdue!' label
+- Added outsourced alert card on CCTVDashboard:
+  - Fetches OUTSOURCED jobs on mount
+  - Red card (overdue) or orange card (active) based on expected return dates
+  - Tappable, navigates to job-cards list
+- Fixed package.json scripts (removed pipe to tee for Windows compat)
+- Fixed CCTVTechniciansList await bug
+- Lint: 0 new CCTV errors
+- Dev server compiles cleanly
+- Committed: 82ce25a
+
+Stage Summary:
+- Segment 2E complete: vendor model, CRUD APIs, vendor picker UI, overdue tracking, dashboard alert
+- Full outsourcing lifecycle: pick vendor → outsource → track overdue → return to TESTING

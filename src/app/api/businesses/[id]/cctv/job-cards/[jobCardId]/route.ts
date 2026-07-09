@@ -29,6 +29,9 @@ export async function GET(
           },
           orderBy: { createdAt: "desc" },
         },
+        outsourcedVendor: {
+          select: { id: true, name: true, phone: true, address: true, specialization: true },
+        },
       },
     });
 
@@ -77,7 +80,7 @@ export async function PUT(
       "jobType", "customerName", "customerPhone", "conditionNotes",
       "reportedFault", "diagnosis", "repairNotes", "estimatedCost",
       "finalCost", "laborCharge", "assignedToId", "assignedToName",
-      "priority", "internalNotes", "vendorName", "vendorPhone",
+      "priority", "internalNotes", "vendorId", "vendorName", "vendorPhone",
       "vendorCost", "expectedReturn", "photoUrls",
     ];
 

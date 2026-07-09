@@ -265,6 +265,7 @@ export interface CCTVJobCard {
   otpGeneratedAt?: string;
   otpVerified: boolean;
   otpVerifiedAt?: string;
+  vendorId?: string;
   vendorName?: string;
   vendorPhone?: string;
   vendorCost?: number;
@@ -276,6 +277,7 @@ export interface CCTVJobCard {
   updatedAt: string;
   serialItem?: CCTVSerialItem;
   parts?: CCTVJobCardPart[];
+  outsourcedVendor?: CCTVOutsourcedVendor;
 }
 
 // ── 2B: Spare Parts Integration ──
@@ -351,6 +353,22 @@ export interface TechnicianPerformance {
   totalCommission: number;
   avgRating: number | null;
   jobTypeBreakdown: Record<string, number>;
+}
+
+// ── 2E: Outsourced Repair Tracking ──
+
+export interface CCTVOutsourcedVendor {
+  id: string;
+  businessId: string;
+  name: string;
+  phone?: string;
+  address?: string;
+  specialization?: string;
+  notes?: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  _count?: { jobCards: number };
 }
 
 export type CCTVViewType =
