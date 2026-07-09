@@ -577,3 +577,43 @@ Stage Summary:
 - Auto-generated installment schedule at plan creation
 - Inline payment collection from detail view with real-time plan refresh
 - 12 files changed, 1391 insertions, 141 deletions
+---
+Task ID: 3C
+Agent: Main Agent
+Task: Segment 3C — Customer Loyalty and CRM
+
+Work Log:
+- Added loyalty fields to shared Customer model: loyaltyPoints (Int), loyaltyTier (BRONZE/SILVER/GOLD/PLATINUM), preferredPaymentMethod
+- Created CCTVLoyaltyConfig model: per-business earn rate, redeem rate, tier thresholds
+- Created CCTVLoyaltyTransaction model: append-only points ledger (EARN/REDEEM/BONUS/ADJUST)
+- Created CCTVLoyaltyOffer model: DOUBLE_POINTS and BONUS_POINTS promotional offers
+- Added Business relations for all 3 new models
+- Ran db:push + Prisma client regeneration
+- Added 3C types to types/index.ts (CCTVCustomer, CCTVLoyaltyConfig, CCTVLoyaltyTransaction, CCTVLoyaltyOffer, LoyaltyTier, etc.)
+- Added 'loyalty-center' to CCTVViewType
+- Created 7 API route files via subagents:
+  - customers/route.ts: GET (list with search/tier/sort + CCTV stats via groupBy), POST (create/lookup by phone)
+  - customers/[customerId]/route.ts: GET (detail with sales/EMI/loyalty/tier progress), PUT (update)
+  - customers/[customerId]/loyalty/route.ts: GET (transactions with pagination), POST (manual adjust with tier recalc)
+  - customers/[customerId]/redeem/route.ts: POST (redeem points for BDT discount, full units only)
+  - loyalty-config/route.ts: GET (auto-init if missing), PUT (update config)
+  - loyalty-offers/route.ts: GET (with active/current filters), POST (create with auto-init config)
+  - loyalty-offers/[offerId]/route.ts: GET, PUT, DELETE (soft-delete)
+- Modified sales POST to auto-create/lookup Customer by phone, earn loyalty points, check active offers (DOUBLE_POINTS + BONUS_POINTS), update customer totals and tier
+- Rewrote CCTVCustomersList.tsx: real API, debounced search, tier filter tabs, tier-colored avatars, stats row, Skeleton loading
+- Created CCTVCustomerDetail.tsx: profile card, violet loyalty points card with tier progress, stats grid, 3 tabs (Purchases/EMI/Points History), redeem dialog with live preview, adjust points dialog
+- Created CCTVLoyaltyCenter.tsx: status toggle, earning rules card, redemption rules card, tier thresholds card, save config, offer list with status (Active/Scheduled/Expired), create/edit offer dialog, delete with confirmation
+- Wired customer-detail and loyalty-center into CCTVShell switch cases
+- Added barrel exports for CCTVCustomerDetail and CCTVLoyaltyCenter
+- Added 'Loyalty' quick action to CCTVDashboard (Star icon, fuchsia)
+- Fixed CCTVLoyaltyCenter DEFAULT_OFFER type narrowing issue
+- Lint: 0 errors, tsc: 0 new CCTV errors (only pre-existing framer-motion ease type and pharmacy errors)
+- Committed: 7d57679
+
+Stage Summary:
+- Segment 3C fully complete: 3 Prisma models + 3 Customer model fields, 7 API routes, 3 UI components, sales integration
+- Full loyalty lifecycle: auto-create customer on sale → earn points → check offers → update tier → view history → redeem → manual adjust
+- 4 loyalty tiers: BRONZE/SILVER/GOLD/PLATINUM with configurable thresholds
+- 2 offer types: DOUBLE_POINTS (multiplier) and BONUS_POINTS (flat bonus)
+- Configurable earn/redeem rates per business
+- 22 files changed, 3662 insertions, 91 deletions
