@@ -38,3 +38,4 @@ export { CCTVEmiDetail } from './CCTVEmiDetail';
 export { CCTVCreatEmi } from './CCTVCreatEmi';
 export { CCTVCustomerDetail } from './CCTVCustomerDetail';
 export { CCTVLoyaltyCenter } from './CCTVLoyaltyCenter';
+export { CCTVWarrantyDetail } from './CCTVWarrantyDetail';

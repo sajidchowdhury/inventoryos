@@ -40,6 +40,7 @@ import { CCTVEmiDetail } from './CCTVEmiDetail';
 import { CCTVCreatEmi } from './CCTVCreatEmi';
 import { CCTVCustomerDetail } from './CCTVCustomerDetail';
 import { CCTVLoyaltyCenter } from './CCTVLoyaltyCenter';
+import { CCTVWarrantyDetail } from './CCTVWarrantyDetail';
 
 function PlaceholderView({ title, icon }: { title: string; icon?: string }) {
   const { goBack } = useCCTVNavStore();
@@ -109,6 +110,7 @@ const viewMeta: Record<string, { title: string; icon: string }> = {
   'help': { title: 'Help & Support', icon: '💬' },
   'subscription': { title: 'Subscription', icon: '👑' },
   'loyalty-center': { title: 'Loyalty Program', icon: '⭐' },
+  'warranty-detail': { title: 'Warranty Details', icon: '🛡️' },
 };
 
 export function CCTVShell() {
@@ -199,6 +201,9 @@ export function CCTVShell() {
         return <CCTVCustomerDetail />;
       case 'loyalty-center':
         return <CCTVLoyaltyCenter />;
+      // Warranty Tracking & Alerts (3D)
+      case 'warranty-detail':
+        return <CCTVWarrantyDetail />;
       default: {
         const meta = viewMeta[activeView];
         return <PlaceholderView title={meta?.title || activeView} icon={meta?.icon} />;

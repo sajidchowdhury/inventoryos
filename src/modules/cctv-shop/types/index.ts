@@ -611,3 +611,56 @@ export interface CCTVLoyaltyOffer {
   createdAt: string;
   updatedAt: string;
 }
+
+// ── 3D: Warranty Tracking and Alerts ──
+
+export type WarrantyStatus = 'ACTIVE' | 'EXPIRING_SOON' | 'EXPIRED';
+export type WarrantyClaimStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
+
+export interface CCTVWarranty {
+  id: string;
+  businessId: string;
+  serialItemId: string;
+  serialNumber: string;
+  imei?: string;
+  productId: string;
+  productName: string;
+  productBrand?: string;
+  status: string;
+  customerName?: string;
+  customerPhone?: string;
+  saleId?: string;
+  warrantyMonths: number;
+  warrantyStart?: string;
+  warrantyEnd?: string;
+  warrantyStatus: WarrantyStatus;
+  daysRemaining: number;
+  _count?: { warrantyClaims: number };
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CCTVWarrantyClaim {
+  id: string;
+  businessId: string;
+  serialItemId: string;
+  customerName: string;
+  customerPhone?: string;
+  issueDescription: string;
+  status: WarrantyClaimStatus;
+  resolutionNotes?: string;
+  approvedAt?: string;
+  completedAt?: string;
+  approvedById?: string;
+  jobCardId?: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  serialItem?: {
+    id: string;
+    serialNumber: string;
+    imei?: string;
+    productName?: string;
+    productBrand?: string;
+  };
+}

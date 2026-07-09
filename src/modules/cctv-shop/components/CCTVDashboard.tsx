@@ -44,6 +44,9 @@ export function CCTVDashboard() {
   // 2E: Outsourced job tracking
   const [outsourceAlerts, setOutsourceAlerts] = React.useState<{ total: number; overdue: number }>({ total: 0, overdue: 0 });
 
+  // 3D: Warranty expiring alerts
+  const [warrantyAlerts, setWarrantyAlerts] = React.useState<{ expiringSoon: number; expired: number; pendingClaims: number }>({ expiringSoon: 0, expired: 0, pendingClaims: 0 });
+
   React.useEffect(() => {
     (async () => {
       try {
@@ -54,6 +57,18 @@ export function CCTVDashboard() {
             j.expectedReturn && new Date(j.expectedReturn) < new Date()
           ).length;
           setOutsourceAlerts({ total: jobs.length, overdue });
+        }
+      } catch { /* silent */ }
+
+      try {
+        const res = await fetch('/api/businesses/bus_placeholder/cctv/warranties/summary');
+        if (res.ok) {
+          const data = await res.json();
+          setWarrantyAlerts({
+            expiringSoon: data.expiringSoon || 0,
+            expired: data.expired || 0,
+            pendingClaims: data.claims?.pending || 0,
+          });
         }
       } catch { /* silent */ }
     })();
@@ -263,6 +278,45 @@ export function CCTVDashboard() {
                   {outsourceAlerts.overdue > 0
                     ? `Expected return date passed for ${outsourceAlerts.overdue > 1 ? 'some jobs' : 'a job'}`
                     : 'Track vendor repair progress'}
+                </p>
+              </div>
+              <ExternalLink className="w-4 h-4 text-gray-400 shrink-0" />
+            </button>
+          </motion.div>
+        )}
+
+        {/* ── 3D: Warranty Alerts ── */}
+        {(warrantyAlerts.expiringSoon > 0 || warrantyAlerts.expired > 0 || warrantyAlerts.pendingClaims > 0) && (
+          <motion.div variants={fadeUp}>
+            <button
+              onClick={() => navigate('warranties')}
+              className={cn(
+                'w-full flex items-center gap-3 p-3.5 rounded-2xl border text-left active:scale-[0.98] transition-transform',
+                warrantyAlerts.expired > 0 || warrantyAlerts.pendingClaims > 0
+                  ? 'bg-red-50 border-red-200'
+                  : 'bg-amber-50 border-amber-200',
+              )}
+            >
+              <div className={cn(
+                'w-10 h-10 rounded-xl flex items-center justify-center shrink-0',
+                warrantyAlerts.expired > 0 || warrantyAlerts.pendingClaims > 0 ? 'bg-red-100' : 'bg-amber-100',
+              )}>
+                <ShieldCheck className={cn('w-5 h-5', warrantyAlerts.expired > 0 || warrantyAlerts.pendingClaims > 0 ? 'text-red-600' : 'text-amber-600')} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-bold text-gray-900">
+                  {warrantyAlerts.pendingClaims > 0
+                    ? `${warrantyAlerts.pendingClaims} Pending Warranty Claim${warrantyAlerts.pendingClaims > 1 ? 's' : ''}`
+                    : warrantyAlerts.expired > 0
+                      ? `${warrantyAlerts.expired} Expired Warranty${warrantyAlerts.expired > 1 ? 'ies' : 'y'}`
+                      : `${warrantyAlerts.expiringSoon} Warranty Expiring Soon`}
+                </p>
+                <p className="text-[10px] text-gray-500 mt-0.5">
+                  {warrantyAlerts.pendingClaims > 0
+                    ? 'Action required on pending claims'
+                    : warrantyAlerts.expired > 0
+                      ? `${warrantyAlerts.expired} item${warrantyAlerts.expired > 1 ? 's have' : ' has'} expired warranty`
+                      : 'Review and notify customers'}
                 </p>
               </div>
               <ExternalLink className="w-4 h-4 text-gray-400 shrink-0" />

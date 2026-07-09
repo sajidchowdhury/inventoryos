@@ -183,6 +183,7 @@ model Business {
   cctvLoyaltyConfigs      CCTVLoyaltyConfig[]
   cctvLoyaltyTransactions CCTVLoyaltyTransaction[]
   cctvLoyaltyOffers       CCTVLoyaltyOffer[]
+  cctvWarrantyClaims      CCTVWarrantyClaim[]
 
   @@index([userId])
   @@index([businessTypeId])
@@ -1859,6 +1860,7 @@ model CCTVSerialItem {
   jobCards      CCTVJobCard[]
   jobCardParts  CCTVJobCardPart[]
   saleItems     CCTVSaleItem[]
+  warrantyClaims CCTVWarrantyClaim[]
 
   @@unique([businessId, serialNumber])
   @@index([businessId])
@@ -2574,4 +2576,41 @@ model CCTVLoyaltyOffer {
   @@index([businessId])
   @@index([configId])
   @@map("cctv_loyalty_offers")
+}
+
+// ── CCTV Warranty Claim (3D: Warranty Tracking and Alerts) ──
+// Records warranty claims when customers bring in items for warranty repair/service.
+// A claim tracks the issue, approval status, and any linked repair job card.
+model CCTVWarrantyClaim {
+  id              String   @id @default(cuid())
+  businessId      String
+  serialItemId    String                   // which serial item is claimed
+
+  // Customer info (denormalized)
+  customerName    String
+  customerPhone   String?
+
+  // Claim details
+  issueDescription String                  // what the customer reports
+  status          String   @default("PENDING")  // PENDING / APPROVED / REJECTED / IN_PROGRESS / COMPLETED / CANCELLED
+  resolutionNotes String?                  // what was done to resolve
+  approvedAt      DateTime?                // when claim was approved
+  completedAt     DateTime?                // when claim was completed/rejected
+  approvedById    String?                  // staff who approved
+
+  // Optional link to a repair job card
+  jobCardId       String?                  // if a job card is created for the warranty repair
+
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  business        Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  serialItem      CCTVSerialItem  @relation(fields: [serialItemId], references: [id])
+
+  @@index([businessId])
+  @@index([serialItemId])
+  @@index([status])
+  @@index([customerPhone])
+  @@map("cctv_warranty_claims")
 }
