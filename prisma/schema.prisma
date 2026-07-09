@@ -191,6 +191,8 @@ model Business {
   cctvCameraPositions     CCTVCameraPosition[]
   cctvCableRoutes         CCTVCableRoute[]
   cctvAmcContracts        CCTVAmcContract[]
+  cctvInstallationTasks   CCTVInstallationTask[]
+  cctvTaskChecklists      CCTVTaskChecklist[]
 
   @@index([userId])
   @@index([businessTypeId])
@@ -2672,6 +2674,7 @@ model CCTVProject {
   business        Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
   sale            CCTVSale?       @relation(fields: [saleId], references: [id])
   surveys         CCTVSiteSurvey[]
+  installationTasks CCTVInstallationTask[]
 
   @@unique([businessId, projectCode])
   @@index([businessId])
@@ -2835,4 +2838,76 @@ model CCTVAmcVisit {
   @@index([businessId])
   @@index([contractId])
   @@map("cctv_amc_visits")
+}
+
+// ── 4D: Installation Task Scheduling ──
+
+model CCTVInstallationTask {
+  id              String   @id @default(cuid())
+  businessId      String
+  projectId       String
+
+  // Task identification
+  taskTitle       String                    // "Install cameras on 2nd floor"
+  scheduledDate   DateTime                  // When the task is scheduled
+  completedDate   DateTime?                 // When actually completed
+
+  // Assignment
+  assignedToId    String?                   // Link to CCTVTechnician
+  assignedToName  String?                   // Denormalized for quick display
+
+  // Location
+  location        String?                   // e.g., "2nd Floor, East Wing"
+  siteAddress     String?                   // Denormalized from project
+
+  // Status
+  status          String   @default("PENDING")  // PENDING / IN_PROGRESS / COMPLETED / OVERDUE / CANCELLED
+  priority        String   @default("NORMAL")   // LOW / NORMAL / HIGH / URGENT
+
+  // Progress tracking
+  totalChecklist  Int      @default(0)
+  completedChecklist Int   @default(0)
+
+  // Notes
+  notes           String?
+  internalNotes   String?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  business        Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  project         CCTVProject     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  checklists      CCTVTaskChecklist[]
+
+  @@index([businessId])
+  @@index([projectId])
+  @@index([status])
+  @@index([scheduledDate])
+  @@index([assignedToId])
+  @@map("cctv_installation_tasks")
+}
+
+model CCTVTaskChecklist {
+  id              String   @id @default(cuid())
+  businessId      String
+  taskId          String
+
+  // Checklist item
+  itemText        String                    // "Mount 4 bullet cameras"
+  isCompleted     Boolean  @default(false)
+  sortOrder       Int      @default(0)
+
+  // Optional details
+  notes           String?
+  completedAt     DateTime?
+
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+
+  business        Business             @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  task            CCTVInstallationTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@index([taskId])
+  @@map("cctv_task_checklists")
 }

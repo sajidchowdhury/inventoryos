@@ -45,6 +45,9 @@ import { CCTVCreateAmc } from './CCTVCreateAmc';
 import { CCTVCreateProject } from './CCTVCreateProject';
 import { CCTVProjectDetail } from './CCTVProjectDetail';
 import { CCTVStorageCalculator } from './CCTVStorageCalculator';
+import { CCTVInstallationTasks } from './CCTVInstallationTasks';
+import { CCTVCreateTask } from './CCTVCreateTask';
+import { CCTVTaskDetail } from './CCTVTaskDetail';
 
 function PlaceholderView({ title, icon }: { title: string; icon?: string }) {
   const { goBack } = useCCTVNavStore();
@@ -115,6 +118,9 @@ const viewMeta: Record<string, { title: string; icon: string }> = {
   'subscription': { title: 'Subscription', icon: '👑' },
   'loyalty-center': { title: 'Loyalty Program', icon: '⭐' },
   'storage-calculator': { title: 'Storage Calculator', icon: '💾' },
+  'installation-tasks': { title: 'Installation Tasks', icon: '📋' },
+  'create-task': { title: 'New Task', icon: '➕' },
+  'task-detail': { title: 'Task Details', icon: '🔧' },
 };
 
 export function CCTVShell() {
@@ -214,6 +220,13 @@ export function CCTVShell() {
       // Storage Calculator (4B)
       case 'storage-calculator':
         return <CCTVStorageCalculator />;
+      // Installation Tasks (4D)
+      case 'installation-tasks':
+        return <CCTVInstallationTasks />;
+      case 'create-task':
+        return <CCTVCreateTask />;
+      case 'task-detail':
+        return <CCTVTaskDetail />;
       // Warranty Tracking & Alerts (3D)
       case 'warranty-detail':
         return <CCTVWarrantyDetail />;

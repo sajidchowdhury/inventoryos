@@ -98,6 +98,7 @@ export function CCTVDashboard() {
     { label: 'Job Card', icon: ClipboardCheck, view: 'create-job-card' as const, color: 'bg-amber-500' },
     { label: 'New AMC', icon: ShieldCheck, view: 'create-amc' as const, color: 'bg-teal-500' },
     { label: 'Projects', icon: Building2, view: 'projects' as const, color: 'bg-cyan-500' },
+    { label: 'Tasks', icon: ClipboardCheck, view: 'installation-tasks' as const, color: 'bg-indigo-500' },
     { label: 'EMI Sales', icon: CreditCard, view: 'emi' as const, color: 'bg-pink-500' },
     { label: 'Warranties', icon: ShieldCheck, view: 'warranties' as const, color: 'bg-emerald-500' },
     { label: 'Customers', icon: Users, view: 'customers' as const, color: 'bg-orange-500' },

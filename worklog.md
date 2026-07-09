@@ -806,3 +806,87 @@ Patterns Applied:
 - BUSINESS_ID = 'bus_placeholder' for all API calls
 - All components use `'use client'` with named exports
 - ESLint passed with zero errors
+
+---
+Task ID: Installation Task Scheduling API Routes
+Agent: Main Agent
+Task: Create 6 Installation Task Scheduling API routes for CCTV Shop module
+
+Work Log:
+- Analyzed Prisma schema: `CCTVInstallationTask` (taskTitle, scheduledDate, completedDate, assignedToId/Name, location, siteAddress, status, priority, totalChecklist, completedChecklist, notes, internalNotes) and `CCTVTaskChecklist` (itemText, isCompleted, sortOrder, notes, completedAt)
+- Confirmed double-C naming: `db.cCTVInstallationTask`, `db.cCTVTaskChecklist`
+- Followed existing project pattern for params: `{ params }: { params: Promise<{ id: string }> }` → `const { id: businessId } = await params;`
+- Created all 6 route files:
+
+1. `installation-tasks/route.ts` — GET (list with filters + overdue auto-update via updateMany) / POST (create with checklistItems array support)
+2. `installation-tasks/summary/route.ts` — GET (totalPending, totalInProgress, totalOverdue, totalCompletedToday, upcomingThisWeek, technicianWorkload)
+3. `installation-tasks/[taskId]/route.ts` — GET (single task with checklists ordered by sortOrder) / PUT (update fields, auto-set completedDate) / DELETE (soft-delete)
+4. `installation-tasks/[taskId]/checklist/route.ts` — GET (list ordered) / POST (add item, auto-increment parent totalChecklist) / PUT (bulk update with recount)
+5. `installation-tasks/[taskId]/checklist/[itemId]/route.ts` — PUT (update item, handle completion state changes, increment/decrement parent counters) / DELETE (soft-delete, decrement totalChecklist, conditionally decrement completedChecklist)
+6. `installation-tasks/by-project/[projectId]/route.ts` — GET (list by project with overdue auto-update, include checklists, ordered by scheduledDate asc)
+
+- All routes use `db` from `@/lib/db`, named exports (GET/POST/PUT/DELETE), proper error handling
+- ESLint passed with zero errors
+
+Stage Summary:
+- 6 API route files created for full installation task scheduling CRUD
+- Overdue auto-update on GET list endpoints using `updateMany` before `findMany`
+- Checklist counter management (totalChecklist, completedChecklist) with floor-at-0 protection
+- Summary endpoint with technician workload aggregation
+---
+Task ID: installation-tasks-ui
+Agent: Main Agent
+Task: Create Installation Tasks UI (3 components — list, create/edit form, detail view)
+
+Work Log:
+- Created `src/modules/cctv-shop/components/CCTVInstallationTasks.tsx`
+  - Cross-project installation task scheduler/list view
+  - Fetches summary (pending/in-progress/overdue/completed-today) from `/installation-tasks/summary`
+  - Fetches task list from `/installation-tasks`
+  - Summary banner: 4 mini-cards in a grid (Pending/gray, In Progress/violet, Overdue/red with pulse, Done Today/green)
+  - Overdue alert banner with animated pulse indicator
+  - 5 filter tabs: All / Today / This Week / Overdue / Completed
+  - Tasks grouped by date (Overdue → Today → Tomorrow → Upcoming dates)
+  - Each task card shows: priority badge, status badge, title, project+client, scheduled date, technician, location, checklist progress bar
+  - FAB button (violet gradient) navigates to create-task
+  - Empty state when no tasks match filter
+  - Skeleton loading state
+
+- Created `src/modules/cctv-shop/components/CCTVCreateTask.tsx`
+  - Create/edit installation task form
+  - If contextId is set: fetches existing task, pre-fills form, uses PUT on submit
+  - Project selector: fetches INSTALLATION-status projects, search/filter dropdown, required
+  - Task Title: text input, required
+  - Scheduled Date: date input, required
+  - Priority: 4 toggle buttons (Low/Normal/High/Urgent) with color states
+  - Assign Technician: optional text input
+  - Location: optional text input
+  - Site Address: optional text input
+  - Checklist Items: dynamic numbered list with + button for custom items, 6 quick-add chips (Mount cameras, Run cables, Configure NVR/DVR, Test all camera feeds, Train client on system, Clean up site), X button to remove
+  - Notes and Internal Notes textareas
+  - Fixed bottom submit button (violet gradient CTA), navigates to installation-tasks on success
+
+- Created `src/modules/cctv-shop/components/CCTVTaskDetail.tsx`
+  - Detail view for a single installation task
+  - Status + Priority badges at top
+  - Red overdue alert banner with days-overdue count
+  - Project info card (tappable → navigate to project-detail), client name, site address
+  - Scheduling card: scheduled date, assigned technician, location
+  - Checklist section: progress bar with percentage, checkbox toggle (PUT to toggle isCompleted), completion time, inline "Add Item" with enter-key support (POST)
+  - Notes section (shown if any)
+  - Fixed bottom action buttons:
+    - PENDING → "Mark In Progress" (violet) + "Cancel" (gray)
+    - IN_PROGRESS → "Mark Complete" (green) + "Cancel" (gray)
+    - COMPLETED → "Reopen" (amber/orange)
+  - On status change, task is refreshed from API
+
+- Updated `src/modules/cctv-shop/components/index.ts` with 3 new exports
+- All components use `'use client'`, named exports, purple/violet theme, shadcn patterns
+- fadeUp animation with `as const` on ease string used consistently
+- API base: `/api/businesses/bus_placeholder/cctv/installation-tasks`
+
+Stage Summary:
+- 3 new frontend components created for Phase 4D Installation Task Scheduling
+- Full CRUD flow: list → create → detail → status transitions → checklist management
+- Consistent with existing CCTV module patterns (nav store, card styles, badge system, animation)
+- No backend APIs created — components consume existing/future API endpoints

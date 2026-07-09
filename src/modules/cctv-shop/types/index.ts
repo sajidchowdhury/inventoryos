@@ -426,7 +426,10 @@ export type CCTVViewType =
   | 'technician-detail'
   | 'commission-report'
   | 'help'
-  | 'storage-calculator';
+  | 'storage-calculator'
+  | 'installation-tasks'
+  | 'create-task'
+  | 'task-detail';
 
 // ── 3A: Payment Integration ──
 
@@ -803,6 +806,55 @@ export interface CCTVAmcVisit {
   findings?: string;
   customerSignOff: boolean;
   visitNotes?: string;
+  isActive: boolean;
+  createdAt: string;
+}
+
+// ── 4D: Installation Task Scheduling ──
+
+export type TaskStatus = 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'OVERDUE' | 'CANCELLED';
+export type TaskPriority = 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT';
+
+export interface CCTVInstallationTask {
+  id: string;
+  businessId: string;
+  projectId: string;
+  taskTitle: string;
+  scheduledDate: string;
+  completedDate?: string;
+  assignedToId?: string;
+  assignedToName?: string;
+  location?: string;
+  siteAddress?: string;
+  status: TaskStatus;
+  priority: TaskPriority;
+  totalChecklist: number;
+  completedChecklist: number;
+  notes?: string;
+  internalNotes?: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  project?: {
+    id: string;
+    projectName: string;
+    projectCode: string;
+    clientName: string;
+    siteAddress?: string;
+  };
+  checklists?: CCTVTaskChecklist[];
+  _count?: { checklists: number };
+}
+
+export interface CCTVTaskChecklist {
+  id: string;
+  businessId: string;
+  taskId: string;
+  itemText: string;
+  isCompleted: boolean;
+  sortOrder: number;
+  notes?: string;
+  completedAt?: string;
   isActive: boolean;
   createdAt: string;
 }

@@ -6,13 +6,14 @@ import {
   ArrowLeft, ChevronRight, Calendar, MapPin, User, Phone,
   Mail, Package, DollarSign, FileText, Camera, Cable,
   Plus, Trash2, Save, Edit3, X, Check, Image as ImageIcon,
-  Eye, EyeOff, AlertTriangle,
+  Eye, EyeOff, AlertTriangle, ClipboardList,
 } from 'lucide-react';
 import { useCCTVNavStore } from '@/stores/cctv-nav-store';
 import { cn } from '@/lib/utils';
 import type {
   CCTVProject, CCTVSiteSurvey, CCTVCameraPosition, CCTVCableRoute,
   ProjectStatus, ProjectType, CameraType, CableType,
+  CCTVInstallationTask as TaskType,
 } from '@/modules/cctv-shop/types';
 
 const BUSINESS_ID = 'bus_placeholder';
@@ -41,7 +42,127 @@ const cableTypes: CableType[] = ['Cat5e', 'Cat6', 'Coaxial', 'Fiber'];
 // ─── Types for local editing ───
 interface Point { x: number; y: number }
 
-type TabKey = 'overview' | 'survey' | 'equipment';
+// ─── Inline: Tasks Tab for Project Detail ───
+
+function ProjectTasksTab({ projectId, navigate }: { projectId: string; navigate: (v: 'create-task' | 'task-detail', id?: string) => void }) {
+  const [tasks, setTasks] = useState<TaskType[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!projectId) return;
+    (async () => {
+      try {
+        const res = await fetch(`/api/businesses/bus_placeholder/cctv/installation-tasks/by-project/${projectId}`);
+        if (res.ok) setTasks(await res.json());
+      } catch { /* silent */ }
+      setLoading(false);
+    })();
+  }, [projectId]);
+
+  const statusColors: Record<string, string> = {
+    PENDING: 'bg-gray-100 text-gray-600',
+    IN_PROGRESS: 'bg-violet-100 text-violet-700',
+    COMPLETED: 'bg-emerald-100 text-emerald-700',
+    OVERDUE: 'bg-red-100 text-red-700',
+    CANCELLED: 'bg-gray-100 text-gray-400 line-through',
+  };
+  const priorityColors: Record<string, string> = {
+    URGENT: 'bg-red-100 text-red-700',
+    HIGH: 'bg-orange-100 text-orange-700',
+    NORMAL: 'bg-gray-100 text-gray-600',
+    LOW: 'bg-blue-100 text-blue-600',
+  };
+
+  if (loading) {
+    return (
+      <div className="space-y-3">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm animate-pulse">
+            <div className="h-4 bg-gray-100 rounded w-3/4 mb-2" />
+            <div className="h-3 bg-gray-50 rounded w-1/2" />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {/* Create task CTA */}
+      <button
+        onClick={() => navigate('create-task', projectId)}
+        className="w-full flex items-center gap-3 p-4 rounded-2xl bg-white border border-gray-100 shadow-sm text-left active:scale-[0.98] transition-transform"
+      >
+        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg shadow-violet-500/20">
+          <Plus className="w-5 h-5 text-white" />
+        </div>
+        <div className="flex-1">
+          <p className="text-xs font-bold text-gray-900">Create Installation Task</p>
+          <p className="text-[10px] text-gray-400">Add a task with checklist for this project</p>
+        </div>
+        <ChevronRight className="w-4 h-4 text-gray-300" />
+      </button>
+
+      {/* Task list */}
+      {tasks.length === 0 ? (
+        <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm text-center">
+          <ClipboardList className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+          <p className="text-xs font-semibold text-gray-800">No Tasks Yet</p>
+          <p className="text-[10px] text-gray-400 mt-1">Create tasks to schedule installation work</p>
+        </div>
+      ) : (
+        <div className="space-y-2.5 max-h-96 overflow-y-auto">
+          {tasks.map((task) => {
+            const pct = task.totalChecklist > 0 ? Math.round((task.completedChecklist / task.totalChecklist) * 100) : 0;
+            return (
+              <button
+                key={task.id}
+                onClick={() => navigate('task-detail', task.id)}
+                className="w-full bg-white rounded-2xl border border-gray-100 p-4 shadow-sm text-left active:scale-[0.98] transition-transform"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className={cn('text-[10px] px-1.5 py-0.5 rounded-full font-semibold', priorityColors[task.priority] || priorityColors.NORMAL)}>
+                        {task.priority}
+                      </span>
+                      <span className={cn('text-[10px] px-1.5 py-0.5 rounded-full font-semibold', statusColors[task.status] || '')}>
+                        {task.status.replace(/_/g, ' ')}
+                      </span>
+                    </div>
+                    <p className="text-sm font-semibold text-gray-900 mt-1.5 truncate">{task.taskTitle}</p>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-gray-300 shrink-0 mt-1" />
+                </div>
+
+                <div className="flex items-center gap-3 mt-2 text-[11px] text-gray-500">
+                  {task.assignedToName && (
+                    <span className="flex items-center gap-1"><User className="w-3 h-3" />{task.assignedToName}</span>
+                  )}
+                  <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{new Date(task.scheduledDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                </div>
+
+                {task.totalChecklist > 0 && (
+                  <div className="mt-2.5">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[10px] text-gray-400">{task.completedChecklist}/{task.totalChecklist} done</span>
+                      <span className="text-[10px] font-semibold text-violet-600">{pct}%</span>
+                    </div>
+                    <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                      <div className="h-full bg-gradient-to-r from-violet-500 to-purple-600 rounded-full transition-all" style={{ width: `${pct}%` }} />
+                    </div>
+                  </div>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+type TabKey = 'overview' | 'survey' | 'equipment' | 'tasks';
 
 export function CCTVProjectDetail() {
   const { goBack, contextId, navigate } = useCCTVNavStore();
@@ -314,6 +435,7 @@ export function CCTVProjectDetail() {
     { key: 'overview', label: 'Overview', icon: FileText },
     { key: 'survey', label: 'Site Survey', icon: Camera },
     { key: 'equipment', label: 'Equipment', icon: Package },
+    { key: 'tasks', label: 'Tasks', icon: ClipboardList },
   ];
 
   // Camera icon by type
@@ -808,6 +930,13 @@ export function CCTVProjectDetail() {
             </div>
             <ChevronRight className="w-4 h-4 text-gray-300 shrink-0" />
           </button>
+        </motion.div>
+      )}
+
+      {/* ─── TASKS TAB ─── */}
+      {activeTab === 'tasks' && (
+        <motion.div {...fadeUp}>
+          <ProjectTasksTab projectId={projectId || ''} navigate={navigate} />
         </motion.div>
       )}
 
