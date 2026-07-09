@@ -185,6 +185,12 @@ model Business {
   cctvLoyaltyOffers       CCTVLoyaltyOffer[]
   cctvWarrantyClaims      CCTVWarrantyClaim[]
 
+  // CCTV Module (Phase 4A: Project and Site Survey Management)
+  cctvProjects            CCTVProject[]
+  cctvSiteSurveys         CCTVSiteSurvey[]
+  cctvCameraPositions     CCTVCameraPosition[]
+  cctvCableRoutes         CCTVCableRoute[]
+
   @@index([userId])
   @@index([businessTypeId])
   @@index([subscriptionStage])  // P1: fast filtering by lifecycle stage
@@ -2347,6 +2353,7 @@ model CCTVSale {
   payments        CCTVPayment[]
   emiPlan         CCTVEmiPlan?
   items           CCTVSaleItem[]
+  project         CCTVProject?    // If this sale is linked to a project (Phase 4A)
 
   @@unique([businessId, saleCode])
   @@index([businessId])
@@ -2613,4 +2620,150 @@ model CCTVWarrantyClaim {
   @@index([status])
   @@index([customerPhone])
   @@map("cctv_warranty_claims")
+}
+
+// ── CCTV Project (4A: Project and Site Survey Management) ──
+// Represents a CCTV installation project linked to a customer and optionally a sale.
+// Tracks the full lifecycle: Planning → Survey → Procurement → Installation → Testing → Handover → Completed.
+model CCTVProject {
+  id              String   @id @default(cuid())
+  businessId      String
+
+  // Project identification
+  projectName     String                   // "City Mall Surveillance System"
+  projectCode     String                   // Auto-generated: "PRJ-001"
+
+  // Client information (denormalized for quick display)
+  clientId        String?                  // Link to Customer model
+  clientName      String                   // Client/company name
+  clientPhone     String?
+  clientEmail     String?
+  clientAddress   String?
+
+  // Project scope & status
+  status          String   @default("PLANNING")  // PLANNING / SURVEY / PROCUREMENT / INSTALLATION / TESTING / HANDOVER / COMPLETED / CANCELLED
+  projectType     String   @default("INSTALLATION")  // INSTALLATION / MAINTENANCE / UPGRADE / REPAIR
+  totalItems      Int      @default(0)     // Total equipment items planned
+  completedItems  Int      @default(0)     // Items installed so far
+  projectValue    Float    @default(0)     // Total project value in BDT
+
+  // Timeline
+  startDate       DateTime?                // When work starts
+  deadline        DateTime?                // Expected completion
+  completedAt     DateTime?                // Actual completion
+
+  // Site details
+  siteAddress     String?                  // Where installation happens
+  siteContact     String?                  // On-site contact person
+  siteContactPhone String?                 // On-site contact phone
+
+  // Optional link to a sale (if project was sold through POS)
+  saleId          String?                  @unique
+
+  // Notes
+  notes           String?                  // Visible to client
+  internalNotes   String?                  // Internal team notes
+
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  business        Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  sale            CCTVSale?       @relation(fields: [saleId], references: [id])
+  surveys         CCTVSiteSurvey[]
+
+  @@unique([businessId, projectCode])
+  @@index([businessId])
+  @@index([status])
+  @@index([clientId])
+  @@index([deadline])
+  @@map("cctv_projects")
+}
+
+// ── CCTV Site Survey (4A: Project and Site Survey Management) ──
+// A survey captures the pre-installation site assessment: floor plan,
+// camera positions, cable routes, and blind spot analysis.
+model CCTVSiteSurvey {
+  id              String   @id @default(cuid())
+  businessId      String
+  projectId       String
+
+  // Floor plan (base64 data URI for the image)
+  floorPlanData   String?                  // base64-encoded image data URI
+  floorPlanName   String?                  // Original filename
+
+  // Survey details
+  surveyDate      DateTime @default(now())
+  surveyorName    String?                  // Who conducted the survey
+
+  // Notes
+  notes           String?                  // Blind spot analysis, observations
+
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  business        Business            @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  project         CCTVProject         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  cameraPositions CCTVCameraPosition[]
+  cableRoutes     CCTVCableRoute[]
+
+  @@index([businessId])
+  @@index([projectId])
+  @@map("cctv_site_surveys")
+}
+
+// ── CCTV Camera Position (4A: Site Survey — Camera Placement) ──
+// Represents a camera marker pin-dropped on the floor plan.
+// Coordinates are 0-100 percentage values relative to the floor plan image.
+model CCTVCameraPosition {
+  id              String   @id @default(cuid())
+  businessId      String
+  surveyId        String
+
+  // Position on floor plan (percentage: 0-100)
+  posX            Float                    // X position (%) left to right
+  posY            Float                    // Y position (%) top to bottom
+
+  // Camera details
+  label           String                   // e.g., "Camera 1 — Main Entrance"
+  cameraType      String   @default("Bullet")  // Bullet / Dome / PTZ / Box / Turret
+  resolution      String?                  // e.g., "2MP", "4MP", "8MP"
+  notes           String?
+  sortOrder       Int      @default(0)
+
+  createdAt       DateTime @default(now())
+
+  business        Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  survey          CCTVSiteSurvey @relation(fields: [surveyId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@index([surveyId])
+  @@map("cctv_camera_positions")
+}
+
+// ── CCTV Cable Route (4A: Site Survey — Cable Route Annotation) ──
+// A cable route drawn on the floor plan as a polyline of points.
+// Points stored as JSON string: [{"x":10,"y":20},{"x":30,"y":40},...]
+model CCTVCableRoute {
+  id              String   @id @default(cuid())
+  businessId      String
+  surveyId        String
+
+  // Route details
+  label           String                   // e.g., "Cable Run 1 — Corridor to NVR Room"
+  points          String                   // JSON: [{"x":10,"y":20},{"x":30,"y":40},...]
+  cableType       String   @default("Cat6")  // Cat5e / Cat6 / Coaxial / Fiber
+  cableLength     Float?                  // Estimated length in meters
+  notes           String?
+  sortOrder       Int      @default(0)
+
+  createdAt       DateTime @default(now())
+
+  business        Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  survey          CCTVSiteSurvey @relation(fields: [surveyId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@index([surveyId])
+  @@map("cctv_cable_routes")
 }

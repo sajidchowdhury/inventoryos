@@ -39,3 +39,5 @@ export { CCTVCreatEmi } from './CCTVCreatEmi';
 export { CCTVCustomerDetail } from './CCTVCustomerDetail';
 export { CCTVLoyaltyCenter } from './CCTVLoyaltyCenter';
 export { CCTVWarrantyDetail } from './CCTVWarrantyDetail';
+export { CCTVCreateProject } from './CCTVCreateProject';
+export { CCTVProjectDetail } from './CCTVProjectDetail';

@@ -664,3 +664,89 @@ export interface CCTVWarrantyClaim {
     productBrand?: string;
   };
 }
+
+// ── 4A: Project and Site Survey Management ──
+
+export type ProjectStatus = 'PLANNING' | 'SURVEY' | 'PROCUREMENT' | 'INSTALLATION' | 'TESTING' | 'HANDOVER' | 'COMPLETED' | 'CANCELLED';
+export type ProjectType = 'INSTALLATION' | 'MAINTENANCE' | 'UPGRADE' | 'REPAIR';
+export type CameraType = 'Bullet' | 'Dome' | 'PTZ' | 'Box' | 'Turret';
+export type CableType = 'Cat5e' | 'Cat6' | 'Coaxial' | 'Fiber';
+
+export interface CCTVProject {
+  id: string;
+  businessId: string;
+  projectName: string;
+  projectCode: string;
+  clientId?: string;
+  clientName: string;
+  clientPhone?: string;
+  clientEmail?: string;
+  clientAddress?: string;
+  status: ProjectStatus;
+  projectType: ProjectType;
+  totalItems: number;
+  completedItems: number;
+  projectValue: number;
+  startDate?: string;
+  deadline?: string;
+  completedAt?: string;
+  siteAddress?: string;
+  siteContact?: string;
+  siteContactPhone?: string;
+  saleId?: string;
+  notes?: string;
+  internalNotes?: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  _count?: {
+    surveys: number;
+  };
+}
+
+export interface CCTVSiteSurvey {
+  id: string;
+  businessId: string;
+  projectId: string;
+  floorPlanData?: string;
+  floorPlanName?: string;
+  surveyDate: string;
+  surveyorName?: string;
+  notes?: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  cameraPositions?: CCTVCameraPosition[];
+  cableRoutes?: CCTVCableRoute[];
+  _count?: {
+    cameraPositions: number;
+    cableRoutes: number;
+  };
+}
+
+export interface CCTVCameraPosition {
+  id: string;
+  businessId: string;
+  surveyId: string;
+  posX: number;
+  posY: number;
+  label: string;
+  cameraType: CameraType;
+  resolution?: string;
+  notes?: string;
+  sortOrder: number;
+  createdAt: string;
+}
+
+export interface CCTVCableRoute {
+  id: string;
+  businessId: string;
+  surveyId: string;
+  label: string;
+  points: string; // JSON: [{x,y},...]
+  cableType: CableType;
+  cableLength?: number;
+  notes?: string;
+  sortOrder: number;
+  createdAt: string;
+}

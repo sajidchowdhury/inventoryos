@@ -646,3 +646,22 @@ Stage Summary:
 - Warranty claim lifecycle: create → approve/reject → start repair → complete (state machine)
 - Dashboard alerts for expiring warranties and pending claims
 - 14 files changed, 1959 insertions, 110 deletions
+
+---
+Task ID: 3
+Agent: API Routes Agent
+Task: Create all API routes for Segment 4A Project and Site Survey Management
+
+Work Log:
+- Created projects/route.ts (GET list, POST create with auto-generated projectCode)
+- Created projects/[projectId]/route.ts (GET detail, PUT update, DELETE soft)
+- Created projects/[projectId]/surveys/route.ts (GET list, POST create)
+- Created projects/[projectId]/surveys/[surveyId]/route.ts (GET, PUT, DELETE)
+- Created camera-positions/route.ts (GET, POST, PUT, DELETE)
+- Created cable-routes/route.ts (GET, POST, PUT, DELETE)
+
+Stage Summary:
+- 6 API route files created for full project & site survey CRUD
+- Project codes auto-generated as PRJ-001, PRJ-002, etc.
+- Camera positions use 0-100% coordinate system
+- Cable routes store polyline points as JSON string

@@ -35,12 +35,13 @@ import { CCTVTechnicianDetail } from './CCTVTechnicianDetail';
 import { CCTVCommissionReport } from './CCTVCommissionReport';
 import { CCTVSalesHistory } from './CCTVSalesHistory';
 import { CCTVSaleDetail } from './CCTVSaleDetail';
-import { CCTVEMIList } from './CCTVEMIList';
 import { CCTVEmiDetail } from './CCTVEmiDetail';
 import { CCTVCreatEmi } from './CCTVCreatEmi';
 import { CCTVCustomerDetail } from './CCTVCustomerDetail';
 import { CCTVLoyaltyCenter } from './CCTVLoyaltyCenter';
 import { CCTVWarrantyDetail } from './CCTVWarrantyDetail';
+import { CCTVCreateProject } from './CCTVCreateProject';
+import { CCTVProjectDetail } from './CCTVProjectDetail';
 
 function PlaceholderView({ title, icon }: { title: string; icon?: string }) {
   const { goBack } = useCCTVNavStore();
@@ -168,6 +169,10 @@ export function CCTVShell() {
         return <CCTVWarrantiesList />;
       case 'projects':
         return <CCTVProjectsList />;
+      case 'project-detail':
+        return <CCTVProjectDetail />;
+      case 'create-project':
+        return <CCTVCreateProject />;
       case 'emi':
         return <CCTVEMIList />;
       case 'amc':
@@ -183,8 +188,6 @@ export function CCTVShell() {
         return <CCTVTechnicianDetail />;
       case 'commission-report':
         return <CCTVCommissionReport />;
-      case 'emi':
-        return <CCTVEMIList />;
       case 'emi-detail':
         return <CCTVEmiDetail />;
       case 'create-emi':
