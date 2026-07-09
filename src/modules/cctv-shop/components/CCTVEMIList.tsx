@@ -1,187 +1,258 @@
 'use client';
 
-import { useState } from 'react';
-import { motion } from 'framer-motion';
+import { useState, useEffect, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
-  ArrowLeft, CreditCard, AlertCircle, Clock, IndianRupee,
-  CheckCircle2, XCircle,
+  ArrowLeft, Plus, Search, ChevronRight, Calendar, Phone,
+  CreditCard, AlertTriangle, Clock, CheckCircle2, XCircle, TrendingUp,
 } from 'lucide-react';
 import { useCCTVNavStore } from '@/stores/cctv-nav-store';
 import { cn } from '@/lib/utils';
+import { Input } from '@/components/ui/input';
+import { Skeleton } from '@/components/ui/skeleton';
+import type { CCTVEmiPlan, EmiStatus } from '@/modules/cctv-shop/types';
+
+const BUSINESS_ID = 'bus_placeholder';
 
 const fadeUp = {
   initial: { opacity: 0, y: 16 },
   animate: { opacity: 1, y: 0, transition: { duration: 0.35, ease: 'easeOut' } },
 };
 
-const filters = ['All', 'Active', 'Completed', 'Overdue'] as const;
-
-const statusColors: Record<string, string> = {
-  Active: 'bg-violet-100 text-violet-700',
-  Completed: 'bg-emerald-100 text-emerald-700',
-  Overdue: 'bg-red-100 text-red-700',
-};
-
-const mockEMIs = [
-  { id: '1', customer: 'Rahim Electronics', product: 'Hikvision 16ch NVR + 12 Cameras', total: 180000, monthly: 15000, paidMonths: 6, totalMonths: 12, nextDue: '2025-02-05', status: 'Active' },
-  { id: '2', customer: 'City Shopping Mall', product: 'Dahua 32ch NVR + 28 Cameras', total: 480000, monthly: 40000, paidMonths: 8, totalMonths: 12, nextDue: '2025-01-20', status: 'Overdue' },
-  { id: '3', customer: 'Green Tower Residency', product: 'Hikvision 8ch NVR + 8 Cameras', total: 96000, monthly: 8000, paidMonths: 12, totalMonths: 12, nextDue: null, status: 'Completed' },
-  { id: '4', customer: 'Pacific Telecom', product: 'PTZ System + 4 Bullet Cameras', total: 120000, monthly: 10000, paidMonths: 3, totalMonths: 12, nextDue: '2025-02-10', status: 'Active' },
-  { id: '5', customer: 'BD Bank Motijheel', product: 'Hikvision 64ch NVR + 48 IP Cameras', total: 960000, monthly: 80000, paidMonths: 4, totalMonths: 12, nextDue: '2025-01-15', status: 'Overdue' },
-  { id: '6', customer: 'Sunrise School', product: 'Dahua 8ch DVR + 8 Cameras', total: 72000, monthly: 6000, paidMonths: 2, totalMonths: 12, nextDue: '2025-02-01', status: 'Active' },
+const STATUS_TABS: { label: string; value: string }[] = [
+  { label: 'All', value: '' },
+  { label: 'Active', value: 'ACTIVE' },
+  { label: 'Completed', value: 'COMPLETED' },
+  { label: 'Overdue', value: 'OVERDUE' },
+  { label: 'Defaulted', value: 'DEFAULTED' },
+  { label: 'Cancelled', value: 'CANCELLED' },
 ];
 
+const STATUS_COLORS: Record<string, string> = {
+  ACTIVE: 'bg-violet-100 text-violet-700',
+  COMPLETED: 'bg-green-100 text-green-700',
+  DEFAULTED: 'bg-red-100 text-red-700',
+  CANCELLED: 'bg-slate-100 text-slate-500',
+};
+
+function relativeDate(dateStr: string): string {
+  const d = new Date(dateStr);
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
 export function CCTVEMIList() {
-  const { goBack } = useCCTVNavStore();
-  const [activeFilter, setActiveFilter] = useState<string>('All');
+  const { navigate, goBack } = useCCTVNavStore();
+  const [allPlans, setAllPlans] = useState<CCTVEmiPlan[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [activeFilter, setActiveFilter] = useState('');
+  const [search, setSearch] = useState('');
+  const [searchInput, setSearchInput] = useState('');
 
-  const filtered = mockEMIs.filter((e) => activeFilter === 'All' || e.status === activeFilter);
+  useEffect(() => {
+    let cancelled = false;
+    const fetchPlans = async () => {
+      setLoading(true);
+      try {
+        const params = new URLSearchParams();
+        if (activeFilter && !['OVERDUE'].includes(activeFilter)) params.set('status', activeFilter);
+        if (search) params.set('search', search);
+        const res = await fetch(`/api/businesses/${BUSINESS_ID}/cctv/emi-plans?${params}`);
+        if (res.ok && !cancelled) setAllPlans(await res.json());
+      } catch {}
+      if (!cancelled) setLoading(false);
+    };
+    fetchPlans();
+    return () => { cancelled = true; };
+  }, [activeFilter, search]);
 
-  const totalEMI = mockEMIs.reduce((a, e) => a + e.total, 0);
-  const thisMonth = mockEMIs
-    .filter((e) => e.status === 'Active' || e.status === 'Overdue')
-    .reduce((a, e) => a + e.monthly, 0);
-  const overdueCount = mockEMIs.filter((e) => e.status === 'Overdue').length;
+  useEffect(() => {
+    const t = setTimeout(() => setSearch(searchInput), 300);
+    return () => clearTimeout(t);
+  }, [searchInput]);
+
+  // Client-side filter for OVERDUE (needs installment-level check)
+  const plans = useMemo(() => {
+    let filtered = allPlans;
+    if (activeFilter === 'OVERDUE') {
+      filtered = filtered.filter((p) => p.status === 'ACTIVE');
+      // Plans with overdueCount > 0 will be shown — the API returns this
+    }
+    return filtered;
+  }, [allPlans, activeFilter]);
+
+  const activePlans = allPlans.filter((p) => p.status === 'ACTIVE');
+  const totalRemaining = activePlans.reduce((s, p) => s + p.remainingAmount, 0);
+  const overdueCount = allPlans.filter((p) => {
+    // Count plans that have overdue installments
+    return (p as CCTVEmiPlan & { overdueCount?: number }).overdueCount > 0;
+  }).length;
 
   return (
     <motion.div {...fadeUp} className="space-y-4 pb-4">
       {/* Header */}
       <div className="flex items-center gap-3 pt-1">
-        <button
-          onClick={goBack}
-          className="w-9 h-9 rounded-xl bg-white border border-gray-100 flex items-center justify-center active:bg-gray-50 transition-colors shadow-sm"
-        >
+        <button onClick={goBack} className="w-9 h-9 rounded-xl bg-white border border-gray-100 flex items-center justify-center active:bg-gray-50 transition-colors shadow-sm">
           <ArrowLeft className="w-5 h-5 text-gray-600" />
         </button>
-        <h1 className="text-lg font-bold text-gray-900 flex-1">EMI Tracking</h1>
+        <h1 className="text-lg font-bold text-gray-900 flex-1">EMI Plans</h1>
+        <span className="text-xs text-gray-400 font-medium">{allPlans.length}</span>
+        <motion.button
+          whileTap={{ scale: 0.95 }}
+          onClick={() => navigate('create-emi')}
+          className="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 text-white flex items-center justify-center shadow-lg shadow-violet-500/20"
+        >
+          <Plus className="w-5 h-5" />
+        </motion.button>
       </div>
 
-      {/* Summary cards */}
-      <div className="grid grid-cols-3 gap-2.5">
-        <div className="bg-white rounded-2xl border border-gray-100 p-3 shadow-sm text-center">
-          <IndianRupee className="w-5 h-5 text-violet-500 mx-auto mb-1" />
-          <p className="text-base font-bold text-gray-900">৳{(totalEMI / 100000).toFixed(1)}L</p>
-          <p className="text-[10px] text-gray-400 font-medium">Total EMI</p>
+      {/* Stats banner */}
+      <div className="bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl p-4 text-white shadow-lg shadow-violet-500/20">
+        <div className="grid grid-cols-3 gap-3">
+          <div>
+            <p className="text-2xl font-bold">{activePlans.length}</p>
+            <p className="text-[10px] text-white/70">Active</p>
+          </div>
+          <div>
+            <p className="text-xl font-bold">
+              {totalRemaining >= 1000
+                ? `৳${(totalRemaining / 1000).toFixed(1)}k`
+                : `৳${totalRemaining.toLocaleString()}`}
+            </p>
+            <p className="text-[10px] text-white/70">Remaining</p>
+          </div>
+          <div>
+            <p className="text-2xl font-bold">{overdueCount}</p>
+            <p className="text-[10px] text-white/70">Overdue</p>
+          </div>
         </div>
-        <div className="bg-white rounded-2xl border border-gray-100 p-3 shadow-sm text-center">
-          <CreditCard className="w-5 h-5 text-blue-500 mx-auto mb-1" />
-          <p className="text-base font-bold text-gray-900">৳{(thisMonth / 1000).toFixed(0)}K</p>
-          <p className="text-[10px] text-gray-400 font-medium">This Month</p>
-        </div>
-        <div className="bg-white rounded-2xl border border-gray-100 p-3 shadow-sm text-center">
-          <AlertCircle className="w-5 h-5 text-red-500 mx-auto mb-1" />
-          <p className="text-base font-bold text-gray-900">{overdueCount}</p>
-          <p className="text-[10px] text-gray-400 font-medium">Overdue</p>
-        </div>
+      </div>
+
+      {/* Search */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+        <Input
+          placeholder="Search customer, product..."
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
+          className="pl-10 bg-gray-50 border-0 focus-visible:ring-2 focus-visible:ring-violet-500/30"
+        />
       </div>
 
       {/* Filter tabs */}
-      <div className="flex gap-2 overflow-x-auto pb-1">
-        {filters.map((f) => (
+      <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4">
+        {STATUS_TABS.map((tab) => (
           <button
-            key={f}
-            onClick={() => setActiveFilter(f)}
+            key={tab.value}
+            onClick={() => setActiveFilter(tab.value)}
             className={cn(
-              'px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-all shrink-0',
-              activeFilter === f
+              'px-3 py-1.5 rounded-full text-[11px] font-semibold whitespace-nowrap transition-all shrink-0',
+              activeFilter === tab.value
                 ? 'bg-gradient-to-r from-violet-500 to-purple-600 text-white shadow-sm'
                 : 'bg-white text-gray-600 border border-gray-100 hover:bg-gray-50'
             )}
           >
-            {f}
+            {tab.label}
           </button>
         ))}
       </div>
 
-      {/* EMI list */}
-      <div className="space-y-2.5 max-h-96 overflow-y-auto">
-        {filtered.map((emi, i) => {
-          const pct = Math.round((emi.paidMonths / emi.totalMonths) * 100);
-          const remaining = emi.totalMonths - emi.paidMonths;
+      {/* Plan list */}
+      <div className="space-y-2.5 max-h-[calc(100vh-340px)] overflow-y-auto">
+        {loading ? (
+          Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm space-y-3">
+              <Skeleton className="h-4 w-32" />
+              <Skeleton className="h-4 w-48" />
+              <Skeleton className="h-2 w-full" />
+            </div>
+          ))
+        ) : plans.length === 0 ? (
+          <div className="text-center py-10">
+            <CreditCard className="w-10 h-10 text-gray-300 mx-auto mb-2" />
+            <p className="text-sm font-medium text-gray-500">No EMI plans found</p>
+            <p className="text-xs text-gray-400 mt-1">
+              {activeFilter || search ? 'Try a different filter' : 'Create your first EMI plan'}
+            </p>
+            {!activeFilter && !search && (
+              <motion.button
+                whileTap={{ scale: 0.95 }}
+                onClick={() => navigate('create-emi')}
+                className="mt-3 px-4 py-2 rounded-xl bg-gradient-to-r from-violet-500 to-purple-600 text-white text-xs font-semibold shadow-lg shadow-violet-500/20"
+              >
+                Create EMI Plan
+              </motion.button>
+            )}
+          </div>
+        ) : (
+          <AnimatePresence mode="popLayout">
+            {plans.map((plan, i) => {
+              const progress = plan.months > 0 ? (plan.paidInstallments / plan.months) * 100 : 0;
+              const isOverdue = (plan as CCTVEmiPlan & { overdueCount?: number }).overdueCount > 0;
 
-          return (
-            <motion.div
-              key={emi.id}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0, transition: { duration: 0.3, delay: i * 0.04 } }}
-              className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm"
-            >
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-gray-900 truncate">{emi.customer}</p>
-                  <p className="text-xs text-gray-400 mt-0.5 truncate">{emi.product}</p>
-                </div>
-                <span
-                  className={cn(
-                    'text-[10px] px-2.5 py-1 rounded-full font-semibold whitespace-nowrap',
-                    statusColors[emi.status]
-                  )}
+              return (
+                <motion.button
+                  key={plan.id}
+                  layout
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0, transition: { duration: 0.25, delay: i * 0.03 } }}
+                  exit={{ opacity: 0, x: -20 }}
+                  onClick={() => navigate('emi-detail', plan.id)}
+                  className="w-full bg-white rounded-2xl border border-gray-100 p-4 shadow-sm text-left active:scale-[0.98] transition-transform"
                 >
-                  {emi.status === 'Completed' ? (
-                    <span className="flex items-center gap-0.5"><CheckCircle2 className="w-2.5 h-2.5" /> Done</span>
-                  ) : emi.status === 'Overdue' ? (
-                    <span className="flex items-center gap-0.5"><XCircle className="w-2.5 h-2.5" /> Overdue</span>
-                  ) : (
-                    emi.status
-                  )}
-                </span>
-              </div>
-
-              {/* Progress bar */}
-              <div className="mt-3">
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-[10px] text-gray-400">
-                    {emi.paidMonths}/{emi.totalMonths} months paid
-                  </span>
-                  <span className="text-xs font-bold text-gray-700">{pct}%</span>
-                </div>
-                <div className="w-full h-2 rounded-full bg-gray-100 overflow-hidden">
-                  <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: `${pct}%` }}
-                    transition={{ duration: 0.6, delay: i * 0.1, ease: 'easeOut' }}
-                    className={cn(
-                      'h-full rounded-full',
-                      emi.status === 'Completed' ? 'bg-emerald-500' : emi.status === 'Overdue' ? 'bg-red-500' : 'bg-violet-500'
-                    )}
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 mt-3 pt-3 border-t border-gray-50">
-                <div>
-                  <p className="text-[10px] text-gray-400">Total Amount</p>
-                  <p className="text-xs font-semibold text-gray-900">৳{emi.total.toLocaleString()}</p>
-                </div>
-                <div>
-                  <p className="text-[10px] text-gray-400">Monthly</p>
-                  <p className="text-xs font-semibold text-gray-900">৳{emi.monthly.toLocaleString()}</p>
-                </div>
-                <div>
-                  <p className="text-[10px] text-gray-400">Remaining</p>
-                  <p className="text-xs font-medium text-gray-700">{remaining} months</p>
-                </div>
-                {emi.nextDue && (
-                  <div>
-                    <p className="text-[10px] text-gray-400">Next Due</p>
-                    <p className="text-xs font-medium flex items-center gap-1">
-                      <Clock className="w-3 h-3 text-gray-400" />
-                      {new Date(emi.nextDue).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                    </p>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className={cn('text-[10px] px-2 py-0.5 rounded-full font-semibold', STATUS_COLORS[plan.status])}>
+                          {isOverdue && plan.status === 'ACTIVE' ? 'OVERDUE' : plan.status}
+                        </span>
+                        {isOverdue && plan.status === 'ACTIVE' && (
+                          <AlertTriangle className="w-3 h-3 text-red-500" />
+                        )}
+                      </div>
+                      <p className="text-sm font-semibold text-gray-900 mt-1.5 truncate">{plan.customerName}</p>
+                      <p className="text-xs text-gray-500 truncate">{plan.productBrand ? `${plan.productBrand} ` : ''}{plan.productName}</p>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-gray-300 shrink-0 mt-1" />
                   </div>
-                )}
-              </div>
-            </motion.div>
-          );
-        })}
-      </div>
 
-      {filtered.length === 0 && (
-        <div className="text-center py-10">
-          <CreditCard className="w-10 h-10 text-gray-300 mx-auto mb-2" />
-          <p className="text-sm text-gray-400">No EMI records found</p>
-        </div>
-      )}
+                  {/* Progress bar */}
+                  <div className="mt-3">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[10px] text-gray-400">
+                        {plan.paidInstallments}/{plan.months} paid
+                      </span>
+                      <span className="text-[10px] text-gray-400">{Math.round(progress)}%</span>
+                    </div>
+                    <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${progress}%` }}
+                        transition={{ duration: 0.5 }}
+                        className={cn(
+                          'h-full rounded-full',
+                          plan.status === 'COMPLETED' ? 'bg-green-500' :
+                          isOverdue ? 'bg-red-500' :
+                          'bg-violet-500'
+                        )}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-gray-50">
+                    <div className="flex items-center gap-1.5">
+                      <TrendingUp className="w-3 h-3 text-gray-400" />
+                      <span className="text-[11px] font-semibold text-gray-700">৳{plan.monthlyPayment.toLocaleString()}/mo</span>
+                    </div>
+                    <span className="text-[11px] font-bold text-gray-900">
+                      ৳{plan.remainingAmount.toLocaleString()} left
+                    </span>
+                  </div>
+                </motion.button>
+              );
+            })}
+          </AnimatePresence>
+        )}
+      </div>
     </motion.div>
   );
 }

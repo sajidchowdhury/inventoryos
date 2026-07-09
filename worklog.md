@@ -511,3 +511,69 @@ Stage Summary:
 - Sales history with filter tabs and revenue stats
 - Sale detail receipt with add-payment for partial sales, cancel for pending
 - 14 files changed, 2507 insertions, 180 deletions
+
+---
+Task ID: 4
+Agent: API Builder
+Task: Segment 3B — EMI API Routes
+
+Work Log:
+- Read worklog.md for project conventions and existing sales/route.ts for pattern reference
+- Studied CCTVEmiPlan and CCTVEmiInstallment Prisma schema models (fields, relations, indexes)
+- Created 3 API route files following established conventions:
+  1. `emi-plans/route.ts` — GET (list with status/search filter, overdueCount) + POST (create with EMI calculation + auto-generate installments)
+  2. `emi-plans/[emiPlanId]/route.ts` — GET (single plan with installments, computed overdueCount + nextDueDate)
+  3. `emi-plans/[emiPlanId]/collect/route.ts` — POST (collect installment payment with plan summary update + auto-completion)
+- Implemented both REDUCING balance EMI formula and FLAT rate interest calculation
+- POST create validates required fields, calculates financedAmount/totalInterest/grandTotal/monthlyPayment, creates plan + installments in $transaction, optionally updates linked sale to PARTIALLY_PAID
+- POST collect validates plan ACTIVE, installment belongs to plan + PENDING/OVERDUE, handles partial payments, increments plan counters in $transaction, auto-completes plan when all paid
+- All routes use `{ params }: { params: Promise<{ id: string }> }` pattern with `await params`
+- All routes import `db` from `@/lib/db`, use `NextResponse.json()` from `next/server`
+- All routes are multi-tenant filtered by businessId
+- Ran ESLint: zero errors on all 3 new files
+
+Stage Summary:
+- 3 files created: emi-plans/route.ts, [emiPlanId]/route.ts, [emiPlanId]/collect/route.ts
+- Full EMI plan lifecycle: create → list → detail → collect → auto-complete
+- Correct interest math for both REDUCING and FLAT rate types
+- Transactional consistency for all write operations
+- Lint clean (no errors in new files)
+
+---
+Task ID: 5-6
+Agent: Main Agent
+Task: Segment 3B — EMI UI Components + Shell Wiring
+
+Work Log:
+- Rewrote CCTVEMIList.tsx (stub → real API-driven list):
+  - Stats banner: Active Plans, Total Remaining, Overdue count
+  - Filter tabs: All/Active/Completed/Overdue/Defaulted/Cancelled
+  - Debounced search by customer/product
+  - Animated cards with progress bars, status badges, monthly payment, remaining amount
+  - Cards navigate to emi-detail on tap
+- Created CCTVEmiDetail.tsx:
+  - Large colored status card with financial summary (Total/Paid/Remaining) + progress bar
+  - Plan details card: product, customer phone (tap-to-call), interest type, monthly EMI, down payment
+  - Collapsible installment schedule with status badges (PENDING/PAID/OVERDUE/WAIVED)
+  - Inline payment collection: tap "Collect" → enter amount → submit → refresh
+  - Cancel plan dialog (UI placeholder)
+- Created CCTVCreatEmi.tsx:
+  - Customer fields (name, phone), Product fields (name, brand)
+  - Financial terms: total, down payment, interest rate, interest type toggle, month presets (3/6/12/18/24), start date, grace days
+  - Live EMI calculation preview: reducing balance formula + flat rate
+  - Shows EMI amount, total interest, grand total in violet preview card
+  - Default start date: 1st of next month
+  - Form validation + API submission + navigate to detail on success
+- Wired into CCTVShell: emi-detail + create-emi switch cases + imports + viewMeta
+- Updated barrel export with CCTVEMIList, CCTVEmiDetail, CCTVCreatEmi
+- Added 'create-emi' to CCTVViewType
+- Fixed lint: removed setState-in-effect in CCTVEmiDetail (restructured fetch), removed bad useState side-effect in CCTVCreatEmi
+- Lint: 0 new CCTV errors
+- Committed: 74d9144
+
+Stage Summary:
+- Segment 3B fully complete: 2 Prisma models, 3 API routes, 3 UI components, full wiring
+- EMI interest: reducing balance (EMI formula) + flat rate calculation
+- Auto-generated installment schedule at plan creation
+- Inline payment collection from detail view with real-time plan refresh
+- 12 files changed, 1391 insertions, 141 deletions

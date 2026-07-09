@@ -33,3 +33,6 @@ export { CCTVCommissionReport } from './CCTVCommissionReport';
 export { CCTVSellView } from './CCTVSellView';
 export { CCTVSalesHistory } from './CCTVSalesHistory';
 export { CCTVSaleDetail } from './CCTVSaleDetail';
+export { CCTVEMIList } from './CCTVEMIList';
+export { CCTVEmiDetail } from './CCTVEmiDetail';
+export { CCTVCreatEmi } from './CCTVCreatEmi';

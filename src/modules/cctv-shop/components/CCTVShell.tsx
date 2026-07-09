@@ -35,6 +35,9 @@ import { CCTVTechnicianDetail } from './CCTVTechnicianDetail';
 import { CCTVCommissionReport } from './CCTVCommissionReport';
 import { CCTVSalesHistory } from './CCTVSalesHistory';
 import { CCTVSaleDetail } from './CCTVSaleDetail';
+import { CCTVEMIList } from './CCTVEMIList';
+import { CCTVEmiDetail } from './CCTVEmiDetail';
+import { CCTVCreatEmi } from './CCTVCreatEmi';
 
 function PlaceholderView({ title, icon }: { title: string; icon?: string }) {
   const { goBack } = useCCTVNavStore();
@@ -78,6 +81,7 @@ const viewMeta: Record<string, { title: string; icon: string }> = {
   'project-detail': { title: 'Project Details', icon: '🏗️' },
   'create-project': { title: 'Create Project', icon: '➕' },
   'emi-detail': { title: 'EMI Details', icon: '💳' },
+  'create-emi': { title: 'Create EMI Plan', icon: '➕' },
   'amc-detail': { title: 'AMC Details', icon: '📋' },
   'create-amc': { title: 'Create AMC', icon: '➕' },
   'purchase-orders': { title: 'Purchase Orders', icon: '🛒' },
@@ -174,6 +178,12 @@ export function CCTVShell() {
         return <CCTVTechnicianDetail />;
       case 'commission-report':
         return <CCTVCommissionReport />;
+      case 'emi':
+        return <CCTVEMIList />;
+      case 'emi-detail':
+        return <CCTVEmiDetail />;
+      case 'create-emi':
+        return <CCTVCreatEmi />;
       // Payment & Sales (3A)
       case 'new-sale':
         return <CCTVSellView />;

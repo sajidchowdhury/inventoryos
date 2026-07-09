@@ -396,6 +396,7 @@ export type CCTVViewType =
   | 'create-project'
   | 'emi'
   | 'emi-detail'
+  | 'create-emi'
   | 'amc'
   | 'amc-detail'
   | 'create-amc'
@@ -478,4 +479,60 @@ export interface CCTVPayment {
   notes?: string;
   isActive: boolean;
   createdAt: string;
+}
+
+// ── 3B: EMI Sales Management ──
+
+export type EmiStatus = 'ACTIVE' | 'COMPLETED' | 'DEFAULTED' | 'CANCELLED';
+export type EmiInterestType = 'REDUCING' | 'FLAT';
+export type InstallmentStatus = 'PENDING' | 'PAID' | 'OVERDUE' | 'WAIVED';
+
+export interface CCTVEmiPlan {
+  id: string;
+  businessId: string;
+  saleId?: string;
+  customerName: string;
+  customerPhone: string;
+  productName: string;
+  productBrand?: string;
+  totalAmount: number;
+  downPayment: number;
+  financedAmount: number;
+  interestRate: number;
+  interestType: EmiInterestType;
+  totalInterest: number;
+  grandTotal: number;
+  months: number;
+  monthlyPayment: number;
+  startDate: string;
+  graceDays: number;
+  paidInstallments: number;
+  paidAmount: number;
+  remainingAmount: number;
+  status: EmiStatus;
+  completedAt?: string;
+  notes?: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  installments?: CCTVEmiInstallment[];
+  _count?: { installments: number };
+}
+
+export interface CCTVEmiInstallment {
+  id: string;
+  businessId: string;
+  emiPlanId: string;
+  installmentNo: number;
+  dueDate: string;
+  dueAmount: number;
+  paidAmount: number;
+  paidAt?: string;
+  receivedBy?: string;
+  status: InstallmentStatus;
+  waiverAmount: number;
+  notes?: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
 }

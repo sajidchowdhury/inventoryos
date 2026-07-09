@@ -176,6 +176,8 @@ model Business {
   cctvSales               CCTVSale[]
   cctvSaleItems           CCTVSaleItem[]
   cctvPayments            CCTVPayment[]
+  cctvEmiPlans            CCTVEmiPlan[]
+  cctvEmiInstallments     CCTVEmiInstallment[]
 
   @@index([userId])
   @@index([businessTypeId])
@@ -2331,8 +2333,9 @@ model CCTVSale {
   updatedAt       DateTime @updatedAt
 
   business        Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  items           CCTVSaleItem[]
   payments        CCTVPayment[]
+  emiPlan         CCTVEmiPlan?
+  items           CCTVSaleItem[]
 
   @@unique([businessId, saleCode])
   @@index([businessId])
@@ -2388,4 +2391,92 @@ model CCTVPayment {
   @@index([businessId])
   @@index([saleId])
   @@map("cctv_payments")
+}
+
+// ── CCTV EMI Plan (3B: EMI Sales Management) ──
+// Equated Monthly Installment plan for high-value items.
+// Interest calculated at plan creation using reducing balance or flat rate method.
+// Installments are generated upfront as individual rows for tracking.
+model CCTVEmiPlan {
+  id              String   @id @default(cuid())
+  businessId      String
+  saleId          String?                 // optional link to the CCTVSale that created this EMI (one-to-one)
+
+  // Customer info (denormalised)
+  customerName    String
+  customerPhone   String
+
+  // Product info (denormalised)
+  productName     String
+  productBrand    String?
+
+  // Financial terms
+  totalAmount     Float                   // total price of the item (principal)
+  downPayment     Float    @default(0)    // upfront payment
+  financedAmount  Float                   // totalAmount - downPayment = amount to be paid in installments
+  interestRate    Float    @default(0)    // annual interest rate in % (e.g., 12.5)
+  interestType    String   @default("REDUCING") // REDUCING (reducing balance) or FLAT
+  totalInterest   Float    @default(0)    // total interest charged over the life of the plan
+  grandTotal      Float                   // financedAmount + totalInterest (total customer pays via installments)
+  months          Int                     // number of installments (e.g., 12)
+  monthlyPayment  Float                   // EMI amount per month
+
+  // Schedule
+  startDate       DateTime                // first installment due date
+  graceDays       Int      @default(3)    // days after due date before marked overdue
+
+  // Summary (computed on each payment)
+  paidInstallments Int     @default(0)
+  paidAmount       Float   @default(0)    // total amount collected so far
+  remainingAmount  Float                   // grandTotal - paidAmount
+
+  // Status: ACTIVE, COMPLETED, DEFAULTED, CANCELLED
+  status          String   @default("ACTIVE")
+  completedAt     DateTime?
+  notes           String?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  business        Business              @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  sale            CCTVSale?             @relation(fields: [saleId], references: [id])
+  installments    CCTVEmiInstallment[]
+
+  @@index([businessId])
+  @@index([status])
+  @@index([customerPhone])
+  @@unique([saleId])
+  @@map("cctv_emi_plans")
+}
+
+// ── CCTV EMI Installment (3B: EMI Sales Management) ──
+// Individual installment row. Generated at plan creation.
+// Status: PENDING, PAID, OVERDUE, WAIVED
+model CCTVEmiInstallment {
+  id              String   @id @default(cuid())
+  businessId      String
+  emiPlanId       String
+
+  installmentNo   Int                     // 1-based (1st month, 2nd month, etc.)
+  dueDate         DateTime                // when this installment is due
+  dueAmount       Float                   // amount expected
+  paidAmount      Float    @default(0)    // amount actually paid
+  paidAt          DateTime?               // when payment was recorded
+  receivedBy      String?                 // staff member
+  status          String   @default("PENDING") // PENDING, PAID, OVERDUE, WAIVED
+  waiverAmount    Float    @default(0)    // if waived (partial or full)
+  notes           String?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  business        Business     @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  emiPlan         CCTVEmiPlan  @relation(fields: [emiPlanId], references: [id], onDelete: Cascade)
+
+  @@unique([emiPlanId, installmentNo])
+  @@index([businessId])
+  @@index([emiPlanId])
+  @@index([status])
+  @@index([dueDate])
+  @@map("cctv_emi_installments")
 }
