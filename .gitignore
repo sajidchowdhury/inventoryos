@@ -52,3 +52,10 @@ prompt
 server.log
 # Skills directory
 /skills/
+
+# Tool results & temp files
+tool-results/
+.zscripts/
+
+# Database local files
+db/*.db
