@@ -890,3 +890,30 @@ Stage Summary:
 - Full CRUD flow: list → create → detail → status transitions → checklist management
 - Consistent with existing CCTV module patterns (nav store, card styles, badge system, animation)
 - No backend APIs created — components consume existing/future API endpoints
+
+---
+Task ID: 5A
+Agent: Main Agent
+Task: Segment 5A - Business Identification and BIN Setup
+
+Work Log:
+- Analyzed implementation plan requirements for NBR/BIN setup
+- Added CCTVNbrConfig model to Prisma schema (BIN, tax status, VAT rate, Mushak prefix/seq, legal details, feature toggles)
+- Added CCTVHsCodeMapping model (category + HS code pairs with per-category VAT override, unique constraint on configId+category)
+- Pushed schema to SQLite database successfully
+- Added TaxRegistrationStatus type, CCTVNbrConfig interface, CCTVHsCodeMapping interface, DEFAULT_HS_CODES constant to types/index.ts
+- Added 'nbr-setup' to CCTVViewType union
+- Created 4 API routes: nbr-config GET (auto-creates + seeds)/PUT, hs-codes GET (search)/POST, hs-codes/[codeId] PUT/DELETE (soft), seed-defaults POST
+- Built CCTVNbrSetup.tsx with 4 collapsible sections, registration status tri-toggle, HS code CRUD, search, seed defaults, invoice preview
+- Wired into Shell (case + viewMeta + import), Dashboard (quick action), More Hub (tools section), component index
+- Fixed tsc errors: removed SQLite-incompatible 'mode: insensitive', fixed nav store import path
+- Lint + tsc clean (zero new errors)
+- Committed as 4f9a76f and pushed to GitHub
+
+Stage Summary:
+- Segment 5A fully implemented and pushed
+- 2 new Prisma models: CCTVNbrConfig, CCTVHsCodeMapping
+- 4 API routes for config and HS code management
+- 1 UI component: CCTVNbrSetup.tsx (~530 lines)
+- 10 default BD electronics HS codes pre-seeded
+- Navigation: Dashboard → Quick Actions → "NBR Setup", More Hub → Tools → "NBR & Tax Setup"
