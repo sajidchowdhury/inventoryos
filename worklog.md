@@ -62,3 +62,43 @@ Stage Summary:
 - Files modified: types/index.ts, CCTVShell.tsx, CCTVBottomNav.tsx, index.ts, CCTVInventoryHub.tsx
 - No git push/commit per user instruction
 - Browser verification: compiles cleanly, no runtime errors (auth gate prevents full E2E without session data)
+
+---
+Task ID: 3
+Agent: Main Agent
+Task: 1C Batch Scanning and Rapid Entry
+
+Work Log:
+- Completely rewrote CCTVStockInView.tsx with two-mode architecture:
+  - **Setup Mode**: Product picker + batch configuration (quantity, default grade, sound toggle)
+  - **Batch Mode**: Full-screen rapid scanning UI
+- Batch mode features:
+  - Violet gradient header with SVG circular progress ring (animated)
+  - Live counter: "23 / 50" with spring-animated number transitions
+  - Three stat boxes: Valid / Dups / Total
+  - Always-focused scanner input with font-mono for serial numbers
+  - Web Audio API beeps: high-pitched success beep, low buzzy error beep for duplicates
+  - Grade quick-select buttons (A/B/C/D) in action bar
+  - "Bulk Edit" button opens slide-up sheet panel
+- Bulk Edit Panel (slide-up from bottom):
+  - Cost Price / Sell Price inputs
+  - Grade selector (5 buttons including "clear")
+  - Notes field (appends to existing notes)
+  - "Apply to All" updates every staged non-duplicate row
+- Navigation guard:
+  - AlertDialog warns when navigating back with unsaved staged items
+  - "Keep Scanning" or "Discard & Exit" options
+- Duplicate handling:
+  - Red flash animation on the existing row (600ms)
+  - Error beep sound
+  - "Clear X dup" button in action bar
+- Target completion:
+  - Progress ring turns green when target reached
+  - "Target reached! Review and confirm below." message
+- Zero compilation errors, zero lint errors
+- Pushed to GitHub
+
+Stage Summary:
+- CCTVStockInView.tsx: 722 insertions, 502 deletions (full rewrite)
+- No new files — enhanced existing 1B component into production-grade 1C
+- Two-phase UX: Setup → Batch Scanning (no page navigation, pure state switch)
