@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  ArrowLeft, Loader2, Search, Camera, X, Hash, ChevronDown,
+  ArrowLeft, Loader2, Search, Camera, X, Hash,
 } from 'lucide-react';
 import { useCCTVNavStore } from '@/stores/cctv-nav-store';
 import { cn } from '@/lib/utils';
@@ -139,6 +139,7 @@ export function CCTVCreateJobCard() {
     setDeviceName('');
     setSerialNumber('');
     setImei('');
+    setLinkDevice(false);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
