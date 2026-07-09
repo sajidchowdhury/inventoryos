@@ -72,7 +72,7 @@ export function CCTVMoreHub() {
 
   const tools: MenuItem[] = [
     { label: 'NBR & Tax Setup', icon: <Landmark className="w-5 h-5" />, view: 'nbr-setup', color: 'bg-amber-50 text-amber-600' },
-    { label: 'Mushak Report', icon: <FileText className="w-5 h-5" />, view: 'mushak-report', color: 'bg-red-50 text-red-600' },
+    { label: 'Mushak 6.3 Invoices', icon: <FileText className="w-5 h-5" />, view: 'mushak-invoices', color: 'bg-red-50 text-red-600' },
     { label: 'AI Hub', icon: <Sparkles className="w-5 h-5" />, view: 'ai-hub', color: 'bg-purple-50 text-purple-600' },
     { label: 'Reports', icon: <BarChart3 className="w-5 h-5" />, view: 'reports', color: 'bg-cyan-50 text-cyan-600' },
   ];

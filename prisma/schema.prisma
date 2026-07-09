@@ -197,6 +197,9 @@ model Business {
   // CCTV Module (Phase 5A: NBR Compliance - BIN Setup)
   cctvNbrConfigs          CCTVNbrConfig[]
 
+  // CCTV Module (Phase 5B: Mushak 6.3 Tax Invoice)
+  cctvMushakInvoices      CCTVMushakInvoice[]
+
   @@index([userId])
   @@index([businessTypeId])
   @@index([subscriptionStage])  // P1: fast filtering by lifecycle stage
@@ -2360,6 +2363,7 @@ model CCTVSale {
   emiPlan         CCTVEmiPlan?
   items           CCTVSaleItem[]
   project         CCTVProject?    // If this sale is linked to a project (Phase 4A)
+  mushakInvoices  CCTVMushakInvoice[]  // Phase 5B
 
   @@unique([businessId, saleCode])
   @@index([businessId])
@@ -2972,4 +2976,74 @@ model CCTVHsCodeMapping {
   @@index([businessId])
   @@index([configId])
   @@map("cctv_hs_code_mappings")
+}
+
+// ── 5B: Mushak 6.3 Tax Invoice ──
+// Immutable snapshot of a tax invoice for audit trail.
+model CCTVMushakInvoice {
+  id              String   @id @default(cuid())
+  businessId      String
+  saleId          String                       // source sale
+
+  // Sequential invoice number (auto-generated)
+  invoiceNumber   String                       // e.g. "MUSHAK-0001"
+  issueDate       DateTime @default(now())
+
+  // Seller details (from NBR config / Business)
+  sellerName      String
+  sellerAddress   String?
+  sellerBin       String?
+
+  // Buyer details (entered at invoice generation)
+  buyerName       String
+  buyerAddress    String?
+  buyerBin        String?
+
+  // Totals
+  subtotal        Float    @default(0)          // sum of line totals
+  totalVat        Float    @default(0)          // sum of line VAT
+  grandTotal      Float    @default(0)          // subtotal + totalVat
+  discountAmount  Float    @default(0)          // if any discount applied
+
+  // Amount in words (English)
+  amountInWords   String?
+
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+
+  business        Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  sale            CCTVSale        @relation(fields: [saleId], references: [id])
+  lineItems       CCTVMushakLineItem[]
+
+  @@unique([businessId, invoiceNumber])
+  @@index([businessId])
+  @@index([saleId])
+  @@index([issueDate])
+  @@map("cctv_mushak_invoices")
+}
+
+// ── 5B: Mushak 6.3 Line Item ──
+// One row per product in the invoice (denormalized snapshot).
+model CCTVMushakLineItem {
+  id              String   @id @default(cuid())
+  businessId      String
+  invoiceId       String
+
+  slNo            Int                          // serial number in invoice (1, 2, 3...)
+  productName     String                       // product description
+  hsCode          String?                      // HS code (looked up from HS mappings)
+  quantity        Int
+  unitPrice       Float                        // price per unit (excl VAT)
+  totalPrice      Float                        // quantity * unitPrice
+  vatRate         Float                        // VAT % for this line
+  vatAmount       Float                        // VAT for this line
+
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+
+  invoice         CCTVMushakInvoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@index([invoiceId])
+  @@map("cctv_mushak_line_items")
 }

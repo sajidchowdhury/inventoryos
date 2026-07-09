@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import {
   ArrowLeft, Phone, User, Package, CreditCard, Receipt,
   Trash2, Loader2, CheckCircle2, Clock, Banknote, Plus,
-  X, Hash,
+  X, Hash, FileText,
 } from 'lucide-react';
 import { useCCTVNavStore } from '@/stores/cctv-nav-store';
 import { cn } from '@/lib/utils';
@@ -120,7 +120,7 @@ const formatDate = (d: string) =>
   });
 
 export function CCTVSaleDetail() {
-  const { contextId, goBack } = useCCTVNavStore();
+  const { contextId, goBack, navigate } = useCCTVNavStore();
   const { toast } = useToast();
 
   const [sale, setSale] = useState<CCTVSale | null>(null);
@@ -136,6 +136,13 @@ export function CCTVSaleDetail() {
   // Cancel sale dialog
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [cancelLoading, setCancelLoading] = useState(false);
+
+  // Generate Mushak dialog
+  const [showMushakDialog, setShowMushakDialog] = useState(false);
+  const [mushakBuyerName, setMushakBuyerName] = useState('');
+  const [mushakBuyerBin, setMushakBuyerBin] = useState('');
+  const [mushakBuyerAddress, setMushakBuyerAddress] = useState('');
+  const [mushakLoading, setMushakLoading] = useState(false);
 
   const fetchSale = async () => {
     if (!contextId) return;
@@ -210,6 +217,35 @@ export function CCTVSaleDetail() {
       toast({ title: 'Payment failed', description: 'Network error. Please try again.', variant: 'destructive' });
     } finally {
       setPayLoading(false);
+    }
+  };
+  // ── Generate Mushak 6.3 ──
+  const handleGenerateMushak = async () => {
+    if (!contextId || !sale) return;
+    setMushakLoading(true);
+    try {
+      const res = await fetch(`/api/businesses/bus_placeholder/cctv/mushak-invoices`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          saleId: contextId,
+          buyerName: mushakBuyerName || sale.customerName,
+          buyerBin: mushakBuyerBin || undefined,
+          buyerAddress: mushakBuyerAddress || undefined,
+        }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        toast({ title: 'Mushak 6.3 Generated', description: json.data.invoiceNumber });
+        setShowMushakDialog(false);
+        navigate('mushak-invoice-detail', json.data.id);
+      } else {
+        toast({ title: 'Failed', description: json.error || 'Could not generate invoice', variant: 'destructive' });
+      }
+    } catch {
+      toast({ title: 'Error', description: 'Network error', variant: 'destructive' });
+    } finally {
+      setMushakLoading(false);
     }
   };
 
@@ -522,6 +558,20 @@ export function CCTVSaleDetail() {
             </button>
           </motion.div>
         )}
+
+        {/* ── Generate Mushak 6.3 Button ── */}
+        {sale && sale.status === 'PAID' && (
+          <motion.div {...fadeUp}>
+            <button
+              onClick={() => { setMushakBuyerName(sale.customerName); setShowMushakDialog(true); }}
+              className="w-full py-3 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 text-white font-semibold
+                         flex items-center justify-center gap-2 shadow-lg shadow-violet-500/20 hover:shadow-violet-500/30 active:scale-[0.98] transition-all"
+            >
+              <FileText className="w-4 h-4" />
+              Generate Mushak 6.3
+            </button>
+          </motion.div>
+        )}
       </div>
 
       {/* ── Add Payment Dialog ── */}
@@ -645,6 +695,50 @@ export function CCTVSaleDetail() {
             >
               {cancelLoading && <Loader2 className="w-4 h-4 animate-spin" />}
               Yes, Cancel Sale
+            </button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* ── Generate Mushak 6.3 Dialog ── */}
+      <AlertDialog open={showMushakDialog} onOpenChange={(open) => {
+        if (!open) setShowMushakDialog(false);
+      }}>
+        <AlertDialogContent className="max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <FileText className="w-5 h-5 text-violet-600" />
+              Generate Mushak 6.3
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Enter buyer details for the tax invoice. Buyer BIN is required for B2B transactions.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-3 py-2">
+            <div>
+              <label className="text-xs font-medium text-gray-500 mb-1 block">Buyer Name</label>
+              <Input value={mushakBuyerName} onChange={(e) => setMushakBuyerName(e.target.value)} placeholder="Customer or business name" />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-gray-500 mb-1 block">Buyer BIN</label>
+              <Input value={mushakBuyerBin} onChange={(e) => setMushakBuyerBin(e.target.value)} placeholder="Business Identification Number" />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-gray-500 mb-1 block">Buyer Address</label>
+              <Input value={mushakBuyerAddress} onChange={(e) => setMushakBuyerAddress(e.target.value)} placeholder="Business address" />
+            </div>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={mushakLoading}>Cancel</AlertDialogCancel>
+            <button
+              onClick={handleGenerateMushak}
+              disabled={mushakLoading || !mushakBuyerName.trim()}
+              className="px-5 py-2.5 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 text-white font-semibold
+                         flex items-center gap-2 shadow-lg shadow-violet-500/20
+                         disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+            >
+              {mushakLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+              Generate Invoice
             </button>
           </AlertDialogFooter>
         </AlertDialogContent>

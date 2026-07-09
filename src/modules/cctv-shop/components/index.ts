@@ -48,3 +48,5 @@ export { CCTVInstallationTasks } from './CCTVInstallationTasks';
 export { CCTVCreateTask } from './CCTVCreateTask';
 export { CCTVTaskDetail } from './CCTVTaskDetail';
 export { CCTVNbrSetup } from './CCTVNbrSetup';
+export { CCTVMushakInvoicesList } from './CCTVMushakInvoicesList';
+export { CCTVMushakInvoiceDetail } from './CCTVMushakInvoiceDetail';

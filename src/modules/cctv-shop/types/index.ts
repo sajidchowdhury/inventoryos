@@ -430,7 +430,10 @@ export type CCTVViewType =
   | 'installation-tasks'
   | 'create-task'
   | 'task-detail'
-  | 'nbr-setup';
+  | 'nbr-setup'
+  | 'mushak-invoices'
+  | 'mushak-invoice-detail'
+  | 'create-mushak';
 
 // ── 3A: Payment Integration ──
 
@@ -911,3 +914,75 @@ export const DEFAULT_HS_CODES: Omit<CCTVHsCodeMapping, 'id' | 'businessId' | 'co
   { category: 'Accessories', hsCode: '8518.90', description: 'CCTV accessories – mounts, housings, connectors', vatRate: 15, isDefault: true },
   { category: 'Mobile Phones', hsCode: '8517.13', description: 'Smartphones', vatRate: 15, isDefault: true },
 ];
+
+// ── 5B: Mushak 6.3 Tax Invoice ──
+
+export interface CCTVMushakInvoice {
+  id: string;
+  businessId: string;
+  saleId: string;
+  invoiceNumber: string;
+  issueDate: string;
+  sellerName: string;
+  sellerAddress?: string;
+  sellerBin?: string;
+  buyerName: string;
+  buyerAddress?: string;
+  buyerBin?: string;
+  subtotal: number;
+  totalVat: number;
+  grandTotal: number;
+  discountAmount: number;
+  amountInWords?: string;
+  isActive: boolean;
+  createdAt: string;
+  lineItems?: CCTVMushakLineItem[];
+  _count?: { lineItems: number };
+}
+
+export interface CCTVMushakLineItem {
+  id: string;
+  businessId: string;
+  invoiceId: string;
+  slNo: number;
+  productName: string;
+  hsCode?: string;
+  quantity: number;
+  unitPrice: number;
+  totalPrice: number;
+  vatRate: number;
+  vatAmount: number;
+  isActive: boolean;
+  createdAt: string;
+}
+
+// Number to English words (for BDT amount)
+export function numberToWords(num: number): string {
+  if (num === 0) return 'Zero Taka Only';
+  const isNegative = num < 0;
+  const absNum = Math.abs(Math.round(num * 100) / 100);
+  const taka = Math.floor(absNum);
+  const poisha = Math.round((absNum - taka) * 100);
+
+  const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine',
+    'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
+  const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+
+  function convert(n: number): string {
+    if (n === 0) return '';
+    if (n < 20) return ones[n];
+    if (n < 100) return tens[Math.floor(n / 10)] + (n % 10 ? ' ' + ones[n % 10] : '');
+    if (n < 1000) return ones[Math.floor(n / 100)] + ' Hundred' + (n % 100 ? ' and ' + convert(n % 100) : '');
+    if (n < 100000) return convert(Math.floor(n / 1000)) + ' Thousand' + (n % 1000 ? ' ' + convert(n % 1000) : '');
+    if (n < 10000000) return convert(Math.floor(n / 100000)) + ' Lakh' + (n % 100000 ? ' ' + convert(n % 100000) : '');
+    if (n < 1000000000) return convert(Math.floor(n / 10000000)) + ' Crore' + (n % 10000000 ? ' ' + convert(n % 10000000) : '');
+    return convert(Math.floor(n / 1000000000)) + ' Billion' + (n % 1000000000 ? ' ' + convert(n % 1000000000) : '');
+  }
+
+  let result = '';
+  if (taka > 0) result += convert(taka) + ' Taka';
+  if (poisha > 0) result += (taka > 0 ? ' and ' : '') + convert(poisha) + ' Poisha';
+  result += ' Only';
+  if (isNegative) result = 'Minus ' + result;
+  return result;
+}
