@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { useNavStore } from '@/lib/nav-store';
 
 export interface BusinessTypeInfo {
   id: string;
@@ -39,11 +40,24 @@ interface AuthState {
   reset: () => void; // alias for logout — used by pharmacy module
 }
 
+function clearAll() {
+  useNavStore.getState().resetNav();
+}
+
 export const useAuthStore = create<AuthState>((set) => ({
   session: null,
   isAuthenticated: false,
   businesses: [],
-  setSession: (session) => set({ session, isAuthenticated: true }),
-  logout: () => set({ session: null, isAuthenticated: false, businesses: [] }),
-  reset: () => set({ session: null, isAuthenticated: false, businesses: [] }),
+  setSession: (session) => {
+    clearAll();
+    set({ session, isAuthenticated: true });
+  },
+  logout: () => {
+    clearAll();
+    set({ session: null, isAuthenticated: false, businesses: [] });
+  },
+  reset: () => {
+    clearAll();
+    set({ session: null, isAuthenticated: false, businesses: [] });
+  },
 }));

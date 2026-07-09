@@ -64,6 +64,7 @@ export type PharmacyView =
 interface NavState {
   activeView: PharmacyView;
   setActiveView: (view: PharmacyView) => void;
+  resetNav: () => void;
   editingProductId: string | null;
   setEditingProductId: (id: string | null) => void;
   // Product whose detail/batch we are viewing or adding a batch to
@@ -119,4 +120,18 @@ export const useNavStore = create<NavState>((set) => ({
   setScdId: (id) => set({ scdId: id }),
   scdZoneSessionId: null,
   setScdZoneSessionId: (id) => set({ scdZoneSessionId: id }),
+  resetNav: () => set({
+    activeView: "dashboard",
+    editingProductId: null,
+    activeProductId: null,
+    editingBatchId: null,
+    activeSaleId: null,
+    activeCustomerId: null,
+    editingCustomerId: null,
+    saleCustomerId: null,
+    activePurchaseId: null,
+    activeSupplierId: null,
+    scdId: null,
+    scdZoneSessionId: null,
+  }),
 }));
