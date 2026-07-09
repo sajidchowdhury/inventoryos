@@ -1,32 +1,1675 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+// ── InventoryOS Database Schema ──
+// Multi-tenant inventory management platform
+// Phase 1a: Pharmacy product master with batch tracking
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
+// ── Business Types ──
+model BusinessType {
+  id        String   @id @default(cuid())
+  slug      String   @unique
+  name      String
+  icon      String
+  color     String
+  isActive  Boolean  @default(false)
+  sortOrder Int     @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  businesses Business[]
+}
+
+// ── Users ──
 model User {
   id        String   @id @default(cuid())
-  email     String   @unique
+  phone     String   @unique
   name      String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  businesses     Business[]
+  trustedDevices TrustedDevice[]
+  phoneTokens    PhoneAuthToken[]
 }
 
-model Post {
+// ── Trusted Devices (skip-OTP for returning owners) ──
+// A long-lived, revocable token that proves a device has previously verified
+// this phone via OTP. Lets an owner return to their business list without
+// re-entering an OTP until the token expires.
+model TrustedDevice {
+  id         String   @id @default(cuid())
+  userId     String
+  token      String   @unique
+  deviceInfo String?
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  lastUsedAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+  @@index([expiresAt])
+}
+
+// ── Phone Auth Tokens (short-lived OTP proof) ──
+// Issued by verify-otp / trusted-device. Proves the holder recently verified
+// ownership of a phone number. Required by owner-login so a raw userId from the
+// client can never be used to enter someone else's shop without OTP.
+model PhoneAuthToken {
   id        String   @id @default(cuid())
-  title     String
-  content   String?
-  published Boolean  @default(false)
-  authorId  String
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([expiresAt])
+}
+
+// ── Businesses ──
+model Business {
+  id             String   @id @default(cuid())
+  userId         String
+  businessTypeId String
+  name           String
+  // Globally-unique human-friendly shop code (e.g. "PHA-XK7T").
+  // Used by the staff login door to unambiguously resolve a business even when
+  // the same username exists across many shops. Nullable only for backfill.
+  shopCode       String?  @unique
+  address        String?
+  phone          String?
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // ── Subscription & AI Control ──
+  subscriptionTier   String   @default("free")    // "free" / "pro" / "pro_ai"
+  subscriptionStatus String   @default("trial")   // "trial" / "active" / "suspended" / "cancelled"
+  subscriptionStart  DateTime?
+  subscriptionEnd    DateTime?
+  // P1: 4-stage subscription lifecycle (computed by daily cron in P2)
+  subscriptionStage  String   @default("active")  // "active" / "expiring_soon" / "read_only" / "data_wiped"
+  gracePeriodEnd     DateTime?  // subscriptionEnd + 14 days (read-only window end)
+  dataWipeDate       DateTime?  // subscriptionEnd + 14 days (when data gets soft-deleted)
+  dataSoftDeletedAt  DateTime?  // set when stage transitions to "data_wiped" (null = not wiped)
+  dataPurgeDate      DateTime?  // dataSoftDeletedAt + 30 days (true purge date)
+  aiEnabled          Boolean  @default(false)
+  aiDailyLimit       Int      @default(50)
+  aiMonthlyLimit     Int      @default(1000)
+  aiTokenBudget      Int      @default(500000)
+
+  // ── Report Scheduling (Phase A) ──
+  // Email address for the business owner — used to deliver AI reports.
+  // Falls back to the email of the BusinessUser with role "owner" if null.
+  ownerEmail         String?
+  // WhatsApp number with country code (e.g., "+8801712345678") for report delivery.
+  // Falls back to Business.phone if null.
+  ownerWhatsapp      String?
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  businessType BusinessType @relation(fields: [businessTypeId], references: [id])
+  businessUsers BusinessUser[]
+  categories    Category[]
+  products      Product[]
+  transactions  Transaction[]
+  inventories   Inventory[]
+  batches       Batch[]
+  alertPreference AlertPreference?
+  notificationLogs NotificationLog[]
+  customers     Customer[]
+  sales         Sale[]
+  saleItems     SaleItem[]
+  payments      Payment[]
+  returns       Return[]
+  returnItems   ReturnItem[]
+  discountRules DiscountRule[]
+  suppliers     Supplier[]
+  purchases     Purchase[]
+  purchaseItems PurchaseItem[]
+  aiUsageLogs   AIUsageLog[]
+  dailyStats    BusinessDailyStats[]
+  aiResponseCache AIResponseCache[]
+  fefoOverrides FefoOverride[]
+  generatedReports GeneratedReport[]
+  shelfScans      ShelfScan[]
+  storageZones    StorageZone[]
+  stockCountDays  StockCountDay[]
+  productZoneAssignments ProductZoneAssignment[]
+  zoneAssignmentSnapshots ZoneAssignmentSnapshot[]  // P3: enables zone inheritance
+
+  // P1: Subscription billing relations
+  subscriptionInvoices SubscriptionInvoice[]
+  paymentTransactions  PaymentTransaction[]
+  subscriptionAdjustments SubscriptionAdjustment[]  // P6: audit trail
+
+  @@index([userId])
+  @@index([businessTypeId])
+  @@index([subscriptionStage])  // P1: fast filtering by lifecycle stage
+  @@index([subscriptionEnd])    // P1: fast cron queries on expiring subscriptions
+}
+
+// ── Business Users ──
+model BusinessUser {
+  id           String   @id @default(cuid())
+  businessId   String
+  username     String
+  passwordHash String
+  role         String   @default("admin") // "owner", "admin", "manager", "pharmacist", "cashier", "stock_clerk"
+  // P1: distinguishes the shop admin (owner) from employees.
+  // The admin handles the subscription per shop. Only one admin per business.
+  isAdmin      Boolean  @default(false)
+  fullName     String?
+  phone        String?
+  email        String?
+  permissions  String?  // JSON array of permission strings, null = use role defaults
+  isActive     Boolean  @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  sessions Session[]
+
+  @@unique([businessId, username])
+  @@index([businessId])
+  @@index([role])
+}
+
+// ── Categories ──
+// Product categories with color, icon, and hierarchy support
+model Category {
+  id         String   @id @default(cuid())
+  businessId String
+  parentId   String?
+  name       String
+  slug       String              // URL-friendly: "antibiotics", "pain-relief"
+  icon       String   @default("Tag")   // Lucide icon name
+  color      String   @default("#6B7280") // Category brand color
+  type       String   @default("medicine") // "medicine", "surgical", "cosmetic", "supplement", "baby-care", "other"
+  sortOrder  Int      @default(0)
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  business Business   @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  parent   Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children Category[] @relation("CategoryHierarchy")
+  products Product[]
+
+  @@unique([businessId, slug])
+  @@index([businessId])
+  @@index([parentId])
+}
+
+// ── Products (Base + Pharmacy Extension) ──
+// Unified product model with pharmacy-specific optional fields
+model Product {
+  id           String   @id @default(cuid())
+  businessId   String
+  categoryId   String?
+  name         String              // Brand name (e.g., "Napa Extra")
+  genericName  String?             // Generic name (e.g., "Paracetamol + Caffeine")
+  sku          String?             // Internal SKU code
+  barcode      String?             // Barcode / QR code
+  productType  String   @default("medicine") // "medicine", "surgical", "cosmetic", "supplement", "baby-care", "other"
+
+  // Unit & Conversion
+  unit         String   @default("piece")  // Base unit: "piece", "tablet", "ml", "g"
+  stripSize    Int?              // e.g., 10 tablets per strip
+  boxSize      Int?              // e.g., 10 strips per box
+
+  // Pharmacy-specific
+  strength     String?            // "500mg", "250mg/5ml"
+  dosageForm   String?            // "Tablet", "Capsule", "Syrup", "Injection", "Cream"
+  manufacturer String?            // "Square", "Beximco", "Renata"
+  scheduleType String?            // "OTC", "Schedule_H", "Schedule_H1", "Schedule_X", "Narcotic"
+  hsnCode      String?            // For VAT: "30049099"
+  vatRate      Float   @default(0)    // VAT percentage (medicines have reduced rate)
+  mrp          Float?             // Maximum Retail Price
+  isPrescription Boolean @default(false) // Prescription required?
+  storageCondition String?        // "Room Temp", "Fridge (2-8C)", "Cool & Dry"
+  rackNo       String?            // Shelf location: "A3", "Rack-5"
+
+  // Stock thresholds
+  minStock     Float   @default(0)     // Low stock alert threshold
+  maxStock     Float   @default(0)     // Overstock warning threshold
+  reorderLevel Float   @default(0)     // When to reorder
+
+  // Phase 2: Master Catalog link (null = custom product, backward compatible)
+  masterProductId String?              // FK to MasterProduct. When set, metadata sourced from catalog.
+  sellingPrice  Float?                 // Pharmacy's selling price (may differ from MRP)
+
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  business     Business     @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  category     Category?    @relation(fields: [categoryId], references: [id])
+  inventory    Inventory?
+  transactions Transaction[]
+  batches      Batch[]
+  saleItems    SaleItem[]
+  returnItems  ReturnItem[]
+  purchaseItems PurchaseItem[]
+  shelfScanItems ShelfScanItem[]
+  zoneAssignments ProductZoneAssignment[]
+  stockCountLines StockCountLine[]
+  stockCountSummaries StockCountProductSummary[]
+  zoneAssignmentSnapshots ZoneAssignmentSnapshot[]  // P3: enables zone inheritance
+
+  @@index([businessId])
+  @@index([categoryId])
+  @@index([genericName])
+  @@index([manufacturer])
+  @@index([masterProductId])
+}
+
+// ── Batch ──
+// Multi-batch tracking per product with expiry management
+model Batch {
+  id            String   @id @default(cuid())
+  businessId    String
+  productId     String
+  batchNo       String              // Batch number from manufacturer
+  mfgDate       DateTime?           // Manufacturing date
+  expiryDate    DateTime            // Expiry date (CRITICAL)
+  quantity      Float    @default(0)  // Current quantity in this batch
+  purchasePrice Float?              // Cost price per unit for this batch
+  mrp           Float?              // Selling price per unit
+  supplierId    String?             // Supplier reference (Phase 5)
+  status        String   @default("active") // "active", "near_expiry", "expired", "quarantined", "returned", "destroyed"
+  notes         String?             // Optional notes
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  product  Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  supplier Supplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  purchaseItems PurchaseItem[]
+
+  @@index([businessId])
+  @@index([productId])
+  @@index([expiryDate])
+  @@index([status])
+  @@index([supplierId])
+}
+
+// ── Inventory ──
+// Aggregated stock levels per product (sum of all batches)
+model Inventory {
+  id         String   @id @default(cuid())
+  businessId String
+  productId  String   @unique
+  quantity   Float    @default(0)
+  minStock   Float    @default(0)
+  unitCost   Float?
+  updatedAt  DateTime @updatedAt
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  product  Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+}
+
+// ── Transactions ──
+model Transaction {
+  id         String   @id @default(cuid())
+  businessId String
+  productId  String
+  batchId    String?             // Link to specific batch
+  type       String              // "PURCHASE", "SALE", "ADJUSTMENT", "WASTE", "RETURN"
+  quantity   Float
+  unitPrice  Float?              // Price per unit at transaction time
+  note       String?
+  createdBy  String?             // BusinessUser ID who performed the action
+  createdAt  DateTime @default(now())
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  product  Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@index([productId])
+  @@index([createdAt])
+}
+
+// ── OTP Verification ──
+model OtpVerification {
+  id        String   @id @default(cuid())
+  phone     String
+  otp       String
+  purpose   String
+  expiresAt DateTime
+  isUsed    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([phone, purpose])
+  @@index([expiresAt])
+}
+
+// ── Sessions ──
+model Session {
+  id           String   @id @default(cuid())
+  businessUserId String
+  token        String   @unique
+  deviceInfo   String?
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+
+  businessUser BusinessUser @relation(fields: [businessUserId], references: [id], onDelete: Cascade)
+
+  @@index([businessUserId])
+  @@index([token])
+  @@index([expiresAt])
+}
+
+// ── Alert Preferences ──
+// Per-business notification settings (one record per business)
+model AlertPreference {
+  id              String   @id @default(cuid())
+  businessId      String   @unique
+
+  // Expiry alert thresholds (in days before expiry)
+  expiryCriticalDays  Int @default(7)    // Red alert threshold
+  expiryWarningDays   Int @default(30)   // Orange alert threshold
+  expiryNoticeDays    Int @default(90)   // Yellow alert threshold
+
+  // Low stock alert
+  lowStockEnabled   Boolean @default(true)
+  lowStockThreshold Int     @default(10) // Absolute quantity threshold
+
+  // Quarantine alerts
+  quarantineAlerts  Boolean @default(true)
+
+  // Notification channels (for future email/SMS integration)
+  emailEnabled      Boolean @default(false)
+  email             String?
+  smsEnabled        Boolean @default(false)
+  phone             String?
+
+  // Digest frequency
+  digestFrequency   String  @default("daily") // "daily", "weekly", "monthly", "none"
+
+  // Quiet hours (alerts still recorded, just not pushed)
+  quietHoursStart   Int?    // Hour 0-23
+  quietHoursEnd     Int?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+}
+
+// ── Notification Log ──
+// Records each alert generated (for audit + dedup)
+model NotificationLog {
+  id          String   @id @default(cuid())
+  businessId  String
+  type        String   // "expiry_critical", "expiry_warning", "low_stock", "quarantine", "disposed"
+  severity    String   // "critical", "warning", "info"
+  title       String
+  message     String
+  entityType  String   // "batch", "product", "category"
+  entityId    String?  // ID of related batch/product
+  isRead      Boolean  @default(false)
+  isResolved  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  readAt      DateTime?
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@index([type])
+  @@index([isRead])
+  @@index([createdAt])
+}
+
+// ── Customers ──
+// Pharmacy customers (optional — walk-in sales use null customerId)
+model Customer {
+  id          String   @id @default(cuid())
+  businessId  String
+  name        String
+  phone       String?
+  email       String?
+  address     String?
+  dateOfBirth DateTime?
+  gender      String?  // "male", "female", "other"
+  // Chronic condition flags (for pharmacy context)
+  chronicConditions String? // comma-separated: "diabetes,hypertension"
+  allergies         String? // comma-separated: "penicillin,sulfa"
+  notes             String?
+  // Loyalty / credit
+  totalSpent  Float    @default(0)
+  visitCount  Int      @default(0)
+  lastVisitAt DateTime?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  sales    Sale[]
+  payments Payment[]
+  returns  Return[]
+
+  @@index([businessId])
+  @@index([phone])
+  @@index([name])
+}
+
+// ── Sales (Invoices) ──
+// Each sale is an invoice with multiple line items
+model Sale {
+  id              String   @id @default(cuid())
+  businessId      String
+  customerId      String?  // null for walk-in customers
+  invoiceNo       String   // human-readable: INV-2026-0001
+  status          String   @default("completed") // "completed", "cancelled", "refunded", "pending"
+  paymentMethod   String   @default("cash") // "cash", "card", "mobile_banking", "credit", "mixed"
+  paymentStatus   String   @default("paid") // "paid", "partial", "unpaid", "refunded"
+
+  // Pricing breakdown
+  subtotal        Float    @default(0)  // sum of (item.price * item.quantity)
+  discountAmount  Float    @default(0)  // flat discount
+  discountPercent Float    @default(0)  // percentage discount (0-100)
+  taxAmount       Float    @default(0)  // VAT/tax
+  totalAmount     Float    @default(0)  // final amount customer pays
+  paidAmount      Float    @default(0)  // amount actually paid (for partial payments)
+
+  // Metadata
+  itemCount       Int      @default(0)
+  totalQuantity   Float    @default(0)
+  notes           String?
+
+  // Audit
+  createdBy       String?  // BusinessUser ID
+  cancelledAt     DateTime?
+  cancelledBy     String?
+  cancelReason    String?
+  stockCountDayId String?  // set when sale happens during an active Stock Count Day
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  business Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  customer Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  items    SaleItem[]
+  payments Payment[]
+  returns  Return[]
+  stockCountDay StockCountDay? @relation(fields: [stockCountDayId], references: [id], onDelete: SetNull)
+
+  @@unique([businessId, invoiceNo])
+  @@index([businessId])
+  @@index([customerId])
+  @@index([status])
+  @@index([paymentStatus])
+  @@index([createdAt])
+}
+
+// ── Sale Items (Invoice Line Items) ──
+model SaleItem {
+  id          String   @id @default(cuid())
+  saleId      String
+  businessId  String
+  productId   String
+  batchId     String?  // specific batch that fulfilled this item (FEFO)
+  productName String   // snapshot at time of sale
+  genericName String?  // snapshot
+  batchNo     String?  // snapshot
+  quantity    Float
+  unit        String   // snapshot
+  unitPrice   Float    // price per unit (MRP at time of sale)
+  discountPercent Float @default(0)  // per-line discount
+  totalPrice  Float    // quantity * unitPrice * (1 - discountPercent/100)
+  override    Boolean  @default(false)  // Gap 11: true when staff picked a non-FEFO batch
+
+  sale    Sale    @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
+  returnItems ReturnItem[]
+
+  @@index([saleId])
+  @@index([productId])
+  @@index([batchId])
+}
+
+// ── Payments ──
+// Records each payment made against a sale (supports partial payments + multiple methods)
+model Payment {
+  id            String   @id @default(cuid())
+  businessId    String
+  saleId        String
+  customerId    String?  // snapshot for quick lookup
+  amount        Float    // amount paid
+  paymentMethod String   // "cash", "card", "mobile_banking", "credit", "cheque"
+  reference     String?  // transaction ref (card last 4, mobile tx ID, cheque no)
+  notes         String?
+  receivedBy    String?  // BusinessUser ID
+  createdAt     DateTime @default(now())
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  sale     Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  customer Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  @@index([businessId])
+  @@index([saleId])
+  @@index([customerId])
+  @@index([createdAt])
+}
+
+// ── Returns / Refunds ──
+// Records product returns from customers (post-sale)
+model Return {
+  id            String   @id @default(cuid())
+  businessId    String
+  saleId        String
+  customerId    String?
+  returnNo      String   // human-readable: RET-2026-0001
+  status        String   @default("completed") // "completed", "pending", "rejected"
+  refundAmount  Float    @default(0)
+  refundMethod  String   @default("cash") // "cash", "credit", "store_credit"
+  restockItems  Boolean  @default(true) // whether to add items back to inventory
+  reason        String   // "defective", "wrong_item", "expired", "customer_changed_mind", "other"
+  notes         String?
+  processedBy   String?
+  createdAt     DateTime @default(now())
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  sale     Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  customer Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  items    ReturnItem[]
+
+  @@unique([businessId, returnNo])
+  @@index([businessId])
+  @@index([saleId])
+  @@index([customerId])
+  @@index([createdAt])
+}
+
+// ── Return Items ──
+model ReturnItem {
+  id            String   @id @default(cuid())
+  returnId      String
+  saleItemId    String
+  businessId    String
+  productId     String
+  batchId       String?
+  productName   String
+  quantity      Float    // quantity returned
+  unitPrice     Float    // refund per unit
+  refundAmount  Float    // quantity * unitPrice
+
+  return      Return   @relation(fields: [returnId], references: [id], onDelete: Cascade)
+  business    Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  saleItem    SaleItem @relation(fields: [saleItemId], references: [id])
+  product     Product  @relation(fields: [productId], references: [id])
+
+  @@index([returnId])
+  @@index([saleItemId])
+}
+
+// ── Discount Rules ──
+// Auto-applied discounts based on conditions (e.g., bulk, customer loyalty, time-based)
+model DiscountRule {
+  id              String   @id @default(cuid())
+  businessId      String
+  name            String   // "Bulk 10% off", "Senior Citizen 5%"
+  description     String?
+  type            String   // "percent" or "flat"
+  value           Float    // percentage (0-100) or flat amount in BDT
+  // Condition
+  conditionType   String   // "none", "min_quantity", "min_amount", "customer_tag", "schedule_type", "time_based"
+  conditionValue  String?  // e.g., "10" for min_quantity, "schedule_h" for schedule_type
+  // Scope
+  scope           String   // "all", "category", "product", "schedule_type"
+  scopeValue      String?  // categoryId, productId, or schedule type
+  // Validity
+  startDate       DateTime?
+  endDate         DateTime?
+  isActive        Boolean  @default(true)
+  priority        Int      @default(0)  // higher = applied first
+  // Tracking
+  timesUsed       Int      @default(0)
+  totalDiscountGiven Float @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@index([isActive])
+  @@index([scope])
+}
+
+// ── Suppliers ──
+// Vendors/manufacturers/distributors that supply products
+model Supplier {
+  id            String   @id @default(cuid())
+  businessId    String
+  name          String
+  code          String?  // internal supplier code: SUP-001
+  contactPerson String?
+  phone         String?
+  email         String?
+  address       String?
+  // Financial
+  balance       Float    @default(0)  // outstanding payable (positive = we owe them)
+  totalPurchased Float   @default(0)  // lifetime purchase value
+  totalPaid     Float    @default(0)  // lifetime payments to supplier
+  // Metadata
+  notes         String?
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  business  Business   @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  purchases Purchase[]
+  batches   Batch[]
+
+  @@index([businessId])
+  @@index([name])
+  @@index([phone])
+}
+
+// ── Purchases (Goods Receipt / Purchase Invoices) ──
+// Records incoming stock from suppliers with batch creation
+model Purchase {
+  id              String   @id @default(cuid())
+  businessId      String
+  supplierId      String?
+  purchaseNo      String   // human-readable: PO-2026-0001
+  status          String   @default("received") // "draft", "ordered", "received", "cancelled"
+  // Pricing
+  subtotal        Float    @default(0)
+  discountAmount  Float    @default(0)
+  taxAmount       Float    @default(0)
+  totalAmount     Float    @default(0)
+  paidAmount      Float    @default(0)
+  paymentStatus   String   @default("unpaid") // "paid", "partial", "unpaid"
+  // Metadata
+  invoiceNo       String?  // supplier's invoice number
+  invoiceDate     DateTime?
+  receivedDate    DateTime?
+  notes           String?
+  // Audit
+  createdBy       String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  business  Business   @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  supplier  Supplier?  @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  items     PurchaseItem[]
+
+  @@unique([businessId, purchaseNo])
+  @@index([businessId])
+  @@index([supplierId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+// ── Purchase Items ──
+model PurchaseItem {
+  id              String   @id @default(cuid())
+  purchaseId      String
+  businessId      String
+  productId       String
+  batchId         String?  // batch created on receipt
+  productName     String   // snapshot
+  quantity        Float    // ordered quantity
+  receivedQuantity Float   @default(0) // actually received
+  unit            String   // snapshot
+  unitCost        Float    // purchase price per unit
+  totalPrice      Float    // quantity * unitCost
+  // Batch details (used when creating batch on receipt)
+  batchNo         String?
+  expiryDate      DateTime?
+  mfgDate         DateTime?
+  mrp             Float?   // selling price (MRP) for the batch
+
+  purchase Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  product  Product  @relation(fields: [productId], references: [id])
+  batch    Batch?   @relation(fields: [batchId], references: [id])
+
+  @@index([purchaseId])
+  @@index([productId])
+}
+
+// ── AI Usage Log ──
+// Tracks every AI call per business for cost monitoring and rate limiting
+model AIUsageLog {
+  id            String   @id @default(cuid())
+  businessId    String
+  feature       String   // "chat" / "insights" / "expiry-optimizer" / "product-assistant:*" / "sql-router:*" / "*-cache"
+  tokensUsed    Int      @default(0)
+  costEstimate  Float    @default(0)
+  success       Boolean  @default(true)
+  errorMessage  String?
+  createdAt     DateTime @default(now())
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@index([feature])
+  @@index([createdAt])
+  @@index([businessId, createdAt])
+}
+
+// ── Super Admin ──
+model SuperAdmin {
+  id           String   @id @default(cuid())
+  username     String   @unique
+  passwordHash String
+  fullName     String?
+  role         String   @default("super_admin")
+  isActive     Boolean  @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  sessions SuperAdminSession[]
+}
+
+model SuperAdminSession {
+  id              String   @id @default(cuid())
+  superAdminId    String
+  token           String   @unique
+  expiresAt       DateTime
+  createdAt       DateTime @default(now())
+
+  superAdmin SuperAdmin @relation(fields: [superAdminId], references: [id], onDelete: Cascade)
+
+  @@index([superAdminId])
+  @@index([token])
+  @@index([expiresAt])
+}
+
+// ── Business Daily Stats (Cron pre-computation) ──
+model BusinessDailyStats {
+  id              String   @id @default(cuid())
+  businessId      String
+  date            DateTime
+
+  salesTotal      Float    @default(0)
+  salesCount      Int      @default(0)
+  salesDiscount   Float    @default(0)
+  salesReturns    Float    @default(0)
+  salesReturnsCount Int    @default(0)
+  purchasesTotal  Float    @default(0)
+  purchasesCount  Int      @default(0)
+  paymentsIn      Float    @default(0)
+  paymentsOut     Float    @default(0)
+  productCount    Int      @default(0)
+  lowStockCount   Int      @default(0)
+  outOfStockCount Int      @default(0)
+  batchCount      Int      @default(0)
+  nearExpiryCount Int      @default(0)
+  expiredCount    Int      @default(0)
+  inventoryCostValue Float @default(0)
+  inventoryMrpValue  Float @default(0)
+  customerCount       Int  @default(0)
+  supplierCount       Int  @default(0)
+  receivablesTotal    Float @default(0)
+  payablesTotal       Float @default(0)
+  aiCalls         Int      @default(0)
+  aiTokens        Int      @default(0)
+  aiCost          Float    @default(0)
+  createdAt       DateTime @default(now())
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@unique([businessId, date])
+  @@index([businessId, date])
+  @@index([date])
+}
+
+// ── Cron Job Log ──
+model CronJobLog {
+  id            String   @id @default(cuid())
+  jobName       String
+  status        String   // "running" | "success" | "failed"
+  startedAt     DateTime @default(now())
+  finishedAt    DateTime?
+  durationMs    Int?
+  businessesProcessed Int @default(0)
+  recordsWritten     Int @default(0)
+  errorMessage       String?
+  log           String?
+
+  @@index([jobName, startedAt])
+  @@index([status])
+  @@index([startedAt])
+}
+
+// ── AI Response Cache (Gap 9) ──
+model AIResponseCache {
+  id              String   @id @default(cuid())
+  businessId      String
+  feature         String
+  normalizedQuery String
+  dataHash        String
+  response        String
+  tokensUsed      Int      @default(0)
+  createdAt       DateTime @default(now())
+  expiresAt       DateTime
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@unique([businessId, feature, normalizedQuery, dataHash])
+  @@index([businessId, feature, normalizedQuery])
+  @@index([expiresAt])
+  @@index([businessId, expiresAt])
+}
+
+// ── FEFO Override Audit Trail (Gap 11) ──
+// Records every time staff overrides FEFO (picks a later-expiring batch
+// instead of the soonest-expiring one). Required for DGDA compliance.
+model FefoOverride {
+  id              String   @id @default(cuid())
+  businessId      String
+  saleId          String?
+  saleItemId      String?
+  productId       String
+  productName     String   // snapshot
+  selectedBatchId String   // the batch actually dispensed
+  selectedBatchNo String   // snapshot
+  expectedBatchId String   // the FEFO-first batch that was skipped
+  expectedBatchNo String   // snapshot
+  userId          String?  // who made the override
+  userName        String?  // snapshot
+  reason          String   // required, min 10 chars
+  createdAt       DateTime @default(now())
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId, createdAt])
+  @@index([saleId])
+  @@index([productId])
+}
+
+// ── AI Configuration (Phase 1: configurable cost-control knobs) ──
+// Stores per-feature AI limits that the founder can tune from the super-admin
+// panel without redeploying. Falls back to hardcoded defaults in src/lib/ai-config.ts
+// if the row is missing or the DB is unreachable.
+//
+// Features:
+//   - "chat"             → maxOutputTokens (default 1024)
+//   - "insights"         → maxOutputTokens (default 2048)
+//   - "expiry-optimizer" → maxOutputTokens (default 2048) + maxInputBatches (default 50)
+//   - "product-assistant"→ maxOutputTokens (default 512)  + maxInputProducts (default 20)
+model AiConfig {
+  id               String   @id @default(cuid())
+  feature          String   @unique
+  maxOutputTokens  Int      @default(1024)
+  maxInputBatches  Int?     // only used by expiry-optimizer
+  maxInputProducts Int?     // only used by product-assistant:check_interactions
+  maxInputImages   Int?     // only used by shelf-scanner (max photos per scan)
+  systemPrompt     String?  @db.Text // shelf-scanner: custom system prompt (null = default)
+  userPromptTemplate String? @db.Text // shelf-scanner: user prompt with {{imageCount}} placeholder
+  temperature      Float?   // shelf-scanner: LLM temperature (null = 0.1)
+  disableThinking  Boolean? // shelf-scanner: disable Gemini 2.5+ internal reasoning (null = true)
+  updatedAt        DateTime @updatedAt
+  updatedBy        String?  // super-admin username
+
+  @@map("ai_configs")
+}
+
+// ── Kill Switch Audit Log (Phase 4) ──
+// Records every time a kill-switch trigger fires. Each row = one trigger event.
+// isActive=true means the kill-switch is currently blocking AI for that scope
+// (per-pharmacy for triggers 1+2, platform-wide for triggers 3+4).
+// Super-admin resets by setting isActive=false via /api/super-admin/kill-switch/[id]/reset.
+model KillSwitch {
+  id             String   @id @default(cuid())
+  trigger        String   // "per_pharmacy_monthly" | "per_pharmacy_24h" | "platform_monthly" | "zai_error_rate"
+  thresholdValue Float    @default(0) // the threshold that was configured at trigger time
+  actualValue    Float    @default(0) // the actual value that triggered it
+  triggeredAt    DateTime @default(now())
+  triggeredBy    String   // businessId for triggers 1+2, "platform" for triggers 3+4
+  isActive       Boolean  @default(true)
+  deactivatedAt  DateTime?
+  deactivatedBy  String?  // super-admin username
+  notes          String?
+
+  @@index([trigger, isActive])
+  @@index([triggeredAt])
+  @@index([triggeredBy])
+  @@map("kill_switches")
+}
+
+// ── Kill Switch Thresholds (Phase 4: dynamic, editable from super admin) ──
+// The founder can tune these from /admin without redeploying. Each trigger has
+// its own row with a configurable threshold value.
+//
+// Triggers:
+//   "per_pharmacy_monthly"  → max BDT per pharmacy per month (default 200)
+//   "per_pharmacy_24h"      → max tokens per pharmacy per 24h (default 50000)
+//   "platform_monthly"      → max BDT platform-wide per month (default 100000)
+//   "zai_error_rate"        → max error rate % in 1 hour (default 10)
+model KillSwitchThreshold {
+  id            String   @id @default(cuid())
+  trigger       String   @unique
+  thresholdValue Float   @default(0)
+  unit          String   @default("") // "BDT", "tokens", "BDT", "%" for display
+  isActive      Boolean  @default(true) // founder can disable a trigger entirely
+  updatedAt     DateTime @updatedAt
+  updatedBy     String?
+
+  @@map("kill_switch_thresholds")
+}
+
+// ── Notification Recipients (Phase 4: up to 3 emails for kill-switch alerts) ──
+// The founder can configure up to 3 email addresses from /admin. When a
+// kill-switch triggers, an email is sent to ALL active recipients.
+// If no recipients are configured, the alert is logged to NotificationLog only.
+model NotificationRecipient {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  label     String?  // e.g., "Founder", "CTO", "On-call engineer"
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("notification_recipients")
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ── AI REPORT SCHEDULING SYSTEM (Phase A) ──
+// 7 models for the weekly client-hook feature:
+//   1. ReportSchedule   — founder's schedule config (weekly/monthly/date_range)
+//   2. ReportOccasion   — point events (Eid, Friday, Puja)
+//   3. ReportSeason     — recurring seasonal periods (Winter, Monsoon, Summer)
+//   4. HolidayCalendar  — specific occasion dates per year (Eid 2026 = 2026-04-10)
+//   5. EpidemicAlert    — active outbreaks (dengue, COVID) that override predictions
+//   6. GeneratedReport  — the report itself (one per business per schedule run)
+//   7. ReportDelivery   — delivery tracking (email + WhatsApp)
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ── 1. ReportSchedule ──
+// Founder's schedule configuration. Each row defines one recurring schedule
+// (e.g., "Weekly Monday report for all Pro+AI clients considering Eid + Winter").
+// Platform-wide — generates reports for multiple businesses.
+model ReportSchedule {
+  id                String    @id @default(cuid())
+  name              String    // e.g., "Weekly Eid-Aware Report"
+  description       String?
+  frequency         String    // "weekly" | "monthly" | "date_range"
+  dayOfWeek         Int?      // For weekly: 0=Sun, 1=Mon, ..., 6=Sat
+  dayOfMonth        Int?      // For monthly: 1-28 (avoids 29/30/31 to prevent skipped months)
+  startDate         DateTime? // For date_range: first report date
+  endDate           DateTime? // For date_range: last report date
+  occasions         String    @default("[]") // JSON array of occasion IDs to consider (empty = all active)
+  considerSeasons   Boolean   @default(true) // Whether to apply seasonal adjustments
+  considerEpidemics Boolean   @default(true) // Whether to apply active epidemic alerts
+  targetClientMode  String    @default("all") // "all" | "selected"
+  targetClientIds   String?   // JSON array of businessIds. Null if "all"
+  deliveryChannels  String    @default("[\"email\"]") // JSON: ["email"] | ["whatsapp"] | ["email","whatsapp"]
+  reportPeriodDays  Int       @default(7) // How many days ahead to predict (7=weekly, 14=biweekly)
+  // Phase 6: multi-project filtering. Null = all projects (backward compatible).
+  // When set, the schedule checker only targets businesses of this type.
+  businessTypeId    String?
+  isActive          Boolean   @default(true)
+  lastRunAt         DateTime?
+  nextRunAt         DateTime?
+  createdBy         String?   // super-admin username
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  generatedReports GeneratedReport[]
+
+  @@index([isActive, nextRunAt])
+  @@index([frequency])
+  @@index([businessTypeId])
+  @@map("report_schedules")
+}
+
+// ── 2. ReportOccasion ──
+// Point-in-time events (Eid, Friday, Puja, government holidays).
+// Duration is short (1-7 days). Recurrence is predictable (annual/weekly).
+// Pre-seeded with 14+ Bangladesh occasions.
+model ReportOccasion {
+  id              String   @id @default(cuid())
+  name            String   // "Eid-ul-Fitr", "Friday", etc.
+  slug            String   @unique // "eid-ul-fitr", "friday"
+  type            String   // "religious" | "national" | "weekly" | "custom"
+  datePattern     String   // "fixed_date" | "lunar_approximate" | "recurring_weekly"
+  fixedMonth      Int?     // For fixed_date: 1-12
+  fixedDay        Int?     // For fixed_date: 1-31
+  weeklyDayOfWeek Int?     // For recurring_weekly: 0=Sun, 5=Fri, 6=Sat
+  impactWeight    Float    @default(1.0) // 1.0=normal, 2.5=150% boost, 0.3=70% reduction
+  durationDays    Int      @default(1) // How long the spike lasts (Eid=7, Friday=1)
+  leadDays        Int      @default(0) // Days BEFORE occasion the spike starts (Eid shopping=5 days before)
+  description     String?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  holidayCalendar HolidayCalendar[]
+
+  @@map("report_occasions")
+}
+
+// ── 3. ReportSeason ──
+// Recurring seasonal periods that shift baseline demand for months at a time.
+// Unlike occasions (point events), seasons are extended periods (2-3 months)
+// with a "multiplier" that adjusts the baseline demand for affected product
+// categories throughout the season.
+//
+// Pre-seeded with 4 Bangladesh seasons:
+//   - Winter (Dec-Feb): respiratory meds spike 1.5x
+//   - Summer (Mar-May): ORS, antacids, heatstroke meds 1.3x (overlaps Ramadan/Eid)
+//   - Monsoon (Jun-Sep): dengue/malaria/water-borne disease meds 2.0x
+//   - Autumn (Oct-Nov): transition, baseline 1.0x
+//
+// A season's effect is COMPOUND with occasions: Eid in Monsoon = Eid spike (2.8x)
+// applied to the Monsoon-adjusted baseline (2.0x) = 5.6x for dengue meds during
+// Eid in monsoon. The prediction algorithm handles this layering.
+model ReportSeason {
+  id              String   @id @default(cuid())
+  name            String   // "Winter", "Summer", "Monsoon", "Autumn"
+  slug            String   @unique // "winter", "monsoon"
+  startMonth      Int      // 1-12 (e.g., Winter = 12)
+  startDay        Int      @default(1) // 1-31
+  endMonth        Int      // 1-12 (e.g., Winter = 2)
+  endDay          Int      @default(28) // 1-31
+  impactWeight    Float    @default(1.0) // 1.0=normal, 1.5=50% boost, 0.8=20% reduction
+  affectedCategories String @default("[]") // JSON array of category names most affected
+  description     String?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("report_seasons")
+}
+
+// ── 4. HolidayCalendar ──
+// Stores the specific dates of occasions for each year.
+// Necessary because lunar occasions (Eid) shift each year and must be confirmed.
+// The prediction algorithm queries this to know which dates in the next 7-14
+// days have occasions, then looks up the same occasions in historical sales.
+model HolidayCalendar {
+  id          String   @id @default(cuid())
+  occasionId  String
+  date        DateTime // Specific date of this occurrence (e.g., 2026-06-17 for Eid-ul-Adha 2026)
+  isConfirmed Boolean  @default(false) // Lunar dates are estimates until founder confirms
+  year        Int      // Derived from date — used for yearly filtering
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  occasion ReportOccasion @relation(fields: [occasionId], references: [id], onDelete: Cascade)
+
+  @@unique([occasionId, date])
+  @@index([date])
+  @@index([year])
+  @@map("holiday_calendar")
+}
+
+// ── 5. EpidemicAlert ──
+// Active disease outbreaks that override normal prediction patterns.
+// Unlike occasions and seasons (which are predictable), epidemics are
+// unpredictable events declared by the founder when an outbreak is detected
+// (e.g., "Dengue outbreak in Dhaka — severity high — antimalarials + IV fluids
+// spike 4x"). The alert has a start/end date and is "active" during that window.
+// The prediction algorithm applies the epidemic multiplier ON TOP of seasonal
+// and occasion adjustments, because during an outbreak, demand for affected
+// products spikes regardless of season.
+//
+// Pre-seeded with 2 example alerts (inactive by default):
+//   - Dengue outbreak (annual, founder activates when detected)
+//   - COVID-19 (historical, inactive)
+model EpidemicAlert {
+  id                String    @id @default(cuid())
+  name              String    // "Dengue Outbreak 2026", "COVID-19 Wave"
+  slug              String    @unique
+  diseaseType       String    // "dengue" | "covid" | "cholera" | "nipah" | "flu" | "custom"
+  severity          String    @default("moderate") // "mild" | "moderate" | "severe" | "critical"
+  impactWeight      Float     @default(2.0) // Multiplier for affected products (2.0 = 100% boost)
+  affectedCategories String   @default("[]") // JSON array of category names most affected
+  affectedProducts  String    @default("[]") // JSON array of specific product names (optional)
+  startDate         DateTime
+  endDate           DateTime  // When the alert is expected to end (founder extends if needed)
+  isActive          Boolean   @default(true) // Founder can deactivate without deleting
+  declaredBy        String?   // super-admin username
+  notes             String?   // e.g., "Dhaka city reports 500+ cases per week"
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([isActive, startDate, endDate])
+  @@index([diseaseType])
+  @@map("epidemic_alerts")
+}
+
+// ── 6. GeneratedReport ──
+// One row per business per schedule run. Contains the full report content as
+// JSON fields, plus cost tracking and status. This is the table the report
+// viewer UI queries.
+model GeneratedReport {
+  id                   String    @id @default(cuid())
+  scheduleId           String
+  businessId           String
+  reportDate           DateTime  // When the report was generated
+  reportPeriodStart    DateTime  // First day of prediction period (e.g., next Monday)
+  reportPeriodEnd      DateTime  // Last day of prediction period (e.g., next Sunday)
+  executiveSummary     String?   // 2-3 sentence AI-generated summary
+  spikePredictions     String?   // JSON array of top 3 spike predictions
+  topItems             String?   // JSON array of 20 items with predictedQty, profit, supplier, stock status
+  stockRisks           String?   // JSON array of stock risk items with purchase recommendations
+  appliedInfluences    String    @default("{}") // JSON: which occasions/seasons/epidemics were considered
+  aiTokensUsed         Int       @default(0)
+  aiCostEstimate       Float     @default(0.0)
+  generationStatus     String    @default("pending") // "pending" | "generating" | "completed" | "failed"
+  errorMessage         String?
+  pdfUrl               String?
+  predictionConfidence String    @default("medium") // "low" | "medium" | "high"
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  schedule ReportSchedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  business Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  deliveries ReportDelivery[]
+
+  @@index([scheduleId, reportDate])
+  @@index([businessId, reportDate])
+  @@index([generationStatus])
+  @@index([reportDate])
+  @@map("generated_reports")
+}
+
+// ── 7. ReportDelivery ──
+// Tracks delivery of each report via each channel. One GeneratedReport can
+// have multiple ReportDelivery rows (one per channel). This is the table the
+// delivery status UI queries.
+model ReportDelivery {
+  id                String    @id @default(cuid())
+  reportId          String
+  channel           String    // "email" | "whatsapp"
+  recipient         String    // email address or phone number
+  status            String    @default("queued") // "queued" | "sent" | "delivered" | "read" | "failed"
+  sentAt            DateTime?
+  deliveredAt       DateTime?
+  readAt            DateTime?
+  errorMessage      String?
+  retryCount        Int       @default(0)
+  providerMessageId String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  report GeneratedReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@index([reportId])
+  @@index([status])
+  @@index([channel, status])
+  @@map("report_deliveries")
+}
+
+// ── P1: Subscription Billing Models ──
+// Per-shop billing: each Business has its own invoices + payment transactions.
+// The admin (BusinessUser.isAdmin=true) handles the subscription per shop.
+
+// One per billing period per business (monthly or annual).
+// Generated by a monthly cron or on-demand from the super-admin panel (P3/P4).
+model SubscriptionInvoice {
+  id            String   @id @default(cuid())
+  businessId    String
+  tier          String   // "free" / "pro" / "pro_ai"
+  billingPeriod String   // "month" / "year"
+  amount        Float    // BDT
+  status        String   @default("pending") // "pending" / "paid" / "overdue" / "cancelled"
+  dueDate       DateTime
+  paidAt        DateTime?
+  paymentMethod String?  // "bkash" / "nagad" / "ssl_commerz" / "manual" (set when paid)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  payments PaymentTransaction[]
+
+  @@index([businessId])
+  @@index([status])
+  @@index([dueDate])
+  @@map("subscription_invoices")
+}
+
+// One per payment attempt by a user.
+// User submits bKash/Nagad TRX ID + amount → creates pending transaction.
+// Auto-matching engine (P3) updates status from pending to matched when
+// a ReceivedPayment with the same TRX ID + amount is uploaded by the super-admin.
+model PaymentTransaction {
+  id            String   @id @default(cuid())
+  businessId    String
+  invoiceId     String?
+  method        String   // "bkash" / "nagad" / "ssl_commerz" / "manual"
+  trxId         String   // bKash/Nagad transaction ID (10 chars) or SSL Commerz tranId
+  amount        Float    // BDT
+  status        String   @default("pending") // "pending" / "matched" / "rejected" / "refunded"
+  submittedBy   String?  // user phone who submitted
+  submittedAt   DateTime @default(now())
+  matchedAt     DateTime?
+  matchedBy     String?  // super-admin id who matched (or "auto" for auto-match)
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  business Business             @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  invoice  SubscriptionInvoice? @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+
+  @@index([businessId])
+  @@index([status])
+  @@index([trxId])
+  @@index([method])
+  @@map("payment_transactions")
+}
+
+// Super-admin's record of money received in bKash/Nagad.
+// The super-admin uploads these via the panel (P3). The auto-matching engine
+// searches for a pending PaymentTransaction with the same TRX ID + amount (±5 BDT).
+model ReceivedPayment {
+  id                    String   @id @default(cuid())
+  method                String   // "bkash" / "nagad"
+  trxId                 String   // transaction ID from bKash/Nagad statement
+  amount                Float    // BDT
+  receivedAt            DateTime @default(now())
+  uploadedBy            String?  // super-admin id
+  matchedTransactionId  String?  // set when a user submission matches
+  createdAt             DateTime @default(now())
+
+  @@index([trxId])
+  @@index([method])
+  @@index([matchedTransactionId])
+  @@map("received_payments")
+}
+
+// ── P5: Payment Configuration (singleton) ──
+// Stores SSL Commerz credentials + active payment method toggles + bKash/Nagad
+// account numbers. Editable from /admin/packages. Falls back to env vars if no row.
+model PaymentConfig {
+  id              String   @id @default("default")
+  // SSL Commerz
+  sslStoreId      String?
+  sslStorePasswd  String?
+  sslMode         String   @default("sandbox") // "sandbox" | "production"
+  // Payment method toggles
+  bkashActive     Boolean  @default(true)
+  nagadActive     Boolean  @default(true)
+  sslActive       Boolean  @default(false)
+  // Account numbers shown to users on the Pay Subscription page
+  bkashNumber     String?
+  nagadNumber     String?
+  // Tier prices (editable from admin, falls back to feature-gate.ts defaults)
+  proMonthly      Float    @default(800)
+  proAnnual       Float    @default(8000)
+  proAiMonthly    Float    @default(1500)
+  proAiAnnual     Float    @default(15000)
+  updatedAt       DateTime @updatedAt
+  updatedBy       String?
+
+  @@map("payment_config")
+}
+
+// ── P6: Subscription Adjustment Audit Trail ──
+// Logs every manual change to a business's subscription: refunds, extensions,
+// reductions, plan changes. Required reason field for audit compliance.
+model SubscriptionAdjustment {
+  id            String   @id @default(cuid())
+  businessId    String
+  type          String   // "refund" | "extension" | "reduction" | "plan_change"
+  daysAdjusted  Int      // positive = extension, negative = reduction
+  amount        Float    @default(0) // BDT (for refunds)
+  reason        String   // required — why the adjustment was made
+  oldTier       String?
+  newTier       String?
+  createdBy     String?  // super-admin id
+  createdAt     DateTime @default(now())
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@map("subscription_adjustments")
+}
+
+// ── SMTP Configuration (Phase 6: dynamic, editable from super admin panel) ──
+// Stores SMTP credentials in the DB so the founder can configure email delivery
+// from /admin/api-setup → SMTP tab without touching environment variables.
+// Only one row exists (singleton pattern: id = "default").
+// Password is stored as-is (the DB itself should be access-controlled).
+// Falls back to environment variables (SMTP_HOST etc.) if no row exists.
+model SmtpConfig {
+  id        String   @id @default("default")
+  host      String
+  port      Int      @default(587)
+  user      String
+  password  String
+  fromEmail String?
+  fromName  String   @default("InventoryOS")
+  isActive  Boolean  @default(true)
+  updatedAt DateTime @updatedAt
+  updatedBy String?
+
+  @@map("smtp_configs")
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ── MASTER PRODUCT CATALOG (Phase 1) ──
+// Shared platform-level product catalog. 14,000+ products sourced from
+// MedEx/Kaggle dataset. Pharmacies "subscribe" to products instead of
+// entering them manually.
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ── MasterManufacturer ──
+// Pharmaceutical companies (Square, Beximco, Incepta, etc.)
+model MasterManufacturer {
+  id           String   @id @default(cuid())
+  name         String   @unique
+  shortCode    String?
+  country      String   @default("Bangladesh")
+  isActive     Boolean  @default(true)
+  productCount Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  products MasterProduct[]
+
+  @@map("master_manufacturers")
+}
+
+// ── MasterProduct ──
+// The shared product catalog. ~14,000 products from 232 manufacturers.
+// No businessId — this is platform-level reference data.
+// Pharmacies subscribe to these via Product.masterProductId.
+model MasterProduct {
+  id              String   @id @default(cuid())
+  name            String   // Brand name (e.g., "Napa Extra")
+  genericName     String?  // Generic name (e.g., "Paracetamol + Caffeine")
+  strength        String?  // e.g., "500mg"
+  dosageForm      String?  // Tablet, Capsule, Syrup, Injection, etc.
+  manufacturerId  String?
+  manufacturerStr String?  // Denormalized manufacturer name (for quick search)
+  categoryName    String?  // e.g., "Pain & Fever"
+  scheduleType    String?  // OTC, Schedule_H, Schedule_H1, Schedule_X, Narcotic
+  hsnCode         String?
+  vatRate         Float    @default(0)
+  defaultMrp      Float?   // Default MRP in BDT
+  dgdaRegNo       String?  @unique
+  barcode         String?
+  unit            String   @default("piece") // piece, tablet, ml, g
+  stripSize       Int?
+  boxSize         Int?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  manufacturer MasterManufacturer? @relation(fields: [manufacturerId], references: [id], onDelete: SetNull)
+  shelfScanItems ShelfScanItem[]
+
+  @@index([name])
+  @@index([genericName])
+  @@index([manufacturerStr])
+  @@index([categoryName])
+  @@index([dosageForm])
+  @@index([barcode])
+  @@index([isActive])
+  @@map("master_products")
+}
+
+// ── Shelf Scanner (AI vision stock counting) ──
+// A ShelfScan is created when a user uploads 2–3 shelf photos. The vision model
+// detects medicines; each detection becomes a ShelfScanItem linked to a client
+// Product (if matched) and/or a MasterProduct (catalog match). Stock updates
+// from a scan are applied via POST /api/businesses/[id]/stock/bulk-update which
+// writes Inventory.quantity + an ADJUSTMENT Transaction — never MasterProduct.
+model ShelfScan {
+  id            String   @id @default(cuid())
+  businessId    String
+  imageCount    Int
+  detectedCount Int      @default(0)
+  matchedCount  Int      @default(0)
+  rawResult     String?  // full LLM JSON output, for debugging/replay
+  tokensUsed    Int      @default(0)
+  createdBy     String?  // BusinessUser ID who initiated the scan
+  stockCountZoneSessionId String? // linked Stock Count Day zone session
+  createdAt     DateTime @default(now())
+
+  business Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  zoneSession StockCountZoneSession? @relation(fields: [stockCountZoneSessionId], references: [id], onDelete: SetNull)
+  items    ShelfScanItem[]
+
+  @@index([businessId])
+  @@index([stockCountZoneSessionId])
+  @@index([createdAt])
+  @@map("shelf_scans")
+}
+
+model ShelfScanItem {
+  id                   String   @id @default(cuid())
+  shelfScanId          String
+  productId            String?  // matched client Product (null until linked/quick-added)
+  masterProductId      String?  // matched MasterProduct (null if no catalog match)
+  detectedName         String
+  detectedStrength     String?
+  detectedForm         String?
+  detectedManufacturer String?
+  confidence           Float    @default(0)    // 0.0–1.0 from the vision model
+  matchedMethod        String   @default("ai") // "ai" | "master-catalog" | "manual" | "quick-add" | "unmatched"
+  previousQuantity     Float    @default(0)    // Inventory.quantity at match time
+  newQuantity          Float?                  // entered by user; null = skipped
+  appliedAt            DateTime?               // stamped when bulk-update writes the Transaction
+  createdAt            DateTime @default(now())
+
+  shelfScan      ShelfScan      @relation(fields: [shelfScanId], references: [id], onDelete: Cascade)
+  product        Product?       @relation(fields: [productId], references: [id], onDelete: SetNull)
+  masterProduct  MasterProduct? @relation(fields: [masterProductId], references: [id], onDelete: SetNull)
+
+  @@index([shelfScanId])
+  @@index([productId])
+  @@index([masterProductId])
+  @@map("shelf_scan_items")
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Stock Counting Day (SCD) — monthly full-stock count while shop stays open
+// ══════════════════════════════════════════════════════════════════════════════
+
+// Permanent shop areas (reused every month). A product may belong to 2+ zones.
+model StorageZone {
+  id         String   @id @default(cuid())
+  businessId String
+  name       String
+  sortOrder  Int      @default(0)
+  color      String   @default("#0d9488")
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  business    Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  assignments ProductZoneAssignment[]
+  zoneSessions StockCountZoneSession[]
+  countLines  StockCountLine[]
+  assignmentSnapshots ZoneAssignmentSnapshot[]  // P3: enables zone inheritance
+
+  @@unique([businessId, name])
+  @@index([businessId])
+  @@map("storage_zones")
+}
+
+model ProductZoneAssignment {
+  id         String   @id @default(cuid())
+  businessId String
+  productId  String
+  zoneId     String
+  createdAt  DateTime @default(now())
+
+  business Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  product  Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  zone     StorageZone @relation(fields: [zoneId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, zoneId])
+  @@index([businessId])
+  @@index([zoneId])
+  @@map("product_zone_assignments")
+}
+
+// One monthly (or ad-hoc) full count session per business.
+model StockCountDay {
+  id          String    @id @default(cuid())
+  businessId  String
+  name        String
+  status      String    @default("draft") // draft | active | closed | applied
+  startedAt   DateTime?
+  closedAt    DateTime?
+  appliedAt   DateTime?
+  startedBy   String?
+  closedBy    String?
+  appliedBy   String?
+  notes       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  business     Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  zoneSessions StockCountZoneSession[]
+  lines        StockCountLine[]
+  summaries    StockCountProductSummary[]
+  sales        Sale[]
+  // P3: snapshot of zone assignments at creation time (enables inheritance)
+  assignmentSnapshots ZoneAssignmentSnapshot[]
+
+  @@index([businessId])
+  @@index([status])
+  @@map("stock_count_days")
+}
+
+// Progress of each storage zone within a Stock Count Day.
+model StockCountZoneSession {
+  id         String    @id @default(cuid())
+  scdId      String
+  zoneId     String
+  businessId String
+  status     String    @default("pending") // pending | counting | review | closed
+  closedAt   DateTime?
+  closedBy   String?
+  sortOrder  Int       @default(0)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  scd        StockCountDay @relation(fields: [scdId], references: [id], onDelete: Cascade)
+  zone       StorageZone @relation(fields: [zoneId], references: [id], onDelete: Cascade)
+  lines      StockCountLine[]
+  shelfScans ShelfScan[]
+
+  @@unique([scdId, zoneId])
+  @@index([businessId])
+  @@index([scdId])
+  @@map("stock_count_zone_sessions")
+}
+
+// Per-product rollup for the whole SCD (sales + total counted across zones).
+model StockCountProductSummary {
+  id               String   @id @default(cuid())
+  scdId            String
+  businessId       String
+  productId        String
+  systemQtyAtStart Float    @default(0)
+  soldDuringScd    Float    @default(0)
+  totalCountedQty  Float?   // sum of zone lines once counted
+  variance         Float?
+  // P2: variance reason capture for audit trail
+  varianceReason   String?  // theft | damage | data_error | expired | other
+  varianceNote     String?  // optional free-text up to 500 chars
+  updatedAt        DateTime @updatedAt
+
+  scd     StockCountDay @relation(fields: [scdId], references: [id], onDelete: Cascade)
+  product Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([scdId, productId])
+  @@index([businessId])
+  @@map("stock_count_product_summaries")
+}
+
+// Count line per product per zone (same product → separate lines in 2 zones).
+model StockCountLine {
+  id                String    @id @default(cuid())
+  scdId             String
+  zoneSessionId     String
+  zoneId            String
+  businessId        String
+  productId         String
+  countedQty        Float?
+  systemQtyAtStart  Float     @default(0)
+  soldDuringScd     Float     @default(0)
+  status            String    @default("pending") // pending | counted | skipped
+  detectedName      String?
+  confidence        Float?
+  shelfScanItemId   String?
+  countedBy         String?
+  countedAt         DateTime?
+  notes             String?
+  // P3: true if assignment was auto-created by scan-to-assign
+  autoAssigned      Boolean   @default(false)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  scd         StockCountDay         @relation(fields: [scdId], references: [id], onDelete: Cascade)
+  zoneSession StockCountZoneSession @relation(fields: [zoneSessionId], references: [id], onDelete: Cascade)
+  zone        StorageZone           @relation(fields: [zoneId], references: [id], onDelete: Cascade)
+  product     Product               @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([scdId, zoneSessionId, productId])
+  @@index([businessId])
+  @@index([scdId])
+  @@index([productId])
+  @@map("stock_count_lines")
+}
+
+// P3: Snapshot of ProductZoneAssignment rows at SCD creation time.
+// Enables zone inheritance — new SCDs can read the previous SCD's snapshot
+// to pre-populate zone count lines without re-assigning every product.
+model ZoneAssignmentSnapshot {
+  id          String   @id @default(cuid())
+  scdId       String
+  businessId  String
+  productId   String
+  zoneId      String
+  createdAt   DateTime @default(now())
+
+  scd       StockCountDay @relation(fields: [scdId], references: [id], onDelete: Cascade)
+  business  Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  product   Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  zone      StorageZone   @relation(fields: [zoneId], references: [id], onDelete: Cascade)
+
+  @@unique([scdId, productId, zoneId])
+  @@index([businessId])
+  @@index([scdId])
+  @@index([productId])
+  @@index([zoneId])
+  @@map("zone_assignment_snapshots")
+}
+
+// ── AI Provider Configuration ──
+// Controls which vision/LLM provider is active. Only one row should have
+// isActive=true at a time. The super-admin panel lets the founder switch
+// providers (e.g., Gemini free now → Z.ai paid later) without a redeploy.
+// The apiKey is stored plaintext — this is the user's own server, and they
+// control access. For a hosted SaaS, encrypt this field.
+model AiProvider {
+  id        String   @id @default(cuid())
+  provider  String   @unique  // "gemini" | "zai" | "openai"
+  apiKey    String?           // provider API key (plaintext for MVP)
+  baseUrl   String?           // optional override (e.g. for Z.ai internal endpoint)
+  model     String?           // model name (e.g. "glm-ocr", "glm-4.6v-flash", "gemini-2.0-flash")
+  isActive  Boolean  @default(false)
+  updatedAt DateTime @updatedAt
+  updatedBy String?
+
+  @@map("ai_providers")
 }
