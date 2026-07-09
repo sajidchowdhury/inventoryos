@@ -2,20 +2,30 @@
 
 import React from 'react';
 import { useCCTVNavStore } from '@/stores/cctv-nav-store';
-import CCTVDashboard from './CCTVDashboard';
-import CCTVBottomNav from './CCTVBottomNav';
-import CCTVInventoryHub from './CCTVInventoryHub';
-import CCTVAIHub from './CCTVAIHub';
-import CCTVMoreHub from './CCTVMoreHub';
+import { CCTVDashboard } from './CCTVDashboard';
+import { CCTVBottomNav } from './CCTVBottomNav';
+import { CCTVInventoryHub } from './CCTVInventoryHub';
+import { CCTVAIHub } from './CCTVAIHub';
+import { CCTVMoreHub } from './CCTVMoreHub';
+import { CCTVProductsList } from './CCTVProductsList';
+import { CCTVSerialItemsList } from './CCTVSerialItemsList';
+import { CCTVSellView } from './CCTVSellView';
+import { CCTVJobCardsList } from './CCTVJobCardsList';
+import { CCTVWarrantiesList } from './CCTVWarrantiesList';
+import { CCTVProjectsList } from './CCTVProjectsList';
+import { CCTVEMIList } from './CCTVEMIList';
+import { CCTVAMCList } from './CCTVAMCList';
+import { CCTVCustomersList } from './CCTVCustomersList';
+import { CCTVProfileView } from './CCTVProfileView';
 
-function PlaceholderView({ title }: { title: string }) {
+function PlaceholderView({ title, icon }: { title: string; icon?: string }) {
   const { goBack } = useCCTVNavStore();
   return (
-    <div className="px-4 py-6 pb-24">
+    <div className="px-4 pt-4 pb-4">
       <div className="flex items-center gap-3 mb-6">
         <button
           onClick={goBack}
-          className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center active:bg-gray-200 transition-colors"
+          className="w-9 h-9 rounded-xl bg-white border border-gray-100 flex items-center justify-center active:bg-gray-50 transition-colors shadow-sm"
         >
           <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -25,7 +35,7 @@ function PlaceholderView({ title }: { title: string }) {
       </div>
       <div className="flex flex-col items-center justify-center py-20 text-center">
         <div className="w-16 h-16 rounded-2xl bg-violet-100 flex items-center justify-center mb-4">
-          <span className="text-2xl">🔧</span>
+          <span className="text-2xl">{icon || '🔧'}</span>
         </div>
         <p className="text-sm font-semibold text-gray-800">Coming Soon</p>
         <p className="text-xs text-gray-400 mt-1 max-w-[200px]">
@@ -36,66 +46,83 @@ function PlaceholderView({ title }: { title: string }) {
   );
 }
 
-const viewLabels: Record<string, string> = {
-  'new-sale': 'New Sale',
-  'products': 'Products',
-  'serial-items': 'Serial Items',
-  'add-product': 'Add Product',
-  'edit-product': 'Edit Product',
-  'product-detail': 'Product Details',
-  'sale-detail': 'Sale Details',
-  'sales-history': 'Sales History',
-  'customers': 'Customers',
-  'customer-detail': 'Customer Details',
-  'job-cards': 'Job Cards',
-  'job-card-detail': 'Job Card Details',
-  'create-job-card': 'Create Job Card',
-  'warranties': 'Warranties',
-  'warranty-detail': 'Warranty Details',
-  'projects': 'Projects',
-  'project-detail': 'Project Details',
-  'create-project': 'Create Project',
-  'emi': 'EMI Tracking',
-  'emi-detail': 'EMI Details',
-  'amc': 'AMC Management',
-  'amc-detail': 'AMC Details',
-  'create-amc': 'Create AMC',
-  'mushak-report': 'Mushak Report',
-  'purchase-orders': 'Purchase Orders',
-  'suppliers': 'Suppliers',
-  'ai-chat': 'AI Chat',
-  'ai-insights': 'AI Insights',
-  'settings': 'Settings',
-  'profile': 'Profile',
-  'subscription': 'Subscription',
-  'reports': 'Reports',
-  'help': 'Help & Support',
+const viewMeta: Record<string, { title: string; icon: string }> = {
+  'new-sale': { title: 'New Sale', icon: '🛒' },
+  'add-product': { title: 'Add Product', icon: '➕' },
+  'edit-product': { title: 'Edit Product', icon: '✏️' },
+  'product-detail': { title: 'Product Details', icon: '📦' },
+  'sale-detail': { title: 'Sale Details', icon: '🧾' },
+  'customer-detail': { title: 'Customer Details', icon: '👤' },
+  'job-card-detail': { title: 'Job Card Details', icon: '🔧' },
+  'create-job-card': { title: 'Create Job Card', icon: '➕' },
+  'warranty-detail': { title: 'Warranty Details', icon: '🛡️' },
+  'project-detail': { title: 'Project Details', icon: '🏗️' },
+  'create-project': { title: 'Create Project', icon: '➕' },
+  'emi-detail': { title: 'EMI Details', icon: '💳' },
+  'amc-detail': { title: 'AMC Details', icon: '📋' },
+  'create-amc': { title: 'Create AMC', icon: '➕' },
+  'purchase-orders': { title: 'Purchase Orders', icon: '🛒' },
+  'suppliers': { title: 'Suppliers', icon: '🏭' },
+  'ai-chat': { title: 'AI Chat', icon: '🤖' },
+  'ai-insights': { title: 'AI Insights', icon: '📊' },
+  'sales-history': { title: 'Sales History', icon: '📈' },
+  'mushak-report': { title: 'Mushak Report', icon: '📑' },
+  'reports': { title: 'Reports', icon: '📊' },
+  'settings': { title: 'Settings', icon: '⚙️' },
+  'help': { title: 'Help & Support', icon: '💬' },
+  'subscription': { title: 'Subscription', icon: '👑' },
 };
 
-export default function CCTVShell() {
+export function CCTVShell() {
   const { activeView } = useCCTVNavStore();
 
   const renderView = () => {
     switch (activeView) {
+      // Hubs
       case 'dashboard':
         return <CCTVDashboard />;
       case 'inventory-hub':
         return <CCTVInventoryHub />;
+      case 'sell':
+        return <CCTVSellView />;
       case 'ai-hub':
         return <CCTVAIHub />;
       case 'more-hub':
         return <CCTVMoreHub />;
-      default:
-        return <PlaceholderView title={viewLabels[activeView] || activeView} />;
+      // Core views
+      case 'products':
+        return <CCTVProductsList />;
+      case 'serial-items':
+        return <CCTVSerialItemsList />;
+      case 'job-cards':
+        return <CCTVJobCardsList />;
+      case 'warranties':
+        return <CCTVWarrantiesList />;
+      case 'projects':
+        return <CCTVProjectsList />;
+      case 'emi':
+        return <CCTVEMIList />;
+      case 'amc':
+        return <CCTVAMCList />;
+      case 'customers':
+        return <CCTVCustomersList />;
+      case 'profile':
+        return <CCTVProfileView />;
+      default: {
+        const meta = viewMeta[activeView];
+        return <PlaceholderView title={meta?.title || activeView} icon={meta?.icon} />;
+      }
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50/80">
-      <main className="max-w-lg mx-auto">
-        {renderView()}
-      </main>
-      <CCTVBottomNav />
+    <div className="cctv-shell-wrap">
+      <div className="flex flex-col min-h-0 flex-1">
+        <div className="flex-1 pb-20 px-4 pt-4">
+          {renderView()}
+        </div>
+        <CCTVBottomNav />
+      </div>
     </div>
   );
 }

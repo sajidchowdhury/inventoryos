@@ -20,7 +20,10 @@ import {
   AlertTriangle,
   Clock,
   Activity,
+  Banknote,
+  CircleDot,
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores/auth-store';
 import { useCCTVNavStore } from '@/stores/cctv-nav-store';
 
@@ -32,7 +35,34 @@ const fadeUp = {
   animate: { opacity: 1, y: 0, transition: { duration: 0.35, ease: 'easeOut' } },
 };
 
-export default function CCTVDashboard() {
+const recentActivities = [
+  {
+    id: 1,
+    text: 'Sale completed — Hikvision DS-2CD2143',
+    time: '2 min ago',
+    dotColor: 'bg-emerald-500',
+  },
+  {
+    id: 2,
+    text: 'New stock added — Dahua NVR 32ch ×5',
+    time: '18 min ago',
+    dotColor: 'bg-blue-500',
+  },
+  {
+    id: 3,
+    text: 'Job Card #47 — Installation at City Mall',
+    time: '1 hr ago',
+    dotColor: 'bg-amber-500',
+  },
+  {
+    id: 4,
+    text: 'Warranty claim filed — TP-Link Tapo C320WS',
+    time: '3 hr ago',
+    dotColor: 'bg-red-500',
+  },
+];
+
+export function CCTVDashboard() {
   const session = useAuthStore((s) => s.session);
   const { navigate } = useCCTVNavStore();
   const [copied, setCopied] = React.useState(false);
@@ -47,10 +77,10 @@ export default function CCTVDashboard() {
   };
 
   const stats = [
-    { label: 'Products', value: '524', icon: Package, color: 'bg-blue-500', lightColor: 'bg-blue-50', textColor: 'text-blue-600' },
-    { label: 'Serial Items', value: '2,147', icon: Hash, color: 'bg-violet-500', lightColor: 'bg-violet-50', textColor: 'text-violet-600' },
-    { label: 'Warranties', value: '89', icon: Shield, color: 'bg-emerald-500', lightColor: 'bg-emerald-50', textColor: 'text-emerald-600' },
-    { label: 'Job Cards', value: '34', icon: Wrench, color: 'bg-amber-500', lightColor: 'bg-amber-50', textColor: 'text-amber-600' },
+    { label: 'Products', value: '524', icon: Package, lightColor: 'bg-blue-50', textColor: 'text-blue-600' },
+    { label: 'Serial Items', value: '2,147', icon: Hash, lightColor: 'bg-violet-50', textColor: 'text-violet-600' },
+    { label: 'Warranties', value: '89', icon: Shield, lightColor: 'bg-emerald-50', textColor: 'text-emerald-600' },
+    { label: 'Job Cards', value: '34', icon: Wrench, lightColor: 'bg-amber-50', textColor: 'text-amber-600' },
   ];
 
   const reportShortcuts = [
@@ -136,7 +166,7 @@ export default function CCTVDashboard() {
       <div className="px-4 -mt-4 space-y-5">
         {/* Stat Cards */}
         <div className="grid grid-cols-2 gap-3">
-          {stats.map((stat, i) => {
+          {stats.map((stat) => {
             const Icon = stat.icon;
             return (
               <motion.div
@@ -145,8 +175,8 @@ export default function CCTVDashboard() {
                 className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100"
               >
                 <div className="flex items-center justify-between mb-3">
-                  <div className={`w-10 h-10 rounded-xl ${stat.lightColor} flex items-center justify-center`}>
-                    <Icon className={`w-5 h-5 ${stat.textColor}`} />
+                  <div className={cn('w-10 h-10 rounded-xl flex items-center justify-center', stat.lightColor)}>
+                    <Icon className={cn('w-5 h-5', stat.textColor)} />
                   </div>
                   <ArrowUpRight className="w-4 h-4 text-gray-300" />
                 </div>
@@ -157,15 +187,24 @@ export default function CCTVDashboard() {
           })}
         </div>
 
-        {/* New Sale CTA */}
-        <motion.div variants={fadeUp}>
+        {/* New Sale CTA + Today's Sales mini card */}
+        <motion.div variants={fadeUp} className="flex gap-3">
           <button
             onClick={() => navigate('new-sale')}
-            className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-gradient-to-r from-violet-500 to-purple-600 text-white font-semibold text-sm shadow-lg shadow-violet-500/25 active:scale-[0.98] transition-transform"
+            className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-gradient-to-r from-violet-500 to-purple-600 text-white font-semibold text-sm shadow-lg shadow-violet-500/25 active:scale-[0.98] transition-transform"
           >
             <ShoppingCart className="w-4 h-4" />
             New Sale
           </button>
+          <div className="flex items-center gap-2.5 bg-white rounded-2xl px-4 border border-gray-100 shadow-sm">
+            <div className="w-8 h-8 rounded-xl bg-emerald-50 flex items-center justify-center">
+              <Banknote className="w-4 h-4 text-emerald-600" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-gray-900">৳24,500</p>
+              <p className="text-[10px] text-gray-400 leading-tight">today · 8 orders</p>
+            </div>
+          </div>
         </motion.div>
 
         {/* Report Shortcuts */}
@@ -182,9 +221,13 @@ export default function CCTVDashboard() {
               return (
                 <button
                   key={report.label}
-                  className={`flex items-center gap-3 p-3 rounded-xl ${report.bg} border-l-4 ${report.color} text-left active:scale-[0.97] transition-transform`}
+                  className={cn(
+                    'flex items-center gap-3 p-3 rounded-xl border-l-4 text-left active:scale-[0.97] transition-transform',
+                    report.bg,
+                    report.color,
+                  )}
                 >
-                  <Icon className={`w-4 h-4 ${report.iconColor}`} />
+                  <Icon className={cn('w-4 h-4', report.iconColor)} />
                   <span className="text-xs font-semibold text-gray-800">{report.label}</span>
                 </button>
               );
@@ -204,7 +247,7 @@ export default function CCTVDashboard() {
                   onClick={() => navigate(action.view)}
                   className="flex flex-col items-center gap-2 py-3 active:scale-95 transition-transform"
                 >
-                  <div className={`w-12 h-12 rounded-2xl ${action.color} flex items-center justify-center shadow-sm`}>
+                  <div className={cn('w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm', action.color)}>
                     <Icon className="w-5 h-5 text-white" />
                   </div>
                   <span className="text-[11px] font-medium text-gray-600 leading-tight text-center">
@@ -227,7 +270,11 @@ export default function CCTVDashboard() {
                   key={card.title}
                   whileTap={{ scale: 0.97 }}
                   onClick={() => navigate(card.view)}
-                  className={`min-w-[200px] flex-shrink-0 rounded-2xl bg-gradient-to-br ${card.gradient} p-4 text-left shadow-lg ${card.shadow}`}
+                  className={cn(
+                    'min-w-[200px] flex-shrink-0 rounded-2xl bg-gradient-to-br p-4 text-left shadow-lg',
+                    card.gradient,
+                    card.shadow,
+                  )}
                 >
                   <div className="flex items-center justify-between mb-6">
                     <Icon className="w-8 h-8 text-white/80" />
@@ -267,7 +314,7 @@ export default function CCTVDashboard() {
                     initial={{ width: 0 }}
                     animate={{ width: `${(item.value / item.total) * 100}%` }}
                     transition={{ duration: 0.8, delay: 0.3 }}
-                    className={`h-full ${item.color} rounded-full`}
+                    className={cn('h-full rounded-full', item.color)}
                   />
                 </div>
               </div>
@@ -299,13 +346,14 @@ export default function CCTVDashboard() {
                   <p className="text-[10px] text-gray-400 font-mono">{item.serial}</p>
                 </div>
                 <span
-                  className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                  className={cn(
+                    'text-[10px] font-bold px-2 py-0.5 rounded-full',
                     item.days <= 3
                       ? 'bg-red-100 text-red-600'
                       : item.days <= 7
                       ? 'bg-amber-100 text-amber-600'
-                      : 'bg-yellow-100 text-yellow-700'
-                  }`}
+                      : 'bg-yellow-100 text-yellow-700',
+                  )}
                 >
                   {item.days}d left
                 </span>
@@ -318,6 +366,35 @@ export default function CCTVDashboard() {
           >
             View All Warranties
           </button>
+        </motion.div>
+
+        {/* Recent Activity */}
+        <motion.div
+          variants={fadeUp}
+          className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm"
+        >
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold text-gray-900">Recent Activity</h3>
+            <CircleDot className="w-4 h-4 text-violet-400" />
+          </div>
+          <div className="space-y-0">
+            {recentActivities.map((activity, i) => (
+              <div key={activity.id} className="flex items-start gap-3">
+                {/* Timeline dot + line */}
+                <div className="flex flex-col items-center pt-1">
+                  <div className={cn('w-2 h-2 rounded-full flex-shrink-0', activity.dotColor)} />
+                  {i < recentActivities.length - 1 && (
+                    <div className="w-px h-8 bg-gray-100 mt-1" />
+                  )}
+                </div>
+                {/* Content */}
+                <div className={cn('pb-4 flex-1 min-w-0', i === recentActivities.length - 1 && 'pb-0')}>
+                  <p className="text-xs font-medium text-gray-800 truncate">{activity.text}</p>
+                  <p className="text-[10px] text-gray-400 mt-0.5">{activity.time}</p>
+                </div>
+              </div>
+            ))}
+          </div>
         </motion.div>
       </div>
     </motion.div>

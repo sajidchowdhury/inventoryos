@@ -305,3 +305,21 @@
     border-right: 1px solid rgba(0, 0, 0, 0.05);
   }
 }
+
+/* CCTV responsive container */
+.cctv-shell-wrap {
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  min-height: 100vh;
+  position: relative;
+  background: #faf9fc;
+}
+
+@media (min-width: 768px) {
+  .cctv-shell-wrap {
+    box-shadow: 0 0 40px rgba(124, 58, 237, 0.06);
+    border-left: 1px solid rgba(124, 58, 237, 0.04);
+    border-right: 1px solid rgba(124, 58, 237, 0.04);
+  }
+}

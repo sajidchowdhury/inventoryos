@@ -160,3 +160,41 @@ Work Log:
 - All changes ready for commit
 - Dev server compiles successfully (GET / 200)
 - No new lint errors from changes
+
+---
+Task ID: 9
+Agent: Main Agent
+Task: Build CCTV Shop module UI — shell, navigation, dashboard, hubs, and 10 core views
+
+Work Log:
+- Verified module-loader.tsx correctly maps `cctv-shop` slug → `CCTVShell`
+- Verified `CCTVViewType` in types/index.ts covers all 34 views
+- Added `.cctv-shell-wrap` CSS to globals.css (max-w-480px, purple-tinted desktop shadow)
+- Fixed auth-store `clearAll()` to also reset `useCCTVNavStore` on logout
+- Rewrote `CCTVShell.tsx` — named export, proper shell-wrap container, switch on 12+ real views + placeholder fallback
+- Rewrote `CCTVBottomNav.tsx` — pharmacy-pattern (5 tabs: Home/Stock/Sell/AI/More), hubGroups mapping, violet theme, safe-area, elevated Sell button
+- Enhanced `CCTVDashboard.tsx` — named export, added Today's Sales mini card, Recent Activity timeline section, polished all existing sections
+- Enhanced `CCTVInventoryHub.tsx` — named export, Serial Items highlight card, Category breakdown (4 categories), Low Stock Alert card, added Categories menu item
+- Enhanced `CCTVAIHub.tsx` — named export, Daily AI Summary card, enlarged AI Chat card with placeholder input, added Smart Stock Alerts to coming soon
+- Enhanced `CCTVMoreHub.tsx` — named export, Quick Stats row, 5 reorganized sections (CCTV Operations/Inventory/Sales & Customers/Tools/Account), badge counts, uses `logout` (not `reset`)
+- Created `CCTVProductsList.tsx` — 24 mock CCTV products, search, category filter chips (Cameras/DVR-NVR/Accessories/Cables), 2-col grid, floating + button
+- Created `CCTVSerialItemsList.tsx` — 10 serial items, color-coded status badges, filter tabs, warranty expiry dates
+- Created `CCTVSellView.tsx` — POS-style sell screen, customer field, product search, cart with quantity controls, violet Complete Sale button
+- Created `CCTVJobCardsList.tsx` — 8 job cards, filter tabs (All/Pending/In Progress/Completed), realistic mock data
+- Created `CCTVWarrantiesList.tsx` — Summary cards, 8 warranty items, urgency color-coding (green/amber/red)
+- Created `CCTVProjectsList.tsx` — 5 projects, progress bars, status badges, completion percentage
+- Created `CCTVEMIList.tsx` — Summary cards, 6 EMI records, paid vs remaining progress bars
+- Created `CCTVAMCList.tsx` — Summary, 6 AMC contracts, coverage types (Basic/Standard/Premium)
+- Created `CCTVCustomersList.tsx` — 8 customers, avatar initials, phone, purchase totals, outstanding balance
+- Created `CCTVProfileView.tsx` — Avatar, business details card, menu items, logout button
+- Updated `components/index.ts` barrel export — all 16 named exports
+- Added `categories` to `CCTVViewType` union type
+- Browser verified: landing → CCTV Shop selection → phone input → OTP → setup → Dashboard, Stock hub, Products, Job Cards, Sell view, AI Hub, More Hub — all rendering correctly, zero console errors
+
+Stage Summary:
+- CCTV module has 16 components total (4 core + 4 enhanced hubs + 10 new views)
+- All components use named exports, violet/purple theme, consistent card styling
+- Route verified: `cctv-shop` slug correctly loads CCTVShell via module-loader
+- All navigation (bottom nav, hub menus, back buttons) working
+- Zero lint errors from CCTV module code
+- Zero browser runtime errors

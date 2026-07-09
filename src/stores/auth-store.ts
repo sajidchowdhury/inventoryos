@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { useNavStore } from '@/lib/nav-store';
+import { useCCTVNavStore } from '@/stores/cctv-nav-store';
 
 export interface BusinessTypeInfo {
   id: string;
@@ -42,6 +43,7 @@ interface AuthState {
 
 function clearAll() {
   useNavStore.getState().resetNav();
+  try { useCCTVNavStore.getState().reset(); } catch { /* CCTV store may not be loaded */ }
 }
 
 export const useAuthStore = create<AuthState>((set) => ({

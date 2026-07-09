@@ -61,6 +61,7 @@ export type CCTVViewType =
   | 'mushak-report'
   | 'purchase-orders'
   | 'suppliers'
+  | 'categories'
   | 'ai-hub'
   | 'ai-chat'
   | 'ai-insights'
