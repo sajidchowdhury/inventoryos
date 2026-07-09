@@ -51,3 +51,4 @@ export { CCTVNbrSetup } from './CCTVNbrSetup';
 export { CCTVMushakInvoicesList } from './CCTVMushakInvoicesList';
 export { CCTVMushakInvoiceDetail } from './CCTVMushakInvoiceDetail';
 export { CCTVMushakRegisters } from './CCTVMushakRegisters';
+export { CCTVVatReturn } from './CCTVVatReturn';

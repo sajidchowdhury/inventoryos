@@ -200,6 +200,9 @@ model Business {
   // CCTV Module (Phase 5B: Mushak 6.3 Tax Invoice)
   cctvMushakInvoices      CCTVMushakInvoice[]
 
+  // CCTV Module (Phase 5D: Monthly VAT Return)
+  cctvVatReturns          CCTVVatReturn[]
+
   @@index([userId])
   @@index([businessTypeId])
   @@index([subscriptionStage])  // P1: fast filtering by lifecycle stage
@@ -3046,4 +3049,66 @@ model CCTVMushakLineItem {
   @@index([businessId])
   @@index([invoiceId])
   @@map("cctv_mushak_line_items")
+}
+
+// ── 5D: Monthly VAT Return (Mushak 9.1) ──
+// Stores monthly VAT return data; auto-calculated from Mushak 6.1/6.3 data.
+model CCTVVatReturn {
+  id              String   @id @default(cuid())
+  businessId      String
+
+  // Tax period
+  taxYear         Int                            // e.g. 2025
+  taxMonth        Int                            // 1-12
+
+  // Section A: Opening balance of input tax credit from previous month
+  openingCredit   Float    @default(0)           // carried forward input tax credit
+
+  // Section B: Tax credit on local purchase (from Mushak 6.1)
+  localPurchaseCredit  Float   @default(0)       // VAT paid on local purchases
+  localPurchaseValue   Float   @default(0)       // total purchase value
+  localPurchaseCount   Int     @default(0)       // number of purchase invoices
+
+  // Section C: Tax credit on import
+  importCredit   Float    @default(0)            // VAT/duty paid on imports
+  importValue    Float    @default(0)            // total import value
+  importCount    Int      @default(0)            // number of import documents
+
+  // Section D: Total input tax credit (A + B + C)
+  totalInputCredit  Float   @default(0)         // sum of A + B + C
+
+  // Section E: Output tax (VAT collected on sales, from Mushak 6.3)
+  outputTax      Float    @default(0)            // VAT collected on supply
+  salesValue     Float    @default(0)            // total sales value
+  salesCount     Int      @default(0)            // number of sales invoices
+
+  // Section F: Net VAT
+  netVatPayable  Float    @default(0)            // E - D (positive = payable to NBR, negative = refundable)
+
+  // Section G: Adjustments
+  adjustmentAmount  Float   @default(0)          // manual adjustment (+/-)
+  adjustmentNote    String?                     // reason for adjustment
+  adjustedNetVat    Float   @default(0)          // netVatPayable + adjustmentAmount
+
+  // Status
+  status         String   @default("DRAFT")      // DRAFT / SUBMITTED / APPROVED
+
+  // Declaration
+  declaredBy     String?                       // name of declarant
+  declaredAt     DateTime?                     // when declared
+  submittedAt    DateTime?                     // when submitted to NBR
+
+  // Amount in words
+  amountInWords  String?
+
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  business       Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@unique([businessId, taxYear, taxMonth])
+  @@index([businessId])
+  @@index([taxYear, taxMonth])
+  @@map("cctv_vat_returns")
 }

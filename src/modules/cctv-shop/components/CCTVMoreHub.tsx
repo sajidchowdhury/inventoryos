@@ -23,6 +23,7 @@ import {
   Sparkles,
   Banknote,
   ClipboardList,
+  Receipt,
   FileBarChart,
   Landmark,
 } from 'lucide-react';
@@ -74,6 +75,7 @@ export function CCTVMoreHub() {
     { label: 'NBR & Tax Setup', icon: <Landmark className="w-5 h-5" />, view: 'nbr-setup', color: 'bg-amber-50 text-amber-600' },
     { label: 'Mushak 6.3 Invoices', icon: <FileText className="w-5 h-5" />, view: 'mushak-invoices', color: 'bg-red-50 text-red-600' },
     { label: 'Mushak Registers (6.1/6.2)', icon: <ClipboardList className="w-5 h-5" />, view: 'mushak-registers', color: 'bg-orange-50 text-orange-600' },
+    { label: 'VAT Return (Mushak 9.1)', icon: <Receipt className="w-5 h-5" />, view: 'vat-return', color: 'bg-emerald-50 text-emerald-600' },
     { label: 'AI Hub', icon: <Sparkles className="w-5 h-5" />, view: 'ai-hub', color: 'bg-purple-50 text-purple-600' },
     { label: 'Reports', icon: <BarChart3 className="w-5 h-5" />, view: 'reports', color: 'bg-cyan-50 text-cyan-600' },
   ];

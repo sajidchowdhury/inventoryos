@@ -917,3 +917,43 @@ Stage Summary:
 - 1 UI component: CCTVNbrSetup.tsx (~530 lines)
 - 10 default BD electronics HS codes pre-seeded
 - Navigation: Dashboard → Quick Actions → "NBR Setup", More Hub → Tools → "NBR & Tax Setup"
+
+---
+Task ID: 5D
+Agent: Main Agent
+Task: Implement Segment 5D — Monthly VAT Return (Mushak 9.1)
+
+Work Log:
+- Analyzed existing project state: 5A (NBR Setup), 5B (Mushak 6.3 Invoice), 5C (Mushak Registers 6.1/6.2) already implemented
+- Added CCTVVatReturn Prisma model with Mushak 9.1 sections (A-G): opening credit, local purchase credit, import credit, total input credit, output tax, net VAT payable, adjustments
+- Added reverse relation cctvVatReturns on Business model
+- Ran `bun run db:push` — table cctv_vat_returns created successfully
+- Added TypeScript types: CCTVVatReturn, VatReturnCalcResult, VatReturnStatus, BANGLA_MONTHS constant
+- Added 'vat-return' to CCTVViewType union
+- Created API route: GET /vat-returns (list all saved + auto-calculate for ?year=X&month=Y)
+- Created API route: POST /vat-returns (upsert return with calculated + adjustment data)
+- Created API route: GET/PUT/DELETE /vat-returns/[returnId] (single return operations, soft delete, status protection)
+- Built CCTVVatReturn.tsx frontend component (~500 lines) with:
+  - Month navigator with prev/next/current month buttons
+  - Tab toggle between Form and History views
+  - Taxpayer info card (BIN, name, address from NBR config)
+  - 7 Mushak 9.1 sections (A-G) with color-coded cards
+  - Auto-calculation from Mushak 6.3 invoices (output tax) and serial items (input credit)
+  - Adjustment amount/note/declared-by fields
+  - Save Draft / Submit buttons with status flow (DRAFT → SUBMITTED → APPROVED)
+  - CSV export functionality
+  - Status badges, amount-in-words display
+  - BIN configuration warning banner
+  - History list showing all saved returns with key metrics
+- Wired into CCTVShell.tsx (import, viewMeta, switch case)
+- Added to components/index.ts exports
+- Added "VAT Return (Mushak 9.1)" entry in CCTVMoreHub.tsx tools section with Receipt icon
+- Lint passes clean, dev server compiles without errors
+- Verified API endpoints respond correctly (GET list returns empty array, GET calc returns zero data)
+
+Stage Summary:
+- Mushak 9.1 Monthly VAT Return fully implemented
+- Files created: CCTVVatReturn.tsx, vat-returns/route.ts, vat-returns/[returnId]/route.ts
+- Files modified: prisma/schema.prisma, types/index.ts, CCTVShell.tsx, components/index.ts, CCTVMoreHub.tsx
+- DB table: cctv_vat_returns
+- Auto-calculation logic: output tax from CCTVMushakInvoice, input credit from CCTVSerialItem costPrice, opening credit from previous month's return

@@ -434,7 +434,8 @@ export type CCTVViewType =
   | 'mushak-invoices'
   | 'mushak-invoice-detail'
   | 'mushak-registers'
-  | 'create-mushak';
+  | 'create-mushak'
+  | 'vat-return';
 
 // ── 3A: Payment Integration ──
 
@@ -956,6 +957,63 @@ export interface CCTVMushakLineItem {
   isActive: boolean;
   createdAt: string;
 }
+
+// ── 5D: Monthly VAT Return (Mushak 9.1) ──
+
+export type VatReturnStatus = 'DRAFT' | 'SUBMITTED' | 'APPROVED';
+
+export interface CCTVVatReturn {
+  id: string;
+  businessId: string;
+  taxYear: number;
+  taxMonth: number;
+  openingCredit: number;
+  localPurchaseCredit: number;
+  localPurchaseValue: number;
+  localPurchaseCount: number;
+  importCredit: number;
+  importValue: number;
+  importCount: number;
+  totalInputCredit: number;
+  outputTax: number;
+  salesValue: number;
+  salesCount: number;
+  netVatPayable: number;
+  adjustmentAmount: number;
+  adjustmentNote?: string;
+  adjustedNetVat: number;
+  status: VatReturnStatus;
+  declaredBy?: string;
+  declaredAt?: string;
+  submittedAt?: string;
+  amountInWords?: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface VatReturnCalcResult {
+  // Auto-calculated from data
+  openingCredit: number;
+  localPurchaseCredit: number;
+  localPurchaseValue: number;
+  localPurchaseCount: number;
+  importCredit: number;
+  importValue: number;
+  importCount: number;
+  totalInputCredit: number;
+  outputTax: number;
+  salesValue: number;
+  salesCount: number;
+  netVatPayable: number;
+}
+
+// Bangla month names for Mushak 9.1
+export const BANGLA_MONTHS: Record<number, string> = {
+  1: 'January', 2: 'February', 3: 'March', 4: 'April',
+  5: 'May', 6: 'June', 7: 'July', 8: 'August',
+  9: 'September', 10: 'October', 11: 'November', 12: 'December',
+};
 
 // Number to English words (for BDT amount)
 export function numberToWords(num: number): string {
