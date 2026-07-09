@@ -165,3 +165,25 @@ Stage Summary:
 - All 5 components fully wired into navigation system
 - Zero lint errors, zero compilation errors
 - Git commit 7f30db9 pushed to GitHub
+
+---
+Task ID: 4
+Agent: UI Component Builder
+Task: 1E UI Components — Kits List, Kit Detail, Kit Form
+
+Work Log:
+- Read worklog.md and studied existing component patterns (CCTVProductsList, CCTVBranchDetail, CCTVCreateTransfer, cctv-nav-store, types)
+- Identified conventions: fadeUp animation, back button style, card style, gradient CTAs, status badge pills, empty state patterns, AlertDialog usage
+- Created 3 UI component files following all project conventions:
+  1. CCTVKitsList.tsx — Kit catalog with back header, "New Kit" violet button, violet stats banner (total kits, ready to build count), kit cards with component count badge, truncated description, kit price / "Sum of parts" display, discount percent badge, per-kit availability fetched in parallel (green "X available" / amber "Partial" / red "Out of stock"), skeleton loading, empty state with illustration and CTA
+  2. CCTVKitDetail.tsx — Kit detail page with back header (kit name), Edit (pencil) and Delete (trash + AlertDialog confirmation) buttons, kit info card with component count/active badges, pricing section (kit price prominent, individual total crossed out when discounted, green savings amount), component breakdown list (drag handle icon, product name + brand, component label, quantity × unit price = line total, required/optional badge, per-component availability with green/red dot and "X in stock" or "Insufficient (need Y, have Z)"), "Add Component" button, Overall Availability card (large colored status icon, "Ready to Assemble" / "Partial Stock" / "Out of Stock", "Can build X full kits", short components list in red panel), "Sell Kit" button disabled when not canFulfill
+  3. CCTVKitForm.tsx — Create/Edit kit form (contextId = edit mode) with Basic Info section (name with required marker, auto-generated slug, description textarea, optional image URL), Pricing section (optional kit price, discount percent 0-100, live preview showing individual total → kit price → savings in green), Components section (product search with 300ms debounce and AbortController, results dropdown showing name/brand/price/stock, duplicate prevention, component rows with drag handle icon, product name read-only, quantity/sort order inputs, component label input, required toggle switch, remove button), Active toggle card, Save button (violet gradient, sequential component sync on save)
+- Used BUSINESS_ID = 'bus_placeholder' for all API calls
+- Used formatBDT helper with ৳ symbol throughout
+- All components are 'use client' with named exports
+- Zero lint errors in new files (6 pre-existing errors in other files unrelated to this task)
+
+Stage Summary:
+- Components: CCTVKitsList, CCTVKitDetail, CCTVKitForm
+- All 3 files in /src/modules/cctv-shop/components/
+- Shell, bottom nav, barrel export to be updated separately

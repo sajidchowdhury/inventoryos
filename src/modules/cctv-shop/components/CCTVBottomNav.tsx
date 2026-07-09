@@ -22,7 +22,7 @@ const navItems: { view: CCTVViewType; label: string; icon: typeof Home; primary?
 ];
 
 const hubGroups: Record<string, CCTVViewType[]> = {
-  'inventory-hub': ['products', 'serial-items', 'stock-in', 'add-product', 'edit-product', 'product-detail', 'purchase-orders', 'suppliers', 'branches', 'branch-detail', 'transfers', 'create-transfer', 'transfer-detail'],
+  'inventory-hub': ['products', 'serial-items', 'stock-in', 'add-product', 'edit-product', 'product-detail', 'purchase-orders', 'suppliers', 'branches', 'branch-detail', 'transfers', 'create-transfer', 'transfer-detail', 'kits', 'kit-detail', 'create-kit', 'edit-kit'],
   'ai-hub': ['ai-chat', 'ai-insights'],
   'more-hub': [
     'job-cards', 'job-card-detail', 'create-job-card',

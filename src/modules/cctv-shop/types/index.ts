@@ -159,6 +159,56 @@ export interface CCTVTransfer {
   _count?: { items: number };
 }
 
+// ── 1E: Kit and Bundle Management ──
+
+export interface CCTVKitComponent {
+  id: string;
+  kitId: string;
+  businessId: string;
+  productId: string;
+  quantity: number;
+  componentLabel?: string;
+  isRequired: boolean;
+  sortOrder: number;
+  createdAt: string;
+  product?: CCTVProduct;
+}
+
+export interface CCTVKitDefinition {
+  id: string;
+  businessId: string;
+  name: string;
+  slug: string;
+  description?: string;
+  kitPrice?: number;
+  discountPercent: number;
+  imageUrl?: string;
+  isActive: boolean;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+  components?: CCTVKitComponent[];
+  _count?: { components: number };
+}
+
+// Availability check result per component
+export interface KitComponentAvailability {
+  component: CCTVKitComponent;
+  product?: CCTVProduct;
+  required: number;
+  available: number;
+  sufficient: boolean;
+}
+
+export interface KitAvailabilityResult {
+  kit: CCTVKitDefinition;
+  canFulfill: boolean;
+  components: KitComponentAvailability[];
+  individualTotal: number;   // sum of (component sell price * quantity)
+  kitPrice: number;          // kitPrice or discounted total
+  maxComplete: number;       // how many full kits can be assembled
+}
+
 export type CCTVViewType =
   | 'dashboard'
   | 'inventory-hub'
@@ -191,6 +241,10 @@ export type CCTVViewType =
   | 'purchase-orders'
   | 'suppliers'
   | 'categories'
+  | 'kits'
+  | 'kit-detail'
+  | 'create-kit'
+  | 'edit-kit'
   | 'branches'
   | 'branch-detail'
   | 'transfers'

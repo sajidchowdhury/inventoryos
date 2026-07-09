@@ -165,6 +165,7 @@ export function CCTVInventoryHub() {
           { label: 'Suppliers', desc: 'Manage suppliers', view: 'suppliers' as const, icon: '🏭', color: 'bg-emerald-50 border-emerald-200' },
           { label: 'Branches', desc: 'Multi-branch locations', view: 'branches' as const, icon: '🏪', color: 'bg-orange-50 border-orange-200' },
           { label: 'Transfers', desc: 'Move stock between branches', view: 'transfers' as const, icon: '🚚', color: 'bg-cyan-50 border-cyan-200' },
+          { label: 'Kits & Bundles', desc: 'Pre-configured packages', view: 'kits' as const, icon: '📦', color: 'bg-violet-50 border-violet-200' },
         ].map((item, i) => (
           <motion.button
             key={item.view}

@@ -25,6 +25,9 @@ import { CCTVBranchDetail } from './CCTVBranchDetail';
 import { CCTVTransfersList } from './CCTVTransfersList';
 import { CCTVCreateTransfer } from './CCTVCreateTransfer';
 import { CCTVTransferDetail } from './CCTVTransferDetail';
+import { CCTVKitsList } from './CCTVKitsList';
+import { CCTVKitDetail } from './CCTVKitDetail';
+import { CCTVKitForm } from './CCTVKitForm';
 
 function PlaceholderView({ title, icon }: { title: string; icon?: string }) {
   const { goBack } = useCCTVNavStore();
@@ -77,6 +80,10 @@ const viewMeta: Record<string, { title: string; icon: string }> = {
   'transfers': { title: 'Transfers', icon: '🚚' },
   'create-transfer': { title: 'New Transfer', icon: '📤' },
   'transfer-detail': { title: 'Transfer Details', icon: '📋' },
+  'kits': { title: 'Kits & Bundles', icon: '📦' },
+  'kit-detail': { title: 'Kit Details', icon: '📦' },
+  'create-kit': { title: 'New Kit', icon: '➕' },
+  'edit-kit': { title: 'Edit Kit', icon: '✏️' },
   'ai-chat': { title: 'AI Chat', icon: '🤖' },
   'ai-insights': { title: 'AI Insights', icon: '📊' },
   'sales-history': { title: 'Sales History', icon: '📈' },
@@ -125,6 +132,13 @@ export function CCTVShell() {
         return <CCTVCreateTransfer />;
       case 'transfer-detail':
         return <CCTVTransferDetail />;
+      case 'kits':
+        return <CCTVKitsList />;
+      case 'kit-detail':
+        return <CCTVKitDetail />;
+      case 'create-kit':
+      case 'edit-kit':
+        return <CCTVKitForm />;
       case 'job-cards':
         return <CCTVJobCardsList />;
       case 'warranties':

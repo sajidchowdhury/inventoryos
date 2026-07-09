@@ -22,3 +22,6 @@ export { CCTVBranchDetail } from './CCTVBranchDetail';
 export { CCTVTransfersList } from './CCTVTransfersList';
 export { CCTVCreateTransfer } from './CCTVCreateTransfer';
 export { CCTVTransferDetail } from './CCTVTransferDetail';
+export { CCTVKitsList } from './CCTVKitsList';
+export { CCTVKitDetail } from './CCTVKitDetail';
+export { CCTVKitForm } from './CCTVKitForm';
