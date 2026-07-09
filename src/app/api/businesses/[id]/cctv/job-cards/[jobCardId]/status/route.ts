@@ -58,7 +58,7 @@ export async function POST(
       updateData[timestampField] = new Date();
     }
 
-    // If DELIVERED, set deliveredAt and link serial item back to IN_STOCK or RETURNED
+    // If DELIVERED, set deliveredAt, link serial item back, and auto-calculate commission
     if (newStatus === "DELIVERED") {
       updateData.deliveredAt = new Date();
       if (jobCard.serialItemId) {
@@ -78,6 +78,77 @@ export async function POST(
             notes: notes || `Delivered to ${jobCard.customerName}`,
           },
         });
+      }
+
+      // Auto-calculate commission (Phase 2C)
+      if (jobCard.assignedToName) {
+        const technician = await db.cCTVTechnician.findFirst({
+          where: { businessId, displayName: jobCard.assignedToName, isActive: true },
+        });
+        if (technician) {
+          // Check if commission already exists for this job
+          const existingComm = await db.cCTVCommissionRecord.findFirst({
+            where: { jobCardId, businessId },
+          });
+          if (!existingComm) {
+            // Calculate parts cost
+            const parts = await db.cCTVJobCardPart.findMany({
+              where: { jobCardId, businessId, isActive: true },
+              select: { unitCost: true, quantity: true },
+            });
+            const partsCost = parts.reduce((s, p) => s + (p.unitCost ?? 0) * p.quantity, 0);
+            const profitMargin = (jobCard.finalCost ?? 0) - partsCost - (jobCard.laborCharge ?? 0);
+
+            // Find matching commission rule
+            const rules = await db.cCTVCommissionRule.findMany({
+              where: { businessId, isActive: true },
+              orderBy: { sortOrder: "asc" },
+            });
+            let commissionAmount = 0;
+            let matchedRuleId: string | null = null;
+            let matchedRuleType = "NONE";
+
+            for (const rule of rules) {
+              if (rule.ruleType === "FIXED_PER_TYPE" && rule.jobType === jobCard.jobType && rule.fixedAmount != null) {
+                commissionAmount = rule.fixedAmount;
+                matchedRuleId = rule.id;
+                matchedRuleType = rule.ruleType;
+                break;
+              }
+              if (rule.ruleType === "PERCENT_LABOR" && rule.percentRate != null && (jobCard.laborCharge ?? 0) > 0) {
+                commissionAmount = (jobCard.laborCharge ?? 0) * (rule.percentRate / 100);
+                matchedRuleId = rule.id;
+                matchedRuleType = rule.ruleType;
+                break;
+              }
+              if (rule.ruleType === "PERCENT_PROFIT" && rule.percentRate != null && profitMargin > 0) {
+                commissionAmount = profitMargin * (rule.percentRate / 100);
+                matchedRuleId = rule.id;
+                matchedRuleType = rule.ruleType;
+                break;
+              }
+            }
+
+            if (commissionAmount > 0) {
+              const month = new Date().toISOString().slice(0, 7);
+              await db.cCTVCommissionRecord.create({
+                data: {
+                  businessId,
+                  technicianId: technician.id,
+                  jobCardId,
+                  ruleId: matchedRuleId,
+                  commissionAmount: Math.round(commissionAmount),
+                  ruleType: matchedRuleType,
+                  jobType: jobCard.jobType,
+                  laborCharge: jobCard.laborCharge,
+                  partsCost,
+                  profitMargin,
+                  month,
+                },
+              });
+            }
+          }
+        }
       }
     }
 

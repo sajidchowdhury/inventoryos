@@ -168,6 +168,11 @@ model Business {
   cctvJobCards            CCTVJobCard[]
   cctvJobCardParts        CCTVJobCardPart[]
 
+  // CCTV Module (Phase 2C: Technician Performance and Commissions)
+  cctvTechnicians         CCTVTechnician[]
+  cctvCommissionRules     CCTVCommissionRule[]
+  cctvCommissionRecords   CCTVCommissionRecord[]
+
   @@index([userId])
   @@index([businessTypeId])
   @@index([subscriptionStage])  // P1: fast filtering by lifecycle stage
@@ -2126,6 +2131,7 @@ model CCTVJobCard {
   collectorNid   String?                // NID of collector
   collectorPhone String?                // Phone of collector
   otpVerified    Boolean  @default(false)
+  satisfactionRating Int?               // 1-5 customer satisfaction (Phase 2C)
 
   // ── Outsourcing (Phase 2E) ──
   vendorName     String?                // External vendor name
@@ -2146,6 +2152,7 @@ model CCTVJobCard {
   business    Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
   serialItem  CCTVSerialItem?  @relation(fields: [serialItemId], references: [id])
   parts       CCTVJobCardPart[]
+  commissionRecord CCTVCommissionRecord?
 
   @@unique([businessId, jobCode])
   @@index([businessId])
@@ -2188,4 +2195,77 @@ model CCTVJobCardPart {
   @@index([jobCardId])
   @@index([serialItemId])
   @@map("cctv_job_card_parts")
+}
+
+// ── CCTV Technician (2C: Technician Performance and Commissions) ──
+// Links a BusinessUser to a technician profile for performance tracking.
+model CCTVTechnician {
+  id             String   @id @default(cuid())
+  businessId     String
+  userId         String?              // Optional link to BusinessUser
+  displayName    String               // "Rahim", "Karim"
+  phone          String?
+  specialization String?              // "Camera expert", "NVR/DVR specialist"
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  business       Business              @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  commissionRecords CCTVCommissionRecord[]
+
+  @@index([businessId])
+  @@index([userId])
+  @@map("cctv_technicians")
+}
+
+// ── CCTV Commission Rule (2C) ──
+// Configurable per business. Determines how commission is calculated.
+model CCTVCommissionRule {
+  id             String   @id @default(cuid())
+  businessId     String
+  name           String               // "Camera repair - fixed", "Labor 15%"
+  ruleType       String               // "FIXED_PER_TYPE" | "PERCENT_LABOR" | "PERCENT_PROFIT"
+  jobType        String?              // "REPAIR", "INSTALLATION", etc. (for FIXED_PER_TYPE)
+  fixedAmount    Float?               // BDT amount (for FIXED_PER_TYPE)
+  percentRate    Float?               // 0-100 (for PERCENT_LABOR / PERCENT_PROFIT)
+  sortOrder      Int      @default(0)
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  business       Business              @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  commissionRecords CCTVCommissionRecord[]
+
+  @@index([businessId])
+  @@map("cctv_commission_rules")
+}
+
+// ── CCTV Commission Record (2C) ──
+// Auto-calculated when a job card is delivered. Stores the snapshot for reporting.
+model CCTVCommissionRecord {
+  id               String   @id @default(cuid())
+  businessId       String
+  technicianId     String
+  jobCardId        String
+  ruleId           String?              // Which rule was applied (null if no rule matched)
+  commissionAmount Float               // Calculated commission in BDT
+  ruleType         String               // Snapshot of the rule type used
+  jobType          String               // Snapshot of job card jobType
+  laborCharge      Float?               // Snapshot of labor charge at calculation time
+  partsCost        Float?               // Snapshot of total parts cost
+  profitMargin     Float?               // finalCost - partsCost - laborCharge
+  month            String               // "YYYY-MM" for monthly grouping
+  createdAt        DateTime @default(now())
+
+  business         Business              @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  technician       CCTVTechnician        @relation(fields: [technicianId], references: [id], onDelete: Cascade)
+  rule             CCTVCommissionRule?   @relation(fields: [ruleId], references: [id])
+  jobCard          CCTVJobCard           @relation(fields: [jobCardId], references: [id])
+
+  @@unique([jobCardId])                // One commission record per job card
+  @@index([businessId])
+  @@index([technicianId])
+  @@index([month])
+  @@index([createdAt])
+  @@map("cctv_commission_records")
 }

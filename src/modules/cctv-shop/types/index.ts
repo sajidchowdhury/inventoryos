@@ -291,6 +291,65 @@ export interface CCTVJobCardPart {
   serialItem?: CCTVSerialItem;
 }
 
+// ── 2C: Technician Performance and Commissions ──
+
+export type CommissionRuleType = 'FIXED_PER_TYPE' | 'PERCENT_LABOR' | 'PERCENT_PROFIT';
+
+export interface CCTVTechnician {
+  id: string;
+  businessId: string;
+  userId?: string;
+  displayName: string;
+  phone?: string;
+  specialization?: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  _count?: { commissionRecords: number };
+}
+
+export interface CCTVCommissionRule {
+  id: string;
+  businessId: string;
+  name: string;
+  ruleType: CommissionRuleType;
+  jobType?: string;
+  fixedAmount?: number;
+  percentRate?: number;
+  sortOrder: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CCTVCommissionRecord {
+  id: string;
+  businessId: string;
+  technicianId: string;
+  jobCardId: string;
+  ruleId?: string;
+  commissionAmount: number;
+  ruleType: string;
+  jobType: string;
+  laborCharge?: number;
+  partsCost?: number;
+  profitMargin?: number;
+  month: string;
+  createdAt: string;
+  technician?: { id: string; displayName: string };
+  jobCard?: { id: string; jobCode: string; customerName: string };
+}
+
+export interface TechnicianPerformance {
+  totalJobs: number;
+  completedJobs: number;
+  avgTatHours: number;
+  avgTatLabel: string;
+  totalCommission: number;
+  avgRating: number | null;
+  jobTypeBreakdown: Record<string, number>;
+}
+
 export type CCTVViewType =
   | 'dashboard'
   | 'inventory-hub'
@@ -340,4 +399,7 @@ export type CCTVViewType =
   | 'profile'
   | 'subscription'
   | 'reports'
+  | 'technicians'
+  | 'technician-detail'
+  | 'commission-report'
   | 'help';
