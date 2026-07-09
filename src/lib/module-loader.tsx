@@ -7,12 +7,18 @@ import { moduleRegistry } from '@/lib/modules';
 
 /* ─── Lazy-loaded module shells ─── */
 const CCTVDashboard = dynamic(
-  () => import('@/modules/cctv-shop/components/CCTVShell').then((mod) => ({ default: mod.CCTVShell })),
+  () => import('@/modules/cctv-shop/components/CCTVShell').then((mod) => {
+    const Comp = mod.CCTVShell ?? mod.default;
+    if (!Comp) console.error('[module-loader] CCTVShell export not found. Available:', Object.keys(mod));
+    return { default: Comp };
+  }),
   { loading: () => <ModuleLoadingSkeleton />, ssr: false }
 );
 
 const PharmacyDashboard = dynamic(
-  () => import('@/modules/pharmacy/components/PharmacyShell').then((mod) => ({ default: mod.PharmacyShell })),
+  () => import('@/modules/pharmacy/components/PharmacyShell').then((mod) => ({
+    default: mod.PharmacyShell ?? mod.default,
+  })),
   { loading: () => <ModuleLoadingSkeleton />, ssr: false }
 );
 
