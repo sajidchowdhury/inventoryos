@@ -187,3 +187,51 @@ Stage Summary:
 - Components: CCTVKitsList, CCTVKitDetail, CCTVKitForm
 - All 3 files in /src/modules/cctv-shop/components/
 - Shell, bottom nav, barrel export to be updated separately
+---
+Task ID: 2a
+Agent: Main Agent
+Task: Segment 2A - Job Card Management
+
+Work Log:
+- Discovered that Phase 1 (previous session) had already created:
+  - CCTVJobCard Prisma model (complete with all fields, indexes, relations)
+  - TypeScript types (JobCardStatus, JobType, JobPriority, CCTVJobCard interface, view types)
+  - CCTVJobCardsList component (with tabs, search, stats)
+  - 3 API routes (job-cards list/create, job-card detail/update, status transitions with state machine)
+  - Shell wiring for 'job-cards' view, barrel export for CCTVJobCardsList
+  - BottomNav hubGroups already included job-card views
+- Built CCTVJobCardDetail.tsx (~1028 lines):
+  - Large colored status card with job type icon, received date
+  - Dynamic status transition buttons based on VALID_TRANSITIONS state machine
+  - AlertDialog confirmations with optional notes for each transition
+  - DELIVERED dialog with collector info fields (name/phone/NID)
+  - OUTSOURCED dialog with vendor fields (name/phone/cost/expected return)
+  - Edit mode toggle (pencil icon) with editable fields for diagnosis, costs, assignment, etc.
+  - Info cards: Customer (tap-to-call), Device (serial/IMEI/grade), Condition (notes + photo URLs)
+  - Fault & Repair card (reported fault, diagnosis, repair notes)
+  - Cost card (estimated/labor/final in BDT)
+  - Status timeline from serial item history
+- Built CCTVCreateJobCard.tsx (~533 lines):
+  - Job type selector (4 radio pill buttons: Repair/Installation/Maintenance/Diagnostic)
+  - Priority selector (4 pills: LOW/NORMAL/HIGH/URGENT with color coding)
+  - Customer info (name + phone, required)
+  - Device section with serial item lookup (debounced search, auto-fill on select, unlink)
+  - Manual device fields (deviceName, serialNumber, IMEI) auto-filled or manual entry
+  - Condition at intake (notes + photo URLs textarea)
+  - Fault description (required) + estimated cost
+  - Technician assignment + internal notes
+  - Submit with validation, toast feedback, navigate to detail on success
+- Created serial-items API routes:
+  - GET /api/businesses/[id]/cctv/serial-items (list with search, status, grade, productId, branchId, pagination)
+  - GET /api/businesses/[id]/cctv/serial-items/[serialItemId] (single item with product info)
+- Wired CCTVJobCardDetail and CCTVCreateJobCard into CCTVShell.tsx switch cases
+- Updated barrel export (index.ts) with both new components
+- Fixed lint errors: removed synchronous setState in effects for both CCTVCreateJobCard and CCTVJobCardsList
+- Zero new lint errors (9 remaining are all pre-existing in admin/pharmacy/lib files)
+- Pushed to GitHub: commit 01b6a98
+
+Stage Summary:
+- Segment 2A complete: Job Card Management fully functional
+- New files: CCTVJobCardDetail.tsx, CCTVCreateJobCard.tsx, 2 serial-items API routes
+- Modified: CCTVJobCardsList.tsx (lint fix), CCTVShell.tsx (wiring), index.ts (exports)
+- 3 pre-existing API routes leveraged (job-cards CRUD + status transitions)
