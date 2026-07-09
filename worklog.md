@@ -302,3 +302,40 @@ Work Log:
 Stage Summary:
 - Segment 2B fully complete: schema, types, 2 API routes, UI panel, all committed and pushed
 - 8 files changed, 497 insertions
+
+---
+Task ID: 5
+Agent: Main Agent
+Task: Segment 2C — Technician Performance and Commissions
+
+Work Log:
+- Added 3 Prisma models: CCTVTechnician, CCTVCommissionRule, CCTVCommissionRecord
+- Added satisfactionRating (Int?) field to CCTVJobCard
+- Added relations: parts on JobCard, commissionRecord on JobCard, cctvTechnicians/cctvCommissionRules/cctvCommissionRecords on Business
+- Ran db:push — schema synced, Prisma client regenerated
+- Added types: CCTVTechnician, CCTVCommissionRule, CCTVCommissionRecord, CommissionRuleType, TechnicianPerformance
+- Added 3 new CCTVViewType entries: technicians, technician-detail, commission-report
+- Created 6 API routes:
+  - GET/POST /technicians (list + create)
+  - GET/PUT/DELETE /technicians/[techId] (CRUD)
+  - GET/POST /commission-rules (list + create with validation)
+  - PUT/DELETE /commission-rules/[ruleId] (update + soft-delete)
+  - GET /technicians/[techId]/performance (computed metrics: TAT, rating, job type breakdown)
+  - GET /commissions/report (monthly summary grouped by technician)
+- Updated job card status route: auto-calculates commission on DELIVERED transition
+  - Finds technician by assignedToName match
+  - Matches rules by priority: FIXED_PER_TYPE → PERCENT_LABOR → PERCENT_PROFIT
+  - Snapshots laborCharge, partsCost, profitMargin into commission record
+- Created 3 UI components:
+  - CCTVTechniciansList: roster with performance cards, inline create form, cached performance metrics
+  - CCTVTechnicianDetail: profile header, 4-metric grid (jobs, TAT, commission, rating), job type breakdown
+  - CCTVCommissionReport: month picker, grand total hero card, per-technician commission breakdown
+- Wired all 3 into CCTVShell (imports, switch cases, viewMeta) and barrel exports
+- Lint: 0 new CCTV errors
+- Committed: 345128e (core) + 808c259 (wiring)
+- Pushed to GitHub: 710e207..808c259
+
+Stage Summary:
+- Segment 2C fully complete: 3 models, 6 API routes, 3 UI components, auto-commission engine
+- Commission auto-calculated on job delivery using configurable rules
+- 3 commission rule types: FIXED_PER_TYPE, PERCENT_LABOR, PERCENT_PROFIT
