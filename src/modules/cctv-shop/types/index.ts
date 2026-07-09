@@ -11,7 +11,8 @@ export type SerialItemStatus =
   | 'WARRANTY_ACTIVE'
   | 'WARRANTY_EXPIRED'
   | 'DEFECTIVE'
-  | 'DISPOSED';
+  | 'DISPOSED'
+  | 'CONSUMED';
 
 // History Event Types (matches CCTVSerialItemHistory.event)
 export type SerialHistoryEvent =
@@ -24,7 +25,8 @@ export type SerialHistoryEvent =
   | 'RETURNED'
   | 'WARRANTY_CLAIM'
   | 'DISPOSED'
-  | 'TRANSFERRED';
+  | 'TRANSFERRED'
+  | 'CONSUMED';
 
 // Physical Grade
 export type SerialGrade = 'A' | 'B' | 'C' | 'D';
@@ -266,6 +268,23 @@ export interface CCTVJobCard {
   expectedReturn?: string;
   priority: JobPriority;
   internalNotes?: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  serialItem?: CCTVSerialItem;
+  parts?: CCTVJobCardPart[];
+}
+
+// ── 2B: Spare Parts Integration ──
+
+export interface CCTVJobCardPart {
+  id: string;
+  businessId: string;
+  jobCardId: string;
+  serialItemId: string;
+  unitCost?: number;
+  quantity: number;
+  notes?: string;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;

@@ -17,6 +17,18 @@ export async function GET(
             product: { select: { id: true, name: true, brand: true, imageUrl: true, sellPrice: true } },
           },
         },
+        parts: {
+          where: { isActive: true },
+          include: {
+            serialItem: {
+              select: {
+                id: true, serialNumber: true, imei: true, status: true, costPrice: true,
+                product: { select: { id: true, name: true, brand: true, imageUrl: true } },
+              },
+            },
+          },
+          orderBy: { createdAt: "desc" },
+        },
       },
     });
 

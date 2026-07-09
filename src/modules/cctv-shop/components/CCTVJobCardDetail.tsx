@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import {
   ArrowLeft, Pencil, X, Save, Loader2, Phone, User, Package,
   Wrench, Camera, FileText, AlertCircle, Clock,
-  Zap, ShieldCheck, ExternalLink, Hash,
+  Zap, ShieldCheck, ExternalLink, Hash, Search, Plus, Trash2,
 } from 'lucide-react';
 import { useCCTVNavStore } from '@/stores/cctv-nav-store';
 import { cn } from '@/lib/utils';
@@ -24,7 +24,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
-import type { CCTVJobCard, JobPriority } from '@/modules/cctv-shop/types';
+import type { CCTVJobCard, CCTVJobCardPart, JobPriority } from '@/modules/cctv-shop/types';
 
 const BUSINESS_ID = 'bus_placeholder';
 
@@ -139,6 +139,16 @@ export function CCTVJobCardDetail() {
   const [vendorCost, setVendorCost] = useState('');
   const [expectedReturn, setExpectedReturn] = useState('');
 
+  // Spare parts
+  const [parts, setParts] = useState<CCTVJobCardPart[]>([]);
+  const [partSearch, setPartSearch] = useState('');
+  const [partResults, setPartResults] = useState<Array<{ id: string; serialNumber: string; product?: { name: string; brand: string } | null; costPrice: number | null }>>([]);
+  const [showPartSearch, setShowPartSearch] = useState(false);
+  const [partSearchLoading, setPartSearchLoading] = useState(false);
+  const [partAdding, setPartAdding] = useState<string | null>(null);
+  const [partRemoving, setPartRemoving] = useState<string | null>(null);
+  const partSearchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const fetchJob = async () => {
     if (!contextId) return;
     try {
@@ -168,6 +178,7 @@ export function CCTVJobCardDetail() {
           const jobData: CCTVJobCard = data.jobCard || data;
           setJob(jobData);
           setStatusHistory(data.statusHistory || []);
+          setParts((data.parts as CCTVJobCardPart[]) || []);
         }
       } catch {
         // silent
@@ -776,6 +787,210 @@ export function CCTVJobCardDetail() {
               )
             )}
           </div>
+        </motion.div>
+
+        {/* ─── 6.5 Spare Parts Card ─── */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.215 }}
+          className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm"
+        >
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-violet-50 flex items-center justify-center">
+                <Package className="w-4 h-4 text-violet-500" />
+              </div>
+              <h3 className="text-sm font-bold text-gray-800">Spare Parts</h3>
+              {parts.length > 0 && (
+                <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-5 bg-violet-100 text-violet-700">
+                  {parts.length}
+                </Badge>
+              )}
+            </div>
+            {(job.status === 'DIAGNOSING' || job.status === 'AWAITING_PARTS' || job.status === 'IN_PROGRESS') && (
+              <button
+                onClick={() => { setShowPartSearch(true); setPartSearch(''); setPartResults([]); }}
+                className="flex items-center gap-1 text-[11px] font-semibold text-violet-600 hover:text-violet-700 transition-colors"
+              >
+                <Plus className="w-3.5 h-3.5" /> Add
+              </button>
+            )}
+          </div>
+
+          {/* Part Search (inline) */}
+          {showPartSearch && (
+            <div className="relative mb-3">
+              <div className="relative">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+                <input
+                  autoFocus
+                  type="text"
+                  value={partSearch}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setPartSearch(v);
+                    if (v.trim().length < 2) { setPartResults([]); return; }
+                    if (partSearchTimer.current) clearTimeout(partSearchTimer.current);
+                    partSearchTimer.current = setTimeout(async () => {
+                      try {
+                        setPartSearchLoading(true);
+                        const res = await fetch(`/api/businesses/${BUSINESS_ID}/cctv/serial-items?search=${encodeURIComponent(v.trim())}&status=IN_STOCK&limit=10`);
+                        if (res.ok) {
+                          const d = await res.json();
+                          setPartResults(d.items || d || []);
+                        }
+                      } catch { /* silent */ }
+                      finally { setPartSearchLoading(false); }
+                    }, 300);
+                  }}
+                  placeholder="Search by product name or serial..."
+                  className="w-full h-9 pl-8 pr-8 text-sm rounded-xl border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-violet-500/30"
+                />
+                <button
+                  onClick={() => { setShowPartSearch(false); setPartSearch(''); setPartResults([]); }}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Dropdown Results */}
+              {partSearch.trim().length >= 2 && (
+                <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-white rounded-xl border border-gray-200 shadow-lg max-h-48 overflow-y-auto">
+                  {partSearchLoading ? (
+                    <div className="flex items-center justify-center py-4">
+                      <Loader2 className="w-4 h-4 animate-spin text-violet-500" />
+                    </div>
+                  ) : partResults.length === 0 ? (
+                    <div className="px-3 py-3 text-xs text-gray-400 text-center">No spare parts found in stock</div>
+                  ) : (
+                    partResults.map((item) => {
+                      const label = item.product ? `${item.product.brand} ${item.product.name}` : 'Unknown';
+                      const isAdding = partAdding === item.id;
+                      return (
+                        <button
+                          key={item.id}
+                          disabled={isAdding}
+                          onClick={async () => {
+                            setPartAdding(item.id);
+                            try {
+                              const res = await fetch(`/api/businesses/${BUSINESS_ID}/cctv/job-cards/${contextId}/parts`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ serialItemId: item.id }),
+                              });
+                              if (res.ok) {
+                                const newPart = await res.json();
+                                setParts((prev) => [newPart, ...prev]);
+                                setPartSearch('');
+                                setPartResults([]);
+                                setShowPartSearch(false);
+                                toast({ title: 'Part added', description: `${label} added to job` });
+                                // Refresh job to update costs
+                                fetchJob();
+                              } else {
+                                const err = await res.json();
+                                toast({ title: 'Failed', description: err.error || 'Could not add part', variant: 'destructive' });
+                              }
+                            } catch {
+                              toast({ title: 'Error', description: 'Network error', variant: 'destructive' });
+                            } finally {
+                              setPartAdding(null);
+                            }
+                          }}
+                          className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-violet-50 transition-colors text-left"
+                        >
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-semibold text-gray-800 truncate">{label}</p>
+                            <p className="text-[10px] text-gray-400">SN: {item.serialNumber}{item.costPrice != null ? ` · ৳${item.costPrice.toLocaleString()}` : ''}</p>
+                          </div>
+                          {isAdding ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin text-violet-500 shrink-0" />
+                          ) : (
+                            <Plus className="w-3.5 h-3.5 text-violet-400 shrink-0" />
+                          )}
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Parts List */}
+          {parts.length === 0 ? (
+            <p className="text-xs text-gray-400 py-1">No spare parts used yet</p>
+          ) : (
+            <div className="space-y-1.5">
+              {parts.map((part) => {
+                const pName = part.serialItem?.product
+                  ? `${part.serialItem.product.brand} ${part.serialItem.product.name}`
+                  : 'Unknown Part';
+                const lineTotal = (part.unitCost ?? 0) * part.quantity;
+                return (
+                  <div
+                    key={part.id}
+                    className="flex items-center justify-between gap-2 py-2 px-2.5 rounded-xl bg-gray-50 group"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-semibold text-gray-800 truncate">{pName}</p>
+                      <p className="text-[10px] text-gray-400">
+                        SN: {part.serialItem?.serialNumber || '—'}
+                        {part.quantity > 1 && ` · Qty: ${part.quantity}`}
+                      </p>
+                      {part.notes && (
+                        <p className="text-[10px] text-gray-500 mt-0.5">{part.notes}</p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="text-xs font-semibold text-gray-700">{formatBDT(lineTotal)}</span>
+                      {(job.status === 'DIAGNOSING' || job.status === 'AWAITING_PARTS' || job.status === 'IN_PROGRESS') && (
+                        <button
+                          disabled={partRemoving === part.id}
+                          onClick={async () => {
+                            setPartRemoving(part.id);
+                            try {
+                              const res = await fetch(`/api/businesses/${BUSINESS_ID}/cctv/job-cards/${contextId}/parts/${part.id}`, {
+                                method: 'DELETE',
+                              });
+                              if (res.ok) {
+                                setParts((prev) => prev.filter((p) => p.id !== part.id));
+                                toast({ title: 'Part removed', description: `${pName} returned to stock` });
+                                fetchJob();
+                              } else {
+                                toast({ title: 'Failed', description: 'Could not remove part', variant: 'destructive' });
+                              }
+                            } catch {
+                              toast({ title: 'Error', variant: 'destructive' });
+                            } finally {
+                              setPartRemoving(null);
+                            }
+                          }}
+                          className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 transition-all"
+                        >
+                          {partRemoving === part.id ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <Trash2 className="w-3.5 h-3.5" />
+                          )}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+
+              {/* Parts Total */}
+              <div className="flex items-center justify-between pt-2 border-t border-gray-100 mt-1">
+                <span className="text-[10px] text-gray-400 uppercase tracking-wide font-medium">Parts Total</span>
+                <span className="text-sm font-bold text-violet-600">
+                  {formatBDT(parts.reduce((sum, p) => sum + (p.unitCost ?? 0) * p.quantity, 0))}
+                </span>
+              </div>
+            </div>
+          )}
         </motion.div>
 
         {/* ─── 7. Cost Card ─── */}

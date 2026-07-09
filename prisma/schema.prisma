@@ -166,6 +166,7 @@ model Business {
 
   // CCTV Module (Phase 2A: Job Card Management)
   cctvJobCards            CCTVJobCard[]
+  cctvJobCardParts        CCTVJobCardPart[]
 
   @@index([userId])
   @@index([businessTypeId])
@@ -1789,6 +1790,7 @@ model CCTVSerialItem {
   //   "WARRANTY_EXPIRED"  — warranty period ended
   //   "DEFECTIVE"         — confirmed DOA or unrepairable
   //   "DISPOSED"          — written off / scrapped
+  //   "CONSUMED"          — used as spare part in a repair job (Phase 2B)
 
   // ── Physical Condition ──
   grade          String?              // "A" (new/sealed), "B" (open box), "C" (refurbished), "D" (used)
@@ -1834,6 +1836,7 @@ model CCTVSerialItem {
   history       CCTVSerialItemHistory[]
   transferItems CCTVTransferItem[]
   jobCards      CCTVJobCard[]
+  jobCardParts  CCTVJobCardPart[]
 
   @@unique([businessId, serialNumber])
   @@index([businessId])
@@ -1871,6 +1874,7 @@ model CCTVSerialItemHistory {
                                         //   "WARRANTY_CLAIM" — warranty service initiated
                                         //   "DISPOSED"   — written off
                                         //   "TRANSFERRED" — moved between branches
+                                        //   "CONSUMED"   — used as spare part in repair (Phase 2B)
 
   // Who did it
   userId         String?              // BusinessUser who triggered this change
@@ -2141,6 +2145,7 @@ model CCTVJobCard {
 
   business    Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
   serialItem  CCTVSerialItem?  @relation(fields: [serialItemId], references: [id])
+  parts       CCTVJobCardPart[]
 
   @@unique([businessId, jobCode])
   @@index([businessId])
@@ -2153,4 +2158,34 @@ model CCTVJobCard {
   @@index([receivedAt])
   @@index([priority])
   @@map("cctv_job_cards")
+}
+
+// ── CCTV Job Card Part (2B: Spare Parts Integration) ──
+// Junction table linking a consumed spare part (SerialItem) to a JobCard.
+// When a technician logs a part, the serial item status changes to CONSUMED
+// and its cost is added to the repair bill.
+model CCTVJobCardPart {
+  id            String   @id @default(cuid())
+  businessId    String
+  jobCardId     String
+  serialItemId  String
+
+  // Cost at time of consumption (snapshotted from SerialItem.costPrice)
+  unitCost      Float?
+  quantity      Int      @default(1)
+  notes         String?
+
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  business   Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  jobCard    CCTVJobCard     @relation(fields: [jobCardId], references: [id], onDelete: Cascade)
+  serialItem CCTVSerialItem  @relation(fields: [serialItemId], references: [id])
+
+  @@unique([jobCardId, serialItemId])
+  @@index([businessId])
+  @@index([jobCardId])
+  @@index([serialItemId])
+  @@map("cctv_job_card_parts")
 }

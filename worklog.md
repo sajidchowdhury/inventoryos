@@ -253,3 +253,23 @@ Work Log:
 Stage Summary:
 - All 4 code review bugs fixed and pushed
 - Segment 2A (Job Card Management) is fully complete and verified
+
+---
+Task ID: 3
+Agent: Main Agent
+Task: Segment 2B — CCTV Spare Parts Integration API Routes
+
+Work Log:
+- Read worklog.md and studied existing API route patterns (job-cards route.ts, [jobCardId]/route.ts)
+- Verified Prisma schema: CCTVJobCardPart (with @@unique([jobCardId, serialItemId])), CCTVSerialItem, CCTVSerialItemHistory models
+- Created 2 API route files:
+  1. `parts/route.ts` — GET (list parts for job card with serialItem+product include) + POST (add part with transaction: create part, update serial item IN_STOCK→CONSUMED, create history entry, return 201)
+  2. `parts/[partId]/route.ts` — DELETE (undo consumption with transaction: soft-delete part, restore serial item CONSUMED→IN_STOCK, create history entry)
+- POST validates: serialItemId required, job card exists, serial item belongs to business + IN_STOCK + active, duplicate check (409 Conflict)
+- DELETE validates: part exists + belongs to jobCard/business, only restores serial item if current status is CONSUMED
+- Both use Prisma $transaction for atomicity
+- Zero new lint errors (6 pre-existing errors in admin/lib files unchanged)
+
+Stage Summary:
+- 2 API route files created for CCTV spare parts integration (Segment 2B backend)
+- Full consumption/undo-consumption lifecycle with audit trail
