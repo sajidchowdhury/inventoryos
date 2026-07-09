@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
   ArrowLeft, Pencil, X, Save, Loader2, Phone, User, Package,
@@ -105,7 +105,7 @@ const formatDate = (d: string) =>
 
 interface StatusHistoryEntry {
   status: string;
-  timestamp: string;
+  date: string;
   notes?: string;
 }
 
@@ -139,9 +139,8 @@ export function CCTVJobCardDetail() {
   const [vendorCost, setVendorCost] = useState('');
   const [expectedReturn, setExpectedReturn] = useState('');
 
-  const fetchJob = useCallback(async () => {
+  const fetchJob = async () => {
     if (!contextId) return;
-    setLoading(true);
     try {
       const res = await fetch(`/api/businesses/${BUSINESS_ID}/cctv/job-cards/${contextId}`);
       if (res.ok) {
@@ -155,11 +154,29 @@ export function CCTVJobCardDetail() {
     } finally {
       setLoading(false);
     }
-  }, [contextId]);
+  };
 
   useEffect(() => {
-    fetchJob();
-  }, [fetchJob]);
+    if (!contextId) return;
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      try {
+        const res = await fetch(`/api/businesses/${BUSINESS_ID}/cctv/job-cards/${contextId}`);
+        if (res.ok && !cancelled) {
+          const data = await res.json();
+          const jobData: CCTVJobCard = data.jobCard || data;
+          setJob(jobData);
+          setStatusHistory(data.statusHistory || []);
+        }
+      } catch {
+        // silent
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [contextId]);
 
   // ── Edit Mode Handlers ──
 
@@ -974,7 +991,7 @@ export function CCTVJobCardDetail() {
                       )}>
                         {entry.status.replace(/_/g, ' ')}
                       </span>
-                      <span className="text-[10px] text-gray-400">{formatDate(entry.timestamp)}</span>
+                      <span className="text-[10px] text-gray-400">{formatDate(entry.date)}</span>
                     </div>
                     {entry.notes && (
                       <p className="text-[11px] text-gray-500 mt-1 leading-relaxed">{entry.notes}</p>

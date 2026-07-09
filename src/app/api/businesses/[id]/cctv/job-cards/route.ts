@@ -55,7 +55,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const {
       jobType, customerName, customerPhone, serialItemId,
       productId, deviceName, serialNumber, imei,
-      conditionNotes, reportedFault, estimatedCost,
+      conditionNotes, photoUrls, reportedFault, estimatedCost,
       assignedToId, assignedToName, priority, internalNotes,
     } = body;
 
@@ -135,6 +135,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         productId: productId || null,
         ...deviceInfo,
         conditionNotes: conditionNotes?.trim() || null,
+        photoUrls: typeof photoUrls === 'string' ? photoUrls : null,
         reportedFault: reportedFault.trim(),
         estimatedCost: estimatedCost ?? null,
         assignedToId: assignedToId || null,
