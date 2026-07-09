@@ -190,6 +190,7 @@ model Business {
   cctvSiteSurveys         CCTVSiteSurvey[]
   cctvCameraPositions     CCTVCameraPosition[]
   cctvCableRoutes         CCTVCableRoute[]
+  cctvAmcContracts        CCTVAmcContract[]
 
   @@index([userId])
   @@index([businessTypeId])
@@ -2766,4 +2767,72 @@ model CCTVCableRoute {
   @@index([businessId])
   @@index([surveyId])
   @@map("cctv_cable_routes")
+}
+
+// ── 4C: Annual Maintenance Contracts ──
+
+model CCTVAmcContract {
+  id              String   @id @default(cuid())
+  businessId      String
+  contractCode    String                    // e.g., AMC-001
+  clientId        String?                   // linked customer
+  clientName      String
+  clientPhone     String?
+  clientEmail     String?
+  clientAddress   String?
+
+  // Contract terms
+  coverageType    String   @default("Standard")  // Basic / Standard / Premium
+  startDate       DateTime
+  endDate         DateTime
+  totalAmount     Float                          // annual contract value (BDT)
+  paymentFrequency String  @default("MONTHLY")   // MONTHLY / QUARTERLY / ANNUAL
+  paymentAmount   Float                          // per-payment amount
+  visitsIncluded  Int      @default(1)           // site visits included per month
+  slaTerms        String?                        // service level agreement notes
+  responseHours   Int      @default(48)          // max response time in hours
+
+  // Status & value tracking
+  status          String   @default("ACTIVE")    // ACTIVE / EXPIRING_SOON / EXPIRED / CANCELLED
+  totalVisitsUsed Int      @default(0)
+  totalRevenue    Float    @default(0)           // total payments received
+  notes           String?
+  internalNotes   String?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  business        Business         @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  visits          CCTVAmcVisit[]
+
+  @@index([businessId])
+  @@index([clientId])
+  @@index([status])
+  @@map("cctv_amc_contracts")
+}
+
+model CCTVAmcVisit {
+  id              String   @id @default(cuid())
+  businessId      String
+  contractId      String
+
+  // Visit details
+  visitDate       DateTime
+  technicianName  String?
+  technicianId    String?
+  visitType       String   @default("SCHEDULED")  // SCHEDULED / EMERGENCY / RENEWAL
+  workPerformed   String?                          // summary of work done
+  partsReplaced   String?                          // JSON: [{partName, serialNumber, cost}]
+  partsCost       Float    @default(0)
+  findings        String?                          // issues found during visit
+  customerSignOff Boolean  @default(false)
+  visitNotes      String?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+
+  contract        CCTVAmcContract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@index([contractId])
+  @@map("cctv_amc_visits")
 }

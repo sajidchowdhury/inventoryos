@@ -16,6 +16,8 @@ export { CCTVWarrantiesList } from './CCTVWarrantiesList';
 export { CCTVProjectsList } from './CCTVProjectsList';
 export { CCTVEMIList } from './CCTVEMIList';
 export { CCTVAMCList } from './CCTVAMCList';
+export { CCTVAmcDetail } from './CCTVAmcDetail';
+export { CCTVCreateAmc } from './CCTVCreateAmc';
 export { CCTVCustomersList } from './CCTVCustomersList';
 export { CCTVProfileView } from './CCTVProfileView';
 export { CCTVStockInView } from './CCTVStockInView';

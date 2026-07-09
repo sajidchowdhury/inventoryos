@@ -40,6 +40,8 @@ import { CCTVCreatEmi } from './CCTVCreatEmi';
 import { CCTVCustomerDetail } from './CCTVCustomerDetail';
 import { CCTVLoyaltyCenter } from './CCTVLoyaltyCenter';
 import { CCTVWarrantyDetail } from './CCTVWarrantyDetail';
+import { CCTVAmcDetail } from './CCTVAmcDetail';
+import { CCTVCreateAmc } from './CCTVCreateAmc';
 import { CCTVCreateProject } from './CCTVCreateProject';
 import { CCTVProjectDetail } from './CCTVProjectDetail';
 import { CCTVStorageCalculator } from './CCTVStorageCalculator';
@@ -178,6 +180,10 @@ export function CCTVShell() {
         return <CCTVEMIList />;
       case 'amc':
         return <CCTVAMCList />;
+      case 'amc-detail':
+        return <CCTVAmcDetail />;
+      case 'create-amc':
+        return <CCTVCreateAmc />;
       case 'customers':
         return <CCTVCustomersList />;
       case 'profile':

@@ -751,3 +751,58 @@ export interface CCTVCableRoute {
   sortOrder: number;
   createdAt: string;
 }
+
+// ── 4C: Annual Maintenance Contracts ──
+
+export type AmcStatus = 'ACTIVE' | 'EXPIRING_SOON' | 'EXPIRED' | 'CANCELLED';
+export type AmcCoverageType = 'Basic' | 'Standard' | 'Premium';
+export type AmcPaymentFrequency = 'MONTHLY' | 'QUARTERLY' | 'ANNUAL';
+export type AmcVisitType = 'SCHEDULED' | 'EMERGENCY' | 'RENEWAL';
+
+export interface CCTVAmcContract {
+  id: string;
+  businessId: string;
+  contractCode: string;
+  clientId?: string;
+  clientName: string;
+  clientPhone?: string;
+  clientEmail?: string;
+  clientAddress?: string;
+  coverageType: AmcCoverageType;
+  startDate: string;
+  endDate: string;
+  totalAmount: number;
+  paymentFrequency: AmcPaymentFrequency;
+  paymentAmount: number;
+  visitsIncluded: number;
+  slaTerms?: string;
+  responseHours: number;
+  status: AmcStatus;
+  totalVisitsUsed: number;
+  totalRevenue: number;
+  notes?: string;
+  internalNotes?: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  _count?: { visits: number };
+  visits?: CCTVAmcVisit[];
+}
+
+export interface CCTVAmcVisit {
+  id: string;
+  businessId: string;
+  contractId: string;
+  visitDate: string;
+  technicianName?: string;
+  technicianId?: string;
+  visitType: AmcVisitType;
+  workPerformed?: string;
+  partsReplaced?: string;
+  partsCost: number;
+  findings?: string;
+  customerSignOff: boolean;
+  visitNotes?: string;
+  isActive: boolean;
+  createdAt: string;
+}

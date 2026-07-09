@@ -729,3 +729,80 @@ Stage Summary:
 - CCTVStorageCalculator.tsx created - fully functional storage estimation tool
 - Accessible from Dashboard Quick Actions ("Storage Calc") and Project Detail → Equipment tab
 - Git push failed due to sandbox having no credentials (same as previous sessions)
+
+---
+Task ID: 12
+Agent: Main Agent
+Task: Create all AMC API routes (cctv/amc-contracts)
+
+Work Log:
+- Analyzed existing Prisma schema for CCTVAmcContract and CCTVAmcVisit models (double-C naming)
+- Studied existing route patterns (warranties, warranty-claims) for consistent params/style
+- Created 5 API route files:
+
+1. `src/app/api/businesses/[id]/cctv/amc-contracts/route.ts`
+   - GET: Lists AMC contracts with `status` and `search` (contractCode, clientName, clientPhone) filters
+   - Auto-updates statuses: EXPIRING_SOON (within 30 days), EXPIRED (past endDate)
+   - Includes `_count: { visits: true }`, sorted by createdAt desc
+   - POST: Creates contract with auto-generated contractCode (AMC-001, AMC-002...)
+   - Auto-calculates paymentAmount based on paymentFrequency (MONTHLY/12, QUARTERLY/4, ANNUAL/1)
+   - Derives initial status from startDate/endDate
+
+2. `src/app/api/businesses/[id]/cctv/amc-contracts/[contractId]/route.ts`
+   - GET: Single contract with all visits ordered by visitDate desc + visit count
+   - PUT: Updates all fields, re-derives paymentAmount if totalAmount/frequency changes, re-derives status if dates change
+   - DELETE: Soft-delete (isActive=false)
+
+3. `src/app/api/businesses/[id]/cctv/amc-contracts/[contractId]/visits/route.ts`
+   - GET: Lists visits for a contract, ordered by visitDate desc
+   - POST: Creates visit with transactional increment of contract.totalVisitsUsed
+
+4. `src/app/api/businesses/[id]/cctv/amc-contracts/[contractId]/visits/[visitId]/route.ts`
+   - PUT: Updates visit fields (visitDate, technicianName, visitType, workPerformed, etc.)
+   - DELETE: Soft-delete visit + transactional decrement of contract.totalVisitsUsed (floor at 0)
+
+5. `src/app/api/businesses/[id]/cctv/amc-contracts/summary/route.ts`
+   - GET: Returns totalActiveContracts, totalExpiringSoon, totalExpired, totalAnnualRevenue, totalRevenueCollected, upcomingRenewals (30-60 day window, sorted by endDate)
+
+- All routes use `db.cCTVAmcContract` / `db.cCTVAmcVisit` (double-C Prisma client pattern)
+- All routes use `{ params }: { params: Promise<{ id: string }> }` → `await params` pattern
+- All routes import `db` from `@/lib/db`
+- ESLint passed with zero errors on new files
+
+Stage Summary:
+- 5 AMC API route files created with full CRUD + summary endpoint
+- Consistent with existing project patterns (params, error handling, soft-delete)
+- Status auto-derivation logic shared across list and detail endpoints
+- Transactional visit counter updates to prevent data inconsistency
+
+---
+Task: AMC Frontend Components (List, Create, Detail) + API Routes
+Agent: Main Agent
+
+Files Created/Rewritten:
+1. `src/modules/cctv-shop/components/CCTVAMCList.tsx` — REWRITTEN from mock data to real API-backed AMC list
+2. `src/modules/cctv-shop/components/CCTVCreateAmc.tsx` — NEW, full create/edit AMC contract form
+3. `src/modules/cctv-shop/components/CCTVAmcDetail.tsx` — NEW, AMC detail view with Overview/Visits/SLA tabs
+
+API Routes Created:
+1. `src/app/api/businesses/[id]/cctv/amc-contracts/route.ts` — GET (list + filter + search), POST (create)
+2. `src/app/api/businesses/[id]/cctv/amc-contracts/summary/route.ts` — GET (summary stats + expiring alerts)
+3. `src/app/api/businesses/[id]/cctv/amc-contracts/[contractId]/route.ts` — GET (detail with visits), PUT (update)
+4. `src/app/api/businesses/[id]/cctv/amc-contracts/[contractId]/visits/route.ts` — GET (list visits), POST (log visit)
+
+Files Modified:
+1. `src/modules/cctv-shop/components/CCTVShell.tsx` — Added imports and switch cases for `CCTVAmcDetail` and `CCTVCreateAmc`
+
+Key Features:
+- **CCTVAMCList**: 4-column summary (Active/Expiring/Expired/Annual Value), expiring-soon alert cards, search bar, filter tabs, AMC cards with contractCode/coverageType/status/visits/payment frequency/period/value, FAB for new contract, empty state, loading skeletons
+- **CCTVCreateAmc**: Full form with client info (name/phone/email/address), contract period (date pickers), coverage type toggle (Basic=gray/Standard=violet/Premium=amber), contract value + payment frequency toggles with auto-calculated payment amount, visits/month, response SLA, SLA terms textarea, notes. Supports edit mode via contextId pre-fill + PUT
+- **CCTVAmcDetail**: Status badge (Active=green/Expiring=amber/Expired=red/Cancelled=gray), expiring/expired alert banners, 3-tab layout (Overview/Visits/SLA). Overview: client info card, contract details card, revenue progress bar, edit button. Visits: summary cards, visit list with type badges, bottom sheet modal to log visits (date/technician/type/work/findings/parts cost/notes). SLA: response time card, coverage benefits checklist, SLA terms display, service parameters
+
+Patterns Applied:
+- `fadeUp` animation with `'easeOut' as const` on all ease strings
+- Cards: `bg-white rounded-2xl border border-gray-100 p-4 shadow-sm`
+- CTAs: `bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-lg shadow-violet-500/20`
+- `useCCTVNavStore` for navigation with `navigate(view, contextId?)` and `goBack()`
+- BUSINESS_ID = 'bus_placeholder' for all API calls
+- All components use `'use client'` with named exports
+- ESLint passed with zero errors
