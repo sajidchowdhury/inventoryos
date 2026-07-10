@@ -9,8 +9,7 @@ import {
 } from 'lucide-react';
 import { useCCTVNavStore } from '@/stores/cctv-nav-store';
 import type { ProjectType } from '@/modules/cctv-shop/types';
-
-const BUSINESS_ID = 'bus_placeholder';
+import { useCctvBusinessId } from '@/modules/cctv-shop/hooks/use-cctv-business-id';
 
 const fadeUp = {
   initial: { opacity: 0, y: 16 },
@@ -26,6 +25,7 @@ const projectTypes: { value: ProjectType; label: string }[] = [
 
 export function CCTVCreateProject() {
   const { goBack, navigate } = useCCTVNavStore();
+  const businessId = useCctvBusinessId();
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     projectName: '',
@@ -69,7 +69,7 @@ export function CCTVCreateProject() {
       if (form.notes.trim()) body.notes = form.notes.trim();
       if (form.internalNotes.trim()) body.internalNotes = form.internalNotes.trim();
 
-      const res = await fetch(`/api/businesses/${BUSINESS_ID}/cctv/projects`, {
+      const res = await fetch(`/api/businesses/${businessId}/cctv/projects`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),

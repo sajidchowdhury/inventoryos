@@ -12,8 +12,7 @@ import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { CCTVAmcContract, AmcStatus, AmcCoverageType, AmcPaymentFrequency } from '@/modules/cctv-shop/types';
-
-const BUSINESS_ID = 'bus_placeholder';
+import { useCctvBusinessId } from '@/modules/cctv-shop/hooks/use-cctv-business-id';
 
 const fadeUp = {
   initial: { opacity: 0, y: 16 },
@@ -71,6 +70,7 @@ function fmtDate(d: string) {
 
 export function CCTVAMCList() {
   const { navigate, goBack } = useCCTVNavStore();
+  const businessId = useCctvBusinessId();
   const [contracts, setContracts] = useState<CCTVAmcContract[]>([]);
   const [summary, setSummary] = useState<AmcSummary | null>(null);
   const [loading, setLoading] = useState(true);
@@ -85,7 +85,7 @@ export function CCTVAMCList() {
     const fetchSummary = async () => {
       setSummaryLoading(true);
       try {
-        const res = await fetch(`/api/businesses/${BUSINESS_ID}/cctv/amc-contracts/summary`);
+        const res = await fetch(`/api/businesses/${businessId}/cctv/amc-contracts/summary`);
         if (res.ok && !cancelled) setSummary(await res.json());
       } catch { /* silent */ }
       if (!cancelled) setSummaryLoading(false);
@@ -108,7 +108,7 @@ export function CCTVAMCList() {
         const params = new URLSearchParams();
         if (search) params.set('search', search);
         if (activeFilter) params.set('status', activeFilter);
-        const res = await fetch(`/api/businesses/${BUSINESS_ID}/cctv/amc-contracts?${params}`);
+        const res = await fetch(`/api/businesses/${businessId}/cctv/amc-contracts?${params}`);
         if (res.ok && !cancelled) {
           const data = await res.json();
           setContracts(Array.isArray(data) ? data : []);

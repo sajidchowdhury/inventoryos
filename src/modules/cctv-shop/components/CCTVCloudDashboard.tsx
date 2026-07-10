@@ -23,8 +23,7 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   AreaChart, Area, PieChart, Pie, Cell, CartesianGrid,
 } from 'recharts';
-
-const BUSINESS_ID = 'bus_placeholder';
+import { useCctvBusinessId } from '@/modules/cctv-shop/hooks/use-cctv-business-id';
 
 const fadeUp = {
   initial: { opacity: 0, y: 16 },
@@ -111,13 +110,14 @@ function AlertCard({ icon: Icon, title, count, color }: {
 
 export function CCTVCloudDashboard() {
   const { goBack } = useCCTVNavStore();
+  const businessId = useCctvBusinessId();
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
 
   const load = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/businesses/${BUSINESS_ID}/cctv/cloud-dashboard`);
+      const res = await fetch(`/api/businesses/${businessId}/cctv/cloud-dashboard`);
       const json = await res.json();
       if (json.success) setData(json.data);
     } catch (err) { console.error(err); }

@@ -25,8 +25,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-
-const BUSINESS_ID = 'bus_placeholder';
+import { useCctvBusinessId } from '@/modules/cctv-shop/hooks/use-cctv-business-id';
 
 const fadeUp = {
   initial: { opacity: 0, y: 16 },
@@ -147,6 +146,7 @@ function getInitials(name: string): string {
 export function CCTVCustomerDetail() {
   const { contextId, navigate, goBack } = useCCTVNavStore();
   const { toast } = useToast();
+  const businessId = useCctvBusinessId();
 
   const [customer, setCustomer] = useState<CustomerDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -166,18 +166,18 @@ export function CCTVCustomerDetail() {
   const fetchCustomer = useCallback(async () => {
     if (!contextId) return;
     try {
-      const res = await fetch(`/api/businesses/${BUSINESS_ID}/cctv/customers/${contextId}`);
+      const res = await fetch(`/api/businesses/${businessId}/cctv/customers/${contextId}`);
       if (res.ok) setCustomer(await res.json());
     } catch {}
     setLoading(false);
-  }, [contextId]);
+  }, [contextId, businessId]);
 
   const fetchTransactions = useCallback(async () => {
     if (!contextId) return;
     setTxLoading(true);
     try {
       const res = await fetch(
-        `/api/businesses/${BUSINESS_ID}/cctv/customers/${contextId}/loyalty?limit=20&offset=0`
+        `/api/businesses/${businessId}/cctv/customers/${contextId}/loyalty?limit=20&offset=0`
       );
       if (res.ok) {
         const data = await res.json();
@@ -185,14 +185,14 @@ export function CCTVCustomerDetail() {
       }
     } catch {}
     setTxLoading(false);
-  }, [contextId]);
+  }, [contextId, businessId]);
 
   const fetchLoyaltyConfig = useCallback(async () => {
     try {
-      const res = await fetch(`/api/businesses/${BUSINESS_ID}/cctv/loyalty-config`);
+      const res = await fetch(`/api/businesses/${businessId}/cctv/loyalty-config`);
       if (res.ok) setLoyaltyConfig(await res.json());
     } catch {}
-  }, []);
+  }, [businessId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -216,7 +216,7 @@ export function CCTVCustomerDetail() {
     setSubmitting(true);
     try {
       const res = await fetch(
-        `/api/businesses/${BUSINESS_ID}/cctv/customers/${contextId}/redeem`,
+        `/api/businesses/${businessId}/cctv/customers/${contextId}/redeem`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -253,7 +253,7 @@ export function CCTVCustomerDetail() {
     try {
       const actualPoints = adjustMode === 'deduct' ? -pts : pts;
       const res = await fetch(
-        `/api/businesses/${BUSINESS_ID}/cctv/customers/${contextId}/loyalty`,
+        `/api/businesses/${businessId}/cctv/customers/${contextId}/loyalty`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

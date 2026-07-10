@@ -18,8 +18,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import type { CCTVEmiPlan, CCTVEmiInstallment } from '@/modules/cctv-shop/types';
-
-const BUSINESS_ID = 'bus_placeholder';
+import { useCctvBusinessId } from '@/modules/cctv-shop/hooks/use-cctv-business-id';
 
 const fadeUp = {
   initial: { opacity: 0, y: 16 },
@@ -46,6 +45,7 @@ function fmtDate(d: string) {
 
 export function CCTVEmiDetail() {
   const { contextId, goBack } = useCCTVNavStore();
+  const businessId = useCctvBusinessId();
   const { toast } = useToast();
   const [plan, setPlan] = useState<(CCTVEmiPlan & { overdueCount?: number; nextDueDate?: string }) | null>(null);
   const [loading, setLoading] = useState(true);
@@ -60,7 +60,7 @@ export function CCTVEmiDetail() {
     const load = async () => {
       if (!contextId) return;
       try {
-        const res = await fetch(`/api/businesses/${BUSINESS_ID}/cctv/emi-plans/${contextId}`);
+        const res = await fetch(`/api/businesses/${businessId}/cctv/emi-plans/${contextId}`);
         if (res.ok && !cancelled) setPlan(await res.json());
       } catch {}
       if (!cancelled) setLoading(false);
@@ -83,7 +83,7 @@ export function CCTVEmiDetail() {
     }
     setCollecting(true);
     try {
-      const res = await fetch(`/api/businesses/${BUSINESS_ID}/cctv/emi-plans/${contextId}/collect`, {
+      const res = await fetch(`/api/businesses/${businessId}/cctv/emi-plans/${contextId}/collect`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ installmentId: collectingId, amount }),
@@ -93,7 +93,7 @@ export function CCTVEmiDetail() {
         setCollectingId(null);
         // Refresh plan data
         try {
-          const ref = await fetch(`/api/businesses/${BUSINESS_ID}/cctv/emi-plans/${contextId}`);
+          const ref = await fetch(`/api/businesses/${businessId}/cctv/emi-plans/${contextId}`);
           if (ref.ok) setPlan(await ref.json());
         } catch {}
       } else {

@@ -13,8 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import type { CCTVBranch, CCTVSerialItem } from '@/modules/cctv-shop/types';
-
-const BUSINESS_ID = 'bus_placeholder';
+import { useCctvBusinessId } from '@/modules/cctv-shop/hooks/use-cctv-business-id';
 
 const fadeUp = {
   initial: { opacity: 0, y: 16 },
@@ -35,6 +34,7 @@ interface StagedItem {
 
 export function CCTVCreateTransfer() {
   const { navigate, goBack } = useCCTVNavStore();
+  const businessId = useCctvBusinessId();
 
   const [step, setStep] = useState(0);
   const [branches, setBranches] = useState<CCTVBranch[]>([]);
@@ -56,7 +56,7 @@ export function CCTVCreateTransfer() {
   // Fetch branches
   useEffect(() => {
     setBranchesLoading(true);
-    fetch(`/api/businesses/${BUSINESS_ID}/cctv/branches`)
+    fetch(`/api/businesses/${businessId}/cctv/branches`)
       .then((res) => res.json())
       .then((data) => {
         const arr: CCTVBranch[] = Array.isArray(data) ? data : data.branches || [];
@@ -78,7 +78,7 @@ export function CCTVCreateTransfer() {
         params.set('page', String(page));
         params.set('limit', '20');
         const res = await fetch(
-          `/api/businesses/${BUSINESS_ID}/cctv/branches/${fromBranchId}/inventory?${params.toString()}`
+          `/api/businesses/${businessId}/cctv/branches/${fromBranchId}/inventory?${params.toString()}`
         );
         if (res.ok) {
           const data = await res.json();
@@ -168,7 +168,7 @@ export function CCTVCreateTransfer() {
     if (stagedItems.length === 0) return;
     setCreating(true);
     try {
-      const res = await fetch(`/api/businesses/${BUSINESS_ID}/cctv/transfers`, {
+      const res = await fetch(`/api/businesses/${businessId}/cctv/transfers`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

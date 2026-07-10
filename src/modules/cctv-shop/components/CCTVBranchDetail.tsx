@@ -10,8 +10,7 @@ import { useCCTVNavStore } from '@/stores/cctv-nav-store';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import type { CCTVBranch, CCTVTransfer } from '@/modules/cctv-shop/types';
-
-const BUSINESS_ID = 'bus_placeholder';
+import { useCctvBusinessId } from '@/modules/cctv-shop/hooks/use-cctv-business-id';
 
 const fadeUp = {
   initial: { opacity: 0, y: 16 },
@@ -32,6 +31,7 @@ function formatDate(dateStr: string): string {
 
 export function CCTVBranchDetail() {
   const { navigate, goBack, contextId } = useCCTVNavStore();
+  const businessId = useCctvBusinessId();
 
   const [branch, setBranch] = useState<CCTVBranch | null>(null);
   const [transfers, setTransfers] = useState<CCTVTransfer[]>([]);
@@ -42,7 +42,7 @@ export function CCTVBranchDetail() {
     if (!contextId) return;
     setLoading(true);
     try {
-      const res = await fetch(`/api/businesses/${BUSINESS_ID}/cctv/branches/${contextId}`);
+      const res = await fetch(`/api/businesses/${businessId}/cctv/branches/${contextId}`);
       if (res.ok) {
         const data = await res.json();
         setBranch(data);
@@ -57,7 +57,7 @@ export function CCTVBranchDetail() {
   const fetchTransfers = useCallback(async () => {
     if (!contextId) return;
     try {
-      const res = await fetch(`/api/businesses/${BUSINESS_ID}/cctv/transfers`);
+      const res = await fetch(`/api/businesses/${businessId}/cctv/transfers`);
       if (res.ok) {
         const data = await res.json();
         const all: CCTVTransfer[] = Array.isArray(data) ? data : data.transfers || [];
@@ -86,7 +86,7 @@ export function CCTVBranchDetail() {
     if (!contextId) return;
     setMenuOpen(false);
     try {
-      const res = await fetch(`/api/businesses/${BUSINESS_ID}/cctv/branches/${contextId}`, {
+      const res = await fetch(`/api/businesses/${businessId}/cctv/branches/${contextId}`, {
         method: 'DELETE',
       });
       if (res.ok) {

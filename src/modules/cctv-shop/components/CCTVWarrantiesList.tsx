@@ -11,8 +11,7 @@ import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
-
-const BUSINESS_ID = 'bus_placeholder';
+import { useCctvBusinessId } from '@/modules/cctv-shop/hooks/use-cctv-business-id';
 
 const fadeUp = {
   initial: { opacity: 0, y: 16 },
@@ -83,6 +82,7 @@ function formatDate(dateStr: string): string {
 
 export function CCTVWarrantiesList() {
   const { navigate, goBack } = useCCTVNavStore();
+  const businessId = useCctvBusinessId();
   const [warranties, setWarranties] = useState<WarrantyItem[]>([]);
   const [summary, setSummary] = useState<WarrantySummary | null>(null);
   const [loading, setLoading] = useState(true);
@@ -98,7 +98,7 @@ export function CCTVWarrantiesList() {
       setSummaryLoading(true);
       try {
         const res = await fetch(
-          `/api/businesses/${BUSINESS_ID}/cctv/warranties/summary`
+          `/api/businesses/${businessId}/cctv/warranties/summary`
         );
         if (res.ok && !cancelled) {
           setSummary(await res.json());
@@ -128,7 +128,7 @@ export function CCTVWarrantiesList() {
       if (search) params.set('search', search);
       if (activeFilter) params.set('status', activeFilter);
       const res = await fetch(
-        `/api/businesses/${BUSINESS_ID}/cctv/warranties?${params}`
+        `/api/businesses/${businessId}/cctv/warranties?${params}`
       );
       if (res.ok) {
         const data = await res.json();
@@ -138,7 +138,7 @@ export function CCTVWarrantiesList() {
       // silently fail
     }
     setLoading(false);
-  }, [search, activeFilter]);
+  }, [search, activeFilter, businessId]);
 
   useEffect(() => {
     let cancelled = false;

@@ -10,8 +10,7 @@ import { useCCTVNavStore } from '@/stores/cctv-nav-store';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { CCTVCommissionRecord } from '@/modules/cctv-shop/types';
-
-const BUSINESS_ID = 'bus_placeholder';
+import { useCctvBusinessId } from '@/modules/cctv-shop/hooks/use-cctv-business-id';
 
 const formatBDT = (n: number | null | undefined) => {
   if (n == null) return '—';
@@ -41,6 +40,7 @@ interface ReportData {
 
 export function CCTVCommissionReport() {
   const { goBack } = useCCTVNavStore();
+  const businessId = useCctvBusinessId();
 
   const [report, setReport] = useState<ReportData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -49,7 +49,7 @@ export function CCTVCommissionReport() {
   const fetchReport = async (month: string) => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/businesses/${BUSINESS_ID}/cctv/commissions/report?month=${month}`);
+      const res = await fetch(`/api/businesses/${businessId}/cctv/commissions/report?month=${month}`);
       if (res.ok) {
         const data = await res.json();
         setReport(data);

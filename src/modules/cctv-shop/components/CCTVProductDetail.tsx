@@ -121,7 +121,7 @@ export function CCTVProductDetail() {
         `/api/businesses/${businessId}/cctv/products/${contextId}/serials?limit=10`
       );
       const data = await res.json();
-      setSerials(data.serialItems || data.serials || []);
+      setSerials(data.items || data.serialItems || data.serials || []);
     } catch {
       // ignore
     } finally {

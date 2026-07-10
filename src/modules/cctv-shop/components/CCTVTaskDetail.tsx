@@ -17,9 +17,7 @@ import type {
   TaskStatus,
   TaskPriority,
 } from '@/modules/cctv-shop/types';
-
-const BUSINESS_ID = 'bus_placeholder';
-const API_BASE = `/api/businesses/${BUSINESS_ID}/cctv/installation-tasks`;
+import { useCctvBusinessId } from '@/modules/cctv-shop/hooks/use-cctv-business-id';
 
 const fadeUp = {
   initial: { opacity: 0, y: 16 },
@@ -73,6 +71,8 @@ function formatTime(dateStr: string): string {
 export function CCTVTaskDetail() {
   const { navigate, goBack, contextId } = useCCTVNavStore();
   const { toast } = useToast();
+  const businessId = useCctvBusinessId();
+  const apiBase = `/api/businesses/${businessId}/cctv/installation-tasks`;
 
   const [task, setTask] = useState<CCTVInstallationTask | null>(null);
   const [loading, setLoading] = useState<boolean | null>(null); // null=initial, true=loading, false=done
@@ -87,7 +87,7 @@ export function CCTVTaskDetail() {
   // ── Reload task (used after mutations) ──
   const reloadTask = async (taskId: string) => {
     try {
-      const res = await fetch(`${API_BASE}/${taskId}`);
+      const res = await fetch(`${apiBase}/${taskId}`);
       if (res.ok) {
         setTask(await res.json());
       }
@@ -101,7 +101,7 @@ export function CCTVTaskDetail() {
     const controller = new AbortController();
     (async () => {
       try {
-        const res = await fetch(`${API_BASE}/${contextId}`, { signal: controller.signal });
+        const res = await fetch(`${apiBase}/${contextId}`, { signal: controller.signal });
         if (res.ok && !cancelled) {
           setTask(await res.json());
         }
@@ -118,7 +118,7 @@ export function CCTVTaskDetail() {
     if (!task || statusChanging) return;
     setStatusChanging(true);
     try {
-      const res = await fetch(`${API_BASE}/${task.id}/status`, {
+      const res = await fetch(`${apiBase}/${task.id}/status`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus }),
@@ -143,7 +143,7 @@ export function CCTVTaskDetail() {
     if (togglingItem) return;
     setTogglingItem(item.id);
     try {
-      const res = await fetch(`${API_BASE}/${task!.id}/checklist/${item.id}`, {
+      const res = await fetch(`${apiBase}/${task!.id}/checklist/${item.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ isCompleted: !item.isCompleted }),
@@ -164,7 +164,7 @@ export function CCTVTaskDetail() {
     if (!task || !newItemText.trim() || addingItem) return;
     setAddingItem(true);
     try {
-      const res = await fetch(`${API_BASE}/${task.id}/checklist`, {
+      const res = await fetch(`${apiBase}/${task.id}/checklist`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ itemText: newItemText.trim() }),

@@ -18,8 +18,7 @@ import type {
   CCTVKitDefinition,
   CCTVKitComponent,
 } from '@/modules/cctv-shop/types';
-
-const BUSINESS_ID = 'bus_placeholder';
+import { useCctvBusinessId } from '@/modules/cctv-shop/hooks/use-cctv-business-id';
 
 const fadeUp = {
   initial: { opacity: 0, y: 16 },
@@ -55,6 +54,7 @@ interface FormComponent {
 
 export function CCTVKitForm() {
   const { navigate, goBack, contextId } = useCCTVNavStore();
+  const businessId = useCctvBusinessId();
   const isEdit = !!contextId;
 
   // Form state
@@ -94,7 +94,7 @@ export function CCTVKitForm() {
     setLoading(true);
     try {
       const res = await fetch(
-        `/api/businesses/${BUSINESS_ID}/cctv/kits/${contextId}`
+        `/api/businesses/${businessId}/cctv/kits/${contextId}`
       );
       if (res.ok) {
         const data: CCTVKitDefinition = await res.json();
@@ -151,7 +151,7 @@ export function CCTVKitForm() {
     params.set('search', query.trim());
     params.set('limit', '10');
 
-    fetch(`/api/businesses/${BUSINESS_ID}/cctv/products?${params.toString()}`, {
+    fetch(`/api/businesses/${businessId}/cctv/products?${params.toString()}`, {
       signal: abortRef.current.signal,
     })
       .then((res) => res.json())
@@ -252,7 +252,7 @@ export function CCTVKitForm() {
       if (isEdit && contextId) {
         // Update kit
         const res = await fetch(
-          `/api/businesses/${BUSINESS_ID}/cctv/kits/${contextId}`,
+          `/api/businesses/${businessId}/cctv/kits/${contextId}`,
           {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
@@ -262,7 +262,7 @@ export function CCTVKitForm() {
         if (!res.ok) throw new Error('Failed to update kit');
       } else {
         // Create kit
-        const res = await fetch(`/api/businesses/${BUSINESS_ID}/cctv/kits`, {
+        const res = await fetch(`/api/businesses/${businessId}/cctv/kits`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(kitBody),
@@ -293,7 +293,7 @@ export function CCTVKitForm() {
           if (comp.id) {
             // Update existing
             await fetch(
-              `/api/businesses/${BUSINESS_ID}/cctv/kits/${kitId}/components/${comp.id}`,
+              `/api/businesses/${businessId}/cctv/kits/${kitId}/components/${comp.id}`,
               {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
@@ -303,7 +303,7 @@ export function CCTVKitForm() {
           } else {
             // Create new
             await fetch(
-              `/api/businesses/${BUSINESS_ID}/cctv/kits/${kitId}/components`,
+              `/api/businesses/${businessId}/cctv/kits/${kitId}/components`,
               {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -316,7 +316,7 @@ export function CCTVKitForm() {
         // Create mode: POST each component
         for (const comp of components) {
           await fetch(
-            `/api/businesses/${BUSINESS_ID}/cctv/kits/${kitId}/components`,
+            `/api/businesses/${businessId}/cctv/kits/${kitId}/components`,
             {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },

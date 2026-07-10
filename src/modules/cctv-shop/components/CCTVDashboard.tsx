@@ -53,7 +53,7 @@ export function CCTVDashboard() {
   React.useEffect(() => {
     (async () => {
       try {
-        const res = await fetch('/api/businesses/bus_placeholder/cctv/job-cards?status=OUTSOURCED&limit=100');
+        const res = await fetch(`/api/businesses/${session.business.id}/cctv/job-cards?status=OUTSOURCED&limit=100`);
         if (res.ok) {
           const jobs = await res.json();
           const overdue = jobs.filter((j: { expectedReturn: string | null }) =>
@@ -64,7 +64,7 @@ export function CCTVDashboard() {
       } catch { /* silent */ }
 
       try {
-        const res = await fetch('/api/businesses/bus_placeholder/cctv/warranties/summary');
+        const res = await fetch(`/api/businesses/${session.business.id}/cctv/warranties/summary`);
         if (res.ok) {
           const data = await res.json();
           setWarrantyAlerts({

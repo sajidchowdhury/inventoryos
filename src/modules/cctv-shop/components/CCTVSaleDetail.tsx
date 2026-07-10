@@ -24,8 +24,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import type { CCTVSale, PaymentMethod, SaleStatus } from '@/modules/cctv-shop/types';
-
-const BUSINESS_ID = 'bus_placeholder';
+import { useCctvBusinessId } from '@/modules/cctv-shop/hooks/use-cctv-business-id';
 
 const fadeUp = {
   initial: { opacity: 0, y: 16 },
@@ -121,6 +120,7 @@ const formatDate = (d: string) =>
 
 export function CCTVSaleDetail() {
   const { contextId, goBack, navigate } = useCCTVNavStore();
+  const businessId = useCctvBusinessId();
   const { toast } = useToast();
 
   const [sale, setSale] = useState<CCTVSale | null>(null);
@@ -147,7 +147,7 @@ export function CCTVSaleDetail() {
   const fetchSale = async () => {
     if (!contextId) return;
     try {
-      const res = await fetch(`/api/businesses/${BUSINESS_ID}/cctv/sales/${contextId}`);
+      const res = await fetch(`/api/businesses/${businessId}/cctv/sales/${contextId}`);
       if (res.ok) {
         const data = await res.json();
         setSale(data.sale || data);
@@ -165,7 +165,7 @@ export function CCTVSaleDetail() {
     (async () => {
       setLoading(true);
       try {
-        const res = await fetch(`/api/businesses/${BUSINESS_ID}/cctv/sales/${contextId}`);
+        const res = await fetch(`/api/businesses/${businessId}/cctv/sales/${contextId}`);
         if (res.ok && !cancelled) {
           const data = await res.json();
           setSale(data.sale || data);
@@ -193,7 +193,7 @@ export function CCTVSaleDetail() {
 
     setPayLoading(true);
     try {
-      const res = await fetch(`/api/businesses/${BUSINESS_ID}/cctv/sales/${contextId}/payments`, {
+      const res = await fetch(`/api/businesses/${businessId}/cctv/sales/${contextId}/payments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -224,7 +224,7 @@ export function CCTVSaleDetail() {
     if (!contextId || !sale) return;
     setMushakLoading(true);
     try {
-      const res = await fetch(`/api/businesses/bus_placeholder/cctv/mushak-invoices`, {
+      const res = await fetch(`/api/businesses/${businessId}/cctv/mushak-invoices`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -253,7 +253,7 @@ export function CCTVSaleDetail() {
   const handleCancelSale = async () => {
     setCancelLoading(true);
     try {
-      const res = await fetch(`/api/businesses/${BUSINESS_ID}/cctv/sales/${contextId}`, {
+      const res = await fetch(`/api/businesses/${businessId}/cctv/sales/${contextId}`, {
         method: 'DELETE',
       });
       if (res.ok) {

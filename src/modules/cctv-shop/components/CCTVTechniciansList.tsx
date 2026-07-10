@@ -12,8 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import type { CCTVTechnician, TechnicianPerformance } from '@/modules/cctv-shop/types';
-
-const BUSINESS_ID = 'bus_placeholder';
+import { useCctvBusinessId } from '@/modules/cctv-shop/hooks/use-cctv-business-id';
 
 const formatBDT = (n: number | null | undefined) => {
   if (n == null) return '—';
@@ -23,6 +22,7 @@ const formatBDT = (n: number | null | undefined) => {
 export function CCTVTechniciansList() {
   const { navigate } = useCCTVNavStore();
   const { toast } = useToast();
+  const businessId = useCctvBusinessId();
 
   const [technicians, setTechnicians] = useState<CCTVTechnician[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,7 +41,7 @@ export function CCTVTechniciansList() {
       (async () => {
         setLoading(true);
         try {
-          const res = await fetch(`/api/businesses/${BUSINESS_ID}/cctv/technicians`);
+          const res = await fetch(`/api/businesses/${businessId}/cctv/technicians`);
           if (res.ok && !cancelled) setTechnicians(await res.json());
         } catch { /* silent */ }
         finally { if (!cancelled) setLoading(false); }
@@ -58,7 +58,7 @@ export function CCTVTechniciansList() {
       const cache: Record<string, TechnicianPerformance> = {};
       for (const t of technicians) {
         try {
-          const res = await fetch(`/api/businesses/${BUSINESS_ID}/cctv/technicians/${t.id}/performance`);
+          const res = await fetch(`/api/businesses/${businessId}/cctv/technicians/${t.id}/performance`);
           if (res.ok && !cancelled) cache[t.id] = await res.json();
         } catch { /* skip */ }
       }
@@ -71,7 +71,7 @@ export function CCTVTechniciansList() {
     if (!createName.trim()) return;
     setCreating(true);
     try {
-      const res = await fetch(`/api/businesses/${BUSINESS_ID}/cctv/technicians`, {
+      const res = await fetch(`/api/businesses/${businessId}/cctv/technicians`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ displayName: createName, phone: createPhone, specialization: createSpec }),

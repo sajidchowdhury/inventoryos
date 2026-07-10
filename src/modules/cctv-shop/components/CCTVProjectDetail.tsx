@@ -15,9 +15,7 @@ import type {
   ProjectStatus, ProjectType, CameraType, CableType,
   CCTVInstallationTask as TaskType,
 } from '@/modules/cctv-shop/types';
-
-const BUSINESS_ID = 'bus_placeholder';
-const API_BASE = `/api/businesses/${BUSINESS_ID}/cctv/projects`;
+import { useCctvBusinessId } from '@/modules/cctv-shop/hooks/use-cctv-business-id';
 
 const fadeUp = {
   initial: { opacity: 0, y: 16 },
@@ -52,7 +50,7 @@ function ProjectTasksTab({ projectId, navigate }: { projectId: string; navigate:
     if (!projectId) return;
     (async () => {
       try {
-        const res = await fetch(`/api/businesses/bus_placeholder/cctv/installation-tasks/by-project/${projectId}`);
+        const res = await fetch(`/api/businesses/${businessId}/cctv/installation-tasks/by-project/${projectId}`);
         if (res.ok) setTasks(await res.json());
       } catch { /* silent */ }
       setLoading(false);
@@ -166,6 +164,8 @@ type TabKey = 'overview' | 'survey' | 'equipment' | 'tasks';
 
 export function CCTVProjectDetail() {
   const { goBack, contextId, navigate } = useCCTVNavStore();
+  const businessId = useCctvBusinessId();
+  const apiBase = `/api/businesses/${businessId}/cctv/projects`;
   const projectId = contextId;
 
   const [project, setProject] = useState<CCTVProject | null>(null);
@@ -216,8 +216,8 @@ export function CCTVProjectDetail() {
     setLoading(true);
     try {
       const [projRes, survRes] = await Promise.all([
-        fetch(`${API_BASE}/${projectId}`),
-        fetch(`${API_BASE}/${projectId}/surveys`),
+        fetch(`${apiBase}/${projectId}`),
+        fetch(`${apiBase}/${projectId}/surveys`),
       ]);
       if (projRes.ok) {
         const p = await projRes.json();
@@ -240,7 +240,7 @@ export function CCTVProjectDetail() {
       }
     } catch { /* silent */ }
     setLoading(false);
-  }, [projectId, activeSurveyId]);
+  }, [projectId, activeSurveyId, apiBase]);
 
   useEffect(() => {
     let cancelled = false;
@@ -298,7 +298,7 @@ export function CCTVProjectDetail() {
       notes: camForm.notes || undefined,
       sortOrder: cameras.length,
     };
-    const res = await fetch(`${API_BASE}/${projectId}/surveys/${activeSurveyId}/camera-positions`, {
+    const res = await fetch(`${apiBase}/${projectId}/surveys/${activeSurveyId}/camera-positions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(cam),
@@ -313,7 +313,7 @@ export function CCTVProjectDetail() {
 
   const deleteCamera = async (camId: string) => {
     if (!activeSurveyId) return;
-    await fetch(`${API_BASE}/${projectId}/surveys/${activeSurveyId}/camera-positions?id=${camId}`, { method: 'DELETE' });
+    await fetch(`${apiBase}/${projectId}/surveys/${activeSurveyId}/camera-positions?id=${camId}`, { method: 'DELETE' });
     setCameras((prev) => prev.filter((c) => c.id !== camId));
   };
 
@@ -328,7 +328,7 @@ export function CCTVProjectDetail() {
       notes: cableForm.notes || undefined,
       sortOrder: cableRoutes.length,
     };
-    const res = await fetch(`${API_BASE}/${projectId}/surveys/${activeSurveyId}/cable-routes`, {
+    const res = await fetch(`${apiBase}/${projectId}/surveys/${activeSurveyId}/cable-routes`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(route),
@@ -345,14 +345,14 @@ export function CCTVProjectDetail() {
 
   const deleteCableRoute = async (routeId: string) => {
     if (!activeSurveyId) return;
-    await fetch(`${API_BASE}/${projectId}/surveys/${activeSurveyId}/cable-routes?id=${routeId}`, { method: 'DELETE' });
+    await fetch(`${apiBase}/${projectId}/surveys/${activeSurveyId}/cable-routes?id=${routeId}`, { method: 'DELETE' });
     setCableRoutes((prev) => prev.filter((r) => r.id !== routeId));
   };
 
   // ─── Create survey ───
   const createSurvey = async () => {
     if (!projectId) return;
-    const res = await fetch(`${API_BASE}/${projectId}/surveys`, {
+    const res = await fetch(`${apiBase}/${projectId}/surveys`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({}),
@@ -367,7 +367,7 @@ export function CCTVProjectDetail() {
   // ─── Save survey metadata ───
   const saveSurveyMeta = async () => {
     if (!activeSurveyId || !projectId) return;
-    const res = await fetch(`${API_BASE}/${projectId}/surveys/${activeSurveyId}`, {
+    const res = await fetch(`${apiBase}/${projectId}/surveys/${activeSurveyId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -386,7 +386,7 @@ export function CCTVProjectDetail() {
   // ─── Status change ───
   const changeStatus = async (newStatus: ProjectStatus) => {
     if (!projectId || !project) return;
-    const res = await fetch(`${API_BASE}/${projectId}`, {
+    const res = await fetch(`${apiBase}/${projectId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status: newStatus }),

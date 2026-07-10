@@ -5,8 +5,7 @@ import { motion } from 'framer-motion';
 import { ArrowLeft, FileText, Search, ChevronRight, Printer } from 'lucide-react';
 import { useCCTVNavStore } from '@/stores/cctv-nav-store';
 import type { CCTVMushakInvoice } from '../types';
-
-const BUSINESS_ID = 'bus_placeholder';
+import { useCctvBusinessId } from '@/modules/cctv-shop/hooks/use-cctv-business-id';
 
 const fadeUp = {
   initial: { opacity: 0, y: 16 },
@@ -15,6 +14,7 @@ const fadeUp = {
 
 export function CCTVMushakInvoicesList() {
   const { goBack, navigate } = useCCTVNavStore();
+  const businessId = useCctvBusinessId();
   const [invoices, setInvoices] = useState<CCTVMushakInvoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -23,7 +23,7 @@ export function CCTVMushakInvoicesList() {
   useEffect(() => {
     const load = async () => {
       try {
-        const res = await fetch(`/api/businesses/${BUSINESS_ID}/cctv/mushak-invoices?limit=50${search ? `&search=${encodeURIComponent(search)}` : ''}`);
+        const res = await fetch(`/api/businesses/${businessId}/cctv/mushak-invoices?limit=50${search ? `&search=${encodeURIComponent(search)}` : ''}`);
         const json = await res.json();
         if (json.success) {
           setInvoices(json.data);

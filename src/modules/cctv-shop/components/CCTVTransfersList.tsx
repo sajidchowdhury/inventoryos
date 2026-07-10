@@ -9,8 +9,7 @@ import { useCCTVNavStore } from '@/stores/cctv-nav-store';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { CCTVTransfer, TransferStatus } from '@/modules/cctv-shop/types';
-
-const BUSINESS_ID = 'bus_placeholder';
+import { useCctvBusinessId } from '@/modules/cctv-shop/hooks/use-cctv-business-id';
 
 const fadeUp = {
   initial: { opacity: 0, y: 16 },
@@ -39,6 +38,7 @@ function formatDate(dateStr: string): string {
 
 export function CCTVTransfersList() {
   const { navigate, goBack } = useCCTVNavStore();
+  const businessId = useCctvBusinessId();
 
   const [transfers, setTransfers] = useState<CCTVTransfer[]>([]);
   const [loading, setLoading] = useState(true);
@@ -47,7 +47,7 @@ export function CCTVTransfersList() {
   const fetchTransfers = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/businesses/${BUSINESS_ID}/cctv/transfers`);
+      const res = await fetch(`/api/businesses/${businessId}/cctv/transfers`);
       if (res.ok) {
         const data = await res.json();
         const all: CCTVTransfer[] = Array.isArray(data) ? data : data.transfers || [];

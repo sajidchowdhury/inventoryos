@@ -21,8 +21,7 @@ import {
   AlertDialogAction,
 } from '@/components/ui/alert-dialog';
 import type { CCTVTransfer, TransferStatus } from '@/modules/cctv-shop/types';
-
-const BUSINESS_ID = 'bus_placeholder';
+import { useCctvBusinessId } from '@/modules/cctv-shop/hooks/use-cctv-business-id';
 
 const fadeUp = {
   initial: { opacity: 0, y: 16 },
@@ -56,6 +55,7 @@ function formatDate(dateStr: string): string {
 
 export function CCTVTransferDetail() {
   const { navigate, goBack, contextId } = useCCTVNavStore();
+  const businessId = useCctvBusinessId();
 
   const [transfer, setTransfer] = useState<CCTVTransfer | null>(null);
   const [loading, setLoading] = useState(true);
@@ -67,7 +67,7 @@ export function CCTVTransferDetail() {
     if (!contextId) return;
     setLoading(true);
     try {
-      const res = await fetch(`/api/businesses/${BUSINESS_ID}/cctv/transfers/${contextId}`);
+      const res = await fetch(`/api/businesses/${businessId}/cctv/transfers/${contextId}`);
       if (res.ok) {
         const data = await res.json();
         setTransfer(data);
@@ -88,7 +88,7 @@ export function CCTVTransferDetail() {
     setActionLoading('send');
     setSendDialogOpen(false);
     try {
-      const res = await fetch(`/api/businesses/${BUSINESS_ID}/cctv/transfers/${contextId}/send`, {
+      const res = await fetch(`/api/businesses/${businessId}/cctv/transfers/${contextId}/send`, {
         method: 'POST',
       });
       if (res.ok) {
@@ -105,7 +105,7 @@ export function CCTVTransferDetail() {
     if (!contextId) return;
     setActionLoading('receive');
     try {
-      const res = await fetch(`/api/businesses/${BUSINESS_ID}/cctv/transfers/${contextId}/receive`, {
+      const res = await fetch(`/api/businesses/${businessId}/cctv/transfers/${contextId}/receive`, {
         method: 'POST',
       });
       if (res.ok) {
@@ -123,7 +123,7 @@ export function CCTVTransferDetail() {
     setActionLoading('cancel');
     setCancelDialogOpen(false);
     try {
-      const res = await fetch(`/api/businesses/${BUSINESS_ID}/cctv/transfers/${contextId}/cancel`, {
+      const res = await fetch(`/api/businesses/${businessId}/cctv/transfers/${contextId}/cancel`, {
         method: 'POST',
       });
       if (res.ok) {

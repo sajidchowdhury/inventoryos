@@ -14,9 +14,7 @@ import type {
   TaskStatus,
   TaskPriority,
 } from '@/modules/cctv-shop/types';
-
-const BUSINESS_ID = 'bus_placeholder';
-const API_BASE = `/api/businesses/${BUSINESS_ID}/cctv/installation-tasks`;
+import { useCctvBusinessId } from '@/modules/cctv-shop/hooks/use-cctv-business-id';
 
 const fadeUp = {
   initial: { opacity: 0, y: 16 },
@@ -120,6 +118,7 @@ interface TaskGroup {
 
 export function CCTVInstallationTasks() {
   const { navigate, goBack } = useCCTVNavStore();
+  const businessId = useCctvBusinessId();
   const [tasks, setTasks] = useState<CCTVInstallationTask[]>([]);
   const [summary, setSummary] = useState<TaskSummary>({ pending: 0, inProgress: 0, overdue: 0, completedToday: 0 });
   const [loading, setLoading] = useState(true);
@@ -132,8 +131,8 @@ export function CCTVInstallationTasks() {
       setLoading(true);
       try {
         const [summaryRes, tasksRes] = await Promise.all([
-          fetch(`${API_BASE}/summary`),
-          fetch(API_BASE),
+          fetch(`/api/businesses/${businessId}/cctv/installation-tasks/summary`),
+          fetch(`/api/businesses/${businessId}/cctv/installation-tasks`),
         ]);
         if (!cancelled) {
           if (summaryRes.ok) {

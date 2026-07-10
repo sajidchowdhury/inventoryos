@@ -10,8 +10,7 @@ import { useCCTVNavStore } from '@/stores/cctv-nav-store';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { CCTVTechnician, TechnicianPerformance, CCTVCommissionRecord } from '@/modules/cctv-shop/types';
-
-const BUSINESS_ID = 'bus_placeholder';
+import { useCctvBusinessId } from '@/modules/cctv-shop/hooks/use-cctv-business-id';
 
 const formatBDT = (n: number | null | undefined) => {
   if (n == null) return '—';
@@ -24,6 +23,7 @@ const JOB_TYPE_LABELS: Record<string, string> = {
 
 export function CCTVTechnicianDetail() {
   const { goBack, contextId } = useCCTVNavStore();
+  const businessId = useCctvBusinessId();
 
   const [tech, setTech] = useState<CCTVTechnician | null>(null);
   const [perf, setPerf] = useState<TechnicianPerformance | null>(null);
@@ -37,8 +37,8 @@ export function CCTVTechnicianDetail() {
       setLoading(true);
       try {
         const [techRes, perfRes] = await Promise.all([
-          fetch(`/api/businesses/${BUSINESS_ID}/cctv/technicians/${contextId}`),
-          fetch(`/api/businesses/${BUSINESS_ID}/cctv/technicians/${contextId}/performance`),
+          fetch(`/api/businesses/${businessId}/cctv/technicians/${contextId}`),
+          fetch(`/api/businesses/${businessId}/cctv/technicians/${contextId}/performance`),
         ]);
         if (techRes.ok && !cancelled) setTech(await techRes.json());
         if (perfRes.ok && !cancelled) setPerf(await perfRes.json());

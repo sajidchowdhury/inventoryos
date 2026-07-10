@@ -26,8 +26,7 @@ import type {
   KitAvailabilityResult,
   KitComponentAvailability,
 } from '@/modules/cctv-shop/types';
-
-const BUSINESS_ID = 'bus_placeholder';
+import { useCctvBusinessId } from '@/modules/cctv-shop/hooks/use-cctv-business-id';
 
 const fadeUp = {
   initial: { opacity: 0, y: 16 },
@@ -40,6 +39,7 @@ function formatBDT(amount: number): string {
 
 export function CCTVKitDetail() {
   const { navigate, goBack, contextId } = useCCTVNavStore();
+  const businessId = useCctvBusinessId();
 
   const [kit, setKit] = useState<CCTVKitDefinition | null>(null);
   const [availability, setAvailability] = useState<KitAvailabilityResult | null>(null);
@@ -52,7 +52,7 @@ export function CCTVKitDetail() {
     setLoading(true);
     try {
       const res = await fetch(
-        `/api/businesses/${BUSINESS_ID}/cctv/kits/${contextId}`
+        `/api/businesses/${businessId}/cctv/kits/${contextId}`
       );
       if (res.ok) {
         const data = await res.json();
@@ -70,7 +70,7 @@ export function CCTVKitDetail() {
     setAvailLoading(true);
     try {
       const res = await fetch(
-        `/api/businesses/${BUSINESS_ID}/cctv/kits/${contextId}/availability`
+        `/api/businesses/${businessId}/cctv/kits/${contextId}/availability`
       );
       if (res.ok) {
         const data: KitAvailabilityResult = await res.json();
@@ -93,7 +93,7 @@ export function CCTVKitDetail() {
     setDeleting(true);
     try {
       const res = await fetch(
-        `/api/businesses/${BUSINESS_ID}/cctv/kits/${contextId}`,
+        `/api/businesses/${businessId}/cctv/kits/${contextId}`,
         { method: 'DELETE' }
       );
       if (res.ok) {

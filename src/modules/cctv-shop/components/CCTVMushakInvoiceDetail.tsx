@@ -6,8 +6,7 @@ import { ArrowLeft, Printer } from 'lucide-react';
 import { useCCTVNavStore } from '@/stores/cctv-nav-store';
 import type { CCTVMushakInvoice } from '../types';
 import { printThermalReceipt } from './ThermalReceipt';
-
-const BUSINESS_ID = 'bus_placeholder';
+import { useCctvBusinessId } from '@/modules/cctv-shop/hooks/use-cctv-business-id';
 
 const fadeUp = {
   initial: { opacity: 0, y: 16 },
@@ -16,6 +15,7 @@ const fadeUp = {
 
 export function CCTVMushakInvoiceDetail() {
   const { contextId, goBack } = useCCTVNavStore();
+  const businessId = useCctvBusinessId();
   const [invoice, setInvoice] = useState<CCTVMushakInvoice | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -23,7 +23,7 @@ export function CCTVMushakInvoiceDetail() {
     if (!contextId) return;
     const load = async () => {
       try {
-        const res = await fetch(`/api/businesses/${BUSINESS_ID}/cctv/mushak-invoices/${contextId}`);
+        const res = await fetch(`/api/businesses/${businessId}/cctv/mushak-invoices/${contextId}`);
         const json = await res.json();
         if (json.success) setInvoice(json.data);
       } catch (err) {

@@ -21,8 +21,7 @@ import {
   AlertDialogAction,
 } from '@/components/ui/alert-dialog';
 import type { CCTVBranch } from '@/modules/cctv-shop/types';
-
-const BUSINESS_ID = 'bus_placeholder';
+import { useCctvBusinessId } from '@/modules/cctv-shop/hooks/use-cctv-business-id';
 
 const fadeUp = {
   initial: { opacity: 0, y: 16 },
@@ -42,6 +41,7 @@ function generateCode(name: string): string {
 
 export function CCTVBranchesList() {
   const { navigate, goBack } = useCCTVNavStore();
+  const businessId = useCctvBusinessId();
 
   const [branches, setBranches] = useState<CCTVBranch[]>([]);
   const [loading, setLoading] = useState(true);
@@ -57,7 +57,7 @@ export function CCTVBranchesList() {
   const fetchBranches = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/businesses/${BUSINESS_ID}/cctv/branches`);
+      const res = await fetch(`/api/businesses/${businessId}/cctv/branches`);
       if (res.ok) {
         const data = await res.json();
         setBranches(Array.isArray(data) ? data : data.branches || []);
@@ -84,7 +84,7 @@ export function CCTVBranchesList() {
     if (!name.trim() || !code.trim()) return;
     setCreating(true);
     try {
-      const res = await fetch(`/api/businesses/${BUSINESS_ID}/cctv/branches`, {
+      const res = await fetch(`/api/businesses/${businessId}/cctv/branches`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

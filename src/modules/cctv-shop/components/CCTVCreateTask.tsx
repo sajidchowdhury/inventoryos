@@ -11,9 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import type { TaskPriority, CCTVInstallationTask, CCTVProject } from '@/modules/cctv-shop/types';
-
-const BUSINESS_ID = 'bus_placeholder';
-const API_BASE = `/api/businesses/${BUSINESS_ID}/cctv/installation-tasks`;
+import { useCctvBusinessId } from '@/modules/cctv-shop/hooks/use-cctv-business-id';
 
 const fadeUp = {
   initial: { opacity: 0, y: 16 },
@@ -48,6 +46,7 @@ function SectionHeader({ title }: { title: string }) {
 
 export function CCTVCreateTask() {
   const { navigate, goBack, contextId } = useCCTVNavStore();
+  const businessId = useCctvBusinessId();
   const { toast } = useToast();
   const isEditing = !!contextId;
 
@@ -77,7 +76,7 @@ export function CCTVCreateTask() {
     let cancelled = false;
     const fetchProjects = async () => {
       try {
-        const res = await fetch(`/api/businesses/${BUSINESS_ID}/cctv/projects?status=INSTALLATION&limit=100`);
+        const res = await fetch(`/api/businesses/${businessId}/cctv/projects?status=INSTALLATION&limit=100`);
         if (res.ok && !cancelled) {
           const data = await res.json();
           const list = Array.isArray(data) ? data : data.projects ?? data.data ?? [];
@@ -96,7 +95,7 @@ export function CCTVCreateTask() {
     const fetchTask = async () => {
       setLoading(true);
       try {
-        const res = await fetch(`${API_BASE}/${contextId}`);
+        const res = await fetch(`/api/businesses/${businessId}/cctv/installation-tasks/${contextId}`);
         if (res.ok && !cancelled) {
           const task: CCTVInstallationTask = await res.json();
           setProjectId(task.projectId);
@@ -173,7 +172,7 @@ export function CCTVCreateTask() {
         internalNotes: internalNotes.trim() || undefined,
       };
 
-      const url = isEditing ? `${API_BASE}/${contextId}` : API_BASE;
+      const url = isEditing ? `/api/businesses/${businessId}/cctv/installation-tasks/${contextId}` : `/api/businesses/${businessId}/cctv/installation-tasks`;
       const res = await fetch(url, {
         method: isEditing ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },

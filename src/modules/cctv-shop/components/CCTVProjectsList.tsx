@@ -9,8 +9,7 @@ import {
 import { useCCTVNavStore } from '@/stores/cctv-nav-store';
 import { cn } from '@/lib/utils';
 import type { CCTVProject, ProjectStatus } from '@/modules/cctv-shop/types';
-
-const BUSINESS_ID = 'bus_placeholder';
+import { useCctvBusinessId } from '@/modules/cctv-shop/hooks/use-cctv-business-id';
 
 const fadeUp = {
   initial: { opacity: 0, y: 16 },
@@ -40,6 +39,7 @@ const statusTabs: { key: ProjectStatus | 'ALL'; label: string }[] = [
 
 export function CCTVProjectsList() {
   const { navigate, goBack } = useCCTVNavStore();
+  const businessId = useCctvBusinessId();
   const [projects, setProjects] = useState<CCTVProject[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -52,7 +52,7 @@ export function CCTVProjectsList() {
       if (activeTab !== 'ALL') params.set('status', activeTab);
       if (search.trim()) params.set('search', search.trim());
 
-      const res = await fetch(`/api/businesses/${BUSINESS_ID}/cctv/projects?${params}`);
+      const res = await fetch(`/api/businesses/${businessId}/cctv/projects?${params}`);
       if (res.ok) {
         const data = await res.json();
         setProjects(data);

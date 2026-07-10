@@ -4,8 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Download, FileText, ShoppingCart, CalendarDays } from 'lucide-react';
 import { useCCTVNavStore } from '@/stores/cctv-nav-store';
-
-const BUSINESS_ID = 'bus_placeholder';
+import { useCctvBusinessId } from '@/modules/cctv-shop/hooks/use-cctv-business-id';
 
 const fadeUp = {
   initial: { opacity: 0, y: 16 },
@@ -44,6 +43,7 @@ interface RegisterSummary {
 
 export function CCTVMushakRegisters() {
   const { goBack } = useCCTVNavStore();
+  const businessId = useCctvBusinessId();
   const [tab, setTab] = useState<RegisterTab>('sales');
   const [rows, setRows] = useState<RegisterRow[]>([]);
   const [summary, setSummary] = useState<RegisterSummary | null>(null);
@@ -61,7 +61,7 @@ export function CCTVMushakRegisters() {
       if (fromDate) params.set('from', fromDate);
       if (toDate) params.set('to', toDate);
       const endpoint = tab === 'sales' ? 'sales' : 'purchases';
-      const res = await fetch(`/api/businesses/${BUSINESS_ID}/cctv/mushak-registers/${endpoint}?${params}`);
+      const res = await fetch(`/api/businesses/${businessId}/cctv/mushak-registers/${endpoint}?${params}`);
       const json = await res.json();
       if (json.success) {
         setRows(json.data);

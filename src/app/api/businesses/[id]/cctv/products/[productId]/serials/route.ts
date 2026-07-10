@@ -78,7 +78,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           businessId,
           productId,
           serialNumber: item.serialNumber,
-          status: "in-stock" as const,
+          status: "IN_STOCK" as const,
           costPrice: item.costPrice ?? null,
           sellPrice: item.sellPrice ?? null,
           purchaseDate: new Date(),
@@ -96,7 +96,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     // Sync stock: count of in-stock serial items for this product
     const inStockCount = await db.cCTVSerialItem.count({
-      where: { productId, businessId, status: "in-stock", isActive: true },
+      where: { productId, businessId, status: "IN_STOCK", isActive: true },
     });
 
     await db.cCTVProduct.update({

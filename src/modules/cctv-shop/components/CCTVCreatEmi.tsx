@@ -9,8 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
-
-const BUSINESS_ID = 'bus_placeholder';
+import { useCctvBusinessId } from '@/modules/cctv-shop/hooks/use-cctv-business-id';
 
 const fadeUp = {
   initial: { opacity: 0, y: 16 },
@@ -45,6 +44,7 @@ function calcEmi(financed: number, rate: number, months: number, type: string) {
 
 export function CCTVCreatEmi() {
   const { goBack, navigate } = useCCTVNavStore();
+  const businessId = useCctvBusinessId();
   const { toast } = useToast();
   const [submitting, setSubmitting] = useState(false);
 
@@ -88,7 +88,7 @@ export function CCTVCreatEmi() {
 
     setSubmitting(true);
     try {
-      const res = await fetch(`/api/businesses/${BUSINESS_ID}/cctv/emi-plans`, {
+      const res = await fetch(`/api/businesses/${businessId}/cctv/emi-plans`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

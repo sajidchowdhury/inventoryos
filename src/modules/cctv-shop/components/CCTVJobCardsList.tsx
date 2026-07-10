@@ -11,8 +11,7 @@ import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { CCTVJobCard, JobCardStatus } from '@/modules/cctv-shop/types';
-
-const BUSINESS_ID = 'bus_placeholder';
+import { useCctvBusinessId } from '@/modules/cctv-shop/hooks/use-cctv-business-id';
 
 const fadeUp = {
   initial: { opacity: 0, y: 16 },
@@ -63,6 +62,7 @@ function relativeDate(dateStr: string): string {
 
 export function CCTVJobCardsList() {
   const { navigate, goBack } = useCCTVNavStore();
+  const businessId = useCctvBusinessId();
   const [jobs, setJobs] = useState<CCTVJobCard[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState('');
@@ -77,7 +77,7 @@ export function CCTVJobCardsList() {
         const params = new URLSearchParams();
         if (activeFilter) params.set('status', activeFilter);
         if (search) params.set('search', search);
-        const res = await fetch(`/api/businesses/${BUSINESS_ID}/cctv/job-cards?${params}`);
+        const res = await fetch(`/api/businesses/${businessId}/cctv/job-cards?${params}`);
         if (res.ok && !cancelled) setJobs(await res.json());
       } catch {}
       if (!cancelled) setLoading(false);

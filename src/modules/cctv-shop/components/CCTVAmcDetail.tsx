@@ -32,8 +32,7 @@ import type {
   AmcPaymentFrequency,
   AmcVisitType,
 } from '@/modules/cctv-shop/types';
-
-const BUSINESS_ID = 'bus_placeholder';
+import { useCctvBusinessId } from '@/modules/cctv-shop/hooks/use-cctv-business-id';
 
 const fadeUp = {
   initial: { opacity: 0, y: 16 },
@@ -124,6 +123,7 @@ const TABS: { key: TabKey; label: string; icon: typeof Eye }[] = [
 
 export function CCTVAmcDetail() {
   const { contextId, goBack, navigate } = useCCTVNavStore();
+  const businessId = useCctvBusinessId();
   const { toast } = useToast();
   const [contract, setContract] = useState<(CCTVAmcContract & { daysRemaining?: number }) | null>(null);
   const [visits, setVisits] = useState<CCTVAmcVisit[]>([]);
@@ -147,7 +147,7 @@ export function CCTVAmcDetail() {
     let cancelled = false;
     const load = async () => {
       try {
-        const res = await fetch(`/api/businesses/${BUSINESS_ID}/cctv/amc-contracts/${contextId}`);
+        const res = await fetch(`/api/businesses/${businessId}/cctv/amc-contracts/${contextId}`);
         if (res.ok && !cancelled) {
           const data = await res.json();
           setContract(data);
@@ -163,7 +163,7 @@ export function CCTVAmcDetail() {
   const fetchVisits = async () => {
     if (!contextId) return;
     try {
-      const res = await fetch(`/api/businesses/${BUSINESS_ID}/cctv/amc-contracts/${contextId}/visits`);
+      const res = await fetch(`/api/businesses/${businessId}/cctv/amc-contracts/${contextId}/visits`);
       if (res.ok) setVisits(await res.json());
     } catch { /* silent */ }
   };
@@ -173,7 +173,7 @@ export function CCTVAmcDetail() {
     if (!visitDate) return;
     setSubmittingVisit(true);
     try {
-      const res = await fetch(`/api/businesses/${BUSINESS_ID}/cctv/amc-contracts/${contextId}/visits`, {
+      const res = await fetch(`/api/businesses/${businessId}/cctv/amc-contracts/${contextId}/visits`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -199,7 +199,7 @@ export function CCTVAmcDetail() {
         // Refresh visits
         await fetchVisits();
         // Also refresh contract to update totalVisitsUsed
-        const contractRes = await fetch(`/api/businesses/${BUSINESS_ID}/cctv/amc-contracts/${contextId}`);
+        const contractRes = await fetch(`/api/businesses/${businessId}/cctv/amc-contracts/${contextId}`);
         if (contractRes.ok) setContract(await contractRes.json());
       } else {
         const err = await res.json();

@@ -207,7 +207,7 @@ export function CCTVProductForm() {
     if (!form.serialTracked) {
       payload.stock = parseInt(form.stock) || 0;
     }
-    if (form.minStockAlert) payload.minStockAlert = parseInt(form.minStockAlert);
+    if (form.minStockAlert) payload.minStock = parseInt(form.minStockAlert);
 
     try {
       const url = isEdit

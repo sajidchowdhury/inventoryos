@@ -35,8 +35,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
-
-const BUSINESS_ID = 'bus_placeholder';
+import { useCctvBusinessId } from '@/modules/cctv-shop/hooks/use-cctv-business-id';
 
 const formatBDT = (n: number | null | undefined) => {
   if (n == null) return '৳0';
@@ -154,6 +153,7 @@ function computeWarrantyStatus(item: SerialItem): {
 export function CCTVWarrantyDetail() {
   const { contextId, navigate, goBack } = useCCTVNavStore();
   const { toast } = useToast();
+  const businessId = useCctvBusinessId();
 
   const [item, setItem] = useState<SerialItem | null>(null);
   const [claims, setClaims] = useState<WarrantyClaim[]>([]);
@@ -184,8 +184,8 @@ export function CCTVWarrantyDetail() {
     setClaimsLoading(true);
     try {
       const [itemRes, claimsRes] = await Promise.all([
-        fetch(`/api/businesses/${BUSINESS_ID}/cctv/serial-items/${contextId}`),
-        fetch(`/api/businesses/${BUSINESS_ID}/cctv/warranty-claims?serialItemId=${contextId}`),
+        fetch(`/api/businesses/${businessId}/cctv/serial-items/${contextId}`),
+        fetch(`/api/businesses/${businessId}/cctv/warranty-claims?serialItemId=${contextId}`),
       ]);
       if (itemRes.ok) {
         const data = await itemRes.json();
@@ -204,7 +204,7 @@ export function CCTVWarrantyDetail() {
     }
     setLoading(false);
     setClaimsLoading(false);
-  }, [contextId]);
+  }, [contextId, businessId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -221,7 +221,7 @@ export function CCTVWarrantyDetail() {
     setSubmittingClaim(true);
     try {
       const res = await fetch(
-        `/api/businesses/${BUSINESS_ID}/cctv/warranty-claims`,
+        `/api/businesses/${businessId}/cctv/warranty-claims`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -257,7 +257,7 @@ export function CCTVWarrantyDetail() {
       const body: Record<string, string> = { status };
       if (notes) body.resolutionNotes = notes;
       const res = await fetch(
-        `/api/businesses/${BUSINESS_ID}/cctv/warranty-claims/${claimId}`,
+        `/api/businesses/${businessId}/cctv/warranty-claims/${claimId}`,
         {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },

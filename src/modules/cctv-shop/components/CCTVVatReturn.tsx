@@ -29,8 +29,7 @@ import type {
   CCTVNbrConfig,
 } from '../types';
 import { BANGLA_MONTHS, numberToWords } from '../types';
-
-const BUSINESS_ID = 'bus_placeholder';
+import { useCctvBusinessId } from '@/modules/cctv-shop/hooks/use-cctv-business-id';
 
 const fadeUp = {
   initial: { opacity: 0, y: 16 },
@@ -45,6 +44,7 @@ const STATUS_CONFIG: Record<VatReturnStatus, { label: string; color: string; bg:
 
 export function CCTVVatReturn() {
   const { goBack } = useCCTVNavStore();
+  const businessId = useCctvBusinessId();
 
   // Date navigation
   const now = new Date();
@@ -87,7 +87,7 @@ export function CCTVVatReturn() {
   // Load NBR config
   const loadConfig = useCallback(async () => {
     try {
-      const res = await fetch(`/api/businesses/${BUSINESS_ID}/cctv/nbr-config`);
+      const res = await fetch(`/api/businesses/${businessId}/cctv/nbr-config`);
       const json = await res.json();
       if (json.success) setNbrConfig(json.data);
     } catch { /* ignore */ }
@@ -97,7 +97,7 @@ export function CCTVVatReturn() {
   const loadReturn = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/businesses/${BUSINESS_ID}/cctv/vat-returns?year=${taxYear}&month=${taxMonth}`);
+      const res = await fetch(`/api/businesses/${businessId}/cctv/vat-returns?year=${taxYear}&month=${taxMonth}`);
       const json = await res.json();
       if (json.success) {
         setCalculated(json.data.calculated);
@@ -123,7 +123,7 @@ export function CCTVVatReturn() {
   // Load returns list
   const loadList = useCallback(async () => {
     try {
-      const res = await fetch(`/api/businesses/${BUSINESS_ID}/cctv/vat-returns`);
+      const res = await fetch(`/api/businesses/${businessId}/cctv/vat-returns`);
       const json = await res.json();
       if (json.success) setReturnsList(json.data || []);
     } catch { /* ignore */ }
@@ -147,7 +147,7 @@ export function CCTVVatReturn() {
     if (!calculated) return;
     setSaving(true);
     try {
-      const res = await fetch(`/api/businesses/${BUSINESS_ID}/cctv/vat-returns`, {
+      const res = await fetch(`/api/businesses/${businessId}/cctv/vat-returns`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -179,7 +179,7 @@ export function CCTVVatReturn() {
     if (!savedReturn || savedReturn.status !== 'DRAFT') return;
     if (!confirm('Delete this draft VAT return?')) return;
     try {
-      await fetch(`/api/businesses/${BUSINESS_ID}/cctv/vat-returns/${savedReturn.id}`, { method: 'DELETE' });
+      await fetch(`/api/businesses/${businessId}/cctv/vat-returns/${savedReturn.id}`, { method: 'DELETE' });
       setSavedReturn(null);
       setAdjustmentAmount('0');
       setAdjustmentNote('');

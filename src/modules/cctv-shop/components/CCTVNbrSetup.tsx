@@ -24,8 +24,7 @@ import {
 } from 'lucide-react';
 import { useCCTVNavStore } from '@/stores/cctv-nav-store';
 import type { CCTVNbrConfig, CCTVHsCodeMapping, TaxRegistrationStatus } from '../types';
-
-const BUSINESS_ID = 'bus_placeholder';
+import { useCctvBusinessId } from '@/modules/cctv-shop/hooks/use-cctv-business-id';
 
 const fadeUp = {
   initial: { opacity: 0, y: 16 },
@@ -40,6 +39,7 @@ const REGISTRATION_OPTIONS: { value: TaxRegistrationStatus; label: string; desc:
 
 export function CCTVNbrSetup() {
   const { goBack } = useCCTVNavStore();
+  const businessId = useCctvBusinessId();
   const [config, setConfig] = useState<CCTVNbrConfig | null>(null);
   const [hsCodes, setHsCodes] = useState<CCTVHsCodeMapping[]>([]);
   const [loading, setLoading] = useState(true);
@@ -74,7 +74,7 @@ export function CCTVNbrSetup() {
 
   const loadConfig = useCallback(async () => {
     try {
-      const res = await fetch(`/api/businesses/${BUSINESS_ID}/cctv/nbr-config`);
+      const res = await fetch(`/api/businesses/${businessId}/cctv/nbr-config`);
       const json = await res.json();
       if (json.success) {
         const c: CCTVNbrConfig = json.data;
@@ -102,7 +102,7 @@ export function CCTVNbrSetup() {
   const handleSaveConfig = async () => {
     setSaving(true);
     try {
-      const res = await fetch(`/api/businesses/${BUSINESS_ID}/cctv/nbr-config`, {
+      const res = await fetch(`/api/businesses/${businessId}/cctv/nbr-config`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -137,7 +137,7 @@ export function CCTVNbrSetup() {
       return;
     }
     try {
-      const res = await fetch(`/api/businesses/${BUSINESS_ID}/cctv/nbr-config/hs-codes`, {
+      const res = await fetch(`/api/businesses/${businessId}/cctv/nbr-config/hs-codes`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -164,7 +164,7 @@ export function CCTVNbrSetup() {
   const handleUpdateHs = async () => {
     if (!editingHs) return;
     try {
-      const res = await fetch(`/api/businesses/${BUSINESS_ID}/cctv/nbr-config/hs-codes/${editingHs.id}`, {
+      const res = await fetch(`/api/businesses/${businessId}/cctv/nbr-config/hs-codes/${editingHs.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -190,7 +190,7 @@ export function CCTVNbrSetup() {
 
   const handleDeleteHs = async (id: string) => {
     try {
-      const res = await fetch(`/api/businesses/${BUSINESS_ID}/cctv/nbr-config/hs-codes/${id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/businesses/${businessId}/cctv/nbr-config/hs-codes/${id}`, { method: 'DELETE' });
       const json = await res.json();
       if (json.success) {
         setHsCodes((prev) => prev.filter((h) => h.id !== id));
@@ -203,7 +203,7 @@ export function CCTVNbrSetup() {
 
   const handleSeedDefaults = async () => {
     try {
-      const res = await fetch(`/api/businesses/${BUSINESS_ID}/cctv/nbr-config/seed-defaults`, { method: 'POST' });
+      const res = await fetch(`/api/businesses/${businessId}/cctv/nbr-config/seed-defaults`, { method: 'POST' });
       const json = await res.json();
       if (json.success) {
         loadConfig();

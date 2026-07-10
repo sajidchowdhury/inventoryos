@@ -14,8 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { PaymentMethod } from '@/modules/cctv-shop/types';
-
-const BUSINESS_ID = 'bus_placeholder';
+import { useCctvBusinessId } from '@/modules/cctv-shop/hooks/use-cctv-business-id';
 
 const fadeUp = {
   initial: { opacity: 0, y: 16 },
@@ -94,6 +93,7 @@ const METHOD_BADGE_COLORS: Record<PaymentMethod, string> = {
 export function CCTVSellView() {
   const { goBack } = useCCTVNavStore();
   const { toast } = useToast();
+  const businessId = useCctvBusinessId();
 
   // ── Step control ──
   const [step, setStep] = useState<'cart' | 'payment'>('cart');
@@ -142,7 +142,7 @@ export function CCTVSellView() {
       const controller = new AbortController();
       abortRef.current = controller;
       const res = await fetch(
-        `/api/businesses/${BUSINESS_ID}/cctv/products?limit=100&search=${encodeURIComponent(query)}`,
+        `/api/businesses/${businessId}/cctv/products?limit=100&search=${encodeURIComponent(query)}`,
         { signal: controller.signal }
       );
       if (!res.ok) throw new Error('Failed to fetch');
@@ -285,7 +285,7 @@ export function CCTVSellView() {
       if (customerName.trim()) body.customerName = customerName.trim();
       if (customerPhone.trim()) body.customerPhone = customerPhone.trim();
 
-      const res = await fetch(`/api/businesses/${BUSINESS_ID}/cctv/sales`, {
+      const res = await fetch(`/api/businesses/${businessId}/cctv/sales`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),

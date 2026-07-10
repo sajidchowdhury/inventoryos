@@ -12,8 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import type { JobType, JobPriority } from '@/modules/cctv-shop/types';
-
-const BUSINESS_ID = 'bus_placeholder';
+import { useCctvBusinessId } from '@/modules/cctv-shop/hooks/use-cctv-business-id';
 
 const fadeUp = {
   initial: { opacity: 0, y: 16 },
@@ -54,6 +53,7 @@ function SectionHeader({ title, icon }: { title: string; icon?: string }) {
 
 export function CCTVCreateJobCard() {
   const { navigate, goBack, contextId } = useCCTVNavStore();
+  const businessId = useCctvBusinessId();
   const { toast } = useToast();
 
   // Form state
@@ -86,7 +86,7 @@ export function CCTVCreateJobCard() {
     if (!contextId) return;
     (async () => {
       try {
-        const res = await fetch(`/api/businesses/${BUSINESS_ID}/cctv/serial-items/${contextId}`);
+        const res = await fetch(`/api/businesses/${businessId}/cctv/serial-items/${contextId}`);
         if (res.ok) {
           const item = await res.json();
           setSerialItemId(item.id);
@@ -108,7 +108,7 @@ export function CCTVCreateJobCard() {
       setSerialSearching(true);
       try {
         const res = await fetch(
-          `/api/businesses/${BUSINESS_ID}/cctv/serial-items?search=${encodeURIComponent(serialSearch)}&status=IN_STOCK&limit=10`,
+          `/api/businesses/${businessId}/cctv/serial-items?search=${encodeURIComponent(serialSearch)}&status=IN_STOCK&limit=10`,
           { signal: abortRef.current.signal },
         );
         if (res.ok) {
@@ -174,7 +174,7 @@ export function CCTVCreateJobCard() {
       if (assignedToName.trim()) body.assignedToName = assignedToName.trim();
       if (internalNotes.trim()) body.internalNotes = internalNotes.trim();
 
-      const res = await fetch(`/api/businesses/${BUSINESS_ID}/cctv/job-cards`, {
+      const res = await fetch(`/api/businesses/${businessId}/cctv/job-cards`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),

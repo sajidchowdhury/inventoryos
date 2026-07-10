@@ -11,8 +11,7 @@ import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { CCTVEmiPlan, EmiStatus } from '@/modules/cctv-shop/types';
-
-const BUSINESS_ID = 'bus_placeholder';
+import { useCctvBusinessId } from '@/modules/cctv-shop/hooks/use-cctv-business-id';
 
 const fadeUp = {
   initial: { opacity: 0, y: 16 },
@@ -42,6 +41,7 @@ function relativeDate(dateStr: string): string {
 
 export function CCTVEMIList() {
   const { navigate, goBack } = useCCTVNavStore();
+  const businessId = useCctvBusinessId();
   const [allPlans, setAllPlans] = useState<CCTVEmiPlan[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState('');
@@ -56,7 +56,7 @@ export function CCTVEMIList() {
         const params = new URLSearchParams();
         if (activeFilter && !['OVERDUE'].includes(activeFilter)) params.set('status', activeFilter);
         if (search) params.set('search', search);
-        const res = await fetch(`/api/businesses/${BUSINESS_ID}/cctv/emi-plans?${params}`);
+        const res = await fetch(`/api/businesses/${businessId}/cctv/emi-plans?${params}`);
         if (res.ok && !cancelled) setAllPlans(await res.json());
       } catch {}
       if (!cancelled) setLoading(false);

@@ -11,8 +11,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import type { CCTVKitDefinition, KitAvailabilityResult } from '@/modules/cctv-shop/types';
-
-const BUSINESS_ID = 'bus_placeholder';
+import { useCctvBusinessId } from '@/modules/cctv-shop/hooks/use-cctv-business-id';
 
 const fadeUp = {
   initial: { opacity: 0, y: 16 },
@@ -33,6 +32,7 @@ interface KitWithAvailability {
 
 export function CCTVKitsList() {
   const { navigate, goBack } = useCCTVNavStore();
+  const businessId = useCctvBusinessId();
 
   const [kits, setKits] = useState<KitWithAvailability[]>([]);
   const [loading, setLoading] = useState(true);
@@ -40,7 +40,7 @@ export function CCTVKitsList() {
   const fetchKits = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/businesses/${BUSINESS_ID}/cctv/kits`);
+      const res = await fetch(`/api/businesses/${businessId}/cctv/kits`);
       if (!res.ok) throw new Error('Failed to fetch kits');
       const data = await res.json();
       const kitList: CCTVKitDefinition[] = Array.isArray(data) ? data : data.kits || [];
@@ -57,7 +57,7 @@ export function CCTVKitsList() {
       kitList.forEach(async (kit) => {
         try {
           const availRes = await fetch(
-            `/api/businesses/${BUSINESS_ID}/cctv/kits/${kit.id}/availability`
+            `/api/businesses/${businessId}/cctv/kits/${kit.id}/availability`
           );
           if (availRes.ok) {
             const availData: KitAvailabilityResult = await availRes.json();

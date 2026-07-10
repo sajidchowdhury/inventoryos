@@ -16,10 +16,9 @@ import { useCCTVNavStore } from '@/stores/cctv-nav-store';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
+import { useCctvBusinessId } from '@/modules/cctv-shop/hooks/use-cctv-business-id';
 
 // ── Constants ──
-
-const BUSINESS_ID = 'bus_placeholder';
 
 const fadeUp = {
   initial: { opacity: 0, y: 16 },
@@ -74,6 +73,7 @@ function formatBDT(n: number): string {
 
 export function CCTVCustomersList() {
   const { navigate, goBack } = useCCTVNavStore();
+  const businessId = useCctvBusinessId();
 
   const [customers, setCustomers] = useState<CustomerRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -109,7 +109,7 @@ export function CCTVCustomersList() {
 
       try {
         const res = await fetch(
-          `/api/businesses/${BUSINESS_ID}/cctv/customers?${params.toString()}`,
+          `/api/businesses/${businessId}/cctv/customers?${params.toString()}`,
           { signal: controller.signal },
         );
         if (!res.ok) throw new Error(`HTTP ${res.status}`);

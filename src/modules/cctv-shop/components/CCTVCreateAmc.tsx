@@ -14,8 +14,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import type { AmcCoverageType, AmcPaymentFrequency } from '@/modules/cctv-shop/types';
-
-const BUSINESS_ID = 'bus_placeholder';
+import { useCctvBusinessId } from '@/modules/cctv-shop/hooks/use-cctv-business-id';
 
 const fadeUp = {
   initial: { opacity: 0, y: 16 },
@@ -45,6 +44,7 @@ function SectionHeader({ title, icon }: { title: string; icon?: string }) {
 
 export function CCTVCreateAmc() {
   const { navigate, goBack, contextId } = useCCTVNavStore();
+  const businessId = useCctvBusinessId();
   const { toast } = useToast();
   const isEditMode = !!contextId;
 
@@ -76,7 +76,7 @@ export function CCTVCreateAmc() {
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch(`/api/businesses/${BUSINESS_ID}/cctv/amc-contracts/${contextId}`);
+        const res = await fetch(`/api/businesses/${businessId}/cctv/amc-contracts/${contextId}`);
         if (res.ok && !cancelled) {
           const c = await res.json();
           setClientName(c.clientName || '');
@@ -142,8 +142,8 @@ export function CCTVCreateAmc() {
       };
 
       const url = contextId
-        ? `/api/businesses/${BUSINESS_ID}/cctv/amc-contracts/${contextId}`
-        : `/api/businesses/${BUSINESS_ID}/cctv/amc-contracts`;
+        ? `/api/businesses/${businessId}/cctv/amc-contracts/${contextId}`
+        : `/api/businesses/${businessId}/cctv/amc-contracts`;
       const method = contextId ? 'PUT' : 'POST';
 
       const res = await fetch(url, {
