@@ -8,6 +8,7 @@ import {
 import { useCCTVNavStore } from '@/stores/cctv-nav-store';
 import { useAuthStore } from '@/stores/auth-store';
 import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -84,6 +85,7 @@ export function CCTVProductForm() {
   const [submitting, setSubmitting] = useState(false);
   const [loadingData, setLoadingData] = useState(isEdit);
   const [errors, setErrors] = useState<Partial<Record<keyof ProductFormData, string>>>({});
+  const { toast } = useToast();
 
   // Fetch categories
   useEffect(() => {
@@ -94,7 +96,9 @@ export function CCTVProductForm() {
         const cats: CategoryItem[] = Array.isArray(data) ? data : data.categories || [];
         setCategories(cats);
       })
-      .catch(() => {});
+      .catch(() => {
+        toast({ title: 'Failed to load categories', variant: 'destructive' });
+      });
   }, [businessId]);
 
   // If edit mode, fetch product data
@@ -124,7 +128,10 @@ export function CCTVProductForm() {
           warrantyMonths: String(p.warrantyMonths ?? ''),
         });
       })
-      .catch(() => {})
+      .catch(() => {
+        toast({ title: 'Failed to load product', variant: 'destructive' });
+        goBack();
+      })
       .finally(() => setLoadingData(false));
   }, [isEdit, businessId, contextId]);
 
@@ -138,7 +145,9 @@ export function CCTVProductForm() {
         const brands = Array.from(new Set(prods.map((p: { brand: string }) => p.brand).filter(Boolean)));
         setExistingBrands(brands.sort());
       })
-      .catch(() => {});
+      .catch(() => {
+        // Non-critical — brand suggestions are optional
+      });
   }, [businessId]);
 
   const updateField = (field: keyof ProductFormData, value: string | boolean) => {
@@ -179,7 +188,7 @@ export function CCTVProductForm() {
       setNewCategoryName('');
       setShowNewCategory(false);
     } catch {
-      // ignore
+      toast({ title: 'Failed to create category', variant: 'destructive' });
     }
   };
 
@@ -221,10 +230,20 @@ export function CCTVProductForm() {
       });
 
       if (res.ok) {
+        toast({
+          title: isEdit ? 'Product updated' : 'Product created',
+          variant: 'default',
+        });
         goBack();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        toast({
+          title: data.error || `Failed to ${isEdit ? 'update' : 'create'} product`,
+          variant: 'destructive',
+        });
       }
     } catch {
-      // ignore
+      toast({ title: 'Network error. Please try again.', variant: 'destructive' });
     } finally {
       setSubmitting(false);
     }
