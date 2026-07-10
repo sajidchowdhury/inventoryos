@@ -27,6 +27,7 @@ import {
   FileBarChart,
   Landmark,
   BookOpen,
+  TrendingDown,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useCCTVNavStore } from '@/stores/cctv-nav-store';
@@ -68,6 +69,7 @@ export function CCTVMoreHub() {
 
   const salesCustomers: MenuItem[] = [
     { label: 'Due Book', icon: <BookOpen className="w-5 h-5" />, view: 'due-book', color: 'bg-red-50 text-red-600' },
+    { label: 'Expenses', icon: <TrendingDown className="w-5 h-5" />, view: 'expenses', color: 'bg-rose-50 text-rose-600' },
     { label: 'Customers', icon: <Users className="w-5 h-5" />, view: 'customers', color: 'bg-emerald-50 text-emerald-600', badge: '186' },
     { label: 'Sales History', icon: <FileBarChart className="w-5 h-5" />, view: 'sales-history', color: 'bg-amber-50 text-amber-600' },
     { label: 'Mushak Report', icon: <FileText className="w-5 h-5" />, view: 'mushak-report', color: 'bg-red-50 text-red-600' },

@@ -180,6 +180,7 @@ model Business {
   cctvEmiInstallments     CCTVEmiInstallment[]
   cctvReturns             CCTVReturn[]
   cctvReturnItems         CCTVReturnItem[]
+  cctvExpenses            CCTVExpense[]
 
   // CCTV Module (Phase 3C: Customer Loyalty and CRM)
   cctvLoyaltyConfigs      CCTVLoyaltyConfig[]
@@ -3253,4 +3254,28 @@ model CCTVReturnItem {
   @@index([saleItemId])
   @@index([businessId])
   @@map("cctv_return_items")
+}
+
+// ── CCTV Expenses (2D: Expense / Other Costing Tracker) ──
+// Tracks operating expenses (rent, salary, utilities, transport, misc).
+// Used for P&L reporting and cost analysis.
+model CCTVExpense {
+  id            String   @id @default(cuid())
+  businessId    String
+  date          DateTime                    // Expense date (can differ from createdAt)
+  category      String                      // "RENT" | "SALARY" | "TRANSPORT" | "UTILITY" | "MISC"
+  amount        Float                       // Expense amount in BDT
+  description   String?                     // Free-text description
+  paymentMethod String?                     // "CASH" | "CARD" | "BKASH" | "NAGAD" | "ROCKET" | "BANK_TRANSFER"
+  reference     String?                     // Receipt no / txn reference
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  business      Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@index([businessId, date])
+  @@index([businessId, category])
+  @@map("cctv_expenses")
 }
