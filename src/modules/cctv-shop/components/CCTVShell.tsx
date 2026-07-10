@@ -58,6 +58,7 @@ import { CCTVVatReturn } from './CCTVVatReturn';
 import { CCTVCloudDashboard } from './CCTVCloudDashboard';
 import { CCTVDueBook } from './CCTVDueBook';
 import { CCTVExpenseView } from './CCTVExpenseView';
+import { CCTVLedgerView } from './CCTVLedgerView';
 import { CCTVSupplierView } from './CCTVSupplierView';
 import { CCTVSupplierDetail } from './CCTVSupplierDetail';
 import { CCTVPurchaseOrderView } from './CCTVPurchaseOrderView';
@@ -147,6 +148,7 @@ const viewMeta: Record<string, { title: string; icon: string }> = {
   'cloud-dashboard': { title: 'Cloud Dashboard', icon: '📊' },
   'due-book': { title: 'Due Book', icon: '📒' },
   'expenses': { title: 'Expenses', icon: '💸' },
+  'ledger': { title: 'Financial Ledger', icon: '📒' },
 };
 
 export function CCTVShell() {
@@ -292,6 +294,9 @@ export function CCTVShell() {
       // Expenses (2D)
       case 'expenses':
         return <CCTVExpenseView />;
+      // Financial Ledger (3A)
+      case 'ledger':
+        return <CCTVLedgerView />;
       default: {
         const meta = viewMeta[activeView];
         return <PlaceholderView title={meta?.title || activeView} icon={meta?.icon} />;

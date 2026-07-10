@@ -28,6 +28,7 @@ import {
   Landmark,
   BookOpen,
   TrendingDown,
+  BookCheck,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useCCTVNavStore } from '@/stores/cctv-nav-store';
@@ -76,6 +77,7 @@ export function CCTVMoreHub() {
   ];
 
   const tools: MenuItem[] = [
+    { label: 'Financial Ledger', icon: <BookCheck className="w-5 h-5" />, view: 'ledger', color: 'bg-indigo-50 text-indigo-600' },
     { label: 'NBR & Tax Setup', icon: <Landmark className="w-5 h-5" />, view: 'nbr-setup', color: 'bg-amber-50 text-amber-600' },
     { label: 'Mushak 6.3 Invoices', icon: <FileText className="w-5 h-5" />, view: 'mushak-invoices', color: 'bg-red-50 text-red-600' },
     { label: 'Mushak Registers (6.1/6.2)', icon: <ClipboardList className="w-5 h-5" />, view: 'mushak-registers', color: 'bg-orange-50 text-orange-600' },
