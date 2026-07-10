@@ -58,6 +58,8 @@ import { CCTVVatReturn } from './CCTVVatReturn';
 import { CCTVCloudDashboard } from './CCTVCloudDashboard';
 import { CCTVSupplierView } from './CCTVSupplierView';
 import { CCTVSupplierDetail } from './CCTVSupplierDetail';
+import { CCTVPurchaseOrderView } from './CCTVPurchaseOrderView';
+import { CCTVCreatePurchase } from './CCTVCreatePurchase';
 
 function PlaceholderView({ title, icon }: { title: string; icon?: string }) {
   const { goBack } = useCCTVNavStore();
@@ -107,6 +109,8 @@ const viewMeta: Record<string, { title: string; icon: string }> = {
   'purchase-orders': { title: 'Purchase Orders', icon: '🛒' },
   'suppliers': { title: 'Suppliers', icon: '🏭' },
   'supplier-detail': { title: 'Supplier Details', icon: '🏭' },
+  'create-purchase': { title: 'New Purchase', icon: '➕' },
+  'purchase-detail': { title: 'Purchase Detail', icon: '📋' },
   'branches': { title: 'Branches', icon: '🏪' },
   'branch-detail': { title: 'Branch Details', icon: '📍' },
   'transfers': { title: 'Transfers', icon: '🚚' },
@@ -216,6 +220,10 @@ export function CCTVShell() {
         return <CCTVCreateAmc />;
       case 'customers':
         return <CCTVCustomersList />;
+      case 'purchase-orders':
+        return <CCTVPurchaseOrderView />;
+      case 'create-purchase':
+        return <CCTVCreatePurchase />;
       case 'suppliers':
         return <CCTVSupplierView />;
       case 'supplier-detail':

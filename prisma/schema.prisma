@@ -203,6 +203,10 @@ model Business {
   // CCTV Module (Phase 5D: Monthly VAT Return)
   cctvVatReturns          CCTVVatReturn[]
 
+  // CCTV Module (Phase 1B: Purchase Orders)
+  cctvPurchases           CCTVPurchase[]
+  cctvPurchaseItems       CCTVPurchaseItem[]
+
   @@index([userId])
   @@index([businessTypeId])
   @@index([subscriptionStage])  // P1: fast filtering by lifecycle stage
@@ -729,6 +733,7 @@ model Supplier {
 
   business  Business   @relation(fields: [businessId], references: [id], onDelete: Cascade)
   purchases Purchase[]
+  cctvPurchases CCTVPurchase[]
   batches   Batch[]
 
   @@index([businessId])
@@ -1790,9 +1795,10 @@ model CCTVProduct {
 
   business  Business            @relation(fields: [businessId], references: [id], onDelete: Cascade)
   category  CCTVCategory?       @relation(fields: [categoryId], references: [id])
-  serialItems CCTVSerialItem[]
-  kitComponents CCTVKitComponent[]
-  saleItems    CCTVSaleItem[]
+  serialItems     CCTVSerialItem[]
+  kitComponents   CCTVKitComponent[]
+  saleItems       CCTVSaleItem[]
+  purchaseItems   CCTVPurchaseItem[]
 
   @@index([businessId])
   @@index([categoryId])
@@ -3111,4 +3117,66 @@ model CCTVVatReturn {
   @@index([businessId])
   @@index([taxYear, taxMonth])
   @@map("cctv_vat_returns")
+}
+
+// ── CCTV Purchases (1B: Purchase Order Flow) ──
+// Records incoming stock from suppliers. Unlike pharmacy batch-based purchases,
+// CCTV purchases can create serial items (IN_STOCK) for serial-tracked products
+// or increment stock count for non-serial products.
+model CCTVPurchase {
+  id              String   @id @default(cuid())
+  businessId      String
+  supplierId      String?
+
+  purchaseNo      String   // human-readable: CPO-2025-0001
+  status          String   @default("received") // "draft", "ordered", "received", "cancelled"
+  // Pricing
+  subtotal        Float    @default(0)
+  discountAmount  Float    @default(0)
+  totalAmount     Float    @default(0)
+  paidAmount      Float    @default(0)
+  paymentStatus   String   @default("unpaid") // "paid", "partial", "unpaid"
+  // Metadata
+  invoiceNo       String?  // supplier's invoice number
+  invoiceDate     DateTime?
+  receivedDate    DateTime?
+  notes           String?
+  // Audit
+  createdBy       String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  business  Business            @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  supplier  Supplier?           @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  items     CCTVPurchaseItem[]
+
+  @@unique([businessId, purchaseNo])
+  @@index([businessId])
+  @@index([supplierId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("cctv_purchases")
+}
+
+// ── CCTV Purchase Items ──
+model CCTVPurchaseItem {
+  id              String   @id @default(cuid())
+  purchaseId      String
+  businessId      String
+  productId       String
+  productName     String   // snapshot
+  productBrand    String?  // snapshot
+  quantity        Int      // ordered quantity
+  receivedQty     Int      @default(0) // actually received/created
+  unitCost        Float    // purchase price per unit
+  totalPrice      Float    // quantity * unitCost
+
+  purchase CCTVPurchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  business Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  product  CCTVProduct    @relation(fields: [productId], references: [id])
+
+  @@index([purchaseId])
+  @@index([productId])
+  @@index([businessId])
+  @@map("cctv_purchase_items")
 }

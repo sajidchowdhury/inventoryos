@@ -403,6 +403,8 @@ export type CCTVViewType =
   | 'create-amc'
   | 'mushak-report'
   | 'purchase-orders'
+  | 'create-purchase'
+  | 'purchase-detail'
   | 'suppliers'
   | 'supplier-detail'
   | 'edit-supplier'

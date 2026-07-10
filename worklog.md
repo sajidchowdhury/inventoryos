@@ -1066,3 +1066,32 @@ Stage Summary:
 - Phase 1A Supplier Management UI complete: list, search, create/edit, detail, balance tracking, payment recording, aging buckets
 - All components follow existing CCTV design patterns (fadeUp, violet theme, rounded-2xl cards, framer-motion)
 - Consumes existing shared supplier API (GET/POST/PUT/DELETE /suppliers, /suppliers/[id]/balance, /suppliers/[id]/payments, /suppliers/stats)
+
+---
+Task ID: 2
+Agent: Main
+Task: Build Phase 1B - Purchase Order Flow
+
+Work Log:
+- Explored existing Prisma schema: shared Purchase model is pharmacy-oriented (batches, expiry, MRP), CCTVSerialItem has unused purchaseId/supplierId fields
+- Added CCTVPurchase model (cctv_purchases table) with: purchaseNo, status, subtotal, discountAmount, totalAmount, paidAmount, paymentStatus, invoiceNo, invoiceDate, receivedDate, notes
+- Added CCTVPurchaseItem model (cctv_purchase_items table) with: productId, productName, productBrand, quantity, receivedQty, unitCost, totalPrice
+- Added reverse relations: Business.cctvPurchases, Business.cctvPurchaseItems, Supplier.cctvPurchases, CCTVProduct.purchaseItems
+- Pushed schema to DB (db:push succeeded)
+- Built POST/GET /cctv/purchases API route with:
+  - GET: list with search, status filter, pagination, summary stats
+  - POST: create purchase + auto-generate serial items for serialTracked products, increment stock for non-serial, update supplier balance
+  - Purchase number sequence: CPO-YYYY-NNNN
+  - Auto-serial format: {SKU}-{CPO-YYYY-NNNN}-{001}
+- Built CCTVPurchaseOrderView.tsx (389 lines): list view with 3 stat cards, search, status filter tabs (All/Received/Unpaid/Partial), animated purchase cards
+- Built CCTVCreatePurchase.tsx (876 lines): 3-step flow (Select Supplier → Add Products → Review & Submit) with debounced search, editable qty/cost, running totals, discount, grand total
+- Wired into CCTVShell (imports, case routing), CCTVViewType, and index.ts exports
+
+Stage Summary:
+- Phase 1B complete: full purchase order flow from supplier selection to stock generation
+- 2 new DB tables: cctv_purchases, cctv_purchase_items
+- 1 new API route: /cctv/purchases (GET/POST)
+- 2 new components: CCTVPurchaseOrderView (list), CCTVCreatePurchase (3-step create flow)
+- Serial-tracked products get auto-generated serial items linked to purchase and supplier
+- Non-serial products get stock count incremented
+- Supplier balance auto-updated on purchase creation
