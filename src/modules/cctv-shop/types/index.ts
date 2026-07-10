@@ -497,6 +497,49 @@ export interface CCTVPayment {
   createdAt: string;
 }
 
+// ── 2A: Sales Return Flow ──
+
+export type RefundMethod = 'CASH' | 'CARD' | 'BKASH' | 'NAGAD' | 'ROCKET' | 'STORE_CREDIT' | 'NO_REFUND';
+export type SerialRestoreStatus = 'IN_STOCK' | 'RETURNED';
+
+export interface CCTVReturn {
+  id: string;
+  businessId: string;
+  saleId: string;
+  returnCode: string;
+  status: string;
+  refundMethod?: string;
+  refundAmount: number;
+  refundReference?: string;
+  customerName: string;
+  customerPhone?: string;
+  reason?: string;
+  notes?: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  items?: CCTVReturnItem[];
+  _count?: { items: number };
+}
+
+export interface CCTVReturnItem {
+  id: string;
+  businessId: string;
+  returnId: string;
+  saleItemId: string;
+  saleId: string;
+  productId: string;
+  productName: string;
+  productBrand?: string;
+  serialItemId?: string;
+  quantity: number;
+  unitPrice: number;
+  refundAmount: number;
+  serialRestoredTo?: string;
+  isActive: boolean;
+  createdAt: string;
+}
+
 // ── 3B: EMI Sales Management ──
 
 export type EmiStatus = 'ACTIVE' | 'COMPLETED' | 'DEFAULTED' | 'CANCELLED';

@@ -178,6 +178,8 @@ model Business {
   cctvPayments            CCTVPayment[]
   cctvEmiPlans            CCTVEmiPlan[]
   cctvEmiInstallments     CCTVEmiInstallment[]
+  cctvReturns             CCTVReturn[]
+  cctvReturnItems         CCTVReturnItem[]
 
   // CCTV Module (Phase 3C: Customer Loyalty and CRM)
   cctvLoyaltyConfigs      CCTVLoyaltyConfig[]
@@ -2373,6 +2375,7 @@ model CCTVSale {
   items           CCTVSaleItem[]
   project         CCTVProject?    // If this sale is linked to a project (Phase 4A)
   mushakInvoices  CCTVMushakInvoice[]  // Phase 5B
+  returns         CCTVReturn[]         // 2A: Sales returns
 
   @@unique([businessId, saleCode])
   @@index([businessId])
@@ -2401,6 +2404,7 @@ model CCTVSaleItem {
   sale            CCTVSale        @relation(fields: [saleId], references: [id], onDelete: Cascade)
   product         CCTVProduct     @relation(fields: [productId], references: [id])
   serialItem      CCTVSerialItem? @relation(fields: [serialItemId], references: [id])
+  returnItems    CCTVReturnItem[]    // 2A: Return items referencing this sale item
 
   @@index([businessId])
   @@index([saleId])
@@ -3179,4 +3183,74 @@ model CCTVPurchaseItem {
   @@index([productId])
   @@index([businessId])
   @@map("cctv_purchase_items")
+}
+
+// ── CCTV Returns (2A: Sales Return Flow) ──
+// Partial or full return of a sale. Each return creates a CCTVReturn record
+// with individual items. Serial items get restored to IN_STOCK or RETURNED.
+model CCTVReturn {
+  id              String   @id @default(cuid())
+  businessId      String
+  saleId          String                // Original sale being returned against
+
+  returnCode      String                // Human-readable: "RET-2025-0001"
+  status          String   @default("COMPLETED") // "COMPLETED" — returns are immediate
+
+  // Refund info
+  refundMethod    String?               // "CASH", "CARD", "BKASH", "NAGAD", "ROCKET", "STORE_CREDIT", "NO_REFUND"
+  refundAmount    Float    @default(0)  // Total refund value
+  refundReference String?              // Transaction reference for digital refunds
+
+  // Customer info (snapshot from sale)
+  customerName    String   @default("")
+  customerPhone   String?
+
+  // Notes
+  reason          String?               // Return reason
+  notes           String?
+
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  business        Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  sale            CCTVSale        @relation(fields: [saleId], references: [id])
+  items           CCTVReturnItem[]
+
+  @@unique([businessId, returnCode])
+  @@index([businessId])
+  @@index([saleId])
+  @@map("cctv_returns")
+}
+
+model CCTVReturnItem {
+  id              String   @id @default(cuid())
+  businessId      String
+  returnId        String
+  saleItemId      String               // Original sale item being returned
+  saleId          String               // Denormalized for quick queries
+
+  productId       String
+  productName     String               // Snapshot
+  productBrand    String?              // Snapshot
+  serialItemId    String?              // If this was a serial-tracked item
+
+  quantity        Int                  // How many returned (1 for serial items)
+  unitPrice       Float                // Price at time of sale
+  refundAmount    Float                // Actual refund for this line
+
+  // Serial item status after return
+  serialRestoredTo String?             // "IN_STOCK" or "RETURNED"
+
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+
+  return          CCTVReturn   @relation(fields: [returnId], references: [id], onDelete: Cascade)
+  business        Business     @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  saleItem        CCTVSaleItem @relation(fields: [saleItemId], references: [id])
+
+  @@index([returnId])
+  @@index([saleItemId])
+  @@index([businessId])
+  @@map("cctv_return_items")
 }

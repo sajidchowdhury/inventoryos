@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import {
   ArrowLeft, Phone, User, Package, CreditCard, Receipt,
   Trash2, Loader2, CheckCircle2, Clock, Banknote, Plus,
-  X, Hash, FileText,
+  X, Hash, FileText, RotateCcw,
 } from 'lucide-react';
 import { useCCTVNavStore } from '@/stores/cctv-nav-store';
 import { cn } from '@/lib/utils';
@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import type { CCTVSale, PaymentMethod, SaleStatus } from '@/modules/cctv-shop/types';
+import { CCTVReturnDialog } from './CCTVReturnDialog';
 import { useCctvBusinessId } from '@/modules/cctv-shop/hooks/use-cctv-business-id';
 
 const fadeUp = {
@@ -136,6 +137,9 @@ export function CCTVSaleDetail() {
   // Cancel sale dialog
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [cancelLoading, setCancelLoading] = useState(false);
+
+  // Return items dialog
+  const [showReturnDialog, setShowReturnDialog] = useState(false);
 
   // Generate Mushak dialog
   const [showMushakDialog, setShowMushakDialog] = useState(false);
@@ -545,6 +549,20 @@ export function CCTVSaleDetail() {
           </motion.div>
         )}
 
+        {/* ── Return Items Button (for paid/partially paid sales) ── */}
+        {(sale.status === 'PAID' || sale.status === 'PARTIALLY_PAID') && sale.items && sale.items.length > 0 && (
+          <motion.div {...fadeUp}>
+            <button
+              onClick={() => setShowReturnDialog(true)}
+              className="w-full py-3 rounded-2xl bg-amber-50 border border-amber-200 text-amber-700 font-semibold
+                         flex items-center justify-center gap-2 hover:bg-amber-100 active:scale-[0.98] transition-all"
+            >
+              <RotateCcw className="w-4 h-4" />
+              Return Items
+            </button>
+          </motion.div>
+        )}
+
         {/* ── Cancel Sale Button (PENDING, no payments) ── */}
         {canCancel && (
           <motion.div {...fadeUp}>
@@ -573,6 +591,16 @@ export function CCTVSaleDetail() {
           </motion.div>
         )}
       </div>
+
+      {/* ── Return Items Dialog ── */}
+      {sale && (
+        <CCTVReturnDialog
+          sale={sale}
+          open={showReturnDialog}
+          onClose={() => setShowReturnDialog(false)}
+          onReturnSuccess={fetchSale}
+        />
+      )}
 
       {/* ── Add Payment Dialog ── */}
       <AlertDialog open={showPaymentDialog} onOpenChange={(open) => {
