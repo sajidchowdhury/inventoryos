@@ -1545,3 +1545,31 @@ Stage Summary:
 - Lint: 0 errors, 1 pre-existing warning
 - Compile: 200 OK
 - Pushed to main: 2f77f8d..87e1cff
+
+---
+Task ID: landing-page-v2
+Agent: Main Agent
+Task: Build premium landing page with 3-user login flows (visitor, admin, staff)
+
+Work Log:
+- Analyzed current page.tsx (old step-based flow) and all auth API routes
+- Completely rewrote src/app/page.tsx (~1450 lines) with premium landing page design
+- Built landing page with: sticky header (logo + Login + Staff Login), dark hero section with gradient text, quick access buttons for returning users, business type card grid, how-it-works section, CTA section, footer
+- Implemented business detail Sheet (bottom sheet on mobile) with features, stats, and Get Started CTA
+- Built AdminLoginView with 4 steps: Phone (with +880 prefix, 10-digit input) → OTP → Business List (existing businesses) → Register (new business creation)
+- Built StaffLoginView with shop code + username + password form
+- Phone input: +880 prefix is non-editable, user enters only 10 digits, API receives "0" + 10 digits
+- All 3 flows wired to real API endpoints: /api/auth/send-otp, /api/auth/verify-otp, /api/auth/register, /api/auth/owner-login, /api/auth/login
+- Preselected business type support: clicking "Get Started" on a business card pre-selects it in registration
+- Cross-navigation links: "Staff member? Login with shop code" in admin login, "Business owner? Login with phone" in staff login
+- Updated layout.tsx metadata for InventoryOS branding
+- Fixed React hooks ordering (useCallback before early return)
+- Verified all flows with Agent Browser: landing renders, admin login flow (phone→OTP→register with preselected Pharmacy), staff login, mobile responsive view
+- Passed lint (0 errors), 0 console errors
+- Pushed to git: bbbc4ac
+
+Stage Summary:
+- Premium, responsive landing page with dark hero, business cards, and clear CTAs
+- Three user paths clearly accessible: Visitor (browse+signup), Admin (phone OTP), Staff (shop code)
+- Phone input correctly shows +880 prefix with 10-digit input
+- All auth flows functional and connected to real APIs
