@@ -53,3 +53,5 @@ export { CCTVMushakInvoiceDetail } from './CCTVMushakInvoiceDetail';
 export { CCTVMushakRegisters } from './CCTVMushakRegisters';
 export { CCTVVatReturn } from './CCTVVatReturn';
 export { OfflineIndicator, OfflinePill } from './OfflineIndicator';
+export { ThermalReceipt, printThermalReceipt } from './ThermalReceipt';
+export { CCTVCloudDashboard } from './CCTVCloudDashboard';

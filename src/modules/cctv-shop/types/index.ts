@@ -435,7 +435,8 @@ export type CCTVViewType =
   | 'mushak-invoice-detail'
   | 'mushak-registers'
   | 'create-mushak'
-  | 'vat-return';
+  | 'vat-return'
+  | 'cloud-dashboard';
 
 // ── 3A: Payment Integration ──
 

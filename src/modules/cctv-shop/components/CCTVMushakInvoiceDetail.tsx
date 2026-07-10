@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { ArrowLeft, Printer } from 'lucide-react';
 import { useCCTVNavStore } from '@/stores/cctv-nav-store';
 import type { CCTVMushakInvoice } from '../types';
+import { printThermalReceipt } from './ThermalReceipt';
 
 const BUSINESS_ID = 'bus_placeholder';
 
@@ -35,6 +36,10 @@ export function CCTVMushakInvoiceDetail() {
   }, [contextId]);
 
   const handlePrint = () => window.print();
+  const handleThermalPrint = () => {
+    if (!invoice) return;
+    printThermalReceipt(invoice, '80mm');
+  };
 
   if (loading) {
     return (
@@ -67,6 +72,10 @@ export function CCTVMushakInvoiceDetail() {
           </div>
           <button onClick={handlePrint} className="p-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 transition-colors">
             <Printer className="w-5 h-5 text-gray-600" />
+          </button>
+          <button onClick={handleThermalPrint} className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl bg-violet-50 hover:bg-violet-100 text-violet-700 transition-colors">
+            <Printer className="w-4 h-4" />
+            <span className="text-xs font-semibold">Thermal</span>
           </button>
         </motion.div>
       </div>
