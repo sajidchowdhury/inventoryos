@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft, ScanBarcode, Package, ChevronDown, Check, X, AlertCircle,
   Loader2, Download, ShieldCheck, Plus, Minus, Edit3, Zap,
-  Volume2, VolumeX, Settings2, ChevronUp,
+  Volume2, VolumeX, Settings2, ChevronUp, Truck, FileText,
 } from 'lucide-react';
 import { useCCTVNavStore } from '@/stores/cctv-nav-store';
 import { useAuthStore } from '@/stores/auth-store';
@@ -213,6 +213,18 @@ export function CCTVStockInView() {
   const [showProductPicker, setShowProductPicker] = useState(false);
   const [loadingProducts, setLoadingProducts] = useState(false);
 
+  // ── Procurement reference (Phase 1D) ──
+  const [suppliers, setSuppliers] = useState<{ id: string; name: string; code?: string }[]>([]);
+  const [purchases, setPurchases] = useState<{ id: string; purchaseNo: string; supplierName?: string; totalAmount: number; status: string }[]>([]);
+  const [selectedSupplierId, setSelectedSupplierId] = useState('');
+  const [selectedPurchaseId, setSelectedPurchaseId] = useState('');
+  const [showSupplierPicker, setShowSupplierPicker] = useState(false);
+  const [showPurchasePicker, setShowPurchasePicker] = useState(false);
+  const [supplierSearch, setSupplierSearch] = useState('');
+  const [purchaseSearch, setPurchaseSearch] = useState('');
+  const [loadingSuppliers, setLoadingSuppliers] = useState(false);
+  const [loadingPurchases, setLoadingPurchases] = useState(false);
+
   // ── Stock-in rows (staged — never written until commit) ──
   const [rows, setRows] = useState<StockInRow[]>([]);
 
@@ -265,6 +277,41 @@ export function CCTVStockInView() {
       .catch(() => {})
       .finally(() => setLoadingProducts(false));
   }, [businessId]);
+
+  // Fetch suppliers on mount
+  useEffect(() => {
+    if (!businessId) return;
+    setLoadingSuppliers(true);
+    fetch(`/api/businesses/${businessId}/suppliers?limit=100`)
+      .then((r) => r.json())
+      .then((data) => {
+        setSuppliers((data.suppliers || []).map((s: { id: string; name: string; code?: string }) => ({ id: s.id, name: s.name, code: s.code })));
+      })
+      .catch(() => {})
+      .finally(() => setLoadingSuppliers(false));
+  }, [businessId]);
+
+  // Fetch purchases when supplier changes
+  useEffect(() => {
+    if (!businessId) return;
+    setLoadingPurchases(true);
+    const params = new URLSearchParams({ limit: '50' });
+    if (selectedSupplierId) params.set('supplierId', selectedSupplierId);
+    if (purchaseSearch) params.set('search', purchaseSearch);
+    fetch(`/api/businesses/${businessId}/cctv/purchases?${params}`)
+      .then((r) => r.json())
+      .then((data) => {
+        setPurchases((data.purchases || []).map((p: { id: string; purchaseNo: string; totalAmount: number; status: string; supplier?: { name: string } | null }) => ({
+          id: p.id,
+          purchaseNo: p.purchaseNo,
+          supplierName: p.supplier?.name,
+          totalAmount: p.totalAmount,
+          status: p.status,
+        })));
+      })
+      .catch(() => {})
+      .finally(() => setLoadingPurchases(false));
+  }, [businessId, selectedSupplierId]);
 
   // Auto-focus scanner in batch mode
   useEffect(() => {
@@ -375,6 +422,8 @@ export function CCTVStockInView() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           productId: selectedProductId,
+          purchaseId: selectedPurchaseId || undefined,
+          supplierId: selectedSupplierId || undefined,
           items: validRows.map((r) => ({
             serialNumber: r.serialNumber.trim(),
             imei: r.imei.trim() || undefined,
@@ -443,6 +492,16 @@ export function CCTVStockInView() {
               <p className="text-white font-bold text-sm truncate max-w-[180px]">
                 {selectedProduct?.name}
               </p>
+              {(selectedSupplierId || selectedPurchaseId) && (
+                <p className="text-white/40 text-[9px] mt-0.5 truncate max-w-[220px]">
+                  {selectedPurchaseId
+                    ? `PO: ${purchases.find((p) => p.id === selectedPurchaseId)?.purchaseNo || ''}`
+                    : ''}
+                  {selectedSupplierId
+                    ? `${selectedPurchaseId ? ' · ' : ''}${suppliers.find((s) => s.id === selectedSupplierId)?.name || ''}`
+                    : ''}
+                </p>
+              )}
             </div>
             <button
               onClick={() => setSoundEnabled((p) => !p)}
@@ -922,6 +981,239 @@ export function CCTVStockInView() {
           </div>
         )}
       </div>
+
+      {/* ── Procurement Reference (Phase 1D) ── */}
+      {selectedProduct && (
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm"
+        >
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-7 h-7 rounded-lg bg-amber-50 flex items-center justify-center">
+              <Truck className="w-4 h-4 text-amber-500" />
+            </div>
+            <h2 className="text-sm font-bold text-gray-800">Procurement Reference</h2>
+            <span className="text-[10px] text-gray-400 font-medium ml-auto">Optional</span>
+          </div>
+          <p className="text-[11px] text-gray-400 mb-3">
+            Link this stock-in to a supplier and/or purchase order for full traceability.
+          </p>
+
+          {/* Supplier Selector */}
+          <div className="mb-3">
+            <label className="text-[11px] font-medium text-gray-500 mb-1.5 block">Supplier</label>
+            {showSupplierPicker ? (
+              <div className="space-y-2">
+                <div className="relative">
+                  <Input
+                    autoFocus
+                    placeholder="Search suppliers..."
+                    value={supplierSearch}
+                    onChange={(e) => setSupplierSearch(e.target.value)}
+                    className="h-10 rounded-xl pr-8 bg-gray-50 border-0 focus-visible:ring-2 focus-visible:ring-violet-500/30"
+                  />
+                  <button
+                    onClick={() => { setShowSupplierPicker(false); setSupplierSearch(''); }}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1"
+                  >
+                    <X className="w-4 h-4 text-gray-400" />
+                  </button>
+                </div>
+                <div className="max-h-40 overflow-y-auto space-y-1 scrollbar-thin">
+                  {loadingSuppliers ? (
+                    <div className="flex items-center justify-center py-3">
+                      <Loader2 className="w-4 h-4 animate-spin text-gray-300" />
+                    </div>
+                  ) : suppliers.length === 0 ? (
+                    <p className="text-xs text-gray-400 text-center py-3">No suppliers found</p>
+                  ) : (
+                    suppliers
+                      .filter((s) => !supplierSearch || s.name.toLowerCase().includes(supplierSearch.toLowerCase()) || (s.code || '').toLowerCase().includes(supplierSearch.toLowerCase()))
+                      .map((s) => (
+                        <button
+                          key={s.id}
+                          onClick={() => {
+                            setSelectedSupplierId(s.id);
+                            setShowSupplierPicker(false);
+                            setSupplierSearch('');
+                            // Reset purchase when supplier changes
+                            setSelectedPurchaseId('');
+                          }}
+                          className={cn(
+                            'w-full flex items-center gap-2.5 p-2.5 rounded-xl text-left active:scale-[0.98] transition-all',
+                            selectedSupplierId === s.id
+                              ? 'bg-amber-50 border border-amber-200'
+                              : 'bg-gray-50 hover:bg-gray-100 border border-transparent'
+                          )}
+                        >
+                          <div className="w-7 h-7 rounded-lg bg-amber-100 flex items-center justify-center shrink-0">
+                            <Truck className="w-3.5 h-3.5 text-amber-600" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-semibold text-gray-900 truncate">{s.name}</p>
+                            {s.code && <p className="text-[10px] text-gray-400">{s.code}</p>}
+                          </div>
+                          {selectedSupplierId === s.id && <Check className="w-4 h-4 text-amber-600 shrink-0" />}
+                        </button>
+                      ))
+                  )}
+                </div>
+                {selectedSupplierId && (
+                  <button
+                    onClick={() => {
+                      setSelectedSupplierId('');
+                      setShowSupplierPicker(false);
+                      setSupplierSearch('');
+                      setSelectedPurchaseId('');
+                    }}
+                    className="text-[10px] text-red-400 font-medium px-2 py-1 rounded-lg hover:bg-red-50 w-full text-center"
+                  >
+                    Clear supplier
+                  </button>
+                )}
+              </div>
+            ) : (
+              <button
+                onClick={() => setShowSupplierPicker(true)}
+                className={cn(
+                  'w-full flex items-center justify-between p-3 rounded-xl border transition-all',
+                  selectedSupplierId
+                    ? 'bg-amber-50/50 border-amber-100'
+                    : 'bg-gray-50 border-gray-200'
+                )}
+              >
+                {selectedSupplierId ? (
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-7 h-7 rounded-lg bg-amber-100 flex items-center justify-center">
+                      <Truck className="w-3.5 h-3.5 text-amber-600" />
+                    </div>
+                    <p className="text-xs font-semibold text-gray-900 truncate">
+                      {suppliers.find((s) => s.id === selectedSupplierId)?.name || 'Unknown'}
+                    </p>
+                  </div>
+                ) : (
+                  <span className="text-xs text-gray-400">Select supplier (optional)</span>
+                )}
+                <ChevronDown className="w-4 h-4 text-gray-400" />
+              </button>
+            )}
+          </div>
+
+          {/* Purchase Order Selector */}
+          <div>
+            <label className="text-[11px] font-medium text-gray-500 mb-1.5 block">Purchase Order</label>
+            {showPurchasePicker ? (
+              <div className="space-y-2">
+                <div className="relative">
+                  <Input
+                    autoFocus
+                    placeholder="Search PO number..."
+                    value={purchaseSearch}
+                    onChange={(e) => setPurchaseSearch(e.target.value)}
+                    className="h-10 rounded-xl pr-8 bg-gray-50 border-0 focus-visible:ring-2 focus-visible:ring-violet-500/30"
+                  />
+                  <button
+                    onClick={() => { setShowPurchasePicker(false); setPurchaseSearch(''); }}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1"
+                  >
+                    <X className="w-4 h-4 text-gray-400" />
+                  </button>
+                </div>
+                <div className="max-h-40 overflow-y-auto space-y-1 scrollbar-thin">
+                  {loadingPurchases ? (
+                    <div className="flex items-center justify-center py-3">
+                      <Loader2 className="w-4 h-4 animate-spin text-gray-300" />
+                    </div>
+                  ) : purchases.length === 0 ? (
+                    <p className="text-xs text-gray-400 text-center py-3">
+                      {selectedSupplierId ? 'No purchases for this supplier' : 'No purchase orders yet'}
+                    </p>
+                  ) : (
+                    purchases
+                      .filter((p) => !purchaseSearch || p.purchaseNo.toLowerCase().includes(purchaseSearch.toLowerCase()))
+                      .map((p) => (
+                        <button
+                          key={p.id}
+                          onClick={() => {
+                            setSelectedPurchaseId(p.id);
+                            setShowPurchasePicker(false);
+                            setPurchaseSearch('');
+                            // Auto-set supplier from purchase if not set
+                            if (!selectedSupplierId && p.supplierName) {
+                              const matchSupplier = suppliers.find((s) => s.name === p.supplierName);
+                              if (matchSupplier) setSelectedSupplierId(matchSupplier.id);
+                            }
+                          }}
+                          className={cn(
+                            'w-full flex items-center gap-2.5 p-2.5 rounded-xl text-left active:scale-[0.98] transition-all',
+                            selectedPurchaseId === p.id
+                              ? 'bg-violet-50 border border-violet-200'
+                              : 'bg-gray-50 hover:bg-gray-100 border border-transparent'
+                          )}
+                        >
+                          <div className="w-7 h-7 rounded-lg bg-violet-100 flex items-center justify-center shrink-0">
+                            <FileText className="w-3.5 h-3.5 text-violet-600" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-semibold text-gray-900 truncate">{p.purchaseNo}</p>
+                            <p className="text-[10px] text-gray-400">
+                              {p.supplierName ? `${p.supplierName} · ` : ''}৳{p.totalAmount.toLocaleString()}
+                            </p>
+                          </div>
+                          {selectedPurchaseId === p.id && <Check className="w-4 h-4 text-violet-600 shrink-0" />}
+                        </button>
+                      ))
+                  )}
+                </div>
+                {selectedPurchaseId && (
+                  <button
+                    onClick={() => {
+                      setSelectedPurchaseId('');
+                      setShowPurchasePicker(false);
+                      setPurchaseSearch('');
+                    }}
+                    className="text-[10px] text-red-400 font-medium px-2 py-1 rounded-lg hover:bg-red-50 w-full text-center"
+                  >
+                    Clear purchase order
+                  </button>
+                )}
+              </div>
+            ) : (
+              <button
+                onClick={() => setShowPurchasePicker(true)}
+                className={cn(
+                  'w-full flex items-center justify-between p-3 rounded-xl border transition-all',
+                  selectedPurchaseId
+                    ? 'bg-violet-50/50 border-violet-100'
+                    : 'bg-gray-50 border-gray-200'
+                )}
+              >
+                {selectedPurchaseId ? (
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-7 h-7 rounded-lg bg-violet-100 flex items-center justify-center">
+                      <FileText className="w-3.5 h-3.5 text-violet-600" />
+                    </div>
+                    <div className="text-left">
+                      <p className="text-xs font-semibold text-gray-900 truncate">
+                        {purchases.find((p) => p.id === selectedPurchaseId)?.purchaseNo || 'Unknown'}
+                      </p>
+                      <p className="text-[10px] text-gray-400">
+                        {purchases.find((p) => p.id === selectedPurchaseId)?.supplierName}
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <span className="text-xs text-gray-400">
+                    {selectedSupplierId ? 'Link to purchase order (optional)' : 'Select supplier first for filtered POs'}
+                  </span>
+                )}
+                <ChevronDown className="w-4 h-4 text-gray-400" />
+              </button>
+            )}
+          </div>
+        </motion.div>
+      )}
 
       {/* ── Batch Configuration ── */}
       {selectedProduct && (

@@ -21,9 +21,31 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     const productId: string = body.productId;
     const items: StockInItem[] = body.items;
+    const purchaseId: string | undefined = body.purchaseId || undefined;
+    const supplierId: string | undefined = body.supplierId || undefined;
 
     if (!productId || !Array.isArray(items) || items.length === 0) {
       return NextResponse.json({ error: "productId and items array are required" }, { status: 400 });
+    }
+
+    // Validate purchaseId if provided
+    if (purchaseId) {
+      const purchase = await db.cCTVPurchase.findFirst({
+        where: { id: purchaseId, businessId },
+      });
+      if (!purchase) {
+        return NextResponse.json({ error: "Purchase order not found" }, { status: 404 });
+      }
+    }
+
+    // Validate supplierId if provided
+    if (supplierId) {
+      const supplier = await db.supplier.findFirst({
+        where: { id: supplierId, businessId, isActive: true },
+      });
+      if (!supplier) {
+        return NextResponse.json({ error: "Supplier not found" }, { status: 404 });
+      }
     }
 
     // Verify product exists and belongs to this business
@@ -136,6 +158,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           warrantyMonths,
           // warrantyStart/warrantyEnd not set until sold
           notes: item.notes || null,
+          // Procurement traceability (Phase 1D)
+          purchaseId: purchaseId || null,
+          supplierId: supplierId || null,
         },
       });
 
@@ -147,7 +172,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           fromStatus: null,
           toStatus: "IN_STOCK",
           event: "STOCKED",
-          notes: item.grade ? `Grade ${item.grade} stock-in${item.notes ? ': ' + item.notes : ''}` : (item.notes || "Stocked in"),
+          notes: item.grade
+            ? `Grade ${item.grade} stock-in${supplierId ? ' via supplier' : ''}${purchaseId ? ` (PO ref)` : ''}${item.notes ? ': ' + item.notes : ''}`
+            : (item.notes || "Stocked in"),
+          referenceId: purchaseId || null,
+          referenceType: purchaseId ? "PURCHASE" : null,
         },
       });
 
