@@ -404,6 +404,8 @@ export type CCTVViewType =
   | 'mushak-report'
   | 'purchase-orders'
   | 'suppliers'
+  | 'supplier-detail'
+  | 'edit-supplier'
   | 'categories'
   | 'kits'
   | 'kit-detail'

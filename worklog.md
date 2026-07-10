@@ -1044,3 +1044,25 @@ Stage Summary:
 - Files modified: types/index.ts, CCTVShell.tsx, CCTVMoreHub.tsx, components/index.ts
 - Recharts library was already installed (v2.15.4)
 - Zero lint errors
+
+---
+Task ID: 1
+Agent: Main
+Task: Fix duplicate export error + Build Phase 1A Supplier Management UI
+
+Work Log:
+- Fixed duplicate export of CCTVEMIList (line 17 + 38) and CCTVSellView (line 11 + 35) in index.ts
+- Added 'supplier-detail' and 'edit-supplier' to CCTVViewType union in types/index.ts
+- Created CCTVSupplierView.tsx (336 lines) - supplier list with search, stats cards, animated cards
+- Created CCTVSupplierDetail.tsx (611 lines) - detail view with 3 tabs (Purchases, Outstanding, Info), balance aging, FIFO payment form, edit/delete actions
+- Created CCTVCreateSupplierDialog.tsx (286 lines) - bottom sheet dialog for create/edit with all supplier fields
+- Wired new views into CCTVShell.tsx (imports + case routing)
+- Added 3 new exports to index.ts
+- Installed missing 'idb' package (pre-existing issue causing 500)
+- Verified: lint 0 errors, dev server returns 200
+
+Stage Summary:
+- Build error fixed (duplicate CCTVEMIList export)
+- Phase 1A Supplier Management UI complete: list, search, create/edit, detail, balance tracking, payment recording, aging buckets
+- All components follow existing CCTV design patterns (fadeUp, violet theme, rounded-2xl cards, framer-motion)
+- Consumes existing shared supplier API (GET/POST/PUT/DELETE /suppliers, /suppliers/[id]/balance, /suppliers/[id]/payments, /suppliers/stats)

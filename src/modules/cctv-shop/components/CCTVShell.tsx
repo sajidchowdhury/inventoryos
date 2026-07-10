@@ -56,6 +56,8 @@ import { CCTVMushakInvoiceDetail } from './CCTVMushakInvoiceDetail';
 import { CCTVMushakRegisters } from './CCTVMushakRegisters';
 import { CCTVVatReturn } from './CCTVVatReturn';
 import { CCTVCloudDashboard } from './CCTVCloudDashboard';
+import { CCTVSupplierView } from './CCTVSupplierView';
+import { CCTVSupplierDetail } from './CCTVSupplierDetail';
 
 function PlaceholderView({ title, icon }: { title: string; icon?: string }) {
   const { goBack } = useCCTVNavStore();
@@ -104,6 +106,7 @@ const viewMeta: Record<string, { title: string; icon: string }> = {
   'create-amc': { title: 'Create AMC', icon: '➕' },
   'purchase-orders': { title: 'Purchase Orders', icon: '🛒' },
   'suppliers': { title: 'Suppliers', icon: '🏭' },
+  'supplier-detail': { title: 'Supplier Details', icon: '🏭' },
   'branches': { title: 'Branches', icon: '🏪' },
   'branch-detail': { title: 'Branch Details', icon: '📍' },
   'transfers': { title: 'Transfers', icon: '🚚' },
@@ -213,6 +216,10 @@ export function CCTVShell() {
         return <CCTVCreateAmc />;
       case 'customers':
         return <CCTVCustomersList />;
+      case 'suppliers':
+        return <CCTVSupplierView />;
+      case 'supplier-detail':
+        return <CCTVSupplierDetail />;
       case 'profile':
         return <CCTVProfileView />;
       // Technician & Commissions (2C)
