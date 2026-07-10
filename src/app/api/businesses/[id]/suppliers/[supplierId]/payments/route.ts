@@ -1,6 +1,6 @@
 // GET/POST /api/businesses/[id]/suppliers/[supplierId]/payments
-// GET: List payments made to this supplier
-// POST: Record a payment to supplier (reduces balance)
+// GET: List payments made to this supplier (both Purchase + CCTVPurchase)
+// POST: Record a payment to supplier with FIFO allocation across both models
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 
@@ -18,30 +18,47 @@ export async function GET(
       return NextResponse.json({ error: "Supplier not found" }, { status: 404 });
     }
 
-    // Fetch purchases with payments for this supplier
-    const purchases = await db.purchase.findMany({
-      where: { businessId, supplierId, status: { not: "cancelled" } },
-      select: {
-        id: true, purchaseNo: true, totalAmount: true, paidAmount: true,
-        paymentStatus: true, createdAt: true,
-      },
-      orderBy: { createdAt: "desc" },
-    });
+    // Fetch purchases from both models
+    const [generalPurchases, cctvPurchases] = await Promise.all([
+      db.purchase.findMany({
+        where: { businessId, supplierId, status: { not: "cancelled" } },
+        select: {
+          id: true, purchaseNo: true, totalAmount: true, paidAmount: true,
+          paymentStatus: true, createdAt: true,
+        },
+        orderBy: { createdAt: "desc" },
+      }),
+      db.cCTVPurchase.findMany({
+        where: { businessId, supplierId, status: { not: "cancelled" } },
+        select: {
+          id: true, purchaseNo: true, totalAmount: true, paidAmount: true,
+          paymentStatus: true, createdAt: true,
+        },
+        orderBy: { createdAt: "desc" },
+      }),
+    ]);
+
+    const allPurchases = [
+      ...generalPurchases.map((p) => ({ ...p, source: "purchase" as const })),
+      ...cctvPurchases.map((p) => ({ ...p, source: "cctv" as const })),
+    ].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 
     // Summary
     const summary = {
       totalPurchased: supplier.totalPurchased,
       totalPaid: supplier.totalPaid,
       balance: supplier.balance,
-      purchaseCount: purchases.length,
-      outstandingPurchases: purchases.filter((p) => p.paymentStatus !== "paid").length,
+      purchaseCount: allPurchases.length,
+      outstandingPurchases: allPurchases.filter((p) => p.paymentStatus !== "paid").length,
+      generalPurchases: generalPurchases.length,
+      cctvPurchases: cctvPurchases.length,
     };
 
     return NextResponse.json({
       success: true,
       supplier: { id: supplier.id, name: supplier.name, code: supplier.code },
       summary,
-      purchases,
+      purchases: allPurchases,
     });
   } catch (error) {
     console.error("Get supplier payments error:", error);
@@ -76,16 +93,25 @@ export async function POST(
       );
     }
 
-    // Determine payment allocation strategy
-    // If purchaseId provided, apply to that purchase; otherwise, FIFO (oldest first)
+    const paymentMethod = body.method || "cash";
+    const paymentReference = body.reference || null;
     const allocationMode = body.purchaseId ? "specific" : "fifo";
 
     await db.$transaction(async (tx) => {
       if (allocationMode === "specific") {
-        // Apply to specific purchase
-        const purchase = await tx.purchase.findFirst({
+        // Try to find in both models
+        let purchase = await tx.purchase.findFirst({
           where: { id: body.purchaseId, businessId, supplierId, status: { not: "cancelled" } },
         });
+        let source: "purchase" | "cctv" = "purchase";
+
+        if (!purchase) {
+          purchase = await tx.cCTVPurchase.findFirst({
+            where: { id: body.purchaseId, businessId, supplierId, status: { not: "cancelled" } },
+          }) as any;
+          if (purchase) source = "cctv";
+        }
+
         if (!purchase) {
           throw new Error("Purchase not found for this supplier");
         }
@@ -99,31 +125,72 @@ export async function POST(
         if (newPaid >= purchase.totalAmount) paymentStatus = "paid";
         else if (newPaid > 0) paymentStatus = "partial";
 
-        await tx.purchase.update({
-          where: { id: purchase.id },
-          data: { paidAmount: newPaid, paymentStatus },
-        });
-      } else {
-        // FIFO allocation: pay oldest outstanding purchases first
-        const outstanding = await tx.purchase.findMany({
-          where: { businessId, supplierId, status: { not: "cancelled" }, paymentStatus: { in: ["partial", "unpaid"] } },
-          orderBy: { createdAt: "asc" },
-        });
-
-        let remaining = amount;
-        for (const purchase of outstanding) {
-          if (remaining <= 0) break;
-          const due = purchase.totalAmount - purchase.paidAmount;
-          const apply = Math.min(due, remaining);
-
-          const newPaid = purchase.paidAmount + apply;
-          let paymentStatus = "partial";
-          if (newPaid >= purchase.totalAmount) paymentStatus = "paid";
-
+        if (source === "purchase") {
           await tx.purchase.update({
             where: { id: purchase.id },
             data: { paidAmount: newPaid, paymentStatus },
           });
+        } else {
+          await tx.cCTVPurchase.update({
+            where: { id: purchase.id },
+            data: { paidAmount: newPaid, paymentStatus },
+          });
+        }
+      } else {
+        // FIFO allocation across both models (oldest first, combined)
+        const [generalOutstanding, cctvOutstanding] = await Promise.all([
+          tx.purchase.findMany({
+            where: { businessId, supplierId, status: { not: "cancelled" }, paymentStatus: { in: ["partial", "unpaid"] } },
+            orderBy: { createdAt: "asc" },
+            select: { id: true, paidAmount: true, totalAmount: true },
+          }),
+          tx.cCTVPurchase.findMany({
+            where: { businessId, supplierId, status: { not: "cancelled" }, paymentStatus: { in: ["partial", "unpaid"] } },
+            orderBy: { createdAt: "asc" },
+            select: { id: true, paidAmount: true, totalAmount: true },
+          }),
+        ]);
+
+        // Merge and sort by creation order (need createdAt for sorting)
+        type OutstandingItem = { id: string; paidAmount: number; totalAmount: number; createdAt: Date; source: "purchase" | "cctv" };
+        const generalWithDate = await tx.purchase.findMany({
+          where: { id: { in: generalOutstanding.map((p) => p.id) } },
+          select: { id: true, createdAt: true },
+        });
+        const cctvWithDate = await tx.cCTVPurchase.findMany({
+          where: { id: { in: cctvOutstanding.map((p) => p.id) } },
+          select: { id: true, createdAt: true },
+        });
+
+        const generalMap = new Map(generalWithDate.map((p) => [p.id, p.createdAt]));
+        const cctvMap = new Map(cctvWithDate.map((p) => [p.id, p.createdAt]));
+
+        const allOutstanding: OutstandingItem[] = [
+          ...generalOutstanding.map((p) => ({ ...p, createdAt: generalMap.get(p.id)!, source: "purchase" as const })),
+          ...cctvOutstanding.map((p) => ({ ...p, createdAt: cctvMap.get(p.id)!, source: "cctv" as const })),
+        ].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+
+        let remaining = amount;
+        for (const item of allOutstanding) {
+          if (remaining <= 0) break;
+          const due = item.totalAmount - item.paidAmount;
+          const apply = Math.min(due, remaining);
+
+          const newPaid = item.paidAmount + apply;
+          let paymentStatus = "partial";
+          if (newPaid >= item.totalAmount) paymentStatus = "paid";
+
+          if (item.source === "purchase") {
+            await tx.purchase.update({
+              where: { id: item.id },
+              data: { paidAmount: newPaid, paymentStatus },
+            });
+          } else {
+            await tx.cCTVPurchase.update({
+              where: { id: item.id },
+              data: { paidAmount: newPaid, paymentStatus },
+            });
+          }
           remaining -= apply;
         }
       }
@@ -149,8 +216,8 @@ export async function POST(
       supplier: updatedSupplier,
       payment: {
         amount,
-        method: body.method || "cash",
-        reference: body.reference || null,
+        method: paymentMethod,
+        reference: paymentReference,
         purchaseId: body.purchaseId || null,
         allocationMode,
       },

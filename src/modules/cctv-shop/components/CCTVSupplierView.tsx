@@ -13,12 +13,15 @@ import {
   AlertTriangle,
   TrendingUp,
   Building2,
+  Wallet,
+  Monitor,
 } from 'lucide-react';
 import { useCCTVNavStore } from '@/stores/cctv-nav-store';
 import { useCctvBusinessId } from '@/modules/cctv-shop/hooks/use-cctv-business-id';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { CCTVCreateSupplierDialog } from './CCTVCreateSupplierDialog';
+import { CCTVSupplierPaymentDialog } from './CCTVSupplierPaymentDialog';
 
 // ── Constants ──
 
@@ -40,7 +43,7 @@ interface SupplierRecord {
   totalPaid: number;
   isActive: boolean;
   createdAt: string;
-  _count?: { purchases: number; batches: number };
+  _count?: { purchases: number; batches: number; cctvPurchases: number };
 }
 
 interface SupplierStats {
@@ -60,10 +63,27 @@ interface SupplierStats {
   }>;
 }
 
+interface OutstandingPurchase {
+  id: string;
+  purchaseNo: string;
+  invoiceNo?: string | null;
+  totalAmount: number;
+  paidAmount: number;
+  dueAmount: number;
+  createdAt: string;
+  ageDays: number;
+  bucket: string;
+  source: 'purchase' | 'cctv';
+}
+
 // ── Helpers ──
 
 function formatBDT(n: number): string {
   return `৳${n.toLocaleString('en-BD', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+}
+
+interface BalanceQuickData {
+  outstandingPurchases: OutstandingPurchase[];
 }
 
 // ── Component ──
@@ -78,6 +98,11 @@ export function CCTVSupplierView() {
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
+
+  // Quick payment state
+  const [quickPaySupplier, setQuickPaySupplier] = useState<SupplierRecord | null>(null);
+  const [quickPayBalance, setQuickPayBalance] = useState<BalanceQuickData | null>(null);
+  const [quickPayLoading, setQuickPayLoading] = useState(false);
 
   // ── Debounced search ──
   useEffect(() => {
@@ -135,6 +160,27 @@ export function CCTVSupplierView() {
     fetchSuppliers();
     fetchStats();
   }, [fetchSuppliers, fetchStats]);
+
+  // ── Quick pay: fetch balance for supplier ──
+  const openQuickPay = async (supplier: SupplierRecord, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setQuickPaySupplier(supplier);
+    setQuickPayLoading(true);
+
+    try {
+      const res = await fetch(`/api/businesses/${businessId}/suppliers/${supplier.id}/balance`);
+      if (res.ok) {
+        const data = await res.json();
+        setQuickPayBalance({
+          outstandingPurchases: data.outstandingPurchases || [],
+        });
+      }
+    } catch {
+      // error
+    } finally {
+      setQuickPayLoading(false);
+    }
+  };
 
   // ── Derived stats ──
   const localStats = useMemo(() => {
@@ -256,72 +302,111 @@ export function CCTVSupplierView() {
           </div>
         ) : (
           <AnimatePresence mode="popLayout">
-            {suppliers.map((supplier, i) => (
-              <motion.button
-                key={supplier.id}
-                layout
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0, transition: { duration: 0.25, delay: i * 0.04 } }}
-                exit={{ opacity: 0, x: -20 }}
-                onClick={() => navigate('supplier-detail', supplier.id)}
-                className="w-full bg-white rounded-2xl border border-gray-100 p-4 shadow-sm text-left active:scale-[0.98] transition-transform"
-              >
-                {/* Top row */}
-                <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shrink-0 shadow-sm">
-                    <span className="text-white text-sm font-bold">
-                      {supplier.name.charAt(0).toUpperCase()}
-                    </span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm font-semibold text-gray-900 truncate">
-                        {supplier.name}
-                      </p>
-                      {supplier.balance > 0 && (
-                        <Badge className="text-[10px] px-1.5 py-0 rounded-full border-0 font-semibold leading-4 bg-amber-100 text-amber-700 shrink-0">
-                          Due
-                        </Badge>
+            {suppliers.map((supplier, i) => {
+              const totalPurchases = (supplier._count?.purchases || 0) + (supplier._count?.cctvPurchases || 0);
+              const hasDue = supplier.balance > 0;
+
+              return (
+                <motion.div
+                  key={supplier.id}
+                  layout
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0, transition: { duration: 0.25, delay: i * 0.04 } }}
+                  exit={{ opacity: 0, x: -20 }}
+                  className="w-full bg-white rounded-2xl border border-gray-100 shadow-sm active:scale-[0.98] transition-transform"
+                >
+                  <button
+                    onClick={() => navigate('supplier-detail', supplier.id)}
+                    className="w-full p-4 text-left"
+                  >
+                    {/* Top row */}
+                    <div className="flex items-start gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shrink-0 shadow-sm">
+                        <span className="text-white text-sm font-bold">
+                          {supplier.name.charAt(0).toUpperCase()}
+                        </span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-semibold text-gray-900 truncate">
+                            {supplier.name}
+                          </p>
+                          {hasDue && (
+                            <Badge className="text-[10px] px-1.5 py-0 rounded-full border-0 font-semibold leading-4 bg-amber-100 text-amber-700 shrink-0">
+                              Due
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1 mt-0.5">
+                          <Phone className="w-3 h-3 text-gray-400" />
+                          <span className="text-xs text-gray-500">
+                            {supplier.phone || supplier.code || 'No contact'}
+                          </span>
+                        </div>
+                      </div>
+                      {hasDue && (
+                        <div className="text-right shrink-0">
+                          <p className="text-xs font-bold text-amber-600">{formatBDT(supplier.balance)}</p>
+                        </div>
                       )}
                     </div>
-                    <div className="flex items-center gap-1 mt-0.5">
-                      <Phone className="w-3 h-3 text-gray-400" />
-                      <span className="text-xs text-gray-500">
-                        {supplier.phone || supplier.code || 'No contact'}
-                      </span>
-                    </div>
-                  </div>
-                </div>
 
-                {/* Stats row */}
-                <div className="grid grid-cols-3 gap-3 mt-3 pt-3 border-t border-gray-50">
-                  <div>
-                    <p className="text-[10px] text-gray-400 flex items-center gap-0.5">
-                      <Package className="w-2.5 h-2.5" /> Purchases
-                    </p>
-                    <p className="text-xs font-semibold text-gray-900 mt-0.5">
-                      {supplier._count?.purchases || 0}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] text-gray-400 flex items-center gap-0.5">
-                      <Coins className="w-2.5 h-2.5" /> Total
-                    </p>
-                    <p className="text-xs font-semibold text-gray-900 mt-0.5">
-                      {formatBDT(supplier.totalPurchased)}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] text-gray-400 flex items-center gap-0.5">
-                      <AlertTriangle className="w-2.5 h-2.5" /> Balance
-                    </p>
-                    <p className={`text-xs font-semibold mt-0.5 ${supplier.balance > 0 ? 'text-amber-600' : 'text-emerald-600'}`}>
-                      {formatBDT(supplier.balance)}
-                    </p>
-                  </div>
-                </div>
-              </motion.button>
-            ))}
+                    {/* Stats row */}
+                    <div className="grid grid-cols-3 gap-3 mt-3 pt-3 border-t border-gray-50">
+                      <div>
+                        <p className="text-[10px] text-gray-400 flex items-center gap-0.5">
+                          <Package className="w-2.5 h-2.5" /> Purchases
+                        </p>
+                        <p className="text-xs font-semibold text-gray-900 mt-0.5">
+                          {totalPurchases}
+                          {supplier._count?.cctvPurchases && supplier._count.cctvPurchases > 0 && (
+                            <span className="ml-1 text-[9px] text-violet-500">({supplier._count.cctvPurchases} CCTV)</span>
+                          )}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-gray-400 flex items-center gap-0.5">
+                          <Coins className="w-2.5 h-2.5" /> Total
+                        </p>
+                        <p className="text-xs font-semibold text-gray-900 mt-0.5">
+                          {formatBDT(supplier.totalPurchased)}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-gray-400 flex items-center gap-0.5">
+                          <AlertTriangle className="w-2.5 h-2.5" /> Balance
+                        </p>
+                        <p className={`text-xs font-semibold mt-0.5 ${hasDue ? 'text-amber-600' : 'text-emerald-600'}`}>
+                          {formatBDT(supplier.balance)}
+                        </p>
+                      </div>
+                    </div>
+                  </button>
+
+                  {/* Quick pay button (only if has due) */}
+                  {hasDue && (
+                    <div className="px-4 pb-3">
+                      <button
+                        onClick={(e) => openQuickPay(supplier, e)}
+                        disabled={quickPayLoading}
+                        className="w-full h-9 rounded-xl bg-gradient-to-r from-emerald-50 to-green-50 border border-emerald-200/60 text-emerald-700 text-xs font-semibold active:bg-emerald-100 transition-all flex items-center justify-center gap-1.5"
+                      >
+                        {quickPayLoading && quickPaySupplier?.id === supplier.id ? (
+                          <motion.div
+                            animate={{ rotate: 360 }}
+                            transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
+                            className="w-3.5 h-3.5 border-2 border-emerald-300 border-t-emerald-600 rounded-full"
+                          />
+                        ) : (
+                          <Wallet className="w-3.5 h-3.5" />
+                        )}
+                        Quick Pay
+                      </button>
+                    </div>
+                  )}
+                </motion.div>
+              );
+            })}
           </AnimatePresence>
         )}
       </div>
@@ -332,6 +417,20 @@ export function CCTVSupplierView() {
         onClose={() => setDialogOpen(false)}
         onSaved={handleSaved}
       />
+
+      {/* ── Quick Payment Dialog ── */}
+      {quickPaySupplier && (
+        <CCTVSupplierPaymentDialog
+          open={!!quickPaySupplier}
+          onClose={() => { setQuickPaySupplier(null); setQuickPayBalance(null); }}
+          supplierId={quickPaySupplier.id}
+          supplierName={quickPaySupplier.name}
+          outstandingBalance={quickPaySupplier.balance}
+          outstandingPurchases={quickPayBalance?.outstandingPurchases || []}
+          onPaymentSuccess={handleSaved}
+          businessId={businessId}
+        />
+      )}
     </motion.div>
   );
 }

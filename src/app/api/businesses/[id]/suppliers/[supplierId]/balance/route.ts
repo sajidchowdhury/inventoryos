@@ -1,7 +1,20 @@
 // GET /api/businesses/[id]/suppliers/[supplierId]/balance
-// Returns detailed balance breakdown with aging buckets
+// Returns detailed balance breakdown with aging buckets (Purchase + CCTVPurchase)
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+
+interface AgedPurchase {
+  id: string;
+  purchaseNo: string;
+  invoiceNo?: string | null;
+  totalAmount: number;
+  paidAmount: number;
+  dueAmount: number;
+  createdAt: Date;
+  ageDays: number;
+  bucket: string;
+  source: "purchase" | "cctv";
+}
 
 export async function GET(
   req: NextRequest,
@@ -17,8 +30,22 @@ export async function GET(
       return NextResponse.json({ error: "Supplier not found" }, { status: 404 });
     }
 
-    // Fetch all outstanding purchases (partial + unpaid)
-    const outstandingPurchases = await db.purchase.findMany({
+    // Fetch outstanding general purchases
+    const generalPurchases = await db.purchase.findMany({
+      where: {
+        businessId, supplierId,
+        status: { not: "cancelled" },
+        paymentStatus: { in: ["partial", "unpaid"] },
+      },
+      orderBy: { createdAt: "asc" },
+      select: {
+        id: true, purchaseNo: true, totalAmount: true, paidAmount: true,
+        createdAt: true, invoiceNo: true,
+      },
+    });
+
+    // Fetch outstanding CCTV purchases
+    const cctvPurchases = await db.cCTVPurchase.findMany({
       where: {
         businessId, supplierId,
         status: { not: "cancelled" },
@@ -36,34 +63,38 @@ export async function GET(
     let totalInvoiced = 0;
     let totalPaid = 0;
 
-    // Aging buckets: 0-30d, 31-60d, 61-90d, 90+d
+    // Aging buckets
     const aging = {
-      current: { count: 0, amount: 0 },     // 0-30 days
-      "31-60": { count: 0, amount: 0 },     // 31-60 days
-      "61-90": { count: 0, amount: 0 },     // 61-90 days
-      "90+": { count: 0, amount: 0 },       // 90+ days
+      current: { count: 0, amount: 0 },
+      "31-60": { count: 0, amount: 0 },
+      "61-90": { count: 0, amount: 0 },
+      "90+": { count: 0, amount: 0 },
     };
 
-    const purchasesWithAge = outstandingPurchases.map((p) => {
+    function processPurchase(p: { id: string; purchaseNo: string; invoiceNo?: string | null; totalAmount: number; paidAmount: number; createdAt: Date }, source: "purchase" | "cctv"): AgedPurchase {
       const due = p.totalAmount - p.paidAmount;
       const ageDays = Math.floor((now.getTime() - p.createdAt.getTime()) / (1000 * 60 * 60 * 24));
       totalDue += due;
       totalInvoiced += p.totalAmount;
       totalPaid += p.paidAmount;
 
-      // Assign to aging bucket
+      let bucket: string;
       if (ageDays <= 30) {
         aging.current.amount += due;
         aging.current.count++;
+        bucket = "current";
       } else if (ageDays <= 60) {
         aging["31-60"].amount += due;
         aging["31-60"].count++;
+        bucket = "31-60";
       } else if (ageDays <= 90) {
         aging["61-90"].amount += due;
         aging["61-90"].count++;
+        bucket = "61-90";
       } else {
         aging["90+"].amount += due;
         aging["90+"].count++;
+        bucket = "90+";
       }
 
       return {
@@ -75,21 +106,46 @@ export async function GET(
         dueAmount: due,
         createdAt: p.createdAt,
         ageDays,
-        bucket: ageDays <= 30 ? "current" : ageDays <= 60 ? "31-60" : ageDays <= 90 ? "61-90" : "90+",
+        bucket,
+        source,
       };
-    });
+    }
 
-    // All-time purchase history (last 10)
-    const purchaseHistory = await db.purchase.findMany({
-      where: { businessId, supplierId, status: { not: "cancelled" } },
-      orderBy: { createdAt: "desc" },
-      take: 10,
-      select: {
-        id: true, purchaseNo: true, totalAmount: true, paidAmount: true,
-        paymentStatus: true, status: true, createdAt: true,
-        _count: { select: { items: true } },
-      },
-    });
+    const allOutstanding = [
+      ...generalPurchases.map((p) => processPurchase(p, "purchase")),
+      ...cctvPurchases.map((p) => processPurchase(p, "cctv")),
+    ].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+
+    // All-time purchase history (last 15, both sources)
+    const [generalHistory, cctvHistory] = await Promise.all([
+      db.purchase.findMany({
+        where: { businessId, supplierId, status: { not: "cancelled" } },
+        orderBy: { createdAt: "desc" },
+        take: 15,
+        select: {
+          id: true, purchaseNo: true, totalAmount: true, paidAmount: true,
+          paymentStatus: true, status: true, createdAt: true,
+          _count: { select: { items: true } },
+        },
+      }),
+      db.cCTVPurchase.findMany({
+        where: { businessId, supplierId, status: { not: "cancelled" } },
+        orderBy: { createdAt: "desc" },
+        take: 15,
+        select: {
+          id: true, purchaseNo: true, totalAmount: true, paidAmount: true,
+          paymentStatus: true, status: true, createdAt: true,
+          _count: { select: { items: true } },
+        },
+      }),
+    ]);
+
+    const purchaseHistory = [
+      ...generalHistory.map((p) => ({ ...p, source: "purchase" as const })),
+      ...cctvHistory.map((p) => ({ ...p, source: "cctv" as const })),
+    ]
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+      .slice(0, 20);
 
     return NextResponse.json({
       success: true,
@@ -104,11 +160,13 @@ export async function GET(
         totalDue,
         totalInvoiced,
         totalPaid,
-        outstandingCount: purchasesWithAge.length,
-        oldestDueDays: purchasesWithAge.length > 0 ? purchasesWithAge[0].ageDays : 0,
+        outstandingCount: allOutstanding.length,
+        oldestDueDays: allOutstanding.length > 0 ? allOutstanding[0].ageDays : 0,
+        generalOutstanding: generalPurchases.length,
+        cctvOutstanding: cctvPurchases.length,
       },
       aging,
-      outstandingPurchases: purchasesWithAge,
+      outstandingPurchases: allOutstanding,
       purchaseHistory,
     });
   } catch (error) {

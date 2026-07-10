@@ -58,6 +58,7 @@ export { CCTVCloudDashboard } from './CCTVCloudDashboard';
 export { CCTVSupplierView } from './CCTVSupplierView';
 export { CCTVSupplierDetail } from './CCTVSupplierDetail';
 export { CCTVCreateSupplierDialog } from './CCTVCreateSupplierDialog';
+export { CCTVSupplierPaymentDialog } from './CCTVSupplierPaymentDialog';
 export { CCTVPurchaseOrderView } from './CCTVPurchaseOrderView';
 export { CCTVCreatePurchase } from './CCTVCreatePurchase';
 export { SerialPickerDialog } from './SerialPickerDialog';

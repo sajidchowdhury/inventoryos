@@ -1189,3 +1189,45 @@ Stage Summary:
 - New: returns API route, CCTVReturnDialog component
 - Modified: schema.prisma, types, CCTVSaleDetail, index.ts barrel
 - Full procurement traceability: return records link back to sale and serial items
+---
+Task ID: 2C
+Agent: Main Agent
+Task: Phase 2C - Supplier Due Tracking in CCTV
+
+Work Log:
+- Explored existing codebase: CCTVSupplierView.tsx, CCTVSupplierDetail.tsx, CCTVSupplierPaymentDialog.tsx (new), balance API, payment API
+- Discovered critical gap: balance/payment APIs only queried `db.purchase` (general model), not `db.cCTVPurchase` — CCTV supplier dues were invisible
+- Modified `/api/businesses/[id]/suppliers/[supplierId]/balance/route.ts` — now queries both Purchase and CCTVPurchase, merges results sorted by date, adds `source` field, includes generalOutstanding/cctvOutstanding counts in summary
+- Modified `/api/businesses/[id]/suppliers/[supplierId]/payments/route.ts` — GET returns purchases from both models; POST handles FIFO allocation across both Purchase and CCTVPurchase (merged by createdAt), specific allocation checks both models
+- Modified `/api/businesses/[id]/suppliers/route.ts` — added `cctvPurchases` to `_count` select in supplier list
+- Created `CCTVSupplierPaymentDialog.tsx` (~370 lines) — bottom-sheet payment dialog with:
+  - Outstanding balance display, amount input with quick-pick buttons (500-50K BDT), MAX button
+  - 6 payment methods (Cash, bKash, Nagad, Rocket, Card, Bank Transfer) in expandable grid
+  - Transaction reference field for digital payments
+  - FIFO vs Specific purchase allocation toggle with picker
+  - Real-time FIFO allocation preview showing which purchases get paid
+  - Two-step flow: enter → confirm with full summary
+  - CCTV source badges on purchase items
+- Enhanced `CCTVSupplierDetail.tsx`:
+  - Replaced inline payment input with new CCTVSupplierPaymentDialog
+  - Added "Payments" tab showing purchase payment history with paid amounts and settlement status
+  - Renamed "Outstanding" tab to show outstanding summary bar with pay button
+  - Added "CCTV" source badges on all purchase items
+  - Info tab now shows general vs CCTV outstanding breakdown
+  - Added outstanding balance display in supplier header card
+- Enhanced `CCTVSupplierView.tsx`:
+  - Added "Quick Pay" button on supplier cards with outstanding balance
+  - Quick pay fetches balance API on-demand and opens payment dialog
+  - Shows CCTV purchase count in purchase stats
+  - Outstanding balance shown directly on card
+- Added export to components/index.ts
+- All lint passes (0 errors, 1 pre-existing warning)
+
+Stage Summary:
+- Balance API now covers both Purchase + CCTVPurchase models (unified aging/outstanding view)
+- Payment API supports cross-model FIFO allocation
+- CCTVSupplierPaymentDialog: full-featured payment recording dialog with method selection, reference, allocation modes
+- Supplier detail: 4 tabs (Purchases, Outstanding, Payments, Info) with CCTV badges
+- Supplier list: quick-pay action on cards with due balance
+- Files modified: balance/route.ts, payments/route.ts, suppliers/route.ts, CCTVSupplierDetail.tsx, CCTVSupplierView.tsx, index.ts
+- Files created: CCTVSupplierPaymentDialog.tsx

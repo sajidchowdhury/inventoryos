@@ -25,7 +25,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       db.supplier.findMany({
         where,
         include: {
-          _count: { select: { purchases: true } },
+          _count: { select: { purchases: true, cctvPurchases: true } },
         },
         orderBy: { name: "asc" },
         skip,
