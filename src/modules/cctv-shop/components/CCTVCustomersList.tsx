@@ -11,12 +11,14 @@ import {
   ShoppingCart,
   Coins,
   Shield,
+  Plus,
 } from 'lucide-react';
 import { useCCTVNavStore } from '@/stores/cctv-nav-store';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { useCctvBusinessId } from '@/modules/cctv-shop/hooks/use-cctv-business-id';
+import { CCTVCreateCustomerDialog } from './CCTVCreateCustomerDialog';
 
 // ── Constants ──
 
@@ -80,6 +82,8 @@ export function CCTVCustomersList() {
   const [activeTier, setActiveTier] = useState('');
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [fetchKey, setFetchKey] = useState(0);
 
   // ── Debounced search (300ms via useEffect + AbortController) ──
   useEffect(() => {
@@ -127,7 +131,7 @@ export function CCTVCustomersList() {
       cancelled = true;
       controller.abort();
     };
-  }, [search, activeTier]);
+  }, [search, activeTier, fetchKey, businessId]);
 
   // ── Derived stats via useMemo ──
   const stats = useMemo(() => {
@@ -149,6 +153,12 @@ export function CCTVCustomersList() {
           <ArrowLeft className="w-5 h-5 text-gray-600" />
         </button>
         <h1 className="text-lg font-bold text-gray-900 flex-1">Customers</h1>
+        <button
+          onClick={() => setShowCreateDialog(true)}
+          className="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center active:opacity-90 transition-opacity shadow-lg shadow-violet-500/20"
+        >
+          <Plus className="w-5 h-5 text-white" />
+        </button>
       </div>
 
       {/* ── Quick stats row ── */}
@@ -214,7 +224,7 @@ export function CCTVCustomersList() {
       </div>
 
       {/* ── Customer cards ── */}
-      <div className="space-y-2.5 max-h-96 overflow-y-auto">
+      <div className="space-y-2.5 max-h-[calc(100vh-420px)] overflow-y-auto">
         {loading ? (
           /* Skeleton loading state */
           Array.from({ length: 5 }).map((_, i) => (
@@ -341,6 +351,24 @@ export function CCTVCustomersList() {
           </AnimatePresence>
         )}
       </div>
+
+      {/* ── FAB (visible when scrolled to bottom) ── */}
+      <motion.button
+        initial={{ scale: 0, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ delay: 0.4, type: 'spring', stiffness: 300, damping: 20 }}
+        onClick={() => setShowCreateDialog(true)}
+        className="fixed bottom-20 right-4 z-40 w-14 h-14 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-xl shadow-violet-500/30 flex items-center justify-center active:scale-95 transition-transform"
+      >
+        <Plus className="w-6 h-6" />
+      </motion.button>
+
+      {/* ── Create Customer Dialog ── */}
+      <CCTVCreateCustomerDialog
+        open={showCreateDialog}
+        onClose={() => setShowCreateDialog(false)}
+        onSaved={() => setFetchKey((k) => k + 1)}
+      />
     </motion.div>
   );
 }
