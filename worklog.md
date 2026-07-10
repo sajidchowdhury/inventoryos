@@ -1429,3 +1429,24 @@ Work Log:
 
 Stage Summary:
 - Rewritten: src/modules/cctv-shop/components/CCTVSerialItemsList.tsx (100→416 lines)
+
+---
+Task ID: 4C
+Agent: Main Agent
+Task: Add Create Customer Button to CCTVCustomersList
+
+Work Log:
+- Read CCTVCustomersList.tsx (read-only, no add button)
+- Read existing POST /cctv/customers API (accepts name, phone, email, address)
+- Read CCTVCreateSupplierDialog.tsx for bottom-sheet dialog pattern reference
+- Created CCTVCreateCustomerDialog.tsx — bottom-sheet dialog with name (required), phone, email, address fields
+- Modified CCTVCustomersList.tsx — added header "+" button, floating action button (FAB), dialog integration with fetchKey re-fetch pattern
+- Added export to index.ts
+- Lint: 0 errors (1 pre-existing font warning)
+- Dev server: healthy, Ready in 1316ms
+
+Stage Summary:
+- New file: src/modules/cctv-shop/components/CCTVCreateCustomerDialog.tsx
+- Modified: src/modules/cctv-shop/components/CCTVCustomersList.tsx (header button + FAB + dialog)
+- Modified: src/modules/cctv-shop/components/index.ts (new export)
+- Pushed as ae18cd9 to main
