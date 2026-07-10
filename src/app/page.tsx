@@ -1,43 +1,61 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowRight,
   ArrowLeft,
   Check,
-  ChevronRight,
-  ChevronDown,
   Eye,
   EyeOff,
   Loader2,
-  Building2,
-  UserCheck,
-  Phone,
-  KeyRound,
   Package,
   Users,
   Store,
+  Shield,
+  BarChart3,
+  Smartphone,
+  Zap,
+  LogIn,
+  UserPlus,
+  ChevronRight,
+  X,
+  PackageSearch,
+  TrendingUp,
+  Clock,
 } from 'lucide-react';
 import { useAuthStore, type AuthSession } from '@/stores/auth-store';
-import { moduleRegistry, getActiveModules } from '@/lib/modules';
+import { moduleRegistry, type ModuleRegistryItem } from '@/lib/modules';
 import { CCTVShell } from '@/modules/cctv-shop/components';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from '@/components/ui/sheet';
+
+/* ── Dynamic imports ── */
 const PharmacyShell = dynamic(
   () => import('@/modules/pharmacy/components').then((m) => m.PharmacyShell),
   {
     loading: () => (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-violet-500" />
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />
       </div>
     ),
     ssr: false,
   }
 );
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 
-/* ─── Types for verify-otp response ─── */
+/* ── Types ── */
 interface VerifiedPhoneData {
   phone: string;
   userId: string;
@@ -53,1077 +71,97 @@ interface VerifiedPhoneData {
   }[];
 }
 
-/* ─── Animation Variants ─── */
+/* ── Animation Variants ── */
+const fadeIn = {
+  initial: { opacity: 0 },
+  animate: { opacity: 1, transition: { duration: 0.4 } },
+  exit: { opacity: 0, transition: { duration: 0.2 } },
+};
+
 const fadeUp = {
-  initial: { opacity: 0, y: 20 },
-  animate: { opacity: 1, y: 0, transition: { duration: 0.4, ease: 'easeOut' } },
+  initial: { opacity: 0, y: 24 },
+  animate: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] } },
+  exit: { opacity: 0, y: -12, transition: { duration: 0.2 } },
 };
-const stagger = {
-  animate: { transition: { staggerChildren: 0.05 } },
+
+const slideUp = {
+  initial: { opacity: 0, y: 40 },
+  animate: { opacity: 1, y: 0, transition: { duration: 0.45, ease: [0.22, 1, 0.36, 1] } },
+  exit: { opacity: 0, y: 20, transition: { duration: 0.2 } },
 };
-const slideInRight = {
-  initial: { opacity: 0, x: 60 },
-  animate: { opacity: 1, x: 0, transition: { duration: 0.35, ease: [0.22, 1, 0.36, 1] } },
-  exit: { opacity: 0, x: -60, transition: { duration: 0.2 } },
+
+const staggerContainer = {
+  animate: { transition: { staggerChildren: 0.08 } },
 };
+
 const scaleIn = {
-  initial: { opacity: 0, scale: 0.9 },
-  animate: { opacity: 1, scale: 1, transition: { duration: 0.3, type: 'spring', stiffness: 300, damping: 25 } },
-  exit: { opacity: 0, scale: 0.9, transition: { duration: 0.15 } },
+  initial: { opacity: 0, scale: 0.95 },
+  animate: { opacity: 1, scale: 1, transition: { duration: 0.3, ease: 'easeOut' } },
+  exit: { opacity: 0, scale: 0.95, transition: { duration: 0.15 } },
 };
 
-/* ─── Back Button ─── */
-function BackButton({ onClick }: { onClick: () => void }) {
-  return (
-    <button
-      onClick={onClick}
-      className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center active:bg-gray-200 transition-colors"
-    >
-      <ArrowLeft className="w-5 h-5 text-gray-600" />
-    </button>
-  );
-}
+/* ── View type ── */
+type AppView = 'landing' | 'admin-login' | 'staff-login';
+type AdminStep = 'phone' | 'otp' | 'business-list' | 'register';
 
-/* ─── Error Text ─── */
-function ErrorText({ message }: { message: string }) {
-  if (!message) return null;
-  return (
-    <motion.p
-      initial={{ opacity: 0, y: -4 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="text-xs text-red-500 mt-1.5 flex items-center gap-1"
-    >
-      <span className="inline-block w-1 h-1 rounded-full bg-red-500" />
-      {message}
-    </motion.p>
-  );
-}
+/* ────────────────────────────────────────────
+   MAIN PAGE COMPONENT
+   ──────────────────────────────────────────── */
+export default function HomePage() {
+  const session = useAuthStore((s) => s.session);
+  const [view, setView] = useState<AppView>('landing');
+  const [preselectedSlug, setPreselectedSlug] = useState<string | null>(null);
 
-/* ─── Step: Landing ─── */
-function LandingStep({ onFreshSelect, onOwnerFlow, onStaffFlow }: {
-  onFreshSelect: (slug: string) => void;
-  onOwnerFlow: () => void;
-  onStaffFlow: () => void;
-}) {
-  const activeModules = getActiveModules();
-  const [expandedSlug, setExpandedSlug] = useState<string | null>(null);
-  const expandedMod = activeModules.find((m) => m.slug === expandedSlug);
-
-  return (
-    <div className="min-h-screen flex flex-col bg-white">
-      {/* Hero */}
-      <div className="px-6 pt-14 pb-6">
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="flex items-center gap-3 mb-4"
-        >
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg shadow-violet-500/25">
-            <Package className="w-6 h-6 text-white" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">
-              Inventory<span className="text-violet-600">OS</span>
-            </h1>
-            <p className="text-[11px] text-gray-400 -mt-0.5">Inventory for every business</p>
-          </div>
-        </motion.div>
-
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.15 }}
-          className="text-sm text-gray-500 leading-relaxed"
-        >
-          Choose your business type and get started in minutes
-        </motion.p>
-      </div>
-
-      {/* Business Cards */}
-      <div className="flex-1 px-4 pb-4">
-        <motion.div
-          variants={stagger}
-          initial="initial"
-          animate="animate"
-          className="space-y-3"
-        >
-          {activeModules.map((mod, idx) => {
-            const isExpanded = expandedSlug === mod.slug;
-            return (
-              <motion.div
-                key={mod.slug}
-                variants={fadeUp}
-                layout
-                className="relative"
-              >
-                <motion.button
-                  layout
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => setExpandedSlug(isExpanded ? null : mod.slug)}
-                  className={`w-full bg-white rounded-2xl border-2 text-left transition-colors duration-200 ${
-                    isExpanded ? `${mod.borderColor} shadow-lg` : 'border-gray-100 shadow-sm'
-                  }`}
-                >
-                  <div className="p-4">
-                    <div className="flex items-center gap-3">
-                      <motion.div
-                        layout
-                        className={`w-13 h-13 rounded-2xl bg-gradient-to-br ${mod.gradient} flex items-center justify-center shadow-md flex-shrink-0`}
-                        style={{ width: 52, height: 52 }}
-                      >
-                        <span className="text-2xl">{mod.icon}</span>
-                      </motion.div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-bold text-gray-900">{mod.name}</h3>
-                        <p className="text-xs text-gray-500 mt-0.5">{mod.tagline}</p>
-                      </div>
-                      <motion.div
-                        animate={{ rotate: isExpanded ? 180 : 0 }}
-                        transition={{ duration: 0.25 }}
-                      >
-                        <ChevronDown className="w-5 h-5 text-gray-400" />
-                      </motion.div>
-                    </div>
-                  </div>
-                </motion.button>
-
-                {/* Expanded Details */}
-                <AnimatePresence>
-                  {isExpanded && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      exit={{ opacity: 0, height: 0 }}
-                      transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-                      className="overflow-hidden"
-                    >
-                      <div className="px-4 pb-4">
-                        <motion.div
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: 0.1 }}
-                          className={`${mod.bgColor} rounded-2xl p-4 border ${mod.borderColor}`}
-                        >
-                          {/* Stats Row */}
-                          {mod.stats.length > 0 && (
-                            <div className="flex justify-around mb-4 py-2">
-                              {mod.stats.map((stat, i) => (
-                                <motion.div
-                                  key={stat.label}
-                                  initial={{ opacity: 0, y: 10 }}
-                                  animate={{ opacity: 1, y: 0 }}
-                                  transition={{ delay: 0.15 + i * 0.06 }}
-                                  className="text-center"
-                                >
-                                  <p className="text-lg font-extrabold text-gray-900">{stat.value}</p>
-                                  <p className="text-[10px] text-gray-500 font-medium">{stat.label}</p>
-                                </motion.div>
-                              ))}
-                            </div>
-                          )}
-
-                          {/* Features */}
-                          {mod.features.length > 0 && (
-                            <div className="space-y-2 mb-5">
-                              {mod.features.slice(0, 4).map((f, i) => (
-                                <motion.div
-                                  key={f.name}
-                                  initial={{ opacity: 0, x: -10 }}
-                                  animate={{ opacity: 1, x: 0 }}
-                                  transition={{ delay: 0.2 + i * 0.06 }}
-                                  className="flex items-center gap-2.5"
-                                >
-                                  <div className={`w-6 h-6 rounded-lg bg-gradient-to-br ${mod.gradient} flex items-center justify-center flex-shrink-0`}>
-                                    <Check className="w-3.5 h-3.5 text-white" />
-                                  </div>
-                                  <div>
-                                    <p className="text-xs font-semibold text-gray-800">{f.name}</p>
-                                    <p className="text-[10px] text-gray-500">{f.description}</p>
-                                  </div>
-                                </motion.div>
-                              ))}
-                              {mod.features.length > 4 && (
-                                <motion.p
-                                  initial={{ opacity: 0 }}
-                                  animate={{ opacity: 1 }}
-                                  transition={{ delay: 0.5 }}
-                                  className="text-[10px] text-gray-400 text-center pt-1"
-                                >
-                                  +{mod.features.length - 4} more features
-                                </motion.p>
-                              )}
-                            </div>
-                          )}
-
-                          {/* CTA Button */}
-                          <motion.div
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.45 }}
-                          >
-                            <Button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onFreshSelect(mod.slug);
-                              }}
-                              className={`w-full h-12 rounded-xl bg-gradient-to-r ${mod.gradient} text-white font-semibold shadow-lg active:scale-[0.98] transition-transform`}
-                            >
-                              Start with {mod.name}
-                              <ArrowRight className="w-4 h-4 ml-2" />
-                            </Button>
-                          </motion.div>
-                        </motion.div>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </motion.div>
-            );
-          })}
-        </motion.div>
-      </div>
-
-      {/* Bottom: Existing User Options */}
-      <div className="px-4 pb-8 pt-2 border-t border-gray-100 bg-white">
-        <p className="text-[11px] text-gray-400 text-center mb-3">Already have an account?</p>
-        <div className="flex gap-3">
-          <Button
-            variant="outline"
-            onClick={onOwnerFlow}
-            className="flex-1 h-11 rounded-xl border-gray-200 text-gray-700 font-medium text-sm"
-          >
-            <Building2 className="w-4 h-4 mr-1.5" />
-            I own a business
-          </Button>
-          <Button
-            variant="outline"
-            onClick={onStaffFlow}
-            className="flex-1 h-11 rounded-xl border-gray-200 text-gray-700 font-medium text-sm"
-          >
-            <UserCheck className="w-4 h-4 mr-1.5" />
-            I am staff
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ─── Step: Phone + OTP (shared by fresh user & owner) ─── */
-function PhoneStep({ selectedSlug, onBack, onVerified }: {
-  selectedSlug?: string;
-  onBack: () => void;
-  onVerified: (data: VerifiedPhoneData) => void;
-}) {
-  const [phone, setPhone] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [otpSent, setOtpSent] = useState(false);
-  const [otp, setOtp] = useState(['', '', '', '']);
-  const [error, setError] = useState('');
-  const mod = selectedSlug ? moduleRegistry.find((m) => m.slug === selectedSlug) : null;
-
-  // Normalize 10-digit input to 11-digit BD format (prepend "0")
-  const fullPhone = phone.length === 10 ? '0' + phone : phone;
-
-  const handleSendOTP = async () => {
-    if (phone.length < 10) return;
-    setError('');
-    setLoading(true);
-    try {
-      const res = await fetch('/api/auth/send-otp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: fullPhone }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error || 'Failed to send OTP');
-        return;
-      }
-      setOtpSent(true);
-    } catch {
-      setError('Network error. Please check your connection.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleVerifyOTP = async () => {
-    const otpCode = otp.join('');
-    if (otpCode.length < 4) return;
-    setError('');
-    setLoading(true);
-    try {
-      const res = await fetch('/api/auth/verify-otp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: fullPhone, otp: otpCode, trustDevice: true }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error || 'Verification failed');
-        return;
-      }
-      onVerified({
-        phone: fullPhone,
-        userId: data.user.id,
-        phoneToken: data.phoneToken,
-        businesses: data.businesses || [],
-      });
-    } catch {
-      setError('Network error. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleOtpChange = (index: number, value: string) => {
-    if (value.length > 1) return;
-    const newOtp = [...otp];
-    newOtp[index] = value;
-    setOtp(newOtp);
-    if (value && index < 3) {
-      const next = document.getElementById(`otp-${index + 1}`);
-      next?.focus();
-    }
-  };
-
-  const handleOtpKeyDown = (index: number, e: React.KeyboardEvent) => {
-    if (e.key === 'Backspace' && !otp[index] && index > 0) {
-      const prev = document.getElementById(`otp-${index - 1}`);
-      prev?.focus();
-    }
-  };
-
-  const title = mod
-    ? (otpSent ? 'Enter OTP' : 'Enter your phone')
-    : (otpSent ? 'Enter OTP' : 'Welcome back');
-
-  const subtitle = mod
-    ? (otpSent ? `Code sent to +880${phone}` : "We'll verify your number to get started")
-    : (otpSent ? `Code sent to +880${phone}` : 'Sign in to your InventoryOS account');
-
-  return (
-    <div className="min-h-screen flex flex-col bg-white px-6">
-      <motion.div {...slideInRight} className="pt-14 pb-6">
-        <BackButton onClick={onBack} />
-      </motion.div>
-
-      <motion.div
-        variants={stagger}
-        initial="initial"
-        animate="animate"
-        className="flex-1"
-      >
-        {/* Module badge (fresh user only) */}
-        {mod && (
-          <motion.div variants={fadeUp} className="flex items-center gap-2 mb-4">
-            <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${mod.gradient} flex items-center justify-center`}>
-              <span className="text-sm">{mod.icon}</span>
-            </div>
-            <span className="text-xs font-medium text-gray-400">{mod.name}</span>
-          </motion.div>
-        )}
-
-        <motion.h1 variants={fadeUp} className="text-2xl font-bold text-gray-900">
-          {title}
-        </motion.h1>
-        <motion.p variants={fadeUp} className="text-sm text-gray-500 mt-1">
-          {subtitle}
-        </motion.p>
-
-        {!otpSent ? (
-          <motion.div variants={fadeUp} className="mt-8">
-            <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Phone Number</label>
-            <div className="relative">
-              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-gray-500 font-medium">+880</span>
-              <Input
-                type="tel"
-                placeholder="1XXX XXXXXX"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value.replace(/[^0-9]/g, ''))}
-                className="h-14 rounded-xl bg-gray-50 border-gray-200 pl-14 text-lg font-semibold focus-visible:ring-violet-500/30"
-                maxLength={10}
-                autoFocus
-              />
-            </div>
-            <ErrorText message={error} />
-            <motion.div variants={fadeUp} className="mt-6">
-              <Button
-                onClick={handleSendOTP}
-                disabled={loading || phone.length < 10}
-                className={`w-full h-12 rounded-xl bg-gradient-to-r ${mod?.gradient || 'from-violet-500 to-purple-600'} text-white font-semibold shadow-lg disabled:opacity-50`}
-              >
-                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : (
-                  <>Send OTP <ArrowRight className="w-4 h-4 ml-2" /></>
-                )}
-              </Button>
-            </motion.div>
-          </motion.div>
-        ) : (
-          <motion.div {...scaleIn} className="mt-8">
-            <div className="flex justify-center gap-2.5 mb-6">
-              {otp.map((digit, i) => (
-                <input
-                  key={i}
-                  id={`otp-${i}`}
-                  type="text"
-                  inputMode="numeric"
-                  maxLength={1}
-                  value={digit}
-                  onChange={(e) => handleOtpChange(i, e.target.value.replace(/[^0-9]/g, ''))}
-                  onKeyDown={(e) => handleOtpKeyDown(i, e)}
-                  className="w-14 h-14 text-center text-xl font-bold rounded-xl border-2 border-gray-200 focus:border-violet-500 focus:outline-none transition-colors bg-gray-50"
-                  autoFocus={i === 0}
-                />
-              ))}
-            </div>
-            <ErrorText message={error} />
-            <Button
-              onClick={handleVerifyOTP}
-              disabled={loading || otp.join('').length < 4}
-              className={`w-full h-12 rounded-xl bg-gradient-to-r ${mod?.gradient || 'from-violet-500 to-purple-600'} text-white font-semibold shadow-lg disabled:opacity-50`}
-            >
-              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : (
-                <>Verify & Continue <ArrowRight className="w-4 h-4 ml-2" /></>
-              )}
-            </Button>
-            <button
-              onClick={() => { setOtpSent(false); setOtp(['', '', '', '']); setError(''); }}
-              className="w-full text-center text-xs text-violet-600 font-medium mt-4"
-            >
-              Change phone number
-            </button>
-          </motion.div>
-        )}
-      </motion.div>
-    </div>
-  );
-}
-
-/* ─── Step: Setup Business (Fresh User) ─── */
-function SetupBusinessStep({ selectedSlug, phone, userId, phoneToken, onBack, onComplete }: {
-  selectedSlug: string;
-  phone: string;
-  userId: string;
-  phoneToken: string;
-  onBack: () => void;
-  onComplete: () => void;
-}) {
-  const [businessName, setBusinessName] = useState('');
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPass, setShowPass] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const mod = moduleRegistry.find((m) => m.slug === selectedSlug);
-  const { setSession } = useAuthStore();
-
-  const handleCreate = async () => {
-    if (!businessName.trim() || !username.trim() || !password) return;
-    if (username.trim().length < 3) { setError('Username must be at least 3 characters'); return; }
-    if (password.length < 4) { setError('Password must be at least 4 characters'); return; }
-
-    setError('');
-    setLoading(true);
-    try {
-      // Step 1: Register the business
-      const regRes = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId,
-          businessTypeId: selectedSlug,
-          businessName: businessName.trim(),
-          username: username.trim(),
-          password,
-        }),
-      });
-      const regData = await regRes.json();
-      if (!regRes.ok) {
-        setError(regData.error || 'Registration failed');
-        return;
-      }
-
-      // Step 2: Auto-login as owner (no password needed with phoneToken)
-      const loginRes = await fetch('/api/auth/owner-login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          phoneToken,
-          businessId: regData.business.id,
-        }),
-      });
-      const loginData = await loginRes.json();
-      if (!loginRes.ok) {
-        setError(loginData.error || 'Auto-login failed. Please use the owner login.');
-        return;
-      }
-
-      // Step 3: Set session
-      const session: AuthSession = {
-        sessionToken: loginData.session.token,
-        expiresAt: loginData.session.expiresAt,
-        user: {
-          id: loginData.user.id,
-          name: loginData.user.fullName || loginData.user.username,
-          username: loginData.user.username,
-          role: loginData.user.role,
-          fullName: loginData.user.fullName,
-          phone,
-        },
-        permissions: loginData.permissions,
-        business: {
-          id: loginData.business.id,
-          name: loginData.business.name,
-          shopCode: loginData.business.shopCode,
-          address: loginData.business.address || '',
-          phone: '+880' + phone.replace(/^0/, ''),
-          businessType: {
-            id: loginData.business.businessType.slug,
-            name: loginData.business.businessType.name,
-            slug: loginData.business.businessType.slug,
-            icon: loginData.business.businessType.icon,
-            color: loginData.business.businessType.color,
-          },
-        },
-      };
-      setSession(session);
-      onComplete();
-    } catch {
-      setError('Network error. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div className="min-h-screen flex flex-col bg-white px-6">
-      <motion.div {...slideInRight} className="pt-14 pb-4">
-        <BackButton onClick={onBack} />
-      </motion.div>
-
-      <motion.div
-        variants={stagger}
-        initial="initial"
-        animate="animate"
-        className="flex-1"
-      >
-        {/* Module icon */}
-        <motion.div
-          initial={{ scale: 0, rotate: -20 }}
-          animate={{ scale: 1, rotate: 0 }}
-          transition={{ type: 'spring', stiffness: 300, damping: 20, delay: 0.1 }}
-          className={`w-20 h-20 rounded-3xl bg-gradient-to-br ${mod?.gradient} flex items-center justify-center mb-5 shadow-xl`}
-        >
-          <span className="text-4xl">{mod?.icon}</span>
-        </motion.div>
-
-        <motion.h1 variants={fadeUp} className="text-2xl font-bold text-gray-900">
-          Set up your {mod?.name}
-        </motion.h1>
-        <motion.p variants={fadeUp} className="text-sm text-gray-500 mt-1">
-          Create your shop and admin credentials
-        </motion.p>
-
-        <motion.div variants={fadeUp} className="mt-8 space-y-4">
-          {/* Shop Name */}
-          <div>
-            <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Shop Name</label>
-            <Input
-              placeholder={`e.g. Dhaka ${mod?.name} Center`}
-              value={businessName}
-              onChange={(e) => setBusinessName(e.target.value)}
-              className="h-12 rounded-xl bg-gray-50 border-gray-200 text-base font-semibold focus-visible:ring-violet-500/30"
-              autoFocus
-            />
-          </div>
-
-          {/* Admin Username */}
-          <div>
-            <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Admin Username</label>
-            <div className="relative">
-              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">
-                <Users className="w-4 h-4" />
-              </span>
-              <Input
-                placeholder="e.g. admin"
-                value={username}
-                onChange={(e) => setUsername(e.target.value.replace(/\s/g, '').toLowerCase())}
-                className="h-12 rounded-xl bg-gray-50 border-gray-200 pl-10 text-base font-medium focus-visible:ring-violet-500/30"
-              />
-            </div>
-          </div>
-
-          {/* Admin Password */}
-          <div>
-            <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Admin Password</label>
-            <div className="relative">
-              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">
-                <KeyRound className="w-4 h-4" />
-              </span>
-              <Input
-                type={showPass ? 'text' : 'password'}
-                placeholder="Create a password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="h-12 rounded-xl bg-gray-50 border-gray-200 pl-10 pr-10 text-base font-medium focus-visible:ring-violet-500/30"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPass(!showPass)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
-              >
-                {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-            </div>
-          </div>
-
-          <ErrorText message={error} />
-        </motion.div>
-
-        {/* Feature preview */}
-        {mod?.features.length ? (
-          <motion.div variants={fadeUp} className="mt-6">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">You&apos;ll get</p>
-            <div className="space-y-2">
-              {mod.features.slice(0, 4).map((f, i) => (
-                <motion.div
-                  key={f.name}
-                  initial={{ opacity: 0, x: -15 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.3 + i * 0.07 }}
-                  className="flex items-center gap-3"
-                >
-                  <div className={`w-7 h-7 rounded-lg bg-gradient-to-br ${mod.gradient} flex items-center justify-center flex-shrink-0`}>
-                    <Check className="w-3.5 h-3.5 text-white" />
-                  </div>
-                  <div>
-                    <span className="text-sm font-medium text-gray-800">{f.name}</span>
-                    <span className="text-xs text-gray-400 ml-1">— {f.description}</span>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          </motion.div>
-        ) : null}
-
-        <motion.div variants={fadeUp} className="mt-8 pb-8">
-          <Button
-            onClick={handleCreate}
-            disabled={loading || !businessName.trim() || !username.trim() || !password}
-            className={`w-full h-13 rounded-2xl bg-gradient-to-r ${mod?.gradient || 'from-violet-500 to-purple-600'} text-white font-semibold text-base shadow-lg disabled:opacity-50 active:scale-[0.98] transition-transform`}
-          >
-            {loading ? (
-              <Loader2 className="w-5 h-5 animate-spin" />
-            ) : (
-              <>
-                Create & Enter
-                <ArrowRight className="w-4 h-4 ml-2" />
-              </>
-            )}
-          </Button>
-        </motion.div>
-      </motion.div>
-    </div>
-  );
-}
-
-/* ─── Step: Business List (Owner after OTP) ─── */
-function BusinessListStep({ businesses, phoneToken, onBack, onSelect, onRegisterNew }: {
-  businesses: VerifiedPhoneData['businesses'];
-  phoneToken: string;
-  onBack: () => void;
-  onSelect: (businessId: string) => void;
-  onRegisterNew: () => void;
-}) {
-  return (
-    <div className="min-h-screen flex flex-col bg-white">
-      <motion.div {...slideInRight} className="px-6 pt-14 pb-4">
-        <BackButton onClick={onBack} />
-        <h1 className="text-2xl font-bold text-gray-900 mt-6">Your Businesses</h1>
-        <p className="text-sm text-gray-500 mt-1">Select a business to enter</p>
-      </motion.div>
-
-      <motion.div variants={stagger} initial="initial" animate="animate" className="flex-1 px-4 pb-8">
-        <div className="space-y-3">
-          {businesses.map((biz, i) => (
-            <motion.button
-              key={biz.id}
-              variants={fadeUp}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => onSelect(biz.id)}
-              className="w-full bg-white rounded-2xl border-2 border-gray-100 p-4 text-left shadow-sm hover:border-violet-200 hover:shadow-md transition-all active:scale-[0.98]"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-md flex-shrink-0">
-                  <span className="text-xl">{biz.businessType.icon}</span>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-bold text-gray-900 truncate">{biz.name}</h3>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    {biz.shopCode && (
-                      <span className="text-[10px] font-mono font-bold text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">
-                        {biz.shopCode}
-                      </span>
-                    )}
-                    <span className="text-xs text-gray-400">{biz.businessType.name}</span>
-                  </div>
-                  {biz.businessUsers.length > 0 && (
-                    <p className="text-[10px] text-gray-400 mt-0.5">
-                      Logged in as {biz.businessUsers[0].username}
-                    </p>
-                  )}
-                </div>
-                <ChevronRight className="w-5 h-5 text-gray-300 flex-shrink-0" />
-              </div>
-            </motion.button>
-          ))}
-        </div>
-
-        {/* Register New Business */}
-        <motion.div variants={fadeUp} className="mt-6">
-          <Button
-            variant="outline"
-            onClick={onRegisterNew}
-            className="w-full h-12 rounded-xl border-2 border-dashed border-gray-300 text-gray-500 font-medium text-sm"
-          >
-            <span className="text-lg mr-2">+</span>
-            Register a new business
-          </Button>
-        </motion.div>
-      </motion.div>
-    </div>
-  );
-}
-
-/* ─── Step: Staff Login ─── */
-function StaffLoginStep({ onBack, onLogin }: {
-  onBack: () => void;
-  onLogin: () => void;
-}) {
-  const [shopCode, setShopCode] = useState('');
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPass, setShowPass] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const { setSession } = useAuthStore();
-
-  const handleLogin = async () => {
-    if (!shopCode || !username || !password) return;
-    setError('');
-    setLoading(true);
-    try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          shopCode: shopCode.toUpperCase().trim(),
-          username: username.trim(),
-          password,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error || 'Login failed');
-        return;
-      }
-
-      const session: AuthSession = {
-        sessionToken: data.session.token,
-        expiresAt: data.session.expiresAt,
-        user: {
-          id: data.user.id,
-          name: data.user.fullName || data.user.username,
-          username: data.user.username,
-          role: data.user.role,
-          fullName: data.user.fullName,
-        },
-        permissions: data.permissions,
-        business: {
-          id: data.business.id,
-          name: data.business.name,
-          shopCode: data.business.shopCode,
-          address: data.business.address || '',
-          phone: '',
-          businessType: {
-            id: data.business.businessType.slug,
-            name: data.business.businessType.name,
-            slug: data.business.businessType.slug,
-            icon: data.business.businessType.icon,
-            color: data.business.businessType.color,
-          },
-        },
-      };
-      setSession(session);
-      onLogin();
-    } catch {
-      setError('Network error. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div className="min-h-screen flex flex-col bg-white px-6">
-      <motion.div {...slideInRight} className="pt-14 pb-6">
-        <BackButton onClick={onBack} />
-        <h1 className="text-2xl font-bold text-gray-900 mt-6">Staff Login</h1>
-        <p className="text-sm text-gray-500 mt-1">Enter your shop code and credentials</p>
-      </motion.div>
-
-      <motion.div variants={stagger} initial="initial" animate="animate" className="flex-1 space-y-4">
-        <motion.div variants={fadeUp}>
-          <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Shop Code</label>
-          <div className="relative">
-            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">
-              <Store className="w-4 h-4" />
-            </span>
-            <Input
-              placeholder="e.g. PHA-XK7T"
-              value={shopCode}
-              onChange={(e) => setShopCode(e.target.value.toUpperCase())}
-              className="h-12 rounded-xl bg-gray-50 border-gray-200 pl-10 font-mono tracking-wider focus-visible:ring-violet-500/30"
-              autoFocus
-            />
-          </div>
-        </motion.div>
-        <motion.div variants={fadeUp}>
-          <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Username</label>
-          <div className="relative">
-            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">
-              <Users className="w-4 h-4" />
-            </span>
-            <Input
-              placeholder="Your username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              className="h-12 rounded-xl bg-gray-50 border-gray-200 pl-10 focus-visible:ring-violet-500/30"
-            />
-          </div>
-        </motion.div>
-        <motion.div variants={fadeUp}>
-          <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Password</label>
-          <div className="relative">
-            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">
-              <KeyRound className="w-4 h-4" />
-            </span>
-            <Input
-              type={showPass ? 'text' : 'password'}
-              placeholder="Enter password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="h-12 rounded-xl bg-gray-50 border-gray-200 pl-10 pr-10 focus-visible:ring-violet-500/30"
-            />
-            <button
-              type="button"
-              onClick={() => setShowPass(!showPass)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
-            >
-              {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-            </button>
-          </div>
-        </motion.div>
-        <motion.div variants={fadeUp}>
-          <ErrorText message={error} />
-        </motion.div>
-        <motion.div variants={fadeUp} className="pt-2 pb-8">
-          <Button
-            onClick={handleLogin}
-            disabled={loading || !shopCode || !username || !password}
-            className="w-full h-12 rounded-xl bg-gradient-to-r from-violet-500 to-purple-600 text-white font-semibold shadow-lg disabled:opacity-50"
-          >
-            {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : (
-              <>Login <ArrowRight className="w-4 h-4 ml-2" /></>
-            )}
-          </Button>
-        </motion.div>
-      </motion.div>
-    </div>
-  );
-}
-
-/* ─── Flow Types ─── */
-type FlowStep =
-  | { type: 'landing' }
-  | { type: 'phone'; slug?: string; flow: 'fresh' | 'owner' }
-  | { type: 'setup'; slug: string; phone: string; userId: string; phoneToken: string }
-  | { type: 'business-list'; phone: string; userId: string; phoneToken: string; businesses: VerifiedPhoneData['businesses'] }
-  | { type: 'staff-login' };
-
-/* ─── Landing Page (Router) ─── */
-function LandingPage() {
-  const { setSession, logout } = useAuthStore();
-  const [step, setStep] = useState<FlowStep>({ type: 'landing' });
-
-  /* Fresh user: select business → phone → OTP → setup → done */
-  const handleFreshSelect = (slug: string) => {
-    setStep({ type: 'phone', slug, flow: 'fresh' });
-  };
-
-  /* Owner flow: "I own a business" */
-  const handleOwnerFlow = () => {
-    setStep({ type: 'phone', flow: 'owner' });
-  };
-
-  /* Staff flow */
-  const handleStaffFlow = () => {
-    setStep({ type: 'staff-login' });
-  };
-
-  /* After OTP verified (shared by fresh + owner) */
-  const handlePhoneVerified = useCallback((data: VerifiedPhoneData) => {
-    const currentStep = step as { type: 'phone'; slug?: string; flow: 'fresh' | 'owner' };
-
-    if (data.businesses.length > 0) {
-      // User has businesses → show business list
-      setStep({
-        type: 'business-list',
-        phone: data.phone,
-        userId: data.userId,
-        phoneToken: data.phoneToken,
-        businesses: data.businesses,
-      });
-    } else if (currentStep.flow === 'fresh' && currentStep.slug) {
-      // Fresh user with no businesses → setup
-      setStep({
-        type: 'setup',
-        slug: currentStep.slug,
-        phone: data.phone,
-        userId: data.userId,
-        phoneToken: data.phoneToken,
-      });
-    } else {
-      // Owner with no businesses → back to landing
-      alert('No businesses found. Please register a new business first.');
-      setStep({ type: 'landing' });
-    }
-  }, [step]);
-
-  /* Owner selects a business from the list */
-  const handleOwnerSelectBusiness = useCallback(async (businessId: string) => {
-    const currentStep = step as { type: 'business-list'; phoneToken: string };
-    try {
-      const res = await fetch('/api/auth/owner-login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phoneToken: currentStep.phoneToken, businessId }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        alert(data.error || 'Login failed. Please try again.');
-        return;
-      }
-
-      const session: AuthSession = {
-        sessionToken: data.session.token,
-        expiresAt: data.session.expiresAt,
-        user: {
-          id: data.user.id,
-          name: data.user.fullName || data.user.username,
-          username: data.user.username,
-          role: data.user.role,
-          fullName: data.user.fullName,
-        },
-        permissions: data.permissions,
-        business: {
-          id: data.business.id,
-          name: data.business.name,
-          shopCode: data.business.shopCode,
-          address: data.business.address || '',
-          phone: '',
-          businessType: {
-            id: data.business.businessType.slug,
-            name: data.business.businessType.name,
-            slug: data.business.businessType.slug,
-            icon: data.business.businessType.icon,
-            color: data.business.businessType.color,
-          },
-        },
-      };
-      setSession(session);
-    } catch {
-      alert('Network error. Please try again.');
-    }
-  }, [step, setSession]);
-
-  /* Owner wants to register a new business (from business list) */
-  const handleRegisterNew = useCallback(() => {
-    setStep({ type: 'landing' });
+  const goAdminLogin = useCallback((slug?: string) => {
+    setPreselectedSlug(slug || null);
+    setView('admin-login');
+  }, []);
+  const goStaffLogin = useCallback(() => setView('staff-login'), []);
+  const goLanding = useCallback(() => {
+    setView('landing');
+    setPreselectedSlug(null);
   }, []);
 
-  const goBack = () => {
-    switch (step.type) {
-      case 'owner-login':
-      case 'staff-login':
-      case 'business-list':
-        setStep({ type: 'landing' });
-        break;
-      case 'phone':
-        setStep({ type: 'landing' });
-        break;
-      case 'setup':
-        setStep({ type: 'phone', slug: (step as { type: 'setup'; slug: string }).slug, flow: 'fresh' });
-        break;
-    }
-  };
+  // If authenticated, show dashboard
+  if (session) return <DashboardView />;
 
-  switch (step.type) {
-    case 'landing':
-      return (
-        <LandingStep
-          onFreshSelect={handleFreshSelect}
-          onOwnerFlow={handleOwnerFlow}
-          onStaffFlow={handleStaffFlow}
+  return (
+    <AnimatePresence mode="wait">
+      {view === 'landing' && (
+        <LandingView
+          key="landing"
+          onAdminLogin={() => goAdminLogin()}
+          onStaffLogin={goStaffLogin}
+          onGetStarted={(slug) => goAdminLogin(slug)}
         />
-      );
-    case 'phone':
-      return (
-        <PhoneStep
-          selectedSlug={step.slug}
-          onBack={goBack}
-          onVerified={handlePhoneVerified}
+      )}
+      {view === 'admin-login' && (
+        <AdminLoginView
+          key="admin-login"
+          preselectedSlug={preselectedSlug}
+          onBack={goLanding}
+          onSwitchToStaff={goStaffLogin}
         />
-      );
-    case 'setup':
-      return (
-        <SetupBusinessStep
-          selectedSlug={step.slug}
-          phone={step.phone}
-          userId={step.userId}
-          phoneToken={step.phoneToken}
-          onBack={goBack}
-          onComplete={() => {/* session already set in the component */}}
+      )}
+      {view === 'staff-login' && (
+        <StaffLoginView
+          key="staff-login"
+          onBack={goLanding}
+          onSwitchToAdmin={() => goAdminLogin()}
         />
-      );
-    case 'business-list':
-      return (
-        <BusinessListStep
-          businesses={step.businesses}
-          phoneToken={step.phoneToken}
-          onBack={goBack}
-          onSelect={handleOwnerSelectBusiness}
-          onRegisterNew={handleRegisterNew}
-        />
-      );
-    case 'staff-login':
-      return (
-        <StaffLoginStep
-          onBack={goBack}
-          onLogin={() => {/* session already set in the component */}}
-        />
-      );
-  }
+      )}
+    </AnimatePresence>
+  );
 }
 
-/* ─── Dashboard Step (post-auth) ─── */
-function DashboardStep() {
+/* ────────────────────────────────────────────
+   DASHBOARD VIEW
+   ──────────────────────────────────────────── */
+function DashboardView() {
   const session = useAuthStore((s) => s.session);
-  const { logout } = useAuthStore();
-
+  const logout = useAuthStore((s) => s.logout);
   if (!session) return null;
+
   const slug = session.business.businessType.slug;
 
   return (
@@ -1132,14 +170,18 @@ function DashboardStep() {
         {slug === 'cctv-shop' && <CCTVShell />}
         {slug === 'pharmacy' && <PharmacyShell />}
         {!['cctv-shop', 'pharmacy'].includes(slug) && (
-          <div className="min-h-screen bg-gray-50/80 flex items-center justify-center">
-            <div className="text-center px-6">
-              <div className="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center mx-auto mb-4">
-                <span className="text-3xl">🚧</span>
-              </div>
-              <h2 className="text-lg font-bold text-gray-900">{session.business.businessType.name} Module</h2>
-              <p className="text-sm text-gray-500 mt-1">Coming soon</p>
-            </div>
+          <div className="min-h-screen flex flex-col items-center justify-center gap-6 bg-gray-50 px-4">
+            <div className="text-6xl">{session.business.businessType.icon}</div>
+            <h2 className="text-2xl font-bold text-gray-900">{session.business.businessType.name}</h2>
+            <p className="text-gray-500 text-center max-w-md">
+              This module is under development. We&apos;re working hard to bring you the best experience.
+            </p>
+            <button
+              onClick={logout}
+              className="px-6 py-2.5 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors"
+            >
+              Sign Out
+            </button>
           </div>
         )}
       </div>
@@ -1147,33 +189,1262 @@ function DashboardStep() {
   );
 }
 
-/* ─── Main Page ─── */
-export default function Home() {
-  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+/* ────────────────────────────────────────────
+   LANDING PAGE
+   ──────────────────────────────────────────── */
+function LandingView({
+  onAdminLogin,
+  onStaffLogin,
+  onGetStarted,
+}: {
+  onAdminLogin: () => void;
+  onStaffLogin: () => void;
+  onGetStarted: (slug: string) => void;
+}) {
+  const [detailModule, setDetailModule] = useState<ModuleRegistryItem | null>(null);
 
   return (
-    <AnimatePresence mode="wait">
-      {!isAuthenticated ? (
-        <motion.div
-          key="landing"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.2 }}
-        >
-          <LandingPage />
-        </motion.div>
-      ) : (
-        <motion.div
-          key="dashboard"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.2 }}
-        >
-          <DashboardStep />
-        </motion.div>
+    <motion.div
+      {...fadeIn}
+      className="min-h-screen flex flex-col bg-white"
+    >
+      {/* ── Sticky Header ── */}
+      <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-gray-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            {/* Logo */}
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
+                <Package className="w-4 h-4 text-white" />
+              </div>
+              <span className="text-lg font-bold text-gray-900 tracking-tight">
+                InventoryOS
+              </span>
+            </div>
+            {/* CTA Buttons */}
+            <div className="flex items-center gap-2 sm:gap-3">
+              <Button
+                variant="outline"
+                size="sm"
+                className="hidden sm:flex h-9 px-4 text-sm font-medium"
+                onClick={onAdminLogin}
+              >
+                <LogIn className="w-4 h-4 mr-1.5" />
+                Login
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="hidden sm:flex h-9 px-4 text-sm font-medium"
+                onClick={onStaffLogin}
+              >
+                Staff Login
+              </Button>
+              {/* Mobile: just show Login */}
+              <Button
+                variant="outline"
+                size="sm"
+                className="sm:hidden h-9 px-3 text-sm font-medium"
+                onClick={onAdminLogin}
+              >
+                <LogIn className="w-4 h-4 mr-1" />
+                Login
+              </Button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main className="flex-1">
+        {/* ── Hero Section ── */}
+        <section className="relative overflow-hidden bg-gradient-to-b from-slate-950 via-slate-900 to-slate-800">
+          {/* Background pattern */}
+          <div className="absolute inset-0 opacity-[0.03]" style={{
+            backgroundImage: `radial-gradient(circle at 1px 1px, white 1px, transparent 0)`,
+            backgroundSize: '40px 40px',
+          }} />
+          {/* Gradient orbs */}
+          <div className="absolute top-0 left-1/4 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl" />
+          <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-teal-500/10 rounded-full blur-3xl" />
+
+          <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 sm:py-28 lg:py-36">
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+              className="max-w-3xl mx-auto text-center"
+            >
+              {/* Badge */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.1, duration: 0.4 }}
+              >
+                <Badge variant="outline" className="mb-6 px-3 py-1 text-emerald-400 border-emerald-500/30 bg-emerald-500/10 text-xs sm:text-sm">
+                  <Zap className="w-3 h-3 mr-1" />
+                  AI-Powered Business Management
+                </Badge>
+              </motion.div>
+
+              {/* Headline */}
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white leading-tight tracking-tight mb-6">
+                Smart Business{' '}
+                <span className="bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent">
+                  Management
+                </span>
+                <br className="hidden sm:block" />
+                {' '}for Every Trade
+              </h1>
+
+              {/* Subtitle */}
+              <p className="text-base sm:text-lg lg:text-xl text-slate-300 max-w-2xl mx-auto mb-10 leading-relaxed">
+                Complete inventory, sales, and operations management platform.
+                Start free in minutes, scale with AI-powered insights.
+              </p>
+
+              {/* CTAs */}
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
+                <Button
+                  size="lg"
+                  className="w-full sm:w-auto h-12 px-8 text-base font-semibold bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 shadow-lg shadow-emerald-500/25"
+                  onClick={() => {
+                    document.getElementById('solutions')?.scrollIntoView({ behavior: 'smooth' });
+                  }}
+                >
+                  Explore Solutions
+                  <ArrowRight className="w-4 h-4 ml-2" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="lg"
+                  className="w-full sm:w-auto h-12 px-8 text-base font-semibold border-slate-600 text-slate-200 hover:bg-slate-800 hover:text-white"
+                  onClick={onAdminLogin}
+                >
+                  <LogIn className="w-4 h-4 mr-2" />
+                  I Have an Account
+                </Button>
+              </div>
+
+              {/* Quick stats */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3, duration: 0.5 }}
+                className="mt-14 flex flex-wrap items-center justify-center gap-x-8 gap-y-4 text-sm text-slate-400"
+              >
+                <div className="flex items-center gap-2">
+                  <Store className="w-4 h-4 text-emerald-500" />
+                  <span>7 Business Types</span>
+                </div>
+                <div className="hidden sm:block w-1 h-1 rounded-full bg-slate-600" />
+                <div className="flex items-center gap-2">
+                  <Smartphone className="w-4 h-4 text-emerald-500" />
+                  <span>Mobile First</span>
+                </div>
+                <div className="hidden sm:block w-1 h-1 rounded-full bg-slate-600" />
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4 text-emerald-500" />
+                  <span>AI Insights</span>
+                </div>
+                <div className="hidden sm:block w-1 h-1 rounded-full bg-slate-600" />
+                <div className="flex items-center gap-2">
+                  <Shield className="w-4 h-4 text-emerald-500" />
+                  <span>Secure</span>
+                </div>
+              </motion.div>
+            </motion.div>
+          </div>
+        </section>
+
+        {/* ── Quick Access for Returning Users ── */}
+        <section className="bg-white border-b border-gray-100">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: '-50px' }}
+              transition={{ duration: 0.4 }}
+            >
+              <p className="text-center text-sm font-medium text-gray-500 mb-4 uppercase tracking-wider">
+                Already have an account?
+              </p>
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
+                <button
+                  onClick={onAdminLogin}
+                  className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-gray-900 text-white font-medium hover:bg-gray-800 transition-all active:scale-[0.98]"
+                >
+                  <LogIn className="w-4 h-4" />
+                  Admin / Owner Login
+                </button>
+                <button
+                  onClick={onStaffLogin}
+                  className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 rounded-xl border border-gray-200 text-gray-700 font-medium hover:bg-gray-50 transition-all active:scale-[0.98]"
+                >
+                  <Users className="w-4 h-4" />
+                  Staff Login
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        </section>
+
+        {/* ── Business Solutions ── */}
+        <section id="solutions" className="bg-gray-50/50">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: '-80px' }}
+              transition={{ duration: 0.5 }}
+              className="text-center mb-12 sm:mb-16"
+            >
+              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-4">
+                Solutions for Your Business
+              </h2>
+              <p className="text-gray-500 text-base sm:text-lg max-w-xl mx-auto">
+                Choose the right tools tailored to your trade. Each module is built with industry-specific features.
+              </p>
+            </motion.div>
+
+            <motion.div
+              variants={staggerContainer}
+              initial="initial"
+              whileInView="animate"
+              viewport={{ once: true, margin: '-60px' }}
+              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5"
+            >
+              {moduleRegistry.map((mod) => (
+                <motion.div key={mod.slug} variants={fadeUp}>
+                  <button
+                    onClick={() => setDetailModule(mod)}
+                    className="w-full text-left group"
+                  >
+                    <Card className="relative overflow-hidden border-gray-200/80 bg-white hover:shadow-lg hover:shadow-gray-200/50 hover:border-gray-300 transition-all duration-300 h-full cursor-pointer">
+                      {!mod.isActive && (
+                        <div className="absolute top-3 right-3 z-10">
+                          <Badge variant="secondary" className="text-[10px] px-2 py-0.5 bg-gray-100 text-gray-500 border-gray-200">
+                            Coming Soon
+                          </Badge>
+                        </div>
+                      )}
+                      <CardContent className="pt-6 pb-6">
+                        <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${mod.gradient} flex items-center justify-center text-2xl mb-4 shadow-sm`}>
+                          {mod.icon}
+                        </div>
+                        <h3 className="font-semibold text-gray-900 text-base mb-1 group-hover:text-emerald-700 transition-colors">
+                          {mod.name}
+                        </h3>
+                        <p className="text-sm text-gray-500 leading-relaxed">
+                          {mod.tagline}
+                        </p>
+                        {mod.isActive && (
+                          <div className="mt-4 flex items-center text-sm font-medium text-emerald-600 opacity-0 group-hover:opacity-100 transition-opacity">
+                            Learn more <ChevronRight className="w-3.5 h-3.5 ml-0.5" />
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </button>
+                </motion.div>
+              ))}
+            </motion.div>
+          </div>
+        </section>
+
+        {/* ── How It Works ── */}
+        <section className="bg-white">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: '-80px' }}
+              transition={{ duration: 0.5 }}
+              className="text-center mb-12 sm:mb-16"
+            >
+              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-4">
+                Get Started in Minutes
+              </h2>
+              <p className="text-gray-500 text-base sm:text-lg max-w-xl mx-auto">
+                Three simple steps to transform your business operations.
+              </p>
+            </motion.div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 sm:gap-12">
+              {[
+                {
+                  step: '01',
+                  icon: <PackageSearch className="w-6 h-6" />,
+                  title: 'Choose Your Business Type',
+                  desc: 'Select from 7 industry-specific modules designed for your trade.',
+                },
+                {
+                  step: '02',
+                  icon: <Smartphone className="w-6 h-6" />,
+                  title: 'Verify & Set Up',
+                  desc: 'Enter your phone, verify with OTP, and set up your business details.',
+                },
+                {
+                  step: '03',
+                  icon: <BarChart3 className="w-6 h-6" />,
+                  title: 'Start Managing',
+                  desc: 'Add products, manage inventory, process sales, and grow with AI insights.',
+                },
+              ].map((item, i) => (
+                <motion.div
+                  key={item.step}
+                  initial={{ opacity: 0, y: 24 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: '-60px' }}
+                  transition={{ delay: i * 0.1, duration: 0.5 }}
+                  className="relative text-center"
+                >
+                  <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 mb-5">
+                    {item.icon}
+                  </div>
+                  <div className="text-xs font-bold text-emerald-500 tracking-widest mb-2">
+                    STEP {item.step}
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    {item.title}
+                  </h3>
+                  <p className="text-sm text-gray-500 leading-relaxed max-w-xs mx-auto">
+                    {item.desc}
+                  </p>
+                  {i < 2 && (
+                    <div className="hidden md:block absolute top-7 -right-6 lg:-right-8 w-12 lg:w-16">
+                      <ArrowRight className="w-full h-5 text-gray-300" />
+                    </div>
+                  )}
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ── CTA Section ── */}
+        <section className="bg-gradient-to-b from-gray-50 to-white">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-20">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5 }}
+              className="text-center bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl sm:rounded-3xl px-6 py-12 sm:py-16 lg:py-20"
+            >
+              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white mb-4">
+                Ready to Manage Smarter?
+              </h2>
+              <p className="text-slate-300 text-base sm:text-lg max-w-lg mx-auto mb-8">
+                Join hundreds of businesses already using InventoryOS to streamline their operations.
+              </p>
+              <Button
+                size="lg"
+                className="h-12 px-8 text-base font-semibold bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 shadow-lg shadow-emerald-500/25"
+                onClick={() => {
+                  document.getElementById('solutions')?.scrollIntoView({ behavior: 'smooth' });
+                }}
+              >
+                Get Started Free
+                <ArrowRight className="w-4 h-4 ml-2" />
+              </Button>
+            </motion.div>
+          </div>
+        </section>
+      </main>
+
+      {/* ── Footer ── */}
+      <footer className="bg-white border-t border-gray-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 rounded-md bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
+                <Package className="w-3 h-3 text-white" />
+              </div>
+              <span className="text-sm font-semibold text-gray-700">InventoryOS</span>
+            </div>
+            <p className="text-xs text-gray-400">
+              &copy; {new Date().getFullYear()} InventoryOS. Smart Business Management.
+            </p>
+            <div className="flex items-center gap-4">
+              <button onClick={onAdminLogin} className="text-xs text-gray-400 hover:text-gray-600 transition-colors">
+                Login
+              </button>
+              <button onClick={onStaffLogin} className="text-xs text-gray-400 hover:text-gray-600 transition-colors">
+                Staff Login
+              </button>
+            </div>
+          </div>
+        </div>
+      </footer>
+
+      {/* ── Business Detail Sheet ── */}
+      <Sheet open={!!detailModule} onOpenChange={(open) => !open && setDetailModule(null)}>
+        <SheetContent side="bottom" className="max-h-[85vh] sm:max-h-[80vh] overflow-y-auto rounded-t-2xl">
+          {detailModule && (
+            <BusinessDetailSheet
+              module={detailModule}
+              onGetStarted={() => {
+                setDetailModule(null);
+                onGetStarted(detailModule.slug);
+              }}
+              onClose={() => setDetailModule(null)}
+            />
+          )}
+        </SheetContent>
+      </Sheet>
+    </motion.div>
+  );
+}
+
+/* ── Business Detail Sheet Content ── */
+function BusinessDetailSheet({
+  module,
+  onGetStarted,
+  onClose,
+}: {
+  module: ModuleRegistryItem;
+  onGetStarted: () => void;
+  onClose: () => void;
+}) {
+  return (
+    <div className="pb-8">
+      <SheetHeader className="text-left mb-6">
+        <div className="flex items-start justify-between">
+          <div className="flex items-center gap-3">
+            <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${module.gradient} flex items-center justify-center text-2xl shadow-sm`}>
+              {module.icon}
+            </div>
+            <div>
+              <SheetTitle className="text-xl">{module.name}</SheetTitle>
+              <SheetDescription className="text-sm mt-0.5">{module.tagline}</SheetDescription>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition-colors"
+          >
+            <X className="w-4 h-4 text-gray-500" />
+          </button>
+        </div>
+      </SheetHeader>
+
+      <p className="text-gray-600 text-sm leading-relaxed mb-6 px-1">
+        {module.description}
+      </p>
+
+      {module.features.length > 0 && (
+        <div className="mb-6">
+          <h4 className="text-sm font-semibold text-gray-900 mb-3 px-1">Key Features</h4>
+          <div className="space-y-2.5">
+            {module.features.map((f) => (
+              <div key={f.name} className="flex items-start gap-3 px-1">
+                <div className="w-5 h-5 rounded-full bg-emerald-50 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <Check className="w-3 h-3 text-emerald-600" />
+                </div>
+                <div>
+                  <span className="text-sm font-medium text-gray-800">{f.name}</span>
+                  <span className="text-sm text-gray-500 ml-1">— {f.description}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       )}
-    </AnimatePresence>
+
+      {module.stats.length > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
+          {module.stats.map((s) => (
+            <div key={s.label} className="text-center p-3 rounded-xl bg-gray-50">
+              <div className="text-lg font-bold text-gray-900">{s.value}</div>
+              <div className="text-xs text-gray-500 mt-0.5">{s.label}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <Button
+        size="lg"
+        className="w-full h-12 text-base font-semibold bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 shadow-lg shadow-emerald-500/20"
+        onClick={onGetStarted}
+      >
+        <UserPlus className="w-4 h-4 mr-2" />
+        Get Started with {module.name}
+        <ArrowRight className="w-4 h-4 ml-2" />
+      </Button>
+    </div>
+  );
+}
+
+/* ────────────────────────────────────────────
+   ADMIN / OWNER LOGIN VIEW
+   ──────────────────────────────────────────── */
+function AdminLoginView({
+  preselectedSlug,
+  onBack,
+  onSwitchToStaff,
+}: {
+  preselectedSlug: string | null;
+  onBack: () => void;
+  onSwitchToStaff: () => void;
+}) {
+  const setSession = useAuthStore((s) => s.setSession);
+  const [step, setStep] = useState<AdminStep>('phone');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  // Phone step
+  const [phoneDigits, setPhoneDigits] = useState('');
+  // OTP step
+  const [otp, setOtp] = useState('');
+  const [demoOtp, setDemoOtp] = useState('');
+  const [phoneToken, setPhoneToken] = useState('');
+  const [userId, setUserId] = useState('');
+  // Business list
+  const [businesses, setBusinesses] = useState<VerifiedPhoneData['businesses']>([]);
+  // Register step
+  const [regBusinessName, setRegBusinessName] = useState('');
+  const [regUsername, setRegUsername] = useState('');
+  const [regPassword, setRegPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [regBusinessTypeId, setRegBusinessTypeId] = useState('');
+
+  // Auto-set business type from preselected slug
+  useEffect(() => {
+    if (preselectedSlug) {
+      const mod = moduleRegistry.find((m) => m.slug === preselectedSlug);
+      if (mod) {
+        setRegBusinessTypeId(preselectedSlug);
+      }
+    }
+  }, [preselectedSlug]);
+
+  const handleSendOtp = useCallback(async () => {
+    if (phoneDigits.length !== 10) {
+      setError('Please enter a valid 10-digit phone number');
+      return;
+    }
+    setLoading(true);
+    setError('');
+    try {
+      const fullPhone = '0' + phoneDigits;
+      const res = await fetch('/api/auth/send-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: fullPhone }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to send OTP');
+      setDemoOtp(data.demoOtp || '');
+      setStep('otp');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Something went wrong');
+    } finally {
+      setLoading(false);
+    }
+  }, [phoneDigits]);
+
+  const handleVerifyOtp = useCallback(async () => {
+    if (otp.length !== 4) {
+      setError('Please enter the 4-digit OTP');
+      return;
+    }
+    setLoading(true);
+    setError('');
+    try {
+      const fullPhone = '0' + phoneDigits;
+      const res = await fetch('/api/auth/verify-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: fullPhone, otp }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Verification failed');
+      setPhoneToken(data.phoneToken);
+      setUserId(data.userId);
+      if (data.businesses && data.businesses.length > 0) {
+        setBusinesses(data.businesses);
+        setStep('business-list');
+      } else {
+        setStep('register');
+      }
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Something went wrong');
+    } finally {
+      setLoading(false);
+    }
+  }, [phoneDigits, otp]);
+
+  const handleSelectBusiness = useCallback(
+    async (biz: VerifiedPhoneData['businesses'][0]) => {
+      setLoading(true);
+      setError('');
+      try {
+        const res = await fetch('/api/auth/owner-login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phoneToken, businessId: biz.id }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Login failed');
+        setSession({
+          sessionToken: data.session.token,
+          expiresAt: data.session.expiresAt,
+          user: {
+            id: data.user.id,
+            name: data.user.fullName || data.user.username || '',
+            username: data.user.username,
+            role: data.user.role,
+            phone: phoneDigits ? '0' + phoneDigits : undefined,
+          },
+          permissions: data.permissions || {},
+          business: {
+            id: data.business.id,
+            name: data.business.name,
+            shopCode: data.business.shopCode || '',
+            address: data.business.address || '',
+            phone: '',
+            businessType: data.business.businessType,
+          },
+        });
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : 'Login failed');
+        setLoading(false);
+      }
+    },
+    [phoneToken, phoneDigits, setSession]
+  );
+
+  const handleRegister = useCallback(async () => {
+    if (!regBusinessName.trim() || !regUsername.trim() || !regPassword.trim()) {
+      setError('All fields are required');
+      return;
+    }
+    if (regUsername.trim().length < 3) {
+      setError('Username must be at least 3 characters');
+      return;
+    }
+    if (regPassword.length < 4) {
+      setError('Password must be at least 4 characters');
+      return;
+    }
+    const btSlug = regBusinessTypeId || preselectedSlug;
+    if (!btSlug) {
+      setError('Please select a business type');
+      return;
+    }
+    setLoading(true);
+    setError('');
+    try {
+      // Register
+      const regRes = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId,
+          businessTypeId: btSlug,
+          businessName: regBusinessName.trim(),
+          username: regUsername.trim(),
+          password: regPassword,
+        }),
+      });
+      const regData = await regRes.json();
+      if (!regRes.ok) throw new Error(regData.error || 'Registration failed');
+
+      // Auto-login after registration
+      const loginRes = await fetch('/api/auth/owner-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phoneToken, businessId: regData.business.id }),
+      });
+      const loginData = await loginRes.json();
+      if (!loginRes.ok) throw new Error(loginData.error || 'Auto-login failed');
+
+      setSession({
+        sessionToken: loginData.session.token,
+        expiresAt: loginData.session.expiresAt,
+        user: {
+          id: loginData.user.id,
+          name: loginData.user.fullName || loginData.user.username || '',
+          username: loginData.user.username,
+          role: loginData.user.role,
+          phone: phoneDigits ? '0' + phoneDigits : undefined,
+        },
+        permissions: loginData.permissions || {},
+        business: {
+          id: loginData.business.id,
+          name: loginData.business.name,
+          shopCode: loginData.business.shopCode || '',
+          address: loginData.business.address || '',
+          phone: '',
+          businessType: loginData.business.businessType,
+        },
+      });
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Registration failed');
+      setLoading(false);
+    }
+  }, [regBusinessName, regUsername, regPassword, regBusinessTypeId, preselectedSlug, userId, phoneToken, phoneDigits, setSession]);
+
+  return (
+    <motion.div
+      {...fadeIn}
+      className="min-h-screen bg-gray-50 flex flex-col"
+    >
+      {/* Header */}
+      <header className="bg-white border-b border-gray-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center">
+          <button
+            onClick={onBack}
+            className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-900 transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span className="hidden sm:inline">Back to Home</span>
+          </button>
+          <div className="flex-1" />
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded-md bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
+              <Package className="w-3 h-3 text-white" />
+            </div>
+            <span className="text-sm font-bold text-gray-900">InventoryOS</span>
+          </div>
+        </div>
+      </header>
+
+      {/* Content */}
+      <div className="flex-1 flex items-center justify-center px-4 py-8 sm:py-12">
+        <AnimatePresence mode="wait">
+          {/* ── Step: Phone ── */}
+          {step === 'phone' && (
+            <motion.div key="phone" {...slideUp} className="w-full max-w-md">
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-200/80 p-6 sm:p-8">
+                <div className="text-center mb-8">
+                  <div className="w-14 h-14 rounded-2xl bg-emerald-50 flex items-center justify-center mx-auto mb-4">
+                    <LogIn className="w-6 h-6 text-emerald-600" />
+                  </div>
+                  <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Login to Your Account</h2>
+                  <p className="text-sm text-gray-500 mt-2">
+                    We&apos;ll verify your phone number with an OTP
+                  </p>
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <Label className="mb-2">Phone Number</Label>
+                    <div className="flex items-stretch">
+                      <div className="flex items-center px-4 bg-gray-50 border border-r-0 border-gray-200 rounded-l-xl text-sm font-medium text-gray-600">
+                        +880
+                      </div>
+                      <Input
+                        type="tel"
+                        inputMode="numeric"
+                        placeholder="1XXXXXXXXX"
+                        maxLength={10}
+                        value={phoneDigits}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/\D/g, '').slice(0, 10);
+                          setPhoneDigits(val);
+                          setError('');
+                        }}
+                        className="rounded-l-none h-12 text-base tracking-wider"
+                        autoFocus
+                      />
+                    </div>
+                    <p className="text-xs text-gray-400 mt-1.5 ml-1">
+                      Enter your 10-digit phone number (without 880)
+                    </p>
+                  </div>
+
+                  {error && (
+                    <p className="text-sm text-red-500 bg-red-50 px-3 py-2 rounded-lg">{error}</p>
+                  )}
+
+                  <Button
+                    size="lg"
+                    className="w-full h-12 text-base font-semibold bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700"
+                    onClick={handleSendOtp}
+                    disabled={loading || phoneDigits.length !== 10}
+                  >
+                    {loading ? (
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                    ) : (
+                      <>
+                        Send OTP
+                        <ArrowRight className="w-4 h-4 ml-2" />
+                      </>
+                    )}
+                  </Button>
+                </div>
+
+                <Separator className="my-6" />
+
+                <p className="text-center text-sm text-gray-400">
+                  Staff member?{' '}
+                  <button
+                    onClick={onSwitchToStaff}
+                    className="text-emerald-600 font-medium hover:underline"
+                  >
+                    Login with shop code
+                  </button>
+                </p>
+              </div>
+            </motion.div>
+          )}
+
+          {/* ── Step: OTP ── */}
+          {step === 'otp' && (
+            <motion.div key="otp" {...slideUp} className="w-full max-w-md">
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-200/80 p-6 sm:p-8">
+                <div className="text-center mb-8">
+                  <div className="w-14 h-14 rounded-2xl bg-emerald-50 flex items-center justify-center mx-auto mb-4">
+                    <Shield className="w-6 h-6 text-emerald-600" />
+                  </div>
+                  <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Verify OTP</h2>
+                  <p className="text-sm text-gray-500 mt-2">
+                    Sent to +880 {phoneDigits}
+                  </p>
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <Label className="mb-2">Enter 4-digit OTP</Label>
+                    <Input
+                      type="tel"
+                      inputMode="numeric"
+                      placeholder="0000"
+                      maxLength={4}
+                      value={otp}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/\D/g, '').slice(0, 4);
+                        setOtp(val);
+                        setError('');
+                      }}
+                      className="h-14 text-center text-2xl font-bold tracking-[0.5em]"
+                      autoFocus
+                    />
+                  </div>
+
+                  {demoOtp && (
+                    <p className="text-xs text-center text-emerald-600 bg-emerald-50 px-3 py-2 rounded-lg">
+                      Demo OTP: <span className="font-bold">{demoOtp}</span>
+                    </p>
+                  )}
+
+                  {error && (
+                    <p className="text-sm text-red-500 bg-red-50 px-3 py-2 rounded-lg">{error}</p>
+                  )}
+
+                  <Button
+                    size="lg"
+                    className="w-full h-12 text-base font-semibold bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700"
+                    onClick={handleVerifyOtp}
+                    disabled={loading || otp.length !== 4}
+                  >
+                    {loading ? (
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                    ) : (
+                      <>
+                        Verify & Continue
+                        <ArrowRight className="w-4 h-4 ml-2" />
+                      </>
+                    )}
+                  </Button>
+
+                  <button
+                    onClick={handleSendOtp}
+                    disabled={loading}
+                    className="w-full text-sm text-gray-500 hover:text-gray-700 transition-colors py-1"
+                  >
+                    Resend OTP
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {/* ── Step: Business List ── */}
+          {step === 'business-list' && (
+            <motion.div key="biz-list" {...slideUp} className="w-full max-w-md">
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-200/80 p-6 sm:p-8">
+                <div className="text-center mb-6">
+                  <div className="w-14 h-14 rounded-2xl bg-emerald-50 flex items-center justify-center mx-auto mb-4">
+                    <Store className="w-6 h-6 text-emerald-600" />
+                  </div>
+                  <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Select Your Business</h2>
+                  <p className="text-sm text-gray-500 mt-2">
+                    Choose a business to manage
+                  </p>
+                </div>
+
+                {error && (
+                  <p className="text-sm text-red-500 bg-red-50 px-3 py-2 rounded-lg mb-4">{error}</p>
+                )}
+
+                <div className="space-y-3 max-h-80 overflow-y-auto">
+                  {businesses.map((biz) => (
+                    <button
+                      key={biz.id}
+                      onClick={() => handleSelectBusiness(biz)}
+                      disabled={loading}
+                      className="w-full flex items-center gap-3 p-4 rounded-xl border border-gray-200 hover:border-emerald-300 hover:bg-emerald-50/50 transition-all text-left group disabled:opacity-50"
+                    >
+                      <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center text-lg flex-shrink-0">
+                        {biz.businessType.icon}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-gray-900 text-sm truncate">{biz.name}</p>
+                        <p className="text-xs text-gray-500 truncate">
+                          {biz.businessType.name} {biz.shopCode ? `· ${biz.shopCode}` : ''}
+                        </p>
+                      </div>
+                      <ArrowRight className="w-4 h-4 text-gray-400 group-hover:text-emerald-600 transition-colors flex-shrink-0" />
+                    </button>
+                  ))}
+                </div>
+
+                <Separator className="my-5" />
+
+                <button
+                  onClick={() => setStep('register')}
+                  disabled={loading}
+                  className="w-full text-sm text-emerald-600 hover:text-emerald-700 font-medium transition-colors py-1"
+                >
+                  + Create a new business
+                </button>
+              </div>
+            </motion.div>
+          )}
+
+          {/* ── Step: Register ── */}
+          {step === 'register' && (
+            <motion.div key="register" {...slideUp} className="w-full max-w-md">
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-200/80 p-6 sm:p-8">
+                <div className="text-center mb-6">
+                  <div className="w-14 h-14 rounded-2xl bg-emerald-50 flex items-center justify-center mx-auto mb-4">
+                    <UserPlus className="w-6 h-6 text-emerald-600" />
+                  </div>
+                  <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Create Your Business</h2>
+                  <p className="text-sm text-gray-500 mt-2">
+                    Set up your shop in under a minute
+                  </p>
+                </div>
+
+                <div className="space-y-4">
+                  {/* Business Type Selector (only if not preselected) */}
+                  {!preselectedSlug && (
+                    <div>
+                      <Label className="mb-2">Business Type</Label>
+                      <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto">
+                        {moduleRegistry.map((mod) => (
+                          <button
+                            key={mod.slug}
+                            type="button"
+                            onClick={() => {
+                              setRegBusinessTypeId(mod.slug);
+                              setError('');
+                            }}
+                            disabled={!mod.isActive}
+                            className={`flex items-center gap-2 p-2.5 rounded-lg border text-left text-sm transition-all ${
+                              regBusinessTypeId === mod.slug
+                                ? 'border-emerald-500 bg-emerald-50 ring-1 ring-emerald-500/20'
+                                : 'border-gray-200 hover:border-gray-300 bg-white'
+                            } ${!mod.isActive ? 'opacity-40 cursor-not-allowed' : ''}`}
+                          >
+                            <span className="text-base">{mod.icon}</span>
+                            <span className="font-medium truncate text-gray-800">{mod.name}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Preselected business type indicator */}
+                  {preselectedSlug && (
+                    <div className="flex items-center gap-2 p-3 rounded-lg bg-emerald-50 border border-emerald-200">
+                      <span className="text-lg">
+                        {moduleRegistry.find((m) => m.slug === preselectedSlug)?.icon}
+                      </span>
+                      <span className="text-sm font-medium text-emerald-800">
+                        {moduleRegistry.find((m) => m.slug === preselectedSlug)?.name}
+                      </span>
+                      <Check className="w-4 h-4 text-emerald-600 ml-auto" />
+                    </div>
+                  )}
+
+                  <div>
+                    <Label className="mb-2">Business / Shop Name</Label>
+                    <Input
+                      placeholder="e.g. MedPlus Pharmacy"
+                      value={regBusinessName}
+                      onChange={(e) => {
+                        setRegBusinessName(e.target.value);
+                        setError('');
+                      }}
+                      className="h-11"
+                      autoFocus={!preselectedSlug}
+                    />
+                  </div>
+
+                  <div>
+                    <Label className="mb-2">Admin Username</Label>
+                    <Input
+                      placeholder="e.g. admin"
+                      value={regUsername}
+                      onChange={(e) => {
+                        setRegUsername(e.target.value);
+                        setError('');
+                      }}
+                      className="h-11"
+                    />
+                  </div>
+
+                  <div>
+                    <Label className="mb-2">Password</Label>
+                    <div className="relative">
+                      <Input
+                        type={showPassword ? 'text' : 'password'}
+                        placeholder="Min 4 characters"
+                        value={regPassword}
+                        onChange={(e) => {
+                          setRegPassword(e.target.value);
+                          setError('');
+                        }}
+                        onKeyDown={(e) => e.key === 'Enter' && handleRegister()}
+                        className="h-11 pr-10"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      >
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {error && (
+                    <p className="text-sm text-red-500 bg-red-50 px-3 py-2 rounded-lg">{error}</p>
+                  )}
+
+                  <Button
+                    size="lg"
+                    className="w-full h-12 text-base font-semibold bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700"
+                    onClick={handleRegister}
+                    disabled={loading}
+                  >
+                    {loading ? (
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                    ) : (
+                      <>
+                        Create & Login
+                        <ArrowRight className="w-4 h-4 ml-2" />
+                      </>
+                    )}
+                  </Button>
+
+                  {businesses.length > 0 && (
+                    <button
+                      onClick={() => {
+                        setStep('business-list');
+                        setError('');
+                      }}
+                      className="w-full text-sm text-gray-500 hover:text-gray-700 transition-colors py-1"
+                    >
+                      &larr; Back to business list
+                    </button>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </motion.div>
+  );
+}
+
+/* ────────────────────────────────────────────
+   STAFF LOGIN VIEW
+   ──────────────────────────────────────────── */
+function StaffLoginView({ onBack, onSwitchToAdmin }: { onBack: () => void; onSwitchToAdmin: () => void }) {
+  const setSession = useAuthStore((s) => s.setSession);
+  const [shopCode, setShopCode] = useState('');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleLogin = useCallback(async () => {
+    if (!shopCode.trim() || !username.trim() || !password) {
+      setError('All fields are required');
+      return;
+    }
+    setLoading(true);
+    setError('');
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          shopCode: shopCode.trim().toUpperCase(),
+          username: username.trim(),
+          password,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Login failed');
+
+      setSession({
+        sessionToken: data.session.token,
+        expiresAt: data.session.expiresAt,
+        user: {
+          id: data.user.id,
+          name: data.user.fullName || data.user.username || '',
+          username: data.user.username,
+          role: data.user.role,
+        },
+        permissions: data.permissions || {},
+        business: {
+          id: data.business.id,
+          name: data.business.name,
+          shopCode: data.business.shopCode || '',
+          address: data.business.address || '',
+          phone: '',
+          businessType: data.business.businessType,
+        },
+      });
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Login failed');
+      setLoading(false);
+    }
+  }, [shopCode, username, password, setSession]);
+
+  return (
+    <motion.div
+      {...fadeIn}
+      className="min-h-screen bg-gray-50 flex flex-col"
+    >
+      {/* Header */}
+      <header className="bg-white border-b border-gray-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center">
+          <button
+            onClick={onBack}
+            className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-900 transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span className="hidden sm:inline">Back to Home</span>
+          </button>
+          <div className="flex-1" />
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded-md bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
+              <Package className="w-3 h-3 text-white" />
+            </div>
+            <span className="text-sm font-bold text-gray-900">InventoryOS</span>
+          </div>
+        </div>
+      </header>
+
+      {/* Content */}
+      <div className="flex-1 flex items-center justify-center px-4 py-8 sm:py-12">
+        <motion.div {...slideUp} className="w-full max-w-md">
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-200/80 p-6 sm:p-8">
+            <div className="text-center mb-8">
+              <div className="w-14 h-14 rounded-2xl bg-violet-50 flex items-center justify-center mx-auto mb-4">
+                <Users className="w-6 h-6 text-violet-600" />
+              </div>
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Staff Login</h2>
+              <p className="text-sm text-gray-500 mt-2">
+                Enter your shop code, username, and password
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <Label className="mb-2">Shop Code</Label>
+                <Input
+                  placeholder="e.g. PHA-XK7T"
+                  value={shopCode}
+                  onChange={(e) => {
+                    setShopCode(e.target.value.toUpperCase());
+                    setError('');
+                  }}
+                  className="h-11 font-mono tracking-wider"
+                  autoFocus
+                />
+              </div>
+
+              <div>
+                <Label className="mb-2">Username</Label>
+                <Input
+                  placeholder="Your username"
+                  value={username}
+                  onChange={(e) => {
+                    setUsername(e.target.value);
+                    setError('');
+                  }}
+                  className="h-11"
+                />
+              </div>
+
+              <div>
+                <Label className="mb-2">Password</Label>
+                <div className="relative">
+                  <Input
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="Your password"
+                    value={password}
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      setError('');
+                    }}
+                    onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
+                    className="h-11 pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              {error && (
+                <p className="text-sm text-red-500 bg-red-50 px-3 py-2 rounded-lg">{error}</p>
+              )}
+
+              <Button
+                size="lg"
+                className="w-full h-12 text-base font-semibold bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700"
+                onClick={handleLogin}
+                disabled={loading || !shopCode.trim() || !username.trim() || !password}
+              >
+                {loading ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <>
+                    Login
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </>
+                )}
+              </Button>
+            </div>
+
+            <Separator className="my-6" />
+
+            <p className="text-center text-sm text-gray-400">
+              Business owner?{' '}
+              <button
+                onClick={onSwitchToAdmin}
+                className="text-emerald-600 font-medium hover:underline"
+              >
+                Login with phone number
+              </button>
+            </p>
+          </div>
+        </motion.div>
+      </div>
+    </motion.div>
   );
 }
