@@ -1374,3 +1374,34 @@ Stage Summary:
 - Created: src/modules/cctv-shop/components/CCTVCustomerLedgerSheet.tsx
 - Modified: src/modules/cctv-shop/components/CCTVCustomerDetail.tsx (ledger button + sheet)
 - Modified: src/modules/cctv-shop/components/index.ts (export)
+
+---
+Task ID: 4A
+Agent: Main Agent
+Task: Wire Inventory Hub to Real API (Bug Fix - P1)
+
+Work Log:
+- Read CCTVInventoryHub.tsx — found 100% hardcoded data: serial count (2,147), 4 category cards with fixed counts, 3 fake low-stock items, non-functional search
+- Analyzed Prisma schema: CCTVSerialItem (status, costPrice, productId), CCTVProduct (stock, minStock, serialTracked, costPrice, categoryId), CCTVCategory (name, slug, icon, color)
+- Created API: GET /api/businesses/[id]/cctv/inventory-stats
+  - Serial items count via groupBy on CCTVSerialItem (status IN_STOCK/IN_TRANSIT)
+  - Category breakdown: joins CCTVCategory → CCTVProduct, aggregates serial counts + stock values
+  - Stock value: serial items use serialItem.costPrice, non-serial use product.costPrice * stock
+  - Low stock: products where effectiveStock <= minStock (serial count for serial-tracked, stock field for non-serial)
+  - Search: searches CCTVProduct (name/brand/model/sku) + CCTVSerialItem (serialNumber/imei) when ?q= provided
+- Rewrote CCTVInventoryHub.tsx:
+  - Serial Items card now shows real totalSerialItems + totalProducts
+  - New "Total Stock Value" card with cost valuation
+  - Category cards dynamically rendered from API with real counts
+  - Empty state for categories with "Create Category" CTA
+  - Search: tap-to-focus input, debounced (350ms) API calls, live results with product name/brand/serial/price, cancel button, clear button, no-results state
+  - Low stock alert: real data with "Out of stock" for 0, "N left" for >0, threshold shown
+  - Loading skeletons for all dynamic sections
+  - Menu items (static navigation) preserved as-is
+  - Search results hide categories/menu/low-stock to avoid clutter
+- Lint: 0 errors
+- API tested: 200 with valid JSON
+
+Stage Summary:
+- Created: src/app/api/businesses/[id]/cctv/inventory-stats/route.ts
+- Rewritten: src/modules/cctv-shop/components/CCTVInventoryHub.tsx (132→577 lines)
