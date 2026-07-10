@@ -1124,3 +1124,34 @@ Stage Summary:
 - Phase 1C complete: serial-tracked products now require specific serial selection before sale
 - Backend was already fully built (validation, SOLD marking, history) — only frontend was missing
 - Flow: Add serial product → Picker opens → Select unit → Serial shown in cart → Submit sale → Backend marks SOLD
+---
+Task ID: 1
+Agent: Main
+Task: Push unpushed commits + Phase 1D: Link Stock-In to Supplier/Purchase
+
+Work Log:
+- Checked for unpushed commits: 1 commit (Phase 1C SerialPickerDialog)
+- Pushed to GitHub successfully (6fa5997..0905b02)
+- Read existing CCTVStockInView.tsx (1045 lines) and stock-in API route
+- Verified CCTVSerialItem model already has purchaseId/supplierId fields
+- Edited stock-in API route to accept optional purchaseId and supplierId
+- Added validation for purchaseId (checks CCTVPurchase belongs to business) and supplierId (checks Supplier belongs to business)
+- Updated serial item creation to store purchaseId/supplierId
+- Updated history entry notes to include procurement reference
+- Added history referenceId/referenceType for purchase-linked stock-ins
+- Added supplier and purchase state management to CCTVStockInView
+- Added supplier fetch on mount, purchase fetch on supplier change
+- Built "Procurement Reference" card with searchable supplier picker and purchase order picker
+- Purchase picker filters by selected supplier
+- Selecting a purchase auto-sets the supplier if not already set
+- Batch mode header shows linked supplier/PO reference text
+- Both fields are fully optional — stock-in works without them
+- Lint: 0 errors, 1 pre-existing warning
+- Dev server compiles cleanly
+- Verified page renders in browser (agent-browser)
+- Committed and pushed to GitHub
+
+Stage Summary:
+- 2 files modified: stock-in/route.ts (+31 lines), CCTVStockInView.tsx (+292 lines)
+- Procurement traceability fully implemented for manual stock-in flow
+- Serial items now carry purchaseId and supplierId when linked
