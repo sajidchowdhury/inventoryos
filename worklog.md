@@ -1496,3 +1496,22 @@ Stage Summary:
 - Modified: src/modules/cctv-shop/components/CCTVSerialItemsList.tsx (status change button)
 - Modified: src/modules/cctv-shop/components/CCTVProductDetail.tsx (status change button)
 - Modified: src/modules/cctv-shop/components/index.ts (new export)
+
+---
+Task ID: 4F
+Agent: Main Agent
+Task: Fix Product Form Error Handling
+
+Work Log:
+- Found 4 silent catch {} blocks in CCTVProductForm.tsx: categories fetch, product edit fetch, brands fetch, category creation, and form submit
+- Added useToast import from @/hooks/use-toast
+- Categories fetch: toast "Failed to load categories" (destructive)
+- Product edit fetch: toast + goBack() so user isn't stuck on broken edit form
+- Brands fetch: kept silent (non-critical datalist suggestions)
+- Create category: toast "Failed to create category" (destructive)
+- Submit: added else branch for !res.ok showing API error message, catch shows "Network error", success shows "Product created/updated"
+- Lint: 0 errors, pushed as 2f77f8d
+
+Stage Summary:
+- Modified: src/modules/cctv-shop/components/CCTVProductForm.tsx
+- 5 catch blocks fixed: 3 toasts + 1 intentional silent (brands) + 1 toast+goBack (edit load)

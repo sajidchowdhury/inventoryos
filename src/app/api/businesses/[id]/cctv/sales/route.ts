@@ -13,6 +13,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     const search = url.searchParams.get("search")?.trim() || "";
     const from = url.searchParams.get("from")?.trim() || "";
     const to = url.searchParams.get("to")?.trim() || "";
+    const limit = Math.min(parseInt(url.searchParams.get("limit") || "20", 10) || 20, 100);
+    const offset = Math.max(parseInt(url.searchParams.get("offset") || "0", 10) || 0, 0);
 
     const where: Record<string, unknown> = { businessId, isActive: true };
 
@@ -35,17 +37,22 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       where.createdAt = createdAtFilter;
     }
 
-    const sales = await db.cCTVSale.findMany({
-      where,
-      include: {
-        _count: {
-          select: { items: true, payments: true },
+    const [sales, total] = await Promise.all([
+      db.cCTVSale.findMany({
+        where,
+        include: {
+          _count: {
+            select: { items: true, payments: true },
+          },
         },
-      },
-      orderBy: { createdAt: "desc" },
-    });
+        orderBy: { createdAt: "desc" },
+        take: limit,
+        skip: offset,
+      }),
+      db.cCTVSale.count({ where }),
+    ]);
 
-    return NextResponse.json(sales);
+    return NextResponse.json({ sales, total, limit, offset });
   } catch (error) {
     console.error("List sales error:", error);
     return NextResponse.json({ error: "Failed to list sales" }, { status: 500 });

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowRight,
@@ -23,12 +23,31 @@ import {
   Users,
   BarChart3,
   Star,
+  Store,
+  LogOut,
 } from 'lucide-react';
 import { useAuthStore, type AuthSession } from '@/stores/auth-store';
 import { moduleRegistry, getActiveModules, type ModuleRegistryItem } from '@/lib/modules';
 import { CCTVShell } from '@/modules/cctv-shop/components';
+import { PharmacyShell } from '@/modules/pharmacy/components';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+
+/* ─── Types for verify-otp response ─── */
+interface VerifiedPhoneData {
+  phone: string;
+  userId: string;
+  phoneToken: string;
+  businesses: {
+    id: string;
+    name: string;
+    address: string | null;
+    shopCode: string | null;
+    businessType: { slug: string; name: string; color: string; icon: string };
+    hasCredentials: boolean;
+    businessUsers: { id: string; username: string; role: string }[];
+  }[];
+}
 
 /* ─── Animation Variants ─── */
 const fadeUp = {
@@ -58,6 +77,21 @@ function BackButton({ onClick }: { onClick: () => void }) {
     >
       <ArrowLeft className="w-5 h-5 text-gray-600" />
     </button>
+  );
+}
+
+/* ─── Error Text ─── */
+function ErrorText({ message }: { message: string }) {
+  if (!message) return null;
+  return (
+    <motion.p
+      initial={{ opacity: 0, y: -4 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="text-xs text-red-500 mt-1.5 flex items-center gap-1"
+    >
+      <span className="inline-block w-1 h-1 rounded-full bg-red-500" />
+      {message}
+    </motion.p>
   );
 }
 
@@ -272,33 +306,72 @@ function LandingStep({ onFreshSelect, onOwnerFlow, onStaffFlow }: {
   );
 }
 
-/* ─── Step: Phone Number (Fresh User) ─── */
+/* ─── Step: Phone + OTP (shared by fresh user & owner) ─── */
 function PhoneStep({ selectedSlug, onBack, onVerified }: {
-  selectedSlug: string;
+  selectedSlug?: string;
   onBack: () => void;
-  onVerified: (phone: string) => void;
+  onVerified: (data: VerifiedPhoneData) => void;
 }) {
   const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
   const [otpSent, setOtpSent] = useState(false);
-  const [otp, setOtp] = useState(['', '', '', '', '', '']);
-  const mod = moduleRegistry.find((m) => m.slug === selectedSlug);
+  const [otp, setOtp] = useState(['', '', '', '']);
+  const [error, setError] = useState('');
+  const mod = selectedSlug ? moduleRegistry.find((m) => m.slug === selectedSlug) : null;
+
+  // Normalize 10-digit input to 11-digit BD format (prepend "0")
+  const fullPhone = phone.length === 10 ? '0' + phone : phone;
 
   const handleSendOTP = async () => {
-    if (phone.length < 11) return;
+    if (phone.length < 10) return;
+    setError('');
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 1000));
-    setLoading(false);
-    setOtpSent(true);
+    try {
+      const res = await fetch('/api/auth/send-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: fullPhone }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || 'Failed to send OTP');
+        return;
+      }
+      setOtpSent(true);
+    } catch {
+      setError('Network error. Please check your connection.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleVerifyOTP = async () => {
     const otpCode = otp.join('');
-    if (otpCode.length < 6) return;
+    if (otpCode.length < 4) return;
+    setError('');
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 800));
-    setLoading(false);
-    onVerified(phone);
+    try {
+      const res = await fetch('/api/auth/verify-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: fullPhone, otp: otpCode, trustDevice: true }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || 'Verification failed');
+        return;
+      }
+      onVerified({
+        phone: fullPhone,
+        userId: data.user.id,
+        phoneToken: data.phoneToken,
+        businesses: data.businesses || [],
+      });
+    } catch {
+      setError('Network error. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleOtpChange = (index: number, value: string) => {
@@ -306,7 +379,7 @@ function PhoneStep({ selectedSlug, onBack, onVerified }: {
     const newOtp = [...otp];
     newOtp[index] = value;
     setOtp(newOtp);
-    if (value && index < 5) {
+    if (value && index < 3) {
       const next = document.getElementById(`otp-${index + 1}`);
       next?.focus();
     }
@@ -318,6 +391,14 @@ function PhoneStep({ selectedSlug, onBack, onVerified }: {
       prev?.focus();
     }
   };
+
+  const title = mod
+    ? (otpSent ? 'Enter OTP' : 'Enter your phone')
+    : (otpSent ? 'Enter OTP' : 'Welcome back');
+
+  const subtitle = mod
+    ? (otpSent ? `Code sent to +880${phone}` : "We'll verify your number to get started")
+    : (otpSent ? `Code sent to +880${phone}` : 'Sign in to your InventoryOS account');
 
   return (
     <div className="min-h-screen flex flex-col bg-white px-6">
@@ -331,21 +412,21 @@ function PhoneStep({ selectedSlug, onBack, onVerified }: {
         animate="animate"
         className="flex-1"
       >
-        {/* Module badge */}
-        <motion.div variants={fadeUp} className="flex items-center gap-2 mb-4">
-          <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${mod?.gradient} flex items-center justify-center`}>
-            <span className="text-sm">{mod?.icon}</span>
-          </div>
-          <span className="text-xs font-medium text-gray-400">{mod?.name}</span>
-        </motion.div>
+        {/* Module badge (fresh user only) */}
+        {mod && (
+          <motion.div variants={fadeUp} className="flex items-center gap-2 mb-4">
+            <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${mod.gradient} flex items-center justify-center`}>
+              <span className="text-sm">{mod.icon}</span>
+            </div>
+            <span className="text-xs font-medium text-gray-400">{mod.name}</span>
+          </motion.div>
+        )}
 
         <motion.h1 variants={fadeUp} className="text-2xl font-bold text-gray-900">
-          {otpSent ? 'Enter OTP' : 'Enter your phone'}
+          {title}
         </motion.h1>
         <motion.p variants={fadeUp} className="text-sm text-gray-500 mt-1">
-          {otpSent
-            ? `We sent a code to ${phone}`
-            : "We'll send a verification code to confirm your number"}
+          {subtitle}
         </motion.p>
 
         {!otpSent ? (
@@ -355,17 +436,19 @@ function PhoneStep({ selectedSlug, onBack, onVerified }: {
               <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-gray-500 font-medium">+880</span>
               <Input
                 type="tel"
-                placeholder="1XXX-XXXXXX"
+                placeholder="1XXX XXXXXX"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value.replace(/[^0-9]/g, ''))}
                 className="h-14 rounded-xl bg-gray-50 border-gray-200 pl-14 text-lg font-semibold focus-visible:ring-violet-500/30"
-                maxLength={11}
+                maxLength={10}
+                autoFocus
               />
             </div>
+            <ErrorText message={error} />
             <motion.div variants={fadeUp} className="mt-6">
               <Button
                 onClick={handleSendOTP}
-                disabled={loading || phone.length < 11}
+                disabled={loading || phone.length < 10}
                 className={`w-full h-12 rounded-xl bg-gradient-to-r ${mod?.gradient || 'from-violet-500 to-purple-600'} text-white font-semibold shadow-lg disabled:opacity-50`}
               >
                 {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : (
@@ -387,13 +470,15 @@ function PhoneStep({ selectedSlug, onBack, onVerified }: {
                   value={digit}
                   onChange={(e) => handleOtpChange(i, e.target.value.replace(/[^0-9]/g, ''))}
                   onKeyDown={(e) => handleOtpKeyDown(i, e)}
-                  className="w-12 h-14 text-center text-xl font-bold rounded-xl border-2 border-gray-200 focus:border-violet-500 focus:outline-none transition-colors bg-gray-50"
+                  className="w-14 h-14 text-center text-xl font-bold rounded-xl border-2 border-gray-200 focus:border-violet-500 focus:outline-none transition-colors bg-gray-50"
+                  autoFocus={i === 0}
                 />
               ))}
             </div>
+            <ErrorText message={error} />
             <Button
               onClick={handleVerifyOTP}
-              disabled={loading || otp.join('').length < 6}
+              disabled={loading || otp.join('').length < 4}
               className={`w-full h-12 rounded-xl bg-gradient-to-r ${mod?.gradient || 'from-violet-500 to-purple-600'} text-white font-semibold shadow-lg disabled:opacity-50`}
             >
               {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : (
@@ -401,7 +486,7 @@ function PhoneStep({ selectedSlug, onBack, onVerified }: {
               )}
             </Button>
             <button
-              onClick={() => { setOtpSent(false); setOtp(['', '', '', '', '', '']); }}
+              onClick={() => { setOtpSent(false); setOtp(['', '', '', '']); setError(''); }}
               className="w-full text-center text-xs text-violet-600 font-medium mt-4"
             >
               Change phone number
@@ -413,23 +498,100 @@ function PhoneStep({ selectedSlug, onBack, onVerified }: {
   );
 }
 
-/* ─── Step: Setup Business (Fresh User — no re-selection) ─── */
-function SetupBusinessStep({ selectedSlug, phone, onBack, onComplete }: {
+/* ─── Step: Setup Business (Fresh User) ─── */
+function SetupBusinessStep({ selectedSlug, phone, userId, phoneToken, onBack, onComplete }: {
   selectedSlug: string;
   phone: string;
+  userId: string;
+  phoneToken: string;
   onBack: () => void;
-  onComplete: (businessName: string) => void;
+  onComplete: () => void;
 }) {
   const [businessName, setBusinessName] = useState('');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const mod = moduleRegistry.find((m) => m.slug === selectedSlug);
+  const { setSession } = useAuthStore();
 
   const handleCreate = async () => {
-    if (!businessName.trim()) return;
+    if (!businessName.trim() || !username.trim() || !password) return;
+    if (username.trim().length < 3) { setError('Username must be at least 3 characters'); return; }
+    if (password.length < 4) { setError('Password must be at least 4 characters'); return; }
+
+    setError('');
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 600));
-    setLoading(false);
-    onComplete(businessName.trim());
+    try {
+      // Step 1: Register the business
+      const regRes = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId,
+          businessTypeId: selectedSlug,
+          businessName: businessName.trim(),
+          username: username.trim(),
+          password,
+        }),
+      });
+      const regData = await regRes.json();
+      if (!regRes.ok) {
+        setError(regData.error || 'Registration failed');
+        return;
+      }
+
+      // Step 2: Auto-login as owner (no password needed with phoneToken)
+      const loginRes = await fetch('/api/auth/owner-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phoneToken,
+          businessId: regData.business.id,
+        }),
+      });
+      const loginData = await loginRes.json();
+      if (!loginRes.ok) {
+        setError(loginData.error || 'Auto-login failed. Please use the owner login.');
+        return;
+      }
+
+      // Step 3: Set session
+      const session: AuthSession = {
+        sessionToken: loginData.session.token,
+        expiresAt: loginData.session.expiresAt,
+        user: {
+          id: loginData.user.id,
+          name: loginData.user.fullName || loginData.user.username,
+          username: loginData.user.username,
+          role: loginData.user.role,
+          fullName: loginData.user.fullName,
+          phone,
+        },
+        permissions: loginData.permissions,
+        business: {
+          id: loginData.business.id,
+          name: loginData.business.name,
+          shopCode: loginData.business.shopCode,
+          address: loginData.business.address || '',
+          phone: '+880' + phone.replace(/^0/, ''),
+          businessType: {
+            id: loginData.business.businessType.slug,
+            name: loginData.business.businessType.name,
+            slug: loginData.business.businessType.slug,
+            icon: loginData.business.businessType.icon,
+            color: loginData.business.businessType.color,
+          },
+        },
+      };
+      setSession(session);
+      onComplete();
+    } catch {
+      setError('Network error. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -444,7 +606,7 @@ function SetupBusinessStep({ selectedSlug, phone, onBack, onComplete }: {
         animate="animate"
         className="flex-1"
       >
-        {/* Module icon + animated entrance */}
+        {/* Module icon */}
         <motion.div
           initial={{ scale: 0, rotate: -20 }}
           animate={{ scale: 1, rotate: 0 }}
@@ -458,26 +620,71 @@ function SetupBusinessStep({ selectedSlug, phone, onBack, onComplete }: {
           Set up your {mod?.name}
         </motion.h1>
         <motion.p variants={fadeUp} className="text-sm text-gray-500 mt-1">
-          Give your shop a name to get started
+          Create your shop and admin credentials
         </motion.p>
 
-        <motion.div variants={fadeUp} className="mt-8">
-          <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Shop Name</label>
-          <Input
-            placeholder={`e.g. Dhaka ${mod?.name} Center`}
-            value={businessName}
-            onChange={(e) => setBusinessName(e.target.value)}
-            className="h-14 rounded-xl bg-gray-50 border-gray-200 text-lg font-semibold focus-visible:ring-violet-500/30"
-            autoFocus
-          />
+        <motion.div variants={fadeUp} className="mt-8 space-y-4">
+          {/* Shop Name */}
+          <div>
+            <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Shop Name</label>
+            <Input
+              placeholder={`e.g. Dhaka ${mod?.name} Center`}
+              value={businessName}
+              onChange={(e) => setBusinessName(e.target.value)}
+              className="h-12 rounded-xl bg-gray-50 border-gray-200 text-base font-semibold focus-visible:ring-violet-500/30"
+              autoFocus
+            />
+          </div>
+
+          {/* Admin Username */}
+          <div>
+            <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Admin Username</label>
+            <div className="relative">
+              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">
+                <Users className="w-4 h-4" />
+              </span>
+              <Input
+                placeholder="e.g. admin"
+                value={username}
+                onChange={(e) => setUsername(e.target.value.replace(/\s/g, '').toLowerCase())}
+                className="h-12 rounded-xl bg-gray-50 border-gray-200 pl-10 text-base font-medium focus-visible:ring-violet-500/30"
+              />
+            </div>
+          </div>
+
+          {/* Admin Password */}
+          <div>
+            <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Admin Password</label>
+            <div className="relative">
+              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">
+                <KeyRound className="w-4 h-4" />
+              </span>
+              <Input
+                type={showPass ? 'text' : 'password'}
+                placeholder="Create a password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="h-12 rounded-xl bg-gray-50 border-gray-200 pl-10 pr-10 text-base font-medium focus-visible:ring-violet-500/30"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPass(!showPass)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
+              >
+                {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+          </div>
+
+          <ErrorText message={error} />
         </motion.div>
 
-        {/* Feature preview with stagger */}
+        {/* Feature preview */}
         {mod?.features.length ? (
           <motion.div variants={fadeUp} className="mt-6">
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">You&apos;ll get</p>
             <div className="space-y-2">
-              {mod.features.slice(0, 5).map((f, i) => (
+              {mod.features.slice(0, 4).map((f, i) => (
                 <motion.div
                   key={f.name}
                   initial={{ opacity: 0, x: -15 }}
@@ -485,7 +692,7 @@ function SetupBusinessStep({ selectedSlug, phone, onBack, onComplete }: {
                   transition={{ delay: 0.3 + i * 0.07 }}
                   className="flex items-center gap-3"
                 >
-                  <div className={`w-7 h-7 rounded-lg bg-gradient-to-br ${mod?.gradient} flex items-center justify-center flex-shrink-0`}>
+                  <div className={`w-7 h-7 rounded-lg bg-gradient-to-br ${mod.gradient} flex items-center justify-center flex-shrink-0`}>
                     <Check className="w-3.5 h-3.5 text-white" />
                   </div>
                   <div>
@@ -501,7 +708,7 @@ function SetupBusinessStep({ selectedSlug, phone, onBack, onComplete }: {
         <motion.div variants={fadeUp} className="mt-8 pb-8">
           <Button
             onClick={handleCreate}
-            disabled={loading || !businessName.trim()}
+            disabled={loading || !businessName.trim() || !username.trim() || !password}
             className={`w-full h-13 rounded-2xl bg-gradient-to-r ${mod?.gradient || 'from-violet-500 to-purple-600'} text-white font-semibold text-base shadow-lg disabled:opacity-50 active:scale-[0.98] transition-transform`}
           >
             {loading ? (
@@ -519,54 +726,67 @@ function SetupBusinessStep({ selectedSlug, phone, onBack, onComplete }: {
   );
 }
 
-/* ─── Step: Owner Login ─── */
-function OwnerLoginStep({ onBack, onLogin }: {
+/* ─── Step: Business List (Owner after OTP) ─── */
+function BusinessListStep({ businesses, phoneToken, onBack, onSelect, onRegisterNew }: {
+  businesses: VerifiedPhoneData['businesses'];
+  phoneToken: string;
   onBack: () => void;
-  onLogin: () => void;
+  onSelect: (businessId: string) => void;
+  onRegisterNew: () => void;
 }) {
-  const [phone, setPhone] = useState('');
-  const [loading, setLoading] = useState(false);
-
-  const handleSendOTP = async () => {
-    if (phone.length < 11) return;
-    setLoading(true);
-    await new Promise((r) => setTimeout(r, 800));
-    setLoading(false);
-    onLogin();
-  };
-
   return (
-    <div className="min-h-screen flex flex-col bg-white px-6">
-      <motion.div {...slideInRight} className="pt-14 pb-6">
+    <div className="min-h-screen flex flex-col bg-white">
+      <motion.div {...slideInRight} className="px-6 pt-14 pb-4">
         <BackButton onClick={onBack} />
-        <h1 className="text-2xl font-bold text-gray-900 mt-6">Welcome back</h1>
-        <p className="text-sm text-gray-500 mt-1">Sign in to your InventoryOS account</p>
+        <h1 className="text-2xl font-bold text-gray-900 mt-6">Your Businesses</h1>
+        <p className="text-sm text-gray-500 mt-1">Select a business to enter</p>
       </motion.div>
 
-      <motion.div variants={stagger} initial="initial" animate="animate" className="flex-1">
-        <motion.div variants={fadeUp} className="mt-8">
-          <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Phone Number</label>
-          <div className="relative">
-            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-gray-500 font-medium">+880</span>
-            <Input
-              type="tel"
-              placeholder="1XXX-XXXXXX"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value.replace(/[^0-9]/g, ''))}
-              className="h-14 rounded-xl bg-gray-50 border-gray-200 pl-14 text-lg font-semibold focus-visible:ring-violet-500/30"
-              maxLength={11}
-            />
-          </div>
-        </motion.div>
+      <motion.div variants={stagger} initial="initial" animate="animate" className="flex-1 px-4 pb-8">
+        <div className="space-y-3">
+          {businesses.map((biz, i) => (
+            <motion.button
+              key={biz.id}
+              variants={fadeUp}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => onSelect(biz.id)}
+              className="w-full bg-white rounded-2xl border-2 border-gray-100 p-4 text-left shadow-sm hover:border-violet-200 hover:shadow-md transition-all active:scale-[0.98]"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-md flex-shrink-0">
+                  <span className="text-xl">{biz.businessType.icon}</span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-bold text-gray-900 truncate">{biz.name}</h3>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    {biz.shopCode && (
+                      <span className="text-[10px] font-mono font-bold text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">
+                        {biz.shopCode}
+                      </span>
+                    )}
+                    <span className="text-xs text-gray-400">{biz.businessType.name}</span>
+                  </div>
+                  {biz.businessUsers.length > 0 && (
+                    <p className="text-[10px] text-gray-400 mt-0.5">
+                      Logged in as {biz.businessUsers[0].username}
+                    </p>
+                  )}
+                </div>
+                <ChevronRight className="w-5 h-5 text-gray-300 flex-shrink-0" />
+              </div>
+            </motion.button>
+          ))}
+        </div>
+
+        {/* Register New Business */}
         <motion.div variants={fadeUp} className="mt-6">
           <Button
-            onClick={handleSendOTP}
-            disabled={loading || phone.length < 11}
-            className="w-full h-12 rounded-xl bg-gradient-to-r from-violet-500 to-purple-600 text-white font-semibold shadow-lg disabled:opacity-50"
+            variant="outline"
+            onClick={onRegisterNew}
+            className="w-full h-12 rounded-xl border-2 border-dashed border-gray-300 text-gray-500 font-medium text-sm"
           >
-            {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : (
-              <>Continue <ArrowRight className="w-4 h-4 ml-2" /></>
-            )}
+            <span className="text-lg mr-2">+</span>
+            Register a new business
           </Button>
         </motion.div>
       </motion.div>
@@ -584,13 +804,62 @@ function StaffLoginStep({ onBack, onLogin }: {
   const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const { setSession } = useAuthStore();
 
   const handleLogin = async () => {
     if (!shopCode || !username || !password) return;
+    setError('');
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 800));
-    setLoading(false);
-    onLogin();
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          shopCode: shopCode.toUpperCase().trim(),
+          username: username.trim(),
+          password,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || 'Login failed');
+        return;
+      }
+
+      const session: AuthSession = {
+        sessionToken: data.session.token,
+        expiresAt: data.session.expiresAt,
+        user: {
+          id: data.user.id,
+          name: data.user.fullName || data.user.username,
+          username: data.user.username,
+          role: data.user.role,
+          fullName: data.user.fullName,
+        },
+        permissions: data.permissions,
+        business: {
+          id: data.business.id,
+          name: data.business.name,
+          shopCode: data.business.shopCode,
+          address: data.business.address || '',
+          phone: '',
+          businessType: {
+            id: data.business.businessType.slug,
+            name: data.business.businessType.name,
+            slug: data.business.businessType.slug,
+            icon: data.business.businessType.icon,
+            color: data.business.businessType.color,
+          },
+        },
+      };
+      setSession(session);
+      onLogin();
+    } catch {
+      setError('Network error. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -604,31 +873,45 @@ function StaffLoginStep({ onBack, onLogin }: {
       <motion.div variants={stagger} initial="initial" animate="animate" className="flex-1 space-y-4">
         <motion.div variants={fadeUp}>
           <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Shop Code</label>
-          <Input
-            placeholder="e.g. PHA-XK7T"
-            value={shopCode}
-            onChange={(e) => setShopCode(e.target.value.toUpperCase())}
-            className="h-12 rounded-xl bg-gray-50 border-gray-200 font-mono tracking-wider focus-visible:ring-violet-500/30"
-          />
+          <div className="relative">
+            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">
+              <Store className="w-4 h-4" />
+            </span>
+            <Input
+              placeholder="e.g. PHA-XK7T"
+              value={shopCode}
+              onChange={(e) => setShopCode(e.target.value.toUpperCase())}
+              className="h-12 rounded-xl bg-gray-50 border-gray-200 pl-10 font-mono tracking-wider focus-visible:ring-violet-500/30"
+              autoFocus
+            />
+          </div>
         </motion.div>
         <motion.div variants={fadeUp}>
           <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Username</label>
-          <Input
-            placeholder="Your username"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            className="h-12 rounded-xl bg-gray-50 border-gray-200 focus-visible:ring-violet-500/30"
-          />
+          <div className="relative">
+            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">
+              <Users className="w-4 h-4" />
+            </span>
+            <Input
+              placeholder="Your username"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              className="h-12 rounded-xl bg-gray-50 border-gray-200 pl-10 focus-visible:ring-violet-500/30"
+            />
+          </div>
         </motion.div>
         <motion.div variants={fadeUp}>
           <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Password</label>
           <div className="relative">
+            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">
+              <KeyRound className="w-4 h-4" />
+            </span>
             <Input
               type={showPass ? 'text' : 'password'}
               placeholder="Enter password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="h-12 rounded-xl bg-gray-50 border-gray-200 pr-10 focus-visible:ring-violet-500/30"
+              className="h-12 rounded-xl bg-gray-50 border-gray-200 pl-10 pr-10 focus-visible:ring-violet-500/30"
             />
             <button
               type="button"
@@ -638,6 +921,9 @@ function StaffLoginStep({ onBack, onLogin }: {
               {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             </button>
           </div>
+        </motion.div>
+        <motion.div variants={fadeUp}>
+          <ErrorText message={error} />
         </motion.div>
         <motion.div variants={fadeUp} className="pt-2 pb-8">
           <Button
@@ -658,100 +944,124 @@ function StaffLoginStep({ onBack, onLogin }: {
 /* ─── Flow Types ─── */
 type FlowStep =
   | { type: 'landing' }
-  | { type: 'owner-login' }
-  | { type: 'staff-login' }
-  | { type: 'phone'; slug: string }
-  | { type: 'setup'; slug: string; phone: string };
+  | { type: 'phone'; slug?: string; flow: 'fresh' | 'owner' }
+  | { type: 'setup'; slug: string; phone: string; userId: string; phoneToken: string }
+  | { type: 'business-list'; phone: string; userId: string; phoneToken: string; businesses: VerifiedPhoneData['businesses'] }
+  | { type: 'staff-login' };
 
 /* ─── Landing Page (Router) ─── */
 function LandingPage() {
-  const { setSession } = useAuthStore();
+  const { setSession, logout } = useAuthStore();
   const [step, setStep] = useState<FlowStep>({ type: 'landing' });
-  const [loading, setLoading] = useState(false);
 
   /* Fresh user: select business → phone → OTP → setup → done */
   const handleFreshSelect = (slug: string) => {
-    setStep({ type: 'phone', slug });
+    setStep({ type: 'phone', slug, flow: 'fresh' });
   };
 
-  const handlePhoneVerified = (phone: string) => {
-    const current = step as { type: 'phone'; slug: string };
-    setStep({ type: 'setup', slug: current.slug, phone });
+  /* Owner flow: "I own a business" */
+  const handleOwnerFlow = () => {
+    setStep({ type: 'phone', flow: 'owner' });
   };
 
-  const handleSetupComplete = (businessName: string) => {
-    const current = step as { type: 'setup'; slug: string; phone: string };
-    const mod = moduleRegistry.find((m) => m.slug === current.slug);
+  /* Staff flow */
+  const handleStaffFlow = () => {
+    setStep({ type: 'staff-login' });
+  };
 
-    const session: AuthSession = {
-      user: {
-        id: 'usr_' + Date.now(),
-        name: 'Owner',
-        phone: current.phone,
-      },
-      business: {
-        id: 'biz_' + Date.now(),
-        name: businessName,
-        shopCode: `${mod?.slug.toUpperCase().replace('-', '').slice(0, 4)}-${String(Math.floor(Math.random() * 9000) + 1000)}`,
-        address: '',
-        phone: '+880' + current.phone,
-        businessType: {
-          id: mod?.slug || 'cctv-shop',
-          name: mod?.name || 'Business',
-          slug: mod?.slug || 'cctv-shop',
-          icon: mod?.icon || '📦',
+  /* After OTP verified (shared by fresh + owner) */
+  const handlePhoneVerified = useCallback((data: VerifiedPhoneData) => {
+    const currentStep = step as { type: 'phone'; slug?: string; flow: 'fresh' | 'owner' };
+
+    if (data.businesses.length > 0) {
+      // User has businesses → show business list
+      setStep({
+        type: 'business-list',
+        phone: data.phone,
+        userId: data.userId,
+        phoneToken: data.phoneToken,
+        businesses: data.businesses,
+      });
+    } else if (currentStep.flow === 'fresh' && currentStep.slug) {
+      // Fresh user with no businesses → setup
+      setStep({
+        type: 'setup',
+        slug: currentStep.slug,
+        phone: data.phone,
+        userId: data.userId,
+        phoneToken: data.phoneToken,
+      });
+    } else {
+      // Owner with no businesses → back to landing
+      alert('No businesses found. Please register a new business first.');
+      setStep({ type: 'landing' });
+    }
+  }, [step]);
+
+  /* Owner selects a business from the list */
+  const handleOwnerSelectBusiness = useCallback(async (businessId: string) => {
+    const currentStep = step as { type: 'business-list'; phoneToken: string };
+    try {
+      const res = await fetch('/api/auth/owner-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phoneToken: currentStep.phoneToken, businessId }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || 'Login failed. Please try again.');
+        return;
+      }
+
+      const session: AuthSession = {
+        sessionToken: data.session.token,
+        expiresAt: data.session.expiresAt,
+        user: {
+          id: data.user.id,
+          name: data.user.fullName || data.user.username,
+          username: data.user.username,
+          role: data.user.role,
+          fullName: data.user.fullName,
         },
-      },
-    };
+        permissions: data.permissions,
+        business: {
+          id: data.business.id,
+          name: data.business.name,
+          shopCode: data.business.shopCode,
+          address: data.business.address || '',
+          phone: '',
+          businessType: {
+            id: data.business.businessType.slug,
+            name: data.business.businessType.name,
+            slug: data.business.businessType.slug,
+            icon: data.business.businessType.icon,
+            color: data.business.businessType.color,
+          },
+        },
+      };
+      setSession(session);
+    } catch {
+      alert('Network error. Please try again.');
+    }
+  }, [step, setSession]);
 
-    setSession(session);
-  };
-
-  /* Owner: login → select business → dashboard (simulated) */
-  const handleOwnerLogin = () => {
-    // In real app: verify OTP, fetch businesses, let user pick one
-    // For now simulate going to dashboard
-    const session: AuthSession = {
-      user: { id: 'usr_owner', name: 'Shop Owner', phone: '+8801XXX' },
-      business: {
-        id: 'biz_owner',
-        name: 'My Pharmacy',
-        shopCode: 'PHA-XK7T',
-        address: 'Dhaka',
-        phone: '+8801XXX',
-        businessType: { id: 'pharmacy', name: 'Pharmacy', slug: 'pharmacy', icon: '💊' },
-      },
-    };
-    setSession(session);
-  };
-
-  /* Staff: shop code + credentials → dashboard (simulated) */
-  const handleStaffLogin = () => {
-    const session: AuthSession = {
-      user: { id: 'usr_staff', name: 'Staff User', phone: '' },
-      business: {
-        id: 'biz_staff',
-        name: 'Dhaka CCTV Center',
-        shopCode: 'CCTV-001',
-        address: 'Dhaka',
-        phone: '+8801XXX',
-        businessType: { id: 'cctv-shop', name: 'CCTV Shop', slug: 'cctv-shop', icon: '📹' },
-      },
-    };
-    setSession(session);
-  };
+  /* Owner wants to register a new business (from business list) */
+  const handleRegisterNew = useCallback(() => {
+    setStep({ type: 'landing' });
+  }, []);
 
   const goBack = () => {
     switch (step.type) {
       case 'owner-login':
       case 'staff-login':
+      case 'business-list':
         setStep({ type: 'landing' });
         break;
       case 'phone':
         setStep({ type: 'landing' });
         break;
       case 'setup':
-        setStep({ type: 'phone', slug: (step as { type: 'setup'; slug: string }).slug });
+        setStep({ type: 'phone', slug: (step as { type: 'setup'; slug: string }).slug, flow: 'fresh' });
         break;
     }
   };
@@ -761,14 +1071,10 @@ function LandingPage() {
       return (
         <LandingStep
           onFreshSelect={handleFreshSelect}
-          onOwnerFlow={() => setStep({ type: 'owner-login' })}
-          onStaffFlow={() => setStep({ type: 'staff-login' })}
+          onOwnerFlow={handleOwnerFlow}
+          onStaffFlow={handleStaffFlow}
         />
       );
-    case 'owner-login':
-      return <OwnerLoginStep onBack={goBack} onLogin={handleOwnerLogin} />;
-    case 'staff-login':
-      return <StaffLoginStep onBack={goBack} onLogin={handleStaffLogin} />;
     case 'phone':
       return (
         <PhoneStep
@@ -782,8 +1088,27 @@ function LandingPage() {
         <SetupBusinessStep
           selectedSlug={step.slug}
           phone={step.phone}
+          userId={step.userId}
+          phoneToken={step.phoneToken}
           onBack={goBack}
-          onComplete={handleSetupComplete}
+          onComplete={() => {/* session already set in the component */}}
+        />
+      );
+    case 'business-list':
+      return (
+        <BusinessListStep
+          businesses={step.businesses}
+          phoneToken={step.phoneToken}
+          onBack={goBack}
+          onSelect={handleOwnerSelectBusiness}
+          onRegisterNew={handleRegisterNew}
+        />
+      );
+    case 'staff-login':
+      return (
+        <StaffLoginStep
+          onBack={goBack}
+          onLogin={() => {/* session already set in the component */}}
         />
       );
   }
@@ -792,26 +1117,30 @@ function LandingPage() {
 /* ─── Dashboard Step (post-auth) ─── */
 function DashboardStep() {
   const session = useAuthStore((s) => s.session);
+  const { logout } = useAuthStore();
+
   if (!session) return null;
   const slug = session.business.businessType.slug;
 
-  switch (slug) {
-    case 'cctv-shop':
-      return <CCTVShell />;
-    case 'pharmacy':
-    default:
-      return (
-        <div className="min-h-screen bg-gray-50/80 flex items-center justify-center">
-          <div className="text-center px-6">
-            <div className="w-16 h-16 rounded-2xl bg-emerald-100 flex items-center justify-center mx-auto mb-4">
-              <span className="text-3xl">💊</span>
+  return (
+    <div className="min-h-screen flex flex-col">
+      <div className="flex-1">
+        {slug === 'cctv-shop' && <CCTVShell />}
+        {slug === 'pharmacy' && <PharmacyShell />}
+        {!['cctv-shop', 'pharmacy'].includes(slug) && (
+          <div className="min-h-screen bg-gray-50/80 flex items-center justify-center">
+            <div className="text-center px-6">
+              <div className="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center mx-auto mb-4">
+                <span className="text-3xl">🚧</span>
+              </div>
+              <h2 className="text-lg font-bold text-gray-900">{session.business.businessType.name} Module</h2>
+              <p className="text-sm text-gray-500 mt-1">Coming soon</p>
             </div>
-            <h2 className="text-lg font-bold text-gray-900">Pharmacy Module</h2>
-            <p className="text-sm text-gray-500 mt-1">Coming soon</p>
           </div>
-        </div>
-      );
-  }
+        )}
+      </div>
+    </div>
+  );
 }
 
 /* ─── Main Page ─── */

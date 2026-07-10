@@ -5,6 +5,7 @@ export interface BusinessTypeInfo {
   name: string;
   slug: string;
   icon: string;
+  color?: string;
 }
 
 export interface BusinessInfo {
@@ -17,13 +18,19 @@ export interface BusinessInfo {
 }
 
 export interface AuthSession {
+  sessionToken?: string;
+  expiresAt?: string;
   user: {
     id: string;
     name: string;
+    username?: string;
+    role?: string;
+    fullName?: string;
     email?: string;
     phone?: string;
     avatar?: string;
   };
+  permissions?: Record<string, boolean>;
   business: BusinessInfo;
 }
 

@@ -23,7 +23,7 @@ export interface BusinessInfo {
 export interface LoggedInSession {
   token: string;
   user: { id: string; username: string; role: string; fullName?: string };
-  permissions: string[];
+  permissions: string[] | Record<string, boolean>;
   business: BusinessInfo;
 }
 
@@ -43,6 +43,44 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 }));
 
+/** Build a pharmacy-compatible session from the main auth store data. */
+function buildBridgeSession(s: {
+  sessionToken?: string;
+  user: { id: string; name: string; username?: string; role?: string; fullName?: string };
+  permissions?: Record<string, boolean>;
+  business: {
+    id: string;
+    name: string;
+    shopCode: string;
+    address: string;
+    phone?: string;
+    businessType: { id: string; name: string; slug: string; icon: string; color?: string };
+  };
+}): LoggedInSession {
+  return {
+    token: s.sessionToken || `bridge_${s.user.id}`,
+    user: {
+      id: s.user.id,
+      username: s.user.username || s.user.name.toLowerCase().replace(/\s+/g, "."),
+      role: s.user.role || "owner",
+      fullName: s.user.fullName || s.user.name,
+    },
+    permissions: s.permissions || ["*"],
+    business: {
+      id: s.business.id,
+      name: s.business.name,
+      address: s.business.address || null,
+      shopCode: s.business.shopCode,
+      businessType: {
+        slug: s.business.businessType.slug,
+        name: s.business.businessType.name,
+        color: (s.business.businessType as { color?: string }).color || "emerald",
+        icon: s.business.businessType.icon,
+      },
+    },
+  };
+}
+
 /* ── Sync: When the new auth store changes, update the bridge ── */
 useNewAuthStore.subscribe((newState) => {
   const currentBridge = get().session;
@@ -51,29 +89,7 @@ useNewAuthStore.subscribe((newState) => {
     const s = newState.session;
     // Only update if business ID changed (avoid infinite loops)
     if (currentBridge?.business.id !== s.business.id) {
-      const mapped: LoggedInSession = {
-        token: `bridge_${s.user.id}`,
-        user: {
-          id: s.user.id,
-          username: s.user.name.toLowerCase().replace(/\s+/g, "."),
-          role: "owner",
-          fullName: s.user.name,
-        },
-        permissions: ["*"], // Full access for now
-        business: {
-          id: s.business.id,
-          name: s.business.name,
-          address: s.business.address || null,
-          shopCode: s.business.shopCode,
-          businessType: {
-            slug: s.business.businessType.slug,
-            name: s.business.businessType.name,
-            color: "emerald",
-            icon: s.business.businessType.icon,
-          },
-        },
-      };
-      set({ session: mapped });
+      set({ session: buildBridgeSession(s) });
     }
   } else if (!newState.isAuthenticated && currentBridge) {
     set({ session: null });
@@ -83,26 +99,5 @@ useNewAuthStore.subscribe((newState) => {
 // Trigger initial sync
 if (useNewAuthStore.getState().isAuthenticated) {
   const s = useNewAuthStore.getState().session!;
-  useAuthStore.getState().setSession({
-    token: `bridge_${s.user.id}`,
-    user: {
-      id: s.user.id,
-      username: s.user.name.toLowerCase().replace(/\s+/g, "."),
-      role: "owner",
-      fullName: s.user.name,
-    },
-    permissions: ["*"],
-    business: {
-      id: s.business.id,
-      name: s.business.name,
-      address: s.business.address || null,
-      shopCode: s.business.shopCode,
-      businessType: {
-        slug: s.business.businessType.slug,
-        name: s.business.businessType.name,
-        color: "emerald",
-        icon: s.business.businessType.icon,
-      },
-    },
-  });
+  useAuthStore.getState().setSession(buildBridgeSession(s));
 }

@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft, Plus, Search, ChevronRight, Calendar,
-  Receipt, Package,
+  Receipt, Package, Loader2, ChevronDown,
 } from 'lucide-react';
 import { useCCTVNavStore } from '@/stores/cctv-nav-store';
 import { cn } from '@/lib/utils';
@@ -31,6 +31,8 @@ const STATUS_COLORS: Record<string, string> = {
   PENDING: 'bg-slate-100 text-slate-600',
 };
 
+const PAGE_SIZE = 20;
+
 function relativeDate(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
   const minutes = Math.floor(diff / 60000);
@@ -47,11 +49,60 @@ function relativeDate(dateStr: string): string {
 export function CCTVSalesHistory() {
   const { navigate, goBack } = useCCTVNavStore();
   const businessId = useCctvBusinessId();
-  const [allSales, setAllSales] = useState<CCTVSale[]>([]);
+
+  const [sales, setSales] = useState<CCTVSale[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [activeFilter, setActiveFilter] = useState('');
   const [search, setSearch] = useState('');
   const [searchInput, setSearchInput] = useState('');
+  const [total, setTotal] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
+
+  // ── Fetch sales (server-side) ──
+  const fetchSales = useCallback(async (offset: number, append: boolean) => {
+    if (append) {
+      setLoadingMore(true);
+    } else {
+      setLoading(true);
+    }
+
+    const params = new URLSearchParams({
+      limit: String(PAGE_SIZE),
+      offset: String(offset),
+    });
+    if (activeFilter) params.set('status', activeFilter);
+    if (search) params.set('search', search);
+
+    try {
+      const res = await fetch(
+        `/api/businesses/${businessId}/cctv/sales?${params.toString()}`,
+      );
+      if (res.ok) {
+        const json = await res.json();
+        const items: CCTVSale[] = json.sales || [];
+        const totalCount: number = json.total || 0;
+
+        if (append) {
+          setSales((prev) => [...prev, ...items]);
+        } else {
+          setSales(items);
+        }
+        setTotal(totalCount);
+        setHasMore(offset + PAGE_SIZE < totalCount);
+      }
+    } catch {
+      // error
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+    }
+  }, [businessId, activeFilter, search]);
+
+  // Initial load + filter/search changes
+  useEffect(() => {
+    fetchSales(0, false);
+  }, [fetchSales]);
 
   // Debounced search
   useEffect(() => {
@@ -59,30 +110,16 @@ export function CCTVSalesHistory() {
     return () => clearTimeout(t);
   }, [searchInput]);
 
-  // Client-side filtering with useMemo
-  const sales = useMemo(() => {
-    let filtered = allSales;
-    if (activeFilter) {
-      filtered = filtered.filter((s) => s.status === activeFilter);
-    }
-    if (search) {
-      const q = search.toLowerCase();
-      filtered = filtered.filter(
-        (s) =>
-          s.saleCode.toLowerCase().includes(q) ||
-          s.customerName.toLowerCase().includes(q) ||
-          (s.customerPhone && s.customerPhone.includes(q))
-      );
-    }
-    return filtered;
-  }, [allSales, activeFilter, search]);
+  const handleLoadMore = () => {
+    fetchSales(sales.length, true);
+  };
 
-  // Stats
-  const totalRevenue = allSales
+  // Stats (from loaded data — approx for performance, full total from API)
+  const totalRevenue = sales
     .filter((s) => s.status === 'PAID')
     .reduce((sum, s) => sum + s.totalDue, 0);
-  const pendingCount = allSales.filter(
-    (s) => s.status === 'PENDING' || s.status === 'PARTIALLY_PAID'
+  const pendingCount = sales.filter(
+    (s) => s.status === 'PENDING' || s.status === 'PARTIALLY_PAID',
   ).length;
 
   return (
@@ -93,7 +130,9 @@ export function CCTVSalesHistory() {
           <ArrowLeft className="w-5 h-5 text-gray-600" />
         </button>
         <h1 className="text-lg font-bold text-gray-900 flex-1">Sales History</h1>
-        <span className="text-xs text-gray-400 font-medium">{allSales.length} sales</span>
+        {!loading && (
+          <span className="text-xs text-gray-400 font-medium">{total} sales</span>
+        )}
         <motion.button
           whileTap={{ scale: 0.95 }}
           onClick={() => navigate('new-sale')}
@@ -104,26 +143,33 @@ export function CCTVSalesHistory() {
       </div>
 
       {/* Stats banner */}
-      <div className="bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl p-4 text-white shadow-lg shadow-violet-500/20">
-        <div className="grid grid-cols-3 gap-3">
-          <div>
-            <p className="text-2xl font-bold">{allSales.length}</p>
-            <p className="text-[10px] text-white/70">Total Sales</p>
+      {!loading && sales.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl p-4 text-white shadow-lg shadow-violet-500/20"
+        >
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <p className="text-2xl font-bold">{total}</p>
+              <p className="text-[10px] text-white/70">Total Sales</p>
+            </div>
+            <div>
+              <p className="text-2xl font-bold">
+                {totalRevenue >= 1000
+                  ? `${(totalRevenue / 1000).toFixed(1)}k`
+                  : totalRevenue}
+              </p>
+              <p className="text-[10px] text-white/70">Revenue (৳)</p>
+            </div>
+            <div>
+              <p className="text-2xl font-bold">{pendingCount}</p>
+              <p className="text-[10px] text-white/70">Pending</p>
+            </div>
           </div>
-          <div>
-            <p className="text-2xl font-bold">
-              {totalRevenue >= 1000
-                ? `${(totalRevenue / 1000).toFixed(1)}k`
-                : totalRevenue}
-            </p>
-            <p className="text-[10px] text-white/70">Revenue (৳)</p>
-          </div>
-          <div>
-            <p className="text-2xl font-bold">{pendingCount}</p>
-            <p className="text-[10px] text-white/70">Pending</p>
-          </div>
-        </div>
-      </div>
+        </motion.div>
+      )}
 
       {/* Search */}
       <div className="relative">
@@ -146,7 +192,7 @@ export function CCTVSalesHistory() {
               'px-3 py-1.5 rounded-full text-[11px] font-semibold whitespace-nowrap transition-all shrink-0',
               activeFilter === tab.value
                 ? 'bg-gradient-to-r from-violet-500 to-purple-600 text-white shadow-sm'
-                : 'bg-white text-gray-600 border border-gray-100 hover:bg-gray-50'
+                : 'bg-white text-gray-600 border border-gray-100 hover:bg-gray-50',
             )}
           >
             {tab.label}
@@ -185,65 +231,94 @@ export function CCTVSalesHistory() {
             )}
           </div>
         ) : (
-          <AnimatePresence mode="popLayout">
-            {sales.map((sale, i) => (
-              <motion.button
-                key={sale.id}
-                layout
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0, transition: { duration: 0.25, delay: i * 0.03 } }}
-                exit={{ opacity: 0, x: -20 }}
-                onClick={() => navigate('sale-detail', sale.id)}
-                className="w-full bg-white rounded-2xl border border-gray-100 p-4 shadow-sm text-left active:scale-[0.98] transition-transform"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-xs font-mono font-bold text-violet-600">{sale.saleCode}</span>
-                      <span className={cn('text-[10px] px-2 py-0.5 rounded-full font-semibold', STATUS_COLORS[sale.status])}>
-                        {sale.status === 'PARTIALLY_PAID' ? 'Partial' : sale.status}
-                      </span>
-                    </div>
-                    <p className="text-sm font-semibold text-gray-900 mt-1.5 truncate">
-                      {sale.customerName}
-                    </p>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      {sale.customerPhone && (
-                        <span className="text-[11px] text-gray-500">{sale.customerPhone}</span>
-                      )}
-                      <span className="text-[11px] text-gray-400">
-                        {sale._count?.items || 0} item{(sale._count?.items || 0) !== 1 ? 's' : ''}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <p className="text-sm font-bold text-gray-900">
-                      ৳{sale.totalDue.toLocaleString()}
-                    </p>
-                    {sale.discountAmount > 0 && (
-                      <p className="text-[10px] text-gray-400 line-through">
-                        ৳{(sale.totalDue + sale.discountAmount).toLocaleString()}
+          <>
+            <AnimatePresence mode="popLayout">
+              {sales.map((sale, i) => (
+                <motion.button
+                  key={sale.id}
+                  layout
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0, transition: { duration: 0.25, delay: Math.min(i, 5) * 0.03 } }}
+                  exit={{ opacity: 0, x: -20 }}
+                  onClick={() => navigate('sale-detail', sale.id)}
+                  className="w-full bg-white rounded-2xl border border-gray-100 p-4 shadow-sm text-left active:scale-[0.98] transition-transform"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs font-mono font-bold text-violet-600">{sale.saleCode}</span>
+                        <span className={cn('text-[10px] px-2 py-0.5 rounded-full font-semibold', STATUS_COLORS[sale.status])}>
+                          {sale.status === 'PARTIALLY_PAID' ? 'Partial' : sale.status}
+                        </span>
+                      </div>
+                      <p className="text-sm font-semibold text-gray-900 mt-1.5 truncate">
+                        {sale.customerName}
                       </p>
-                    )}
-                    <ChevronRight className="w-4 h-4 text-gray-300 ml-auto mt-0.5" />
+                      <div className="flex items-center gap-2 mt-0.5">
+                        {sale.customerPhone && (
+                          <span className="text-[11px] text-gray-500">{sale.customerPhone}</span>
+                        )}
+                        <span className="text-[11px] text-gray-400">
+                          {sale._count?.items || 0} item{(sale._count?.items || 0) !== 1 ? 's' : ''}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-sm font-bold text-gray-900">
+                        ৳{sale.totalDue.toLocaleString()}
+                      </p>
+                      {sale.discountAmount > 0 && (
+                        <p className="text-[10px] text-gray-400 line-through">
+                          ৳{(sale.totalDue + sale.discountAmount).toLocaleString()}
+                        </p>
+                      )}
+                      <ChevronRight className="w-4 h-4 text-gray-300 ml-auto mt-0.5" />
+                    </div>
                   </div>
-                </div>
 
-                <div className="flex items-center gap-3 mt-2.5 pt-2.5 border-t border-gray-50">
-                  <div className="flex items-center gap-1.5">
-                    <Calendar className="w-3 h-3 text-gray-400" />
-                    <span className="text-[11px] text-gray-500">{relativeDate(sale.createdAt)}</span>
+                  <div className="flex items-center gap-3 mt-2.5 pt-2.5 border-t border-gray-50">
+                    <div className="flex items-center gap-1.5">
+                      <Calendar className="w-3 h-3 text-gray-400" />
+                      <span className="text-[11px] text-gray-500">{relativeDate(sale.createdAt)}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <Package className="w-3 h-3 text-gray-400" />
+                      <span className="text-[11px] text-gray-500">
+                        {sale._count?.payments || 0} payment{(sale._count?.payments || 0) !== 1 ? 's' : ''}
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1.5">
-                    <Package className="w-3 h-3 text-gray-400" />
-                    <span className="text-[11px] text-gray-500">
-                      {sale._count?.payments || 0} payment{(sale._count?.payments || 0) !== 1 ? 's' : ''}
-                    </span>
-                  </div>
-                </div>
+                </motion.button>
+              ))}
+            </AnimatePresence>
+
+            {/* Load More button */}
+            {hasMore && (
+              <motion.button
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                onClick={handleLoadMore}
+                disabled={loadingMore}
+                className="w-full py-3 rounded-2xl bg-white border border-gray-200 text-sm font-semibold text-violet-600 flex items-center justify-center gap-2 active:bg-violet-50 transition-colors disabled:opacity-50"
+              >
+                {loadingMore ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <ChevronDown className="w-4 h-4" />
+                )}
+                {loadingMore
+                  ? 'Loading...'
+                  : `Load More (${sales.length} of ${total})`}
               </motion.button>
-            ))}
-          </AnimatePresence>
+            )}
+
+            {/* End of list indicator */}
+            {!hasMore && sales.length > 0 && (
+              <p className="text-center text-[11px] text-gray-400 py-2">
+                Showing all {sales.length} sales
+              </p>
+            )}
+          </>
         )}
       </div>
     </motion.div>
