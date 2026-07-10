@@ -1,7 +1,9 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useCCTVNavStore } from '@/stores/cctv-nav-store';
+import { startOfflineListeners } from '@/lib/offline-sync';
+import { OfflineIndicator } from './OfflineIndicator';
 import { CCTVDashboard } from './CCTVDashboard';
 import { CCTVBottomNav } from './CCTVBottomNav';
 import { CCTVInventoryHub } from './CCTVInventoryHub';
@@ -137,6 +139,12 @@ const viewMeta: Record<string, { title: string; icon: string }> = {
 export function CCTVShell() {
   const { activeView } = useCCTVNavStore();
 
+  // Start offline listeners on mount (online/offline detection + auto-sync)
+  useEffect(() => {
+    const cleanup = startOfflineListeners();
+    return cleanup;
+  }, []);
+
   const renderView = () => {
     switch (activeView) {
       // Hubs
@@ -264,6 +272,7 @@ export function CCTVShell() {
   return (
     <div className="cctv-shell-wrap">
       <div className="flex flex-col min-h-0 flex-1">
+        <OfflineIndicator />
         <div className="flex-1 pb-20 px-4 pt-4">
           {renderView()}
         </div>

@@ -957,3 +957,45 @@ Stage Summary:
 - Files modified: prisma/schema.prisma, types/index.ts, CCTVShell.tsx, components/index.ts, CCTVMoreHub.tsx
 - DB table: cctv_vat_returns
 - Auto-calculation logic: output tax from CCTVMushakInvoice, input credit from CCTVSerialItem costPrice, opening credit from previous month's return
+
+---
+Task ID: 7A
+Agent: Main Agent
+Task: Implement Segment 7A — Offline-First Resilience
+
+Work Log:
+- Analyzed implementation plan spec: IndexedDB storage, queue-based sync, last-write-wins, 4-state connectivity indicator
+- Installed `idb` (v8.0.3) for clean IndexedDB API
+- Created `src/lib/offline-store.ts` — Client-side IndexedDB store with:
+  - Response Cache: GET responses cached with TTL (default 5 min), auto-purge at 10x TTL
+  - Mutation Queue: POST/PUT/DELETE queued with ID, retry tracking, error logging
+  - localStorage fallback when IndexedDB unavailable
+  - Cache invalidation (by exact key or URL prefix)
+- Created `src/stores/offline-store.ts` — Zustand store with 4 ConnectionStatus states: online, offline, syncing, error
+- Created `src/lib/offline-sync.ts` — Sync engine:
+  - Replays mutation queue on reconnection (oldest first, max 3 retries)
+  - Auto-triggers on window 'online' event with 500ms stabilization delay
+  - Updates offline store status throughout sync lifecycle
+  - Cooldown prevents rapid re-syncs
+  - startOfflineListeners() returns cleanup function for React useEffect
+- Created `src/lib/use-offline-fetch.ts` — useOfflineFetch React hook:
+  - GET requests: serves cached data when offline, returns stale cache on server error, auto-caches successful responses
+  - Mutations: queues to IndexedDB when offline, executes immediately when online
+  - Returns { data, loading, error, refetch, execute, queued, fromCache, stale }
+  - useSyncTrigger helper for manual sync triggering
+- Created `src/modules/cctv-shop/components/OfflineIndicator.tsx`:
+  - Full banner: 4-state indicator with icons, pending count, retry button, dismiss for online state
+  - Compact pill: OfflinePill for embedding in headers
+  - Animated via Framer Motion (slide in/out)
+  - Color-coded: emerald (online), rose (offline), amber (syncing), orange (error)
+- Integrated into CCTVShell.tsx: starts offline listeners on mount, renders OfflineIndicator above content
+- Added OfflinePill to CCTVDashboard header alongside "Welcome back" text
+- Updated component exports (index.ts)
+
+Stage Summary:
+- Full offline-first infrastructure implemented
+- Files created: offline-store.ts, offline-store.ts (Zustand), offline-sync.ts, use-offline-fetch.ts, OfflineIndicator.tsx
+- Files modified: CCTVShell.tsx, CCTVDashboard.tsx, components/index.ts
+- Package added: idb@8.0.3
+- No Prisma schema changes needed
+- All 4 connectivity states (online/offline/syncing/error) implemented with auto-detection

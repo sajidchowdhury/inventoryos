@@ -52,3 +52,4 @@ export { CCTVMushakInvoicesList } from './CCTVMushakInvoicesList';
 export { CCTVMushakInvoiceDetail } from './CCTVMushakInvoiceDetail';
 export { CCTVMushakRegisters } from './CCTVMushakRegisters';
 export { CCTVVatReturn } from './CCTVVatReturn';
+export { OfflineIndicator, OfflinePill } from './OfflineIndicator';

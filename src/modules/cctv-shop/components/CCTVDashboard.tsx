@@ -29,6 +29,7 @@ import {
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores/auth-store';
 import { useCCTVNavStore } from '@/stores/cctv-nav-store';
+import { OfflinePill } from './OfflineIndicator';
 
 const stagger = {
   animate: { transition: { staggerChildren: 0.04 } },
@@ -172,7 +173,10 @@ export function CCTVDashboard() {
         <div className="relative z-10">
           <div className="flex items-start justify-between mb-4">
             <div>
-              <p className="text-white/70 text-xs font-medium">Welcome back</p>
+              <div className="flex items-center gap-2">
+                <p className="text-white/70 text-xs font-medium">Welcome back</p>
+                <OfflinePill />
+              </div>
               <h1 className="text-xl font-bold text-white mt-0.5">{shopName}</h1>
             </div>
             <div className="flex items-center gap-2 bg-white/15 backdrop-blur-sm rounded-xl px-3 py-2">
