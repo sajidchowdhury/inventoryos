@@ -1515,3 +1515,33 @@ Work Log:
 Stage Summary:
 - Modified: src/modules/cctv-shop/components/CCTVProductForm.tsx
 - 5 catch blocks fixed: 3 toasts + 1 intentional silent (brands) + 1 toast+goBack (edit load)
+---
+Task ID: auth-fix
+Agent: Main Agent
+Task: Fix 3 critical issues - pharmacy module gone, landing page changes lost, login workflow broken
+
+Work Log:
+- Investigated all 3 issues: pharmacy showed "Coming soon", auth flows were simulated, landing page was structurally present but non-functional
+- Found root cause: DashboardStep had `case 'pharmacy': default:` fallthrough showing "Coming soon" instead of rendering PharmacyShell
+- Found root cause: All 3 login flows (fresh user, owner, staff) were using simulated setTimeout instead of real API calls to /api/auth/*
+- Found root cause: BusinessType table was empty - register API couldn't resolve slugs
+- Seeded BusinessType table with 7 entries (pharmacy, cctv-shop, grocery, restaurant, mobile-shop, electric-shop, bakery)
+- Expanded AuthSession interface to hold real API data (sessionToken, permissions, role, username, fullName)
+- Rewrote page.tsx with all 3 flows wired to real APIs:
+  - Flow A: Select business → 10-digit phone → send-otp API → verify-otp API → Setup (name+username+password) → register API → owner-login API → Dashboard
+  - Flow B: "I own a business" → phone → OTP → verify-otp returns business list → BusinessListStep → owner-login API → Dashboard
+  - Flow C: "I am staff" → shop code + username + password → login API → Dashboard
+- Added new BusinessListStep component for owner business selection
+- Updated bridge auth store (lib/auth-store.ts) to properly map real API session data for pharmacy module
+- Fixed missing bcryptjs dependency
+- Cleaned unused imports from page.tsx
+- Committed and pushed all pending changes (472 files including pharmacy module from WHM panel)
+
+Stage Summary:
+- Pharmacy module now renders PharmacyShell correctly
+- All 3 login flows call real backend APIs (send-otp, verify-otp, register, owner-login, login)
+- Landing page preserved with website-like design + business cards + 3 entry points
+- BusinessType seeded in DB for registration to work
+- Lint: 0 errors, 1 pre-existing warning
+- Compile: 200 OK
+- Pushed to main: 2f77f8d..87e1cff
