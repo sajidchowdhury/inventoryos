@@ -35,6 +35,7 @@ export { CCTVCommissionReport } from './CCTVCommissionReport';
 export { CCTVSalesHistory } from './CCTVSalesHistory';
 export { CCTVSaleDetail } from './CCTVSaleDetail';
 export { CCTVReturnDialog } from './CCTVReturnDialog';
+export { CCTVDueBook } from './CCTVDueBook';
 export { CCTVEmiDetail } from './CCTVEmiDetail';
 export { CCTVCreatEmi } from './CCTVCreatEmi';
 export { CCTVCustomerDetail } from './CCTVCustomerDetail';

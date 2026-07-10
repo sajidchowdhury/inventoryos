@@ -56,6 +56,7 @@ import { CCTVMushakInvoiceDetail } from './CCTVMushakInvoiceDetail';
 import { CCTVMushakRegisters } from './CCTVMushakRegisters';
 import { CCTVVatReturn } from './CCTVVatReturn';
 import { CCTVCloudDashboard } from './CCTVCloudDashboard';
+import { CCTVDueBook } from './CCTVDueBook';
 import { CCTVSupplierView } from './CCTVSupplierView';
 import { CCTVSupplierDetail } from './CCTVSupplierDetail';
 import { CCTVPurchaseOrderView } from './CCTVPurchaseOrderView';
@@ -143,6 +144,7 @@ const viewMeta: Record<string, { title: string; icon: string }> = {
   'create-mushak': { title: 'Generate Mushak', icon: '➕' },
   'vat-return': { title: 'Mushak 9.1 VAT Return', icon: '🏛️' },
   'cloud-dashboard': { title: 'Cloud Dashboard', icon: '📊' },
+  'due-book': { title: 'Due Book', icon: '📒' },
 };
 
 export function CCTVShell() {
@@ -282,6 +284,9 @@ export function CCTVShell() {
       // Cloud Dashboard (7C)
       case 'cloud-dashboard':
         return <CCTVCloudDashboard />;
+      // Due Book (2B)
+      case 'due-book':
+        return <CCTVDueBook />;
       default: {
         const meta = viewMeta[activeView];
         return <PlaceholderView title={meta?.title || activeView} icon={meta?.icon} />;
