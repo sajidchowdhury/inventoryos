@@ -10,12 +10,14 @@ import {
   ChevronLeft,
   ChevronRight,
   Loader2,
+  RefreshCw,
 } from 'lucide-react';
 import { useCCTVNavStore } from '@/stores/cctv-nav-store';
 import { useCctvBusinessId } from '@/modules/cctv-shop/hooks/use-cctv-business-id';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
+import { SerialStatusChangeDialog } from './SerialStatusChangeDialog';
 
 // ── Constants ──
 
@@ -105,6 +107,8 @@ export function CCTVSerialItemsList() {
   const [activeFilter, setActiveFilter] = useState('');
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const limit = 20;
+  const [statusItem, setStatusItem] = useState<SerialItem | null>(null);
+  const [showStatusDialog, setShowStatusDialog] = useState(false);
 
   // ── Fetch ──
   const doFetch = useCallback(async (p: number, status: string, q: string) => {
@@ -361,12 +365,20 @@ export function CCTVSerialItemsList() {
                         </div>
                       )}
                     </div>
-                    <Badge
-                      variant="secondary"
-                      className={cn('text-[10px] px-2.5 py-1 rounded-full font-semibold whitespace-nowrap shrink-0', sty)}
-                    >
-                      {label}
-                    </Badge>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <Badge
+                        variant="secondary"
+                        className={cn('text-[10px] px-2.5 py-1 rounded-full font-semibold whitespace-nowrap', sty)}
+                      >
+                        {label}
+                      </Badge>
+                      <button
+                        onClick={() => { setStatusItem(item); setShowStatusDialog(true); }}
+                        className="w-8 h-8 rounded-lg bg-gray-50 border border-gray-100 flex items-center justify-center active:bg-violet-50 active:border-violet-200 transition-colors"
+                      >
+                        <RefreshCw className="w-3.5 h-3.5 text-gray-400" />
+                      </button>
+                    </div>
                   </div>
 
                   {/* Footer: warranty + price */}
@@ -445,6 +457,20 @@ export function CCTVSerialItemsList() {
           </div>
         </div>
       )}
+
+      {/* ── Status Change Dialog ── */}
+      <SerialStatusChangeDialog
+        open={showStatusDialog}
+        onClose={() => setShowStatusDialog(false)}
+        onSaved={() => doFetch(page, activeFilter, search)}
+        item={statusItem ? {
+          id: statusItem.id,
+          serialNumber: statusItem.serialNumber,
+          status: statusItem.status,
+          productName: statusItem.product.name,
+          brand: statusItem.product.brand,
+        } : null}
+      />
     </motion.div>
   );
 }

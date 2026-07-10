@@ -66,4 +66,5 @@ export { CCTVSupplierPaymentDialog } from './CCTVSupplierPaymentDialog';
 export { CCTVPurchaseOrderView } from './CCTVPurchaseOrderView';
 export { CCTVCreatePurchase } from './CCTVCreatePurchase';
 export { SerialPickerDialog } from './SerialPickerDialog';
+export { SerialStatusChangeDialog } from './SerialStatusChangeDialog';
 export { CCTVCreateCustomerDialog } from './CCTVCreateCustomerDialog';

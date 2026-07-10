@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
   ArrowLeft, Package, Edit3, Trash2, Shield, Hash, Plus,
-  ChevronRight, AlertCircle, Loader2, Copy, BarChart3, Tag,
+  ChevronRight, AlertCircle, Loader2, Copy, BarChart3, Tag, RefreshCw,
 } from 'lucide-react';
 import { useCCTVNavStore } from '@/stores/cctv-nav-store';
 import { useAuthStore } from '@/stores/auth-store';
@@ -22,6 +22,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import type { CCTVSerialItem } from '@/modules/cctv-shop/types';
+import { SerialStatusChangeDialog } from './SerialStatusChangeDialog';
 
 const fadeUp = {
   initial: { opacity: 0, y: 16 },
@@ -94,6 +95,8 @@ export function CCTVProductDetail() {
   const [serials, setSerials] = useState<CCTVSerialItem[]>([]);
   const [serialsLoading, setSerialsLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [statusItem, setStatusItem] = useState<{ id: string; serialNumber: string; status: string; productName?: string; brand?: string | null } | null>(null);
+  const [showStatusDialog, setShowStatusDialog] = useState(false);
 
   // Fetch product detail
   useEffect(() => {
@@ -421,7 +424,7 @@ export function CCTVProductDetail() {
                     key={si.id}
                     className="flex items-center justify-between p-3 bg-gray-50 rounded-xl"
                   >
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                       <p className="text-xs font-mono font-semibold text-gray-800 truncate">
                         {si.serialNumber}
                       </p>
@@ -433,9 +436,26 @@ export function CCTVProductDetail() {
                         <p className="text-[10px] text-gray-500 mt-0.5">Customer: {si.soldTo}</p>
                       )}
                     </div>
-                    <span className={cn('text-[10px] px-2 py-0.5 rounded-full font-medium shrink-0 ml-2', cfg.color)}>
-                      {cfg.label}
-                    </span>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <span className={cn('text-[10px] px-2 py-0.5 rounded-full font-medium', cfg.color)}>
+                        {cfg.label}
+                      </span>
+                      <button
+                        onClick={() => {
+                          setStatusItem({
+                            id: si.id,
+                            serialNumber: si.serialNumber,
+                            status: si.status,
+                            productName: product.name,
+                            brand: product.brand,
+                          });
+                          setShowStatusDialog(true);
+                        }}
+                        className="w-7 h-7 rounded-lg bg-white border border-gray-200 flex items-center justify-center active:bg-violet-50 active:border-violet-200 transition-colors"
+                      >
+                        <RefreshCw className="w-3 h-3 text-gray-400" />
+                      </button>
+                    </div>
                   </div>
                 );
               })}
@@ -497,6 +517,14 @@ export function CCTVProductDetail() {
           </AlertDialog>
         </div>
       </div>
+
+      {/* Status Change Dialog */}
+      <SerialStatusChangeDialog
+        open={showStatusDialog}
+        onClose={() => setShowStatusDialog(false)}
+        onSaved={() => fetchSerials()}
+        item={statusItem}
+      />
     </motion.div>
   );
 }
