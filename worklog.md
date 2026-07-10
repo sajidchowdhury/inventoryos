@@ -1231,3 +1231,36 @@ Stage Summary:
 - Supplier list: quick-pay action on cards with due balance
 - Files modified: balance/route.ts, payments/route.ts, suppliers/route.ts, CCTVSupplierDetail.tsx, CCTVSupplierView.tsx, index.ts
 - Files created: CCTVSupplierPaymentDialog.tsx
+---
+Task ID: 2D
+Agent: Main Agent
+Task: Phase 2D - Expense / Other Costing Tracker
+
+Work Log:
+- Added CCTVExpense model to Prisma schema: date, category (RENT/SALARY/TRANSPORT/UTILITY/MISC), amount, description, paymentMethod, reference, isActive, timestamps
+- Added Business.cctvExpenses reverse relation
+- Ran db:push — cctv_expenses table created, Prisma client regenerated
+- Created /api/businesses/[id]/cctv/expenses/route.ts with:
+  - GET: List expenses with category/date/month filters, pagination
+  - GET: Aggregated stats — this month total, all-time total, 6-month trend bars, category breakdown
+  - POST: Create expense with validation (amount > 0, valid category, valid payment method)
+  - DELETE: Soft-delete by query param id
+- Created CCTVExpenseView.tsx (~370 lines):
+  - Header with back + add button
+  - Stats cards: this month total, all-time total
+  - 6-month trend mini bar chart (animated bars with framer-motion)
+  - Category filter chips (All, Rent, Salary, Transport, Utility, Misc) with icons
+  - Expense cards with category icon/badge, date, description, amount, payment method, reference, delete action
+  - Bottom-sheet create form: date picker, 5-column category grid, amount input, 3x2 payment method grid, description, reference
+- Added 'expenses' to CCTVViewType union
+- Added case routing in CCTVShell.tsx + viewMeta entry
+- Added Expenses menu item in CCTVMoreHub.tsx (under Sales & Customers, after Due Book)
+- Added export to components/index.ts
+- Lint: 0 errors, 1 pre-existing warning. Dev server: clean compiles
+
+Stage Summary:
+- New Prisma model: CCTVExpense → cctv_expenses table
+- New API: POST/GET/DELETE /cctv/expenses with filtering, stats, and aggregation
+- New component: CCTVExpenseView with 6-month trend chart and category filtering
+- Menu entry: More Hub → Sales & Customers → Expenses
+- Files: 8 changed (+807 lines), 2 new files
