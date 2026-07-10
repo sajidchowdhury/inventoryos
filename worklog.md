@@ -999,3 +999,48 @@ Stage Summary:
 - Package added: idb@8.0.3
 - No Prisma schema changes needed
 - All 4 connectivity states (online/offline/syncing/error) implemented with auto-detection
+
+---
+Task ID: 7B
+Agent: Main Agent
+Task: Implement Segment 7B — Thermal Printing and Bangla Support
+
+Work Log:
+- Created ThermalReceipt.tsx component with 58mm and 80mm thermal paper support
+- Implemented monospace character-width formatting for precise receipt layout
+- Added printThermalReceipt() function that opens a new window with @page sizing for thermal paper
+- Receipt includes: business header, invoice info, buyer/seller details, itemized list with HS codes, VAT breakdown, totals, amount in words, thank you in English and Bangla
+- Added Noto Sans Bengali Google Font to root layout.tsx (via <link> in <head>)
+- Added "Thermal" print button to CCTVMushakInvoiceDetail.tsx alongside existing Print button
+- Print popup auto-triggers window.print() on load and auto-closes after printing
+
+Stage Summary:
+- File created: ThermalReceipt.tsx (React component + printThermalReceipt utility)
+- Files modified: layout.tsx (font), CCTVMushakInvoiceDetail.tsx (button)
+- No new API routes or DB changes needed
+
+---
+Task ID: 7C
+Agent: Main Agent
+Task: Implement Segment 7C — Cloud Dashboard with Recharts
+
+Work Log:
+- Created cloud-dashboard API route with 16 parallel Prisma queries aggregating KPIs
+- Queries cover: products, serial items, sales (this/last month), revenue, job cards, EMI, AMC, customers, categories, Mushak invoices
+- 6-month sales trend computed with per-month revenue + transaction count
+- Created CCTVCloudDashboard.tsx desktop-optimized component with:
+  - Alert cards row: low stock, overdue repairs, expiring AMC (hidden when count=0)
+  - 8 KPI metric cards with gradient icons, trend arrows, and sub-text
+  - Revenue Trend: Recharts AreaChart with gradient fill, 6-month data
+  - Stock by Category: Recharts PieChart (donut) with color-coded legend
+  - Sales Volume: Recharts BarChart with rounded bars
+  - ResponsiveContainer for all charts, max-w-5xl container
+- Added 'cloud-dashboard' to CCTVViewType union
+- Wired into CCTVShell (import, viewMeta, switch case)
+- Added "Cloud Dashboard" entry to CCTVMoreHub tools section
+
+Stage Summary:
+- File created: cloud-dashboard/route.ts, CCTVCloudDashboard.tsx
+- Files modified: types/index.ts, CCTVShell.tsx, CCTVMoreHub.tsx, components/index.ts
+- Recharts library was already installed (v2.15.4)
+- Zero lint errors
