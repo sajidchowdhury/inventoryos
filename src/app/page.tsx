@@ -11,23 +11,16 @@ import {
   Eye,
   EyeOff,
   Loader2,
-  Shield,
-  Sparkles,
-  Zap,
   Building2,
   UserCheck,
   Phone,
   KeyRound,
   Package,
-  Hash,
   Users,
-  BarChart3,
-  Star,
   Store,
-  LogOut,
 } from 'lucide-react';
 import { useAuthStore, type AuthSession } from '@/stores/auth-store';
-import { moduleRegistry, getActiveModules, type ModuleRegistryItem } from '@/lib/modules';
+import { moduleRegistry, getActiveModules } from '@/lib/modules';
 import { CCTVShell } from '@/modules/cctv-shop/components';
 import { PharmacyShell } from '@/modules/pharmacy/components';
 import { Button } from '@/components/ui/button';
