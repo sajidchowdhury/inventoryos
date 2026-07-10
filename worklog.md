@@ -1338,3 +1338,39 @@ Stage Summary:
 - Modified: src/modules/cctv-shop/components/CCTVShell.tsx (import + route + viewMeta)
 - Modified: src/modules/cctv-shop/components/CCTVMoreHub.tsx (tools menu entry)
 - Modified: src/modules/cctv-shop/components/index.ts (export)
+
+---
+Task ID: 3C
+Agent: Main Agent
+Task: Create Customer Ledger (Party-wise) for CCTV Shop (Phase 3C)
+
+Work Log:
+- Read CCTVCustomerDetail.tsx (871 lines) to understand structure, tabs, dialogs, and state management
+- Analyzed Prisma schema: Customer model, CCTVSale (customerId FK), CCTVPayment (via sale relation), CCTVReturn (via sale relation)
+- Created API endpoint: GET /api/businesses/[id]/cctv/customers/[customerId]/ledger
+  - Fetches sales (debits), payments (credits), returns (credits) for a specific customer
+  - Merges into chronological order with running balance
+  - Balance convention: positive = customer owes us, negative = advance
+  - Returns summary (totalDebit, totalCredit, currentBalance) + entries array
+- Created CCTVCustomerLedgerSheet.tsx bottom sheet component:
+  - Purple summary bar (Purchases / Paid+Returned / Due or Advance)
+  - Color-coded entries: SALE (orange), PAYMENT (green), RETURN (amber)
+  - Each entry shows type badge, date, description, amount, running balance
+  - Due/Advance label on running balance
+  - Footer summary card
+  - CSV export support
+  - Spring-animated bottom sheet with backdrop blur
+- Modified CCTVCustomerDetail.tsx:
+  - Added BookOpen icon import + CCTVCustomerLedgerSheet import
+  - Added ledgerOpen state
+  - Added "Ledger" button in header (next to "Customer Profile" title)
+  - Rendered CCTVCustomerLedgerSheet at bottom of component
+- Added export to components/index.ts
+- Lint: 0 errors
+- API tested: 404 for non-existent customer (correct), 200 for valid (structure verified)
+
+Stage Summary:
+- Created: src/app/api/businesses/[id]/cctv/customers/[customerId]/ledger/route.ts
+- Created: src/modules/cctv-shop/components/CCTVCustomerLedgerSheet.tsx
+- Modified: src/modules/cctv-shop/components/CCTVCustomerDetail.tsx (ledger button + sheet)
+- Modified: src/modules/cctv-shop/components/index.ts (export)
