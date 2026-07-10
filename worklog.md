@@ -1155,3 +1155,37 @@ Stage Summary:
 - 2 files modified: stock-in/route.ts (+31 lines), CCTVStockInView.tsx (+292 lines)
 - Procurement traceability fully implemented for manual stock-in flow
 - Serial items now carry purchaseId and supplierId when linked
+---
+Task ID: 2A
+Agent: Main
+Task: Phase 2A: CCTV Sales Return Flow
+
+Work Log:
+- Read CCTVSaleDetail.tsx (748 lines), types/index.ts (1052 lines), sale DELETE endpoint
+- Understood existing cancel flow (soft-delete, restore serials to IN_STOCK)
+- Added CCTVReturn + CCTVReturnItem models to schema.prisma
+- Added reverse relations: Business.cctvReturns/cctvReturnItems, CCTVSale.returns, CCTVSaleItem.returnItems
+- Ran db:push — created cctv_returns and cctv_return_items tables
+- Created POST /cctv/sales/[saleId]/returns API route (220 lines)
+  - Validates items, serial status, quantities
+  - Generates RET-YYYY-NNNN return codes
+  - Transaction-based: creates return record, restores serials, adjusts sale totals
+  - Supports both serial-tracked (IN_STOCK or RETURNED) and non-serial products
+- Added RefundMethod, SerialRestoreStatus, CCTVReturn, CCTVReturnItem types
+- Created CCTVReturnDialog.tsx (320 lines)
+  - Item selection with animated expand
+  - Serial restore status selector (Returned vs Back to Stock)
+  - Quantity picker for non-serial items
+  - Per-item refund amount editing
+  - Return reason dropdown, refund method grid, reference field
+  - Two-step confirmation
+- Edited CCTVSaleDetail.tsx: added Return Items button + dialog integration
+- Exported CCTVReturnDialog from barrel index.ts
+- Lint: 0 errors, dev server compiles clean
+- Committed and pushed to GitHub
+
+Stage Summary:
+- 7 files changed, 897 insertions
+- New: returns API route, CCTVReturnDialog component
+- Modified: schema.prisma, types, CCTVSaleDetail, index.ts barrel
+- Full procurement traceability: return records link back to sale and serial items
