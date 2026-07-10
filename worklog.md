@@ -1450,3 +1450,26 @@ Stage Summary:
 - Modified: src/modules/cctv-shop/components/CCTVCustomersList.tsx (header button + FAB + dialog)
 - Modified: src/modules/cctv-shop/components/index.ts (new export)
 - Pushed as ae18cd9 to main
+
+---
+Task ID: 4D
+Agent: Main Agent
+Task: Fix Dashboard Hardcoded Stats + Customers with Balance
+
+Work Log:
+- Read CCTVMoreHub.tsx — found hardcoded quickStats (Today Sales: ৳24.5K, Pending Jobs: 12, Active AMC: 15)
+- Read CCTVCustomersList.tsx — found hardcoded "0 with balance" in stats row
+- Read existing cloud-dashboard API — heavy endpoint with 6-month trend loop, not suitable for lightweight stats
+- Read Prisma schema for CCTVSale, CCTVPayment, CCTVJobCard, CCTVAmcContract models
+- Created lightweight /api/businesses/[id]/cctv/quick-stats/route.ts — parallel queries: todaySalesRevenue (sum totalDue for today's sales), pendingJobs (count non-terminal job cards), activeAmc (count active AMC contracts)
+- Modified GET /cctv/customers API — changed response shape from plain array to { customers: [...], customersWithBalance: N }, where customersWithBalance counts customers with any sale where totalDue - sum(payments.amount) > 0.01
+- Modified CCTVMoreHub.tsx — removed hardcoded quickStats constant, added useEffect fetch from quick-stats API, shows "..." while loading then real values
+- Modified CCTVCustomersList.tsx — added customersWithBalance state, destructured new API response shape, replaced "0 with balance" with dynamic count
+- Lint: 0 errors, dev server: healthy
+- Pushed as aff4cda to main
+
+Stage Summary:
+- New file: src/app/api/businesses/[id]/cctv/quick-stats/route.ts
+- Modified: src/app/api/businesses/[id]/cctv/customers/route.ts (response shape + customersWithBalance)
+- Modified: src/modules/cctv-shop/components/CCTVMoreHub.tsx (real API stats)
+- Modified: src/modules/cctv-shop/components/CCTVCustomersList.tsx (dynamic balance count)
