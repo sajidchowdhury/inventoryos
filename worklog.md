@@ -1405,3 +1405,27 @@ Work Log:
 Stage Summary:
 - Created: src/app/api/businesses/[id]/cctv/inventory-stats/route.ts
 - Rewritten: src/modules/cctv-shop/components/CCTVInventoryHub.tsx (132→577 lines)
+
+---
+Task ID: 4B
+Agent: Main Agent
+Task: Wire Serial Items List to Real API (Bug Fix - P1)
+
+Work Log:
+- Read CCTVSerialItemsList.tsx — found 100% mock data: hardcoded 10-item array, client-side filtering, no pagination
+- Read existing API: GET /api/businesses/[id]/cctv/serial-items — already supports ?status=, ?search=, ?page=, ?limit= with product join and pagination (items, total, page, totalPages)
+- Rewrote CCTVSerialItemsList.tsx:
+  - Fetches from real API on mount, filter change, and debounced search (350ms)
+  - 8 status filter tabs: All, In Stock, Sold, Installed, In Repair, In Transit, Returned, Defective
+  - Dynamic status badge styles for all 10+ serial item statuses
+  - Each item card shows: product brand+name, serial number, IMEI (if present), customer name, location, status badge, warranty (with expired detection), sell price
+  - Pagination with prev/next buttons and page indicator
+  - Footer showing "Showing X–Y of Z total" across N pages
+  - Loading skeletons, empty state with contextual message
+  - Search input with clear button, searches product name/brand/serial/IMEI/customer
+  - AnimatePresence for smooth list transitions
+- Lint: 0 errors
+- API unchanged (already functional)
+
+Stage Summary:
+- Rewritten: src/modules/cctv-shop/components/CCTVSerialItemsList.tsx (100→416 lines)
