@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useCallback } from 'react';
+import dynamic from 'next/dynamic';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowRight,
@@ -22,7 +23,17 @@ import {
 import { useAuthStore, type AuthSession } from '@/stores/auth-store';
 import { moduleRegistry, getActiveModules } from '@/lib/modules';
 import { CCTVShell } from '@/modules/cctv-shop/components';
-import { PharmacyShell } from '@/modules/pharmacy/components';
+const PharmacyShell = dynamic(
+  () => import('@/modules/pharmacy/components').then((m) => m.PharmacyShell),
+  {
+    loading: () => (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-violet-500" />
+      </div>
+    ),
+    ssr: false,
+  }
+);
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
