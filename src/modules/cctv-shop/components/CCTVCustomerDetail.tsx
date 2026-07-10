@@ -6,7 +6,7 @@ import {
   ArrowLeft, Phone, Mail, MapPin, ShoppingBag, CalendarDays,
   CreditCard, Wallet, Loader2, Star, TrendingUp, Gift,
   Plus, Minus, Receipt, Clock, Package, CheckCircle2,
-  AlertCircle, IndianRupee, History, Award, Zap,
+  AlertCircle, IndianRupee, History, Award, Zap, BookOpen,
 } from 'lucide-react';
 import { useCCTVNavStore } from '@/stores/cctv-nav-store';
 import { useToast } from '@/hooks/use-toast';
@@ -26,6 +26,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { useCctvBusinessId } from '@/modules/cctv-shop/hooks/use-cctv-business-id';
+import { CCTVCustomerLedgerSheet } from './CCTVCustomerLedgerSheet';
 
 const fadeUp = {
   initial: { opacity: 0, y: 16 },
@@ -162,6 +163,7 @@ export function CCTVCustomerDetail() {
   const [adjustPoints, setAdjustPoints] = useState('');
   const [adjustReason, setAdjustReason] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [ledgerOpen, setLedgerOpen] = useState(false);
 
   const fetchCustomer = useCallback(async () => {
     if (!contextId) return;
@@ -321,6 +323,13 @@ export function CCTVCustomerDetail() {
           <ArrowLeft className="w-5 h-5 text-gray-600" />
         </button>
         <h1 className="text-lg font-bold text-gray-900 flex-1 truncate">Customer Profile</h1>
+        <button
+          onClick={() => setLedgerOpen(true)}
+          className="h-9 px-3 rounded-xl bg-white border border-gray-200 text-xs font-semibold text-gray-700 active:bg-gray-50 transition-all flex items-center gap-1.5 shadow-sm"
+        >
+          <BookOpen className="w-3.5 h-3.5" />
+          Ledger
+        </button>
       </div>
 
       {/* ── Profile Card ── */}
@@ -866,6 +875,15 @@ export function CCTVCustomerDetail() {
       <motion.p {...fadeItem} className="text-center text-[10px] text-gray-400 pb-2">
         Customer since {fmtDate(customer.createdAt)}
       </motion.p>
+
+      {/* Customer Ledger Sheet */}
+      <CCTVCustomerLedgerSheet
+        open={ledgerOpen}
+        onClose={() => setLedgerOpen(false)}
+        customerId={contextId || ''}
+        customerName={customer.name}
+        businessId={businessId}
+      />
     </motion.div>
   );
 }
