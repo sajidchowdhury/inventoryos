@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
   Wrench,
@@ -34,6 +34,7 @@ import {
 import { cn } from '@/lib/utils';
 import { useCCTVNavStore } from '@/stores/cctv-nav-store';
 import { useAuthStore } from '@/stores/auth-store';
+import { useCctvBusinessId } from '@/modules/cctv-shop/hooks/use-cctv-business-id';
 import type { CCTVViewType } from '../types';
 
 interface MenuItem {
@@ -44,16 +45,65 @@ interface MenuItem {
   badge?: string;
 }
 
-const quickStats = [
-  { label: 'Today Sales', value: '৳24.5K', icon: Banknote, color: 'bg-emerald-50 text-emerald-600' },
-  { label: 'Pending Jobs', value: '12', icon: ClipboardList, color: 'bg-amber-50 text-amber-600' },
-  { label: 'Active AMC', value: '15', icon: Shield, color: 'bg-violet-50 text-violet-600' },
-];
+interface QuickStatsData {
+  todaySalesRevenue: number;
+  todaySalesCount: number;
+  pendingJobs: number;
+  activeAmc: number;
+}
+
+function formatCompactBDT(n: number): string {
+  if (n >= 100000) return `৳${(n / 1000).toFixed(0)}K`;
+  if (n >= 10000) return `৳${(n / 1000).toFixed(1)}K`;
+  if (n >= 1000) return `৳${(n / 1000).toFixed(1)}K`;
+  return `৳${n.toLocaleString('en-BD', { maximumFractionDigits: 0 })}`;
+}
 
 export function CCTVMoreHub() {
   const { navigate } = useCCTVNavStore();
   const session = useAuthStore((s) => s.session);
   const logout = useAuthStore((s) => s.logout);
+  const businessId = useCctvBusinessId();
+  const [quickStats, setQuickStats] = useState<QuickStatsData | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const controller = new AbortController();
+    (async () => {
+      try {
+        const res = await fetch(
+          `/api/businesses/${businessId}/cctv/quick-stats`,
+          { signal: controller.signal },
+        );
+        if (res.ok && !cancelled) {
+          const json = await res.json();
+          if (json.success) setQuickStats(json);
+        }
+      } catch { /* ignore */ }
+    })();
+    return () => { cancelled = true; controller.abort(); };
+  }, [businessId]);
+
+  const statsRow = [
+    {
+      label: 'Today Sales',
+      value: quickStats ? formatCompactBDT(quickStats.todaySalesRevenue) : '...',
+      icon: Banknote,
+      color: 'bg-emerald-50 text-emerald-600',
+    },
+    {
+      label: 'Pending Jobs',
+      value: quickStats ? String(quickStats.pendingJobs) : '...',
+      icon: ClipboardList,
+      color: 'bg-amber-50 text-amber-600',
+    },
+    {
+      label: 'Active AMC',
+      value: quickStats ? String(quickStats.activeAmc) : '...',
+      icon: Shield,
+      color: 'bg-violet-50 text-violet-600',
+    },
+  ];
 
   const cctvOperations: MenuItem[] = [
     { label: 'Job Cards', icon: <Wrench className="w-5 h-5" />, view: 'job-cards', color: 'bg-blue-50 text-blue-600', badge: '12' },
@@ -171,7 +221,7 @@ export function CCTVMoreHub() {
         transition={{ delay: 0.06 }}
         className="grid grid-cols-3 gap-2.5 mb-5"
       >
-        {quickStats.map((stat) => {
+        {statsRow.map((stat) => {
           const Icon = stat.icon;
           return (
             <div

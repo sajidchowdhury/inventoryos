@@ -78,6 +78,7 @@ export function CCTVCustomersList() {
   const businessId = useCctvBusinessId();
 
   const [customers, setCustomers] = useState<CustomerRecord[]>([]);
+  const [customersWithBalance, setCustomersWithBalance] = useState(0);
   const [loading, setLoading] = useState(true);
   const [activeTier, setActiveTier] = useState('');
   const [searchInput, setSearchInput] = useState('');
@@ -117,7 +118,11 @@ export function CCTVCustomersList() {
           { signal: controller.signal },
         );
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        if (!cancelled) setCustomers(await res.json());
+        const json = await res.json();
+        if (!cancelled) {
+          setCustomers(json.customers || []);
+          setCustomersWithBalance(json.customersWithBalance || 0);
+        }
       } catch (err: unknown) {
         if (err instanceof DOMException && err.name === 'AbortError') return;
         if (!cancelled) setCustomers([]);
@@ -173,7 +178,7 @@ export function CCTVCustomersList() {
           </span>
           <span className="text-gray-300">·</span>
           <span className="text-violet-600 font-medium">
-            0 with balance
+            {customersWithBalance} with balance
           </span>
           <span className="text-gray-300">·</span>
           <span className="text-amber-600 font-medium">

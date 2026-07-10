@@ -70,7 +70,35 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       cctvTotalSpent: cctvStatsMap[c.id]?.cctvTotalSpent || 0,
     }));
 
-    return NextResponse.json(enriched);
+    // Count customers with outstanding balance
+    // A customer has a balance if any of their sales have totalDue > sum(payments.amount)
+    let customersWithBalance = 0;
+    if (customerIds.length > 0) {
+      // Get all sales with payments for these customers
+      const salesWithPayments = await db.cCTVSale.findMany({
+        where: { businessId, isActive: true, customerId: { in: customerIds } },
+        select: {
+          customerId: true,
+          totalDue: true,
+          payments: { where: { isActive: true }, select: { amount: true } },
+        },
+      });
+
+      const balanceSet = new Set<string>();
+      for (const sale of salesWithPayments) {
+        if (!sale.customerId) continue;
+        const paid = sale.payments.reduce((sum, p) => sum + p.amount, 0);
+        if (sale.totalDue - paid > 0.01) {
+          balanceSet.add(sale.customerId);
+        }
+      }
+      customersWithBalance = balanceSet.size;
+    }
+
+    return NextResponse.json({
+      customers: enriched,
+      customersWithBalance,
+    });
   } catch (error) {
     console.error("List CCTV customers error:", error);
     return NextResponse.json({ error: "Failed to list customers" }, { status: 500 });
