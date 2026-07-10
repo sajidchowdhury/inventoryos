@@ -1095,3 +1095,32 @@ Stage Summary:
 - Serial-tracked products get auto-generated serial items linked to purchase and supplier
 - Non-serial products get stock count incremented
 - Supplier balance auto-updated on purchase creation
+
+---
+Task ID: 3
+Agent: Main
+Task: 1C - Serial Item Picker in Sales POS
+
+Work Log:
+- Analyzed CCTVSellView.tsx: serial-tracked products added to cart with qty=1 but never sent serialItemId to backend
+- Verified sale API fully supports serialItemId: validates IN_STOCK, correct product, marks SOLD, creates history
+- Created SerialPickerDialog.tsx (277 lines): bottom-sheet dialog showing IN_STOCK serial items for a product
+  - Fetches from existing /cctv/products/[productId]/serials?status=IN_STOCK API
+  - Shows serial number (mono font), grade badge, IMEI, cost price, age, warranty, location
+  - Searchable by serial number or IMEI with 250ms debounce
+  - Animated list with select (checkmark) action
+  - Duplicate detection (prevents adding same serial twice)
+- Modified CCTVSellView.tsx (900 lines, +75 net):
+  - Added serialItemId + serialNumber to CartItem interface
+  - Added serialPickerOpen + serialPickerProduct state
+  - addToCart now opens SerialPickerDialog for serial-tracked products instead of adding directly
+  - handleSerialSelected callback adds item with serialItemId to cart
+  - Cart items show serial number (violet mono) when selected, or amber "Tap to select" when unresolved
+  - Unresolved serial items are clickable to reopen picker (amber border highlight)
+  - "Proceed to Payment" disabled + shows "Select Serial for Tracked Items" when unresolved
+  - completeSale now sends serialItemId in each item payload
+
+Stage Summary:
+- Phase 1C complete: serial-tracked products now require specific serial selection before sale
+- Backend was already fully built (validation, SOLD marking, history) — only frontend was missing
+- Flow: Add serial product → Picker opens → Select unit → Serial shown in cart → Submit sale → Backend marks SOLD

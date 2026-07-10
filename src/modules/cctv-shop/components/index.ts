@@ -58,3 +58,4 @@ export { CCTVSupplierDetail } from './CCTVSupplierDetail';
 export { CCTVCreateSupplierDialog } from './CCTVCreateSupplierDialog';
 export { CCTVPurchaseOrderView } from './CCTVPurchaseOrderView';
 export { CCTVCreatePurchase } from './CCTVCreatePurchase';
+export { SerialPickerDialog } from './SerialPickerDialog';

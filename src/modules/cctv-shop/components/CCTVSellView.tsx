@@ -15,6 +15,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { PaymentMethod } from '@/modules/cctv-shop/types';
 import { useCctvBusinessId } from '@/modules/cctv-shop/hooks/use-cctv-business-id';
+import { SerialPickerDialog } from './SerialPickerDialog';
 
 const fadeUp = {
   initial: { opacity: 0, y: 16 },
@@ -55,6 +56,8 @@ interface CartItem {
   quantity: number;
   serialTracked: boolean;
   maxStock: number;
+  serialItemId?: string | null;
+  serialNumber?: string | null;
 }
 
 interface TempPayment {
@@ -113,6 +116,10 @@ export function CCTVSellView() {
   // ── Cart ──
   const [cart, setCart] = useState<CartItem[]>([]);
   const [discountStr, setDiscountStr] = useState('');
+
+  // ── Serial Picker State ──
+  const [serialPickerOpen, setSerialPickerOpen] = useState(false);
+  const [serialPickerProduct, setSerialPickerProduct] = useState<{ productId: string; name: string; brand: string; sellPrice: number; stock: number } | null>(null);
 
   // ── Payment ──
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethod | null>(null);
@@ -175,10 +182,21 @@ export function CCTVSellView() {
 
   // ── Cart actions ──
   const addToCart = (product: ProductResult) => {
+    // For serial-tracked products, open serial picker instead of adding directly
+    if (product.serialTracked) {
+      setSerialPickerProduct({
+        productId: product.id,
+        name: product.name,
+        brand: product.brand,
+        sellPrice: product.sellPrice,
+        stock: product.stock,
+      });
+      setSerialPickerOpen(true);
+      return;
+    }
     setCart((prev) => {
       const existing = prev.find((c) => c.productId === product.id);
       if (existing) {
-        if (product.serialTracked) return prev; // can't add more than 1 serial-tracked
         const newQty = existing.quantity + 1;
         if (newQty > product.stock) return prev;
         return prev.map((c) =>
@@ -192,12 +210,38 @@ export function CCTVSellView() {
           name: product.name,
           brand: product.brand,
           unitPrice: product.sellPrice,
-          quantity: product.serialTracked ? 1 : 1,
-          serialTracked: product.serialTracked,
+          quantity: 1,
+          serialTracked: false,
           maxStock: product.stock,
         },
       ];
     });
+  };
+
+  const handleSerialSelected = (serialItem: { id: string; serialNumber: string; imei?: string | null }) => {
+    if (!serialPickerProduct) return;
+    // Check if this serial is already in cart
+    const alreadyInCart = cart.some((c) => c.serialItemId === serialItem.id);
+    if (alreadyInCart) {
+      toast({ title: 'Already in Cart', description: 'This serial unit is already selected.', variant: 'destructive' });
+      return;
+    }
+    setCart((prev) => [
+      ...prev,
+      {
+        productId: serialPickerProduct.productId,
+        name: serialPickerProduct.name,
+        brand: serialPickerProduct.brand,
+        unitPrice: serialPickerProduct.sellPrice,
+        quantity: 1,
+        serialTracked: true,
+        maxStock: serialPickerProduct.stock,
+        serialItemId: serialItem.id,
+        serialNumber: serialItem.serialNumber,
+      },
+    ]);
+    setSerialPickerOpen(false);
+    setSerialPickerProduct(null);
   };
 
   const updateQty = (productId: string, delta: number) => {
@@ -217,6 +261,10 @@ export function CCTVSellView() {
   const removeItem = (productId: string) => {
     setCart((prev) => prev.filter((c) => c.productId !== productId));
   };
+
+  // Check if all serial-tracked items have a serial selected
+  const hasUnresolvedSerial = cart.some((item) => item.serialTracked && !item.serialItemId);
+
 
   // ── Payment actions ──
   const addPayment = () => {
@@ -274,6 +322,7 @@ export function CCTVSellView() {
           productId: item.productId,
           quantity: item.quantity,
           unitPrice: item.unitPrice,
+          ...(item.serialItemId ? { serialItemId: item.serialItemId } : {}),
         })),
         payments: payments.map((p) => ({
           method: p.method,
@@ -448,14 +497,43 @@ export function CCTVSellView() {
                   initial={{ opacity: 0, x: -12 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: 12, height: 0, marginBottom: 0, paddingTop: 0, paddingBottom: 0 }}
-                  className="bg-white rounded-xl border border-gray-100 p-3 shadow-sm"
+                  onClick={() => {
+                    // Allow re-selecting serial for unresolved items
+                    if (item.serialTracked && !item.serialItemId) {
+                      setSerialPickerProduct({
+                        productId: item.productId,
+                        name: item.name,
+                        brand: item.brand,
+                        sellPrice: item.unitPrice,
+                        stock: item.maxStock,
+                      });
+                      setSerialPickerOpen(true);
+                    }
+                  }}
+                  className={cn(
+                    'bg-white rounded-xl border border-gray-100 p-3 shadow-sm',
+                    item.serialTracked && !item.serialItemId && 'cursor-pointer border-amber-200 hover:border-amber-300'
+                  )}
                 >
                   <div className="flex items-center gap-3">
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-semibold text-gray-900 truncate">{item.name}</p>
                       <p className="text-[10px] text-gray-400 mt-0.5">
-                        {item.brand} {item.serialTracked && <Badge variant="secondary" className="ml-1 text-[9px] px-1.5 py-0 h-4">Serial</Badge>}
+                        {item.brand}
+                        {item.serialTracked && (
+                          <Badge variant="secondary" className="ml-1 text-[9px] px-1.5 py-0 h-4">Serial</Badge>
+                        )}
                       </p>
+                      {item.serialTracked && item.serialNumber && (
+                        <p className="text-[10px] text-violet-600 font-mono mt-0.5 truncate">
+                          {item.serialNumber}
+                        </p>
+                      )}
+                      {item.serialTracked && !item.serialNumber && (
+                        <p className="text-[10px] text-amber-500 mt-0.5">
+                          Tap to select serial unit
+                        </p>
+                      )}
                     </div>
                     <span className="text-xs font-bold text-gray-900 shrink-0">
                       {formatBDT(item.unitPrice * item.quantity)}
@@ -766,7 +844,7 @@ export function CCTVSellView() {
                 </div>
               )}
               <button
-                disabled={cart.length === 0}
+                disabled={cart.length === 0 || hasUnresolvedSerial}
                 onClick={goToPayment}
                 className={cn(
                   'w-full h-12 rounded-2xl text-sm font-semibold text-white transition-all flex items-center justify-center gap-2',
@@ -775,7 +853,7 @@ export function CCTVSellView() {
                     : 'bg-gray-200 text-gray-400 cursor-not-allowed'
                 )}
               >
-                {cart.length === 0 ? 'Add Products to Cart' : (
+                {cart.length === 0 ? 'Add Products to Cart' : hasUnresolvedSerial ? 'Select Serial for Tracked Items' : (
                   <>
                     Proceed to Payment
                     <ArrowRight className="w-4 h-4" />
@@ -820,6 +898,19 @@ export function CCTVSellView() {
           )}
         </div>
       </div>
+
+      {/* ── Serial Picker Dialog ── */}
+      <SerialPickerDialog
+        open={serialPickerOpen}
+        productId={serialPickerProduct?.productId || ''}
+        productName={serialPickerProduct?.name || ''}
+        productBrand={serialPickerProduct?.brand || ''}
+        onClose={() => {
+          setSerialPickerOpen(false);
+          setSerialPickerProduct(null);
+        }}
+        onSelect={handleSerialSelected}
+      />
     </div>
   );
 }
