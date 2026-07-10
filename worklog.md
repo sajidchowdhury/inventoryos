@@ -1473,3 +1473,26 @@ Stage Summary:
 - Modified: src/app/api/businesses/[id]/cctv/customers/route.ts (response shape + customersWithBalance)
 - Modified: src/modules/cctv-shop/components/CCTVMoreHub.tsx (real API stats)
 - Modified: src/modules/cctv-shop/components/CCTVCustomersList.tsx (dynamic balance count)
+
+---
+Task ID: 4E
+Agent: Main Agent
+Task: Serial Item Status Change UI
+
+Work Log:
+- Read existing GET /cctv/serial-items/[serialItemId] — only GET existed, no PUT
+- Read Prisma schema for CCTVSerialItem (11 valid statuses) and CCTVSerialItemHistory (event tracking)
+- Added PUT handler to serial-items/[serialItemId]/route.ts — validates status, creates history entry in transaction, auto-derives event name from transition (e.g. IN_REPAIR→IN_STOCK = REPAIR_COMPLETE)
+- Created SerialStatusChangeDialog.tsx — bottom-sheet dialog with 2-column status grid (11 options with emoji icons, color-coded), current status display, optional notes field, loading/error/success states
+- Modified CCTVSerialItemsList.tsx — added RefreshCw button next to each status badge, opens dialog, re-fetches list on save
+- Modified CCTVProductDetail.tsx — added RefreshCw button to each serial item row in product detail, opens dialog, re-fetches serials on save
+- Added SerialStatusChangeDialog export to index.ts
+- Lint: 0 errors, dev server: healthy
+- Pushed as 693da1d to main
+
+Stage Summary:
+- New file: src/modules/cctv-shop/components/SerialStatusChangeDialog.tsx
+- Modified: src/app/api/businesses/[id]/cctv/serial-items/[serialItemId]/route.ts (added PUT)
+- Modified: src/modules/cctv-shop/components/CCTVSerialItemsList.tsx (status change button)
+- Modified: src/modules/cctv-shop/components/CCTVProductDetail.tsx (status change button)
+- Modified: src/modules/cctv-shop/components/index.ts (new export)
