@@ -443,7 +443,8 @@ export type CCTVViewType =
   | 'cloud-dashboard'
   | 'due-book'
   | 'expenses'
-  | 'ledger';
+  | 'ledger'
+  | 'profit-loss';
 
 // ── 3A: Payment Integration ──
 

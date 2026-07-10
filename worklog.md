@@ -1301,3 +1301,40 @@ Stage Summary:
 - Aggregates: CCTVPayment, CCTVExpense, CCTVReturn, CCTVPurchase
 - Features: date filtering, quick ranges, running balance, type-grouped entries, pagination, CSV download
 - Files: 6 changed (+767 lines), 2 new files
+
+---
+Task ID: 3B
+Agent: Main Agent
+Task: Create Profit & Loss Report for CCTV Shop (Phase 3B)
+
+Work Log:
+- Read existing codebase patterns: types/index.ts, CCTVShell.tsx, CCTVMoreHub.tsx, components/index.ts
+- Analyzed Prisma schema: CCTVSale, CCTVSaleItem, CCTVPayment, CCTVSerialItem, CCTVProduct, CCTVExpense
+- Designed P&L calculation: Revenue = sum(CCTVPayment.amount), COGS = costPrice from serial items or products, OpEx = sum(CCTVExpense.amount)
+- Created API endpoint: GET /api/businesses/[id]/cctv/reports/profit-loss?from=X&to=Y
+  - Returns summary (revenue, COGS, gross profit, opex, net profit, margins)
+  - Monthly breakdown for comparison
+  - Expense category breakdown
+  - COGS deduplication for multi-payment sales via Set<saleItemId>
+- Created CCTVProfitLossReport.tsx component with:
+  - 3 tabs: Summary, Monthly, Expenses
+  - Date range picker with quick range presets (This Month, Last Month, Last 3/6 Months, This Year)
+  - Net Profit hero card with gradient (green/red based on profitability)
+  - Income Statement breakdown card (Revenue → COGS → Gross Profit → OpEx → Net Profit)
+  - Profit Composition stacked bar (COGS/OpEx/Net as % of Revenue)
+  - Monthly bar chart (Revenue vs Net Profit comparison)
+  - Monthly detail cards with mini breakdown bars
+  - Expense category breakdown with proportion bars
+  - CSV export (client-side generation)
+  - fadeUp animations, skeleton loading states
+- Wired into app: types (CCTVViewType), CCTVShell (route + import), CCTVMoreHub (tools menu entry with TrendingUp icon), components/index.ts (export)
+- Lint: 0 errors (1 pre-existing warning about custom fonts)
+- API tested: 200 response with valid JSON structure
+
+Stage Summary:
+- Created: src/app/api/businesses/[id]/cctv/reports/profit-loss/route.ts
+- Created: src/modules/cctv-shop/components/CCTVProfitLossReport.tsx
+- Modified: src/modules/cctv-shop/types/index.ts (added 'profit-loss')
+- Modified: src/modules/cctv-shop/components/CCTVShell.tsx (import + route + viewMeta)
+- Modified: src/modules/cctv-shop/components/CCTVMoreHub.tsx (tools menu entry)
+- Modified: src/modules/cctv-shop/components/index.ts (export)

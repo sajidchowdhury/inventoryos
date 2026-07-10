@@ -38,6 +38,7 @@ export { CCTVReturnDialog } from './CCTVReturnDialog';
 export { CCTVDueBook } from './CCTVDueBook';
 export { CCTVExpenseView } from './CCTVExpenseView';
 export { CCTVLedgerView } from './CCTVLedgerView';
+export { CCTVProfitLossReport } from './CCTVProfitLossReport';
 export { CCTVEmiDetail } from './CCTVEmiDetail';
 export { CCTVCreatEmi } from './CCTVCreatEmi';
 export { CCTVCustomerDetail } from './CCTVCustomerDetail';
