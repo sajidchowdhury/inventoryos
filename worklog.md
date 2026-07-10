@@ -1264,3 +1264,40 @@ Stage Summary:
 - New component: CCTVExpenseView with 6-month trend chart and category filtering
 - Menu entry: More Hub → Sales & Customers → Expenses
 - Files: 8 changed (+807 lines), 2 new files
+---
+Task ID: 3A
+Agent: Main Agent
+Task: Phase 3A - Financial Ledger (Day Book)
+
+Work Log:
+- Analyzed all financial data sources: CCTVPayment (credits), CCTVExpense (debits), CCTVReturn (refunds/debits), CCTVPurchase (purchase payments/debits)
+- Created /api/businesses/[id]/cctv/ledger/route.ts (~180 lines):
+  - GET with ?from=X&to=Y date range filtering (defaults to current month)
+  - Aggregates 4 data sources into unified ledger entries
+  - Each entry: id, date, type, typeLabel, description, debit, credit, running balance, reference, method
+  - Calculates opening balance (all transactions before date range)
+  - Computes running balance chronologically
+  - Returns summary: openingBalance, closingBalance, totalCredit, totalDebit, netFlow, typeBreakdown
+  - Pagination support (100 per page)
+  - CSV export via ?format=csv — returns text/csv with Content-Disposition header
+- Created CCTVLedgerView.tsx (~460 lines):
+  - Date range picker with from/to inputs
+  - Quick range filter buttons (This Month, Last Month, Last 7/30 Days, This Year)
+  - Summary cards: Total Income, Total Outflow
+  - Opening/Closing balance bar with net flow indicator
+  - Entries grouped by date with day-level credit/debit subtotals
+  - Each entry: type icon, description, type badge, method, reference, amount (green/red), running balance
+  - Type icons: ArrowUpCircle (sale payment), Receipt (expense), RotateCcw (return), ShoppingCart (purchase)
+  - Pagination controls
+  - CSV export button (downloads browser file)
+  - Footer summary card with total entries, credits, debits
+- Added 'ledger' to CCTVViewType, CCTVShell routing, viewMeta
+- Added Financial Ledger entry in CCTVMoreHub (Tools section, first item)
+- Added export to components/index.ts
+- Lint: 0 errors, 1 pre-existing warning
+
+Stage Summary:
+- New API: GET /cctv/ledger?from=X&to=Y with CSV export via ?format=csv
+- Aggregates: CCTVPayment, CCTVExpense, CCTVReturn, CCTVPurchase
+- Features: date filtering, quick ranges, running balance, type-grouped entries, pagination, CSV download
+- Files: 6 changed (+767 lines), 2 new files
