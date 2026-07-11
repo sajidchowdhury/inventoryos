@@ -72,21 +72,23 @@ export function CCTVCreateTask() {
   const [selectedProjectName, setSelectedProjectName] = useState('');
 
   // ── Fetch projects for dropdown ──
+  // Exclude CANCELLED and COMPLETED — show all active projects regardless of status
   useEffect(() => {
     let cancelled = false;
     const fetchProjects = async () => {
       try {
-        const res = await fetch(`/api/businesses/${businessId}/cctv/projects?status=INSTALLATION&limit=100`);
+        const res = await fetch(`/api/businesses/${businessId}/cctv/projects`);
         if (res.ok && !cancelled) {
           const data = await res.json();
-          const list = Array.isArray(data) ? data : data.projects ?? data.data ?? [];
-          setProjects(list);
+          const list: CCTVProject[] = (Array.isArray(data) ? data : data.projects ?? data.data ?? []);
+          // Filter out completed/cancelled on client side
+          setProjects(list.filter((p) => p.status !== 'COMPLETED' && p.status !== 'CANCELLED'));
         }
       } catch { /* silent */ }
     };
     fetchProjects();
     return () => { cancelled = true; };
-  }, []);
+  }, [businessId]);
 
   // ── Fetch existing task if editing, or pre-select project if contextId is a project ──
   useEffect(() => {
@@ -153,6 +155,23 @@ export function CCTVCreateTask() {
 
   // ── Validation ──
   const canSubmit = projectId && taskTitle.trim() && scheduledDate && !submitting;
+
+  // ── Show validation toast ──
+  const handleTrySubmit = () => {
+    if (!projectId) {
+      toast({ title: 'Project required', description: 'Please select a project to create a task.', variant: 'destructive' });
+      return;
+    }
+    if (!taskTitle.trim()) {
+      toast({ title: 'Title required', description: 'Please enter a task title.', variant: 'destructive' });
+      return;
+    }
+    if (!scheduledDate) {
+      toast({ title: 'Date required', description: 'Please select a scheduled date.', variant: 'destructive' });
+      return;
+    }
+    handleSubmit();
+  };
 
   // ── Submit ──
   const handleSubmit = async () => {
@@ -226,6 +245,20 @@ export function CCTVCreateTask() {
       {/* Project Selector */}
       <SectionHeader title="Project *" />
 
+      {/* No projects at all — show create CTA */}
+      {projects.length === 0 && !selectedProjectName && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-center space-y-2">
+          <p className="text-xs font-semibold text-amber-800">No projects found</p>
+          <p className="text-[11px] text-amber-600">Create a project first, then come back to add tasks.</p>
+          <button
+            onClick={() => navigate('create-project')}
+            className="px-4 py-2 rounded-xl bg-amber-100 text-amber-700 text-xs font-bold active:scale-95 transition-transform"
+          >
+            <Plus className="w-3.5 h-3.5 inline mr-1" /> Create Project
+          </button>
+        </div>
+      )}
+
       {/* Selected project display */}
       {selectedProjectName && (
         <div className="bg-violet-50 border border-violet-200 rounded-xl p-3 flex items-center gap-2">
@@ -261,23 +294,40 @@ export function CCTVCreateTask() {
             <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           </div>
 
-          {showProjectDropdown && filteredProjects.length > 0 && (
+          {showProjectDropdown && (
             <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-48 overflow-y-auto">
-              {filteredProjects.map((p) => (
-                <button
-                  key={p.id}
-                  onClick={() => {
-                    setProjectId(p.id);
-                    setSelectedProjectName(p.projectName);
-                    setShowProjectDropdown(false);
-                    setProjectSearch('');
-                  }}
-                  className="w-full px-3 py-2.5 text-left hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-0"
-                >
-                  <p className="text-sm font-medium text-gray-900 truncate">{p.projectName}</p>
-                  <p className="text-[11px] text-gray-400 truncate">{p.clientName}{p.projectCode ? ` · ${p.projectCode}` : ''}</p>
-                </button>
-              ))}
+              {filteredProjects.length > 0 ? (
+                filteredProjects.map((p) => (
+                  <button
+                    key={p.id}
+                    onClick={() => {
+                      setProjectId(p.id);
+                      setSelectedProjectName(p.projectName);
+                      setShowProjectDropdown(false);
+                      setProjectSearch('');
+                    }}
+                    className="w-full px-3 py-2.5 text-left hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-0"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-sm font-medium text-gray-900 truncate">{p.projectName}</p>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500 font-medium shrink-0">
+                        {p.status.replace(/_/g, ' ')}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-gray-400 truncate">{p.clientName}{p.projectCode ? ` · ${p.projectCode}` : ''}</p>
+                  </button>
+                ))
+              ) : (
+                <div className="p-4 text-center">
+                  <p className="text-xs text-gray-400">No projects found</p>
+                  <button
+                    onClick={() => navigate('create-project')}
+                    className="mt-2 text-xs font-semibold text-violet-600"
+                  >
+                    + Create a project first
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -435,8 +485,8 @@ export function CCTVCreateTask() {
         <div className="max-w-[480px] mx-auto">
           <motion.button
             whileTap={{ scale: 0.97 }}
-            onClick={handleSubmit}
-            disabled={!canSubmit}
+            onClick={handleTrySubmit}
+            disabled={submitting}
             className={cn(
               'w-full py-3.5 rounded-2xl font-semibold text-sm flex items-center justify-center gap-2 transition-all',
               canSubmit

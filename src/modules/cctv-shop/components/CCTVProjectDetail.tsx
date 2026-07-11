@@ -6,7 +6,7 @@ import {
   ArrowLeft, ChevronRight, Calendar, MapPin, User, Phone,
   Mail, Package, DollarSign, FileText, Camera, Cable,
   Plus, Trash2, Save, Edit3, X, Check, Image as ImageIcon,
-  Eye, EyeOff, AlertTriangle, ClipboardList,
+  Eye, EyeOff, AlertTriangle, ClipboardList, CheckCircle2,
 } from 'lucide-react';
 import { useCCTVNavStore } from '@/stores/cctv-nav-store';
 import { cn } from '@/lib/utils';
@@ -162,6 +162,22 @@ function ProjectTasksTab({ projectId, navigate }: { projectId: string; navigate:
 
 type TabKey = 'overview' | 'survey' | 'equipment' | 'tasks';
 
+// ─── Workflow step indicator ───
+const WORKFLOW_STEPS = [
+  { key: 'overview', label: 'Project' },
+  { key: 'survey', label: 'Survey' },
+  { key: 'equipment', label: 'Equipment' },
+  { key: 'tasks', label: 'Complete' },
+] as const;
+
+function getWorkflowStepIndex(project: CCTVProject | null): number {
+  if (!project) return 0;
+  const statusOrder: Record<string, number> = {
+    PLANNING: 0, SURVEY: 1, PROCUREMENT: 2, INSTALLATION: 2, TESTING: 3, HANDOVER: 3, COMPLETED: 3, CANCELLED: -1,
+  };
+  return statusOrder[project.status] ?? 0;
+}
+
 export function CCTVProjectDetail() {
   const { goBack, contextId, navigate } = useCCTVNavStore();
   const businessId = useCctvBusinessId();
@@ -198,6 +214,7 @@ export function CCTVProjectDetail() {
 
   // Status change
   const [showStatusPicker, setShowStatusPicker] = useState(false);
+  const [surveyJustCreated, setSurveyJustCreated] = useState(false);
 
   const loadSurvey = (s: CCTVSiteSurvey) => {
     setActiveSurveyId(s.id);
@@ -361,6 +378,13 @@ export function CCTVProjectDetail() {
       const s = await res.json();
       setSurveys((prev) => [s, ...prev]);
       loadSurvey(s);
+      setSurveyJustCreated(true);
+      // Auto-dismiss after 8 seconds
+      setTimeout(() => setSurveyJustCreated(false), 8000);
+      // Auto-advance project status to SURVEY if still PLANNING
+      if (project?.status === 'PLANNING') {
+        changeStatus('SURVEY');
+      }
     }
   };
 
@@ -479,6 +503,66 @@ export function CCTVProjectDetail() {
         <div className="flex items-center justify-between mt-2 text-[10px] text-gray-400">
           <span>{project.completedItems}/{project.totalItems} items</span>
           <span>৳{(project.projectValue || 0).toLocaleString()}</span>
+        </div>
+      </div>
+
+      {/* Workflow Step Progress Bar */}
+      <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
+        <div className="flex items-center justify-between relative">
+          {/* Background line */}
+          <div className="absolute top-4 left-6 right-6 h-0.5 bg-gray-100" />
+          {/* Active line */}
+          {(() => {
+            const stepIdx = WORKFLOW_STEPS.findIndex((s) => s.key === activeTab);
+            const workflowIdx = getWorkflowStepIndex(project);
+            const activeLine = Math.max(stepIdx, workflowIdx);
+            if (activeLine > 0) {
+              return (
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${(activeLine / (WORKFLOW_STEPS.length - 1)) * 100}%` }}
+                  transition={{ duration: 0.5, ease: 'easeOut' }}
+                  className="absolute top-4 left-6 h-0.5 bg-gradient-to-r from-violet-500 to-purple-500"
+                />
+              );
+            }
+            return null;
+          })()}
+          {WORKFLOW_STEPS.map((step, idx) => {
+            const stepIdx = WORKFLOW_STEPS.findIndex((s) => s.key === activeTab);
+            const workflowIdx = getWorkflowStepIndex(project);
+            const isActive = step.key === activeTab;
+            const isCompleted = workflowIdx > idx || (workflowIdx >= idx && stepIdx > idx);
+            const isClickable = idx <= workflowIdx + 1;
+            return (
+              <button
+                key={step.key}
+                onClick={() => isClickable && setActiveTab(step.key as TabKey)}
+                disabled={!isClickable}
+                className={cn(
+                  'relative z-10 flex flex-col items-center gap-1.5 transition-all',
+                  isClickable ? 'cursor-pointer' : 'cursor-default opacity-40',
+                )}
+              >
+                <div className={cn(
+                  'w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-colors',
+                  isActive
+                    ? 'bg-violet-500 border-violet-500 text-white shadow-lg shadow-violet-500/30'
+                    : isCompleted
+                    ? 'bg-emerald-100 border-emerald-400 text-emerald-600'
+                    : 'bg-white border-gray-200 text-gray-400',
+                )}>
+                  {isCompleted && !isActive ? <Check className="w-3.5 h-3.5" /> : <span>{idx + 1}</span>}
+                </div>
+                <span className={cn(
+                  'text-[10px] font-semibold whitespace-nowrap',
+                  isActive ? 'text-violet-700' : isCompleted ? 'text-emerald-600' : 'text-gray-400',
+                )}>
+                  {step.label}
+                </span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -607,6 +691,48 @@ export function CCTVProjectDetail() {
       {/* ─── SITE SURVEY TAB ─── */}
       {activeTab === 'survey' && (
         <motion.div {...fadeUp} className="space-y-3">
+          {/* Post-creation success guidance */}
+          <AnimatePresence>
+            {surveyJustCreated && (
+              <motion.div
+                initial={{ opacity: 0, y: -8, height: 0 }}
+                animate={{ opacity: 1, y: 0, height: 'auto' }}
+                exit={{ opacity: 0, y: -8, height: 0 }}
+                className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 space-y-3 overflow-hidden"
+              >
+                <div className="flex items-start gap-2.5">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-xs font-bold text-emerald-800">Survey Created Successfully</p>
+                    <p className="text-[11px] text-emerald-600 mt-1">
+                      Upload a floor plan, place cameras, and draw cable routes. When done, proceed to the next step.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => { setSurveyJustCreated(false); fileInputRef.current?.click(); }}
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-emerald-100 text-emerald-700 text-xs font-semibold active:scale-95 transition-transform"
+                  >
+                    <ImageIcon className="w-3.5 h-3.5" /> Upload Floor Plan
+                  </button>
+                  <button
+                    onClick={() => { setSurveyJustCreated(false); setActiveTab('equipment'); }}
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-white border border-emerald-200 text-emerald-700 text-xs font-semibold active:scale-95 transition-transform"
+                  >
+                    <Package className="w-3.5 h-3.5" /> Equipment Tab
+                  </button>
+                </div>
+                <button
+                  onClick={() => setSurveyJustCreated(false)}
+                  className="w-full text-center text-[10px] text-emerald-500 font-medium"
+                >
+                  Dismiss
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           {/* Survey list + create */}
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-bold text-gray-800">Surveys ({surveys.length})</h3>
@@ -903,12 +1029,56 @@ export function CCTVProjectDetail() {
               )}
             </>
           )}
+
+          {/* Survey complete action */}
+          {surveys.length > 0 && project?.status === 'SURVEY' && (
+            <div className="bg-gradient-to-r from-violet-500 to-purple-600 rounded-2xl p-4 text-center shadow-lg shadow-violet-500/20">
+              <p className="text-xs font-bold text-white mb-1">Survey Ready?</p>
+              <p className="text-[10px] text-violet-100 mb-3">Mark survey complete and move to Equipment planning</p>
+              <button
+                onClick={() => changeStatus('PROCUREMENT')}
+                className="px-6 py-2.5 rounded-xl bg-white text-violet-700 text-xs font-bold active:scale-95 transition-transform shadow-sm"
+              >
+                Complete Survey → Equipment
+              </button>
+            </div>
+          )}
         </motion.div>
       )}
 
       {/* ─── EQUIPMENT TAB ─── */}
       {activeTab === 'equipment' && (
-        <motion.div {...fadeUp}>
+        <motion.div {...fadeUp} className="space-y-3">
+          {/* Workflow guidance for equipment step */}
+          {surveys.length > 0 && project?.status !== 'COMPLETED' && project?.status !== 'CANCELLED' && (
+            <div className="bg-violet-50 border border-violet-200 rounded-2xl p-4 space-y-2">
+              <p className="text-xs font-bold text-violet-800">
+                {cameras.length > 0 || cableRoutes.length > 0
+                  ? 'Survey data available from Site Survey tab'
+                  : 'Complete the Site Survey first for best results'}
+              </p>
+              <p className="text-[11px] text-violet-600">
+                {cameras.length > 0
+                  ? `${cameras.length} camera(s) and ${cableRoutes.length} cable route(s) mapped. Use this info when planning equipment.`
+                  : 'Equipment will be linked here from serial items when assigned to this project.'}
+              </p>
+              <div className="flex gap-2 pt-1">
+                <button
+                  onClick={() => setActiveTab('survey')}
+                  className="text-[11px] font-semibold text-violet-600 flex items-center gap-1"
+                >
+                  <Camera className="w-3 h-3" /> View Survey
+                </button>
+                <span className="text-violet-300">·</span>
+                <button
+                  onClick={() => setActiveTab('tasks')}
+                  className="text-[11px] font-semibold text-violet-600 flex items-center gap-1"
+                >
+                  <ClipboardList className="w-3 h-3" /> Create Tasks
+                </button>
+              </div>
+            </div>
+          )}
           <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm text-center">
             <Package className="w-8 h-8 text-gray-300 mx-auto mb-2" />
             <p className="text-xs font-semibold text-gray-800">Equipment Tracking</p>
