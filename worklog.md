@@ -1635,3 +1635,39 @@ Stage Summary:
 - 2 files modified: CCTVProjectDetail.tsx (+174 lines), CCTVCreateTask.tsx (+94/-24 lines)
 - 244 insertions, 24 deletions total
 - Issues #5 and #6 fully resolved
+---
+Task ID: 3
+Agent: Main Agent
+Task: Phase 3 - EMI System Overhaul (Issues #7, #8)
+
+Work Log:
+- Read CCTVCreatEmi.tsx, EMI API route, and EMI detail page
+- Identified Issue #7: free-text productName/productBrand inputs with no link to inventory
+- Identified Issue #8: editable Interest Rate (%) field and Interest Type toggle present
+- Rewrote CCTVCreatEmi.tsx:
+  - Replaced free-text inputs with searchable product selector fetching from /api/businesses/{id}/products?limit=100
+  - Shows product name, manufacturer, barcode, and color-coded stock badge
+  - Selected product displays as a violet card with X to deselect
+  - Removed Interest Rate (%) input field entirely
+  - Removed Interest Type toggle (Reducing Balance / Flat Rate) entirely
+  - Added '0% Interest' badge in form header
+  - Added 'Interest-Free' badge in live calculation preview
+  - Simplified calculation: emi = financed / months, totalInterest = 0
+  - Removed Interest column from preview, now 2-column grid (Financed + Total Payable)
+- Updated EMI API route:
+  - Accepts productId field, stores in database
+  - Forces interestRate=0 and interestType='REDUCING' regardless of input
+  - Ignores any client-submitted interest values
+- Updated EMI detail page:
+  - Made interest line conditional (only shown if interestRate > 0)
+  - Changed subtitle from 'REDUCING Balance' to '{months} months'
+- Added productId field to CCTVEmiPlan in Prisma schema
+- Ran db:push to sync schema
+- Verified via browser: form renders, no interest fields, product search works, calculation shows ৳5,000/mo interest-free, 0% Interest badge present, zero console errors
+- Lint: 0 new errors
+- Committed and pushed: 62a92b9
+
+Stage Summary:
+- 4 files modified: prisma/schema.prisma (+1), emi-plans/route.ts (+12/-12), CCTVCreatEmi.tsx (+243/-84), CCTVEmiDetail.tsx (+12/-12)
+- 184 insertions, 84 deletions total
+- Issues #7 and #8 fully resolved
