@@ -1608,3 +1608,30 @@ Stage Summary:
 - 5 files modified: CCTVDashboard.tsx, CCTVAmcDetail.tsx, CCTVCloudDashboard.tsx, CCTVCreateProject.tsx, CCTVShell.tsx
 - 42 insertions, 6 deletions
 - All 6 Phase 1 issues resolved
+---
+Task ID: 2
+Agent: Main Agent
+Task: Phase 2 - Task & Project Workflow Completion (Issues #5, #6)
+
+Work Log:
+- Analyzed project detail, task creation, and project API route code
+- Identified root cause of Issue #6: CCTVCreateTask fetched projects with ?status=INSTALLATION but projects default to PLANNING status
+- Fixed CCTVCreateTask.tsx: removed status=INSTALLATION filter, fetches all projects, filters out COMPLETED/CANCELLED client-side
+- Added businessId as useEffect dependency for correct re-fetching
+- Added status badge in project dropdown items
+- Added prominent empty state with "Create a project first" CTA when no projects exist
+- Added validation toasts (handleTrySubmit) for missing project/title/date instead of silent disabled button
+- Fixed Issue #5 in CCTVProjectDetail.tsx: Added 4-step workflow progress bar (Project → Survey → Equipment → Complete)
+- Step bar has animated active line, completion checkmarks, and clickable navigation
+- Added post-survey creation success banner with "Upload Floor Plan" and "Equipment Tab" quick-action buttons
+- Auto-advances project status PLANNING → SURVEY when first survey is created
+- Added "Complete Survey → Equipment" button when project is in SURVEY status
+- Added Equipment tab guidance banner showing survey data summary with links
+- Verified all changes with browser: workflow bar renders, success banner appears, project shows in task dropdown, zero console errors
+- Lint: 0 new errors (only pre-existing generate-plan.js errors)
+- Committed and pushed: cd60a0b
+
+Stage Summary:
+- 2 files modified: CCTVProjectDetail.tsx (+174 lines), CCTVCreateTask.tsx (+94/-24 lines)
+- 244 insertions, 24 deletions total
+- Issues #5 and #6 fully resolved
