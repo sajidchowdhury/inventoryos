@@ -760,7 +760,7 @@ function AdminLoginView({
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Verification failed');
       setPhoneToken(data.phoneToken);
-      setUserId(data.userId);
+      setUserId(data.user.id);
       if (data.businesses && data.businesses.length > 0) {
         setBusinesses(data.businesses);
         setStep('business-list');
@@ -1173,7 +1173,7 @@ function AdminLoginView({
                   <div>
                     <Label className="mb-2">Business / Shop Name</Label>
                     <Input
-                      placeholder="e.g. MedPlus Pharmacy"
+                      placeholder={regBusinessTypeId === 'pharmacy' ? 'e.g. My Creative Code' : regBusinessTypeId === 'cctv-shop' ? 'e.g. My Creative CC' : 'e.g. MedPlus Pharmacy'}
                       value={regBusinessName}
                       onChange={(e) => {
                         setRegBusinessName(e.target.value);

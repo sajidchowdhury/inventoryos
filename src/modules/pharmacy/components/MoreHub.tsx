@@ -71,7 +71,7 @@ function getInitials(name?: string | null) {
 }
 
 export function MoreHub() {
-  const { reset, session } = useAuthStore();
+  const { logout, session } = useAuthStore();
   const setActiveView = useNavStore((s) => s.setActiveView);
 
   const fullName = session?.user?.fullName || session?.user?.name || "User";
@@ -165,7 +165,7 @@ export function MoreHub() {
       {/* ── Logout ── */}
       <Button
         className="w-full gap-2 h-11 mt-2 bg-gradient-to-r from-rose-500 to-red-600 hover:from-rose-600 hover:to-red-700 text-white border-0 shadow-md shadow-rose-500/20"
-        onClick={reset}
+        onClick={logout}
       >
         <LogOut className="h-4 w-4" /> Log Out
       </Button>
