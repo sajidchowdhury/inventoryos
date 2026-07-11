@@ -170,7 +170,7 @@ export function CCTVAMCList() {
       ) : null}
 
       {/* Expiring Soon alert cards */}
-      {summary && summary.expiringAlerts.length > 0 && !summaryLoading && (
+      {summary && summary.expiringAlerts?.length > 0 && !summaryLoading && (
         <div className="space-y-2">
           {summary.expiringAlerts.slice(0, 3).map((alert) => (
             <motion.button

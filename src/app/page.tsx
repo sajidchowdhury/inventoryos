@@ -314,15 +314,13 @@ function LandingView({
                   Explore Solutions
                   <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
-                <Button
-                  variant="outline"
-                  size="lg"
-                  className="w-full sm:w-auto h-12 px-8 text-base font-semibold border-slate-600 text-slate-200 hover:bg-slate-800 hover:text-white"
+                <button
                   onClick={onAdminLogin}
+                  className="w-full sm:w-auto h-12 px-8 text-base font-semibold border border-white/30 text-white bg-white/10 backdrop-blur-sm rounded-lg hover:bg-white/20 transition-colors flex items-center justify-center gap-2"
                 >
-                  <LogIn className="w-4 h-4 mr-2" />
-                  I Have an Account
-                </Button>
+                  <LogIn className="w-4 h-4" />
+                  Login
+                </button>
               </div>
 
               {/* Quick stats */}
