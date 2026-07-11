@@ -1816,3 +1816,58 @@ Stage Summary:
 - Kit component stock deduction in transaction
 - Serial number selection support for kit components
 - Kit form edit mode component deletion bug fixed
+---
+Task ID: 7
+Agent: Main Agent
+Task: Phase 7 — CSV Product Import System (Issue #14)
+
+Work Log:
+- Read generate-plan.js: Phase 7 = CSV Import System (Issue #14)
+- Explored CCTVProduct model fields for column mapping
+- Checked existing categories for auto-creation logic
+
+Phase 7a - Demo CSV Template:
+- Created public/templates/product-import-template.csv
+- 12 sample rows with realistic CCTV data (Hikvision cameras, NVRs, TP-Link switches, Seagate HDDs, cables, SD cards, PSUs)
+- Columns: name, sku, category, brand, unit, costPrice, sellingPrice, stock, lowStockAlert, warrantyMonths, description
+
+Phase 7b - Upload UI:
+- Created CCTVImportProducts.tsx — 4-phase flow (Upload → Preview → Importing → Done)
+- Drag-and-drop + click-to-browse file upload
+- File validation (.csv only, max 5MB)
+- "Download Template" button with link to /templates/product-import-template.csv
+- Column reference guide showing required (*) vs optional columns
+- "Import" button added to Products list header stats bar
+
+Phase 7c - CSV Parsing & Validation:
+- Built-in CSV parser (zero dependencies) — handles quoted fields, escaped quotes, CRLF/LF
+- Row-level validation: required fields, numeric types, non-negative integers
+- Category validation (warns if missing, auto-creates on import)
+- SKU duplicate detection within file
+- Unit validation against standard list
+
+Phase 7d - Preview & Confirm:
+- Preview table with row numbers, product name/SKU, brand, category, price, stock
+- Color-coded: green (valid), amber (warning), red (error) with ERROR/WARN badges
+- Expandable error/warning messages per row
+- Summary stats bar: valid / warning / error / total counts
+- Import button: "Import 12 Products"
+
+Phase 7e - Import Execution:
+- Batch insert in chunks of 100 using Prisma createMany
+- Auto-creates missing categories with auto-generated slugs
+- Loading spinner during import
+- Result summary: X imported, Y skipped, batch error details
+
+Verification:
+- ESLint: no new errors
+- TypeScript: no new errors
+- Dev server: compiles, responds HTTP 200
+- Commit: 83dd97d (6 files, 871 insertions, 8 deletions)
+- Pushed to GitHub: e4642f3..83dd97d main → main
+
+Stage Summary:
+- 3 new files: CSV template, import API route (376 lines), import UI component (460 lines)
+- 3 modified files: products list (import button), shell (route), types (view type)
+- Full CSV import flow: download template → upload → parse/validate → preview → import → done
+- All 7 phases of the 14-issue CCTV module fix plan are now complete
