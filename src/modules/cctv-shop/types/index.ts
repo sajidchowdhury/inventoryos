@@ -409,6 +409,8 @@ export type CCTVViewType =
   | 'supplier-detail'
   | 'edit-supplier'
   | 'categories'
+  | 'create-category'
+  | 'edit-category'
   | 'kits'
   | 'kit-detail'
   | 'create-kit'

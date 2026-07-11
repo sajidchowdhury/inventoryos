@@ -1,5 +1,5 @@
 // GET/POST /api/businesses/[id]/cctv/categories
-// GET: List all active CCTV categories sorted by sortOrder
+// GET: List all active CCTV categories sorted by sortOrder asc, name asc
 // POST: Create a new CCTV category
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
@@ -10,10 +10,13 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
     const categories = await db.cCTVCategory.findMany({
       where: { businessId, isActive: true },
-      orderBy: { sortOrder: "asc" },
+      include: {
+        _count: { select: { products: true } },
+      },
+      orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
     });
 
-    return NextResponse.json({ success: true, categories });
+    return NextResponse.json(categories);
   } catch (error) {
     console.error("Get CCTV categories error:", error);
     return NextResponse.json({ error: "Failed to fetch categories" }, { status: 500 });
@@ -30,7 +33,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       return NextResponse.json({ error: "Category name is required" }, { status: 400 });
     }
 
-    // Generate slug from name: lowercase, replace spaces with hyphens, collapse multiple hyphens
+    // Case-insensitive unique name check (SQLite compatible — no mode:"insensitive")
+    const allCats = await db.cCTVCategory.findMany({
+      where: { businessId, isActive: true },
+      select: { name: true },
+    });
+    const nameLower = name.toLowerCase();
+    if (allCats.some((c) => c.name.toLowerCase() === nameLower)) {
+      return NextResponse.json({ error: `Category "${name}" already exists` }, { status: 409 });
+    }
+
+    // Generate slug from name: lowercase, replace spaces/special chars with hyphens
     const slug = name
       .toLowerCase()
       .replace(/[^a-z0-9\s-]/g, "")
@@ -49,7 +62,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       },
     });
 
-    return NextResponse.json({ success: true, category }, { status: 201 });
+    return NextResponse.json(category, { status: 201 });
   } catch (error) {
     console.error("Create CCTV category error:", error);
     return NextResponse.json({ error: "Failed to create category" }, { status: 500 });

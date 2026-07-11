@@ -1,5 +1,5 @@
 // GET/PUT/DELETE /api/businesses/[id]/cctv/categories/[categoryId]
-// GET: Get a single CCTV category
+// GET: Get a single CCTV category with product count
 // PUT: Update a CCTV category
 // DELETE: Soft-delete a CCTV category (set isActive=false)
 import { NextRequest, NextResponse } from "next/server";
@@ -11,13 +11,16 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
     const category = await db.cCTVCategory.findFirst({
       where: { id: categoryId, businessId, isActive: true },
+      include: {
+        _count: { select: { products: true } },
+      },
     });
 
     if (!category) {
       return NextResponse.json({ error: "Category not found" }, { status: 404 });
     }
 
-    return NextResponse.json({ success: true, category });
+    return NextResponse.json(category);
   } catch (error) {
     console.error("Get CCTV category error:", error);
     return NextResponse.json({ error: "Failed to fetch category" }, { status: 500 });
@@ -39,6 +42,19 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     const updateData: Record<string, unknown> = {};
     if (body.name !== undefined) {
       const name = String(body.name).trim();
+      if (!name) {
+        return NextResponse.json({ error: "Category name is required" }, { status: 400 });
+      }
+
+      // Case-insensitive unique name check (SQLite compatible — exclude current)
+      const allCats = await db.cCTVCategory.findMany({
+        where: { businessId, isActive: true, id: { not: categoryId } },
+        select: { name: true },
+      });
+      if (allCats.some((c) => c.name.toLowerCase() === name.toLowerCase())) {
+        return NextResponse.json({ error: `Category "${name}" already exists` }, { status: 409 });
+      }
+
       updateData.name = name;
       // Re-generate slug when name changes
       updateData.slug = name
@@ -58,7 +74,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       data: updateData,
     });
 
-    return NextResponse.json({ success: true, category });
+    return NextResponse.json(category);
   } catch (error) {
     console.error("Update CCTV category error:", error);
     return NextResponse.json({ error: "Failed to update category" }, { status: 500 });

@@ -61,6 +61,8 @@ import { CCTVExpenseView } from './CCTVExpenseView';
 import { CCTVLedgerView } from './CCTVLedgerView';
 import { CCTVProfitLossReport } from './CCTVProfitLossReport';
 import { CCTVSupplierView } from './CCTVSupplierView';
+import { CCTVCategoryList } from './CCTVCategoryList';
+import { CCTVCategoryForm } from './CCTVCategoryForm';
 import { CCTVSupplierDetail } from './CCTVSupplierDetail';
 import { CCTVPurchaseOrderView } from './CCTVPurchaseOrderView';
 import { CCTVCreatePurchase } from './CCTVCreatePurchase';
@@ -152,6 +154,9 @@ const viewMeta: Record<string, { title: string; icon: string }> = {
   'expenses': { title: 'Expenses', icon: '💸' },
   'ledger': { title: 'Financial Ledger', icon: '📒' },
   'profit-loss': { title: 'Profit & Loss', icon: '📊' },
+  'categories': { title: 'Categories', icon: '🏷️' },
+  'create-category': { title: 'Create Category', icon: '➕' },
+  'edit-category': { title: 'Edit Category', icon: '✏️' },
 };
 
 export function CCTVShell() {
@@ -306,6 +311,12 @@ export function CCTVShell() {
       // Profit & Loss Report (3B)
       case 'profit-loss':
         return <CCTVProfitLossReport />;
+      // Category Management
+      case 'categories':
+        return <CCTVCategoryList />;
+      case 'create-category':
+      case 'edit-category':
+        return <CCTVCategoryForm />;
       // All Reports Dashboard
       case 'reports':
         return <CCTVReportsDashboard />;
