@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
 import {
-  Search, ArrowLeft, Plus, Camera, HardDrive, Cable,
+  Search, ArrowLeft, Plus, Camera, HardDrive, Cable, Upload,
   Wrench, Package, X, Loader2, ChevronDown, Tag,
 } from 'lucide-react';
 import { useCCTVNavStore } from '@/stores/cctv-nav-store';
@@ -159,14 +159,23 @@ export function CCTVProductsList() {
         <h1 className="text-lg font-bold text-gray-900 flex-1">Products</h1>
       </div>
 
-      {/* Stats bar */}
+      {/* Stats bar + Import button */}
       {!loading && (
-        <div className="flex items-center gap-2 text-xs text-gray-500 px-1">
-          <span className="font-semibold text-gray-700">{total} Products</span>
-          <span>·</span>
-          <span>{products.reduce((a, p) => a + p.stock, 0).toLocaleString()} Stock Items</span>
-          <span>·</span>
-          <span className="text-amber-600 font-medium">{lowStockCount} Low Stock</span>
+        <div className="flex items-center gap-2">
+          <div className="flex-1 flex items-center gap-2 text-xs text-gray-500 px-1">
+            <span className="font-semibold text-gray-700">{total} Products</span>
+            <span>·</span>
+            <span>{products.reduce((a, p) => a + p.stock, 0).toLocaleString()} Stock Items</span>
+            <span>·</span>
+            <span className="text-amber-600 font-medium">{lowStockCount} Low Stock</span>
+          </div>
+          <button
+            onClick={() => navigate('import-products')}
+            className="px-3 py-1.5 rounded-xl bg-white border border-gray-100 text-[11px] font-semibold text-gray-600 flex items-center gap-1.5 active:bg-gray-50 transition-colors shadow-sm"
+          >
+            <Upload className="w-3 h-3" />
+            Import
+          </button>
         </div>
       )}
 

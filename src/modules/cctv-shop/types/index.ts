@@ -416,6 +416,7 @@ export type CCTVViewType =
   | 'create-kit'
   | 'edit-kit'
   | 'sell-kit'
+  | 'import-products'
   | 'branches'
   | 'branch-detail'
   | 'transfers'

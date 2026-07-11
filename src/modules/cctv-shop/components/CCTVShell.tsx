@@ -68,6 +68,7 @@ import { CCTVSupplierDetail } from './CCTVSupplierDetail';
 import { CCTVPurchaseOrderView } from './CCTVPurchaseOrderView';
 import { CCTVCreatePurchase } from './CCTVCreatePurchase';
 import { CCTVReportsDashboard } from './CCTVReportsDashboard';
+import { CCTVImportProducts } from './CCTVImportProducts';
 
 function PlaceholderView({ title, icon }: { title: string; icon?: string }) {
   const { goBack } = useCCTVNavStore();
@@ -129,6 +130,7 @@ const viewMeta: Record<string, { title: string; icon: string }> = {
   'create-kit': { title: 'New Kit', icon: '➕' },
   'edit-kit': { title: 'Edit Kit', icon: '✏️' },
   'sell-kit': { title: 'Sell Kit', icon: '🛒' },
+  'import-products': { title: 'Import Products', icon: '📥' },
   'ai-chat': { title: 'AI Chat', icon: '🤖' },
   'ai-insights': { title: 'AI Insights', icon: '📊' },
   'sales-history': { title: 'Sales History', icon: '📈' },
@@ -324,6 +326,8 @@ export function CCTVShell() {
       // All Reports Dashboard
       case 'reports':
         return <CCTVReportsDashboard />;
+      case 'import-products':
+        return <CCTVImportProducts />;
       default: {
         const meta = viewMeta[activeView];
         return <PlaceholderView title={meta?.title || activeView} icon={meta?.icon} />;

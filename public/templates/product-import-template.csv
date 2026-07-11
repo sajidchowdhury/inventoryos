@@ -1,0 +1,13 @@
+name,sku,category,brand,unit,costPrice,sellingPrice,stock,lowStockAlert,warrantyMonths,description
+"DS-2CD2143G2-I 4MP Bullet Camera","HK-BULLET-4MP","Cameras","Hikvision","piece",3200,4500,25,5,12,"Indoor/outdoor 4MP bullet camera with 30m IR night vision"
+"DS-2CD2386G2-I 8MP Turret Camera","HK-TURRET-8MP","Cameras","Hikvision","piece",5500,7200,15,3,24,"8MP turret camera with built-in mic and 40m IR"
+"NVR-4108HS-EI 8-Channel NVR","HK-NVR-8CH","DVR/NVR","Hikvision","piece",8500,12000,10,3,24,"8-channel 4K NVR with 4 SATA and AI features"
+"TP-Link TL-SF1008D 8-Port Switch","TP-SWITCH-8P","Networking","TP-Link","piece",800,1200,30,5,12,"8-port 10/100Mbps unmanaged desktop switch"
+"DS-2CE5AD0T-VP 2MP Dome Camera","HK-DOME-2MP","Cameras","Hikvision","piece",2800,3800,20,5,12,"2MP vandal-proof dome with 30m IR and WDR"
+"Cat6 Ethernet Cable 305m Box","CAT6-BOX","Cables & Accessories","Generic","box",1200,1800,50,10,0,"CAT6 UTP cable 305m roll for CCTV installations"
+"16GB MicroSD Card Class 10","SD-16GB","Cables & Accessories","Generic","piece",350,550,40,10,12,"16GB Class 10 MicroSD card for NVR/DVR storage"
+"DS-2DE4A425IWG-E 4MP PTZ Camera","HK-PTZ-4MP","Cameras","Hikvision","piece",22000,28500,5,2,24,"4MP 25x PTZ with IR 200m, smart tracking"
+"DS-2CD2T47G2-L 4MP Bullet Camera","HK-BULLET-L4MP","Cameras","Hikvision","piece",4100,5500,18,4,24,"4MP bullet with ColorVu technology for low-light color imaging"
+"4TB Surveillance HDD","HDD-4TB","Cables & Accessories","Seagate","piece",6500,8500,15,3,36,"4TB surveillance-grade HDD for NVR/DVR"
+"Power Supply 12V 5A","PSU-12V5A","Cables & Accessories","Generic","piece",450,700,25,5,12,"12V 5A DC power supply for CCTV cameras"
+"DS-2CD2T46G2-I 4MP Bullet Camera","HK-BULLET-V4MP","Cameras","Hikvision","piece",4800,6200,12,3,24,"4MP varifocal bullet with Active Deterrence (strobe light + siren)"
