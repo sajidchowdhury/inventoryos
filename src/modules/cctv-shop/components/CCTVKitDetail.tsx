@@ -512,6 +512,7 @@ export function CCTVKitDetail() {
           !availability.canFulfill ||
           availability.maxComplete === 0
         }
+        onClick={() => navigate('sell-kit', kit.id)}
         className="w-full py-3.5 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 text-white text-sm font-semibold shadow-lg shadow-violet-500/20 flex items-center justify-center gap-2 active:scale-[0.98] transition-transform disabled:opacity-40 disabled:active:scale-100"
       >
         <ShoppingBag className="w-4 h-4" />

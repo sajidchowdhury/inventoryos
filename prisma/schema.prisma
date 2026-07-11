@@ -1976,6 +1976,7 @@ model CCTVKitDefinition {
 
   business   Business              @relation(fields: [businessId], references: [id], onDelete: Cascade)
   components CCTVKitComponent[]
+  saleItems CCTVSaleItem[]         // Phase 6: which sale items came from this kit
 
   @@unique([businessId, slug])
   @@index([businessId])
@@ -2397,6 +2398,7 @@ model CCTVSaleItem {
   saleId          String
   productId       String
   serialItemId    String?                 // for serial-tracked products
+  kitId           String?                 // Phase 6: if this item was sold as part of a kit
   productName     String                  // denormalised product name
   productBrand    String?                 // denormalised brand
   quantity        Int
@@ -2405,14 +2407,16 @@ model CCTVSaleItem {
   isActive        Boolean  @default(true)
   createdAt       DateTime @default(now())
 
-  business        Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  sale            CCTVSale        @relation(fields: [saleId], references: [id], onDelete: Cascade)
-  product         CCTVProduct     @relation(fields: [productId], references: [id])
-  serialItem      CCTVSerialItem? @relation(fields: [serialItemId], references: [id])
+  business        Business            @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  sale            CCTVSale            @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  product         CCTVProduct         @relation(fields: [productId], references: [id])
+  serialItem      CCTVSerialItem?     @relation(fields: [serialItemId], references: [id])
+  kit             CCTVKitDefinition? @relation(fields: [kitId], references: [id])
   returnItems    CCTVReturnItem[]    // 2A: Return items referencing this sale item
 
   @@index([businessId])
   @@index([saleId])
+  @@index([kitId])
   @@map("cctv_sale_items")
 }
 

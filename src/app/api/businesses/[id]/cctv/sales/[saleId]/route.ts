@@ -18,6 +18,7 @@ export async function GET(
           include: {
             product: { select: { id: true, name: true, brand: true, imageUrl: true, serialTracked: true } },
             serialItem: { select: { id: true, serialNumber: true, imei: true, status: true, grade: true } },
+            kit: { select: { id: true, name: true } },
           },
           orderBy: { createdAt: "asc" },
         },

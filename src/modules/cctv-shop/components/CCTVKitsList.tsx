@@ -132,7 +132,9 @@ export function CCTVKitsList() {
       return (
         <div className="flex items-center gap-1.5">
           <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
-          <span className="text-xs font-medium text-amber-700">Partial</span>
+          <span className="text-xs font-medium text-amber-700">
+            {avail?.maxComplete || 0} available
+          </span>
         </div>
       );
     }

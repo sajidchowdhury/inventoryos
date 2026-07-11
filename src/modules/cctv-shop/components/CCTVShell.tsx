@@ -30,6 +30,7 @@ import { CCTVTransferDetail } from './CCTVTransferDetail';
 import { CCTVKitsList } from './CCTVKitsList';
 import { CCTVKitDetail } from './CCTVKitDetail';
 import { CCTVKitForm } from './CCTVKitForm';
+import { CCTVSellKitView } from './CCTVSellKitView';
 import { CCTVJobCardDetail } from './CCTVJobCardDetail';
 import { CCTVCreateJobCard } from './CCTVCreateJobCard';
 import { CCTVTechniciansList } from './CCTVTechniciansList';
@@ -127,6 +128,7 @@ const viewMeta: Record<string, { title: string; icon: string }> = {
   'kit-detail': { title: 'Kit Details', icon: '📦' },
   'create-kit': { title: 'New Kit', icon: '➕' },
   'edit-kit': { title: 'Edit Kit', icon: '✏️' },
+  'sell-kit': { title: 'Sell Kit', icon: '🛒' },
   'ai-chat': { title: 'AI Chat', icon: '🤖' },
   'ai-insights': { title: 'AI Insights', icon: '📊' },
   'sales-history': { title: 'Sales History', icon: '📈' },
@@ -210,6 +212,8 @@ export function CCTVShell() {
       case 'create-kit':
       case 'edit-kit':
         return <CCTVKitForm />;
+      case 'sell-kit':
+        return <CCTVSellKitView />;
       case 'job-cards':
         return <CCTVJobCardsList />;
       case 'job-card-detail':

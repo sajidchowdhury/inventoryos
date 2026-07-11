@@ -66,6 +66,7 @@ export function CCTVKitForm() {
   const [discountPercent, setDiscountPercent] = useState('0');
   const [isActive, setIsActive] = useState(true);
   const [components, setComponents] = useState<FormComponent[]>([]);
+  const originalComponentIds = useRef<string[]>([]);  // Track original IDs for deletion detection
 
   // UI state
   const [loading, setLoading] = useState(isEdit);
@@ -121,6 +122,7 @@ export function CCTVKitForm() {
             sortOrder: c.sortOrder ?? i,
           }));
           setComponents(mapped);
+          originalComponentIds.current = kit.components?.map((c) => c.id) || [];
         }
       }
     } catch {
@@ -276,11 +278,19 @@ export function CCTVKitForm() {
 
       // Sync components
       if (isEdit) {
-        // Get existing component IDs from server
-        const existingIds = components.filter((c) => c.id).map((c) => c.id!);
-        // Delete components not in the form
-        // (We'd need the original list to know which were removed)
-        // For simplicity, we'll update existing and create new ones
+        // Delete removed components
+        const currentIds = components.filter((c) => c.id).map((c) => c.id!);
+        const removedIds = originalComponentIds.current.filter(
+          (id) => !currentIds.includes(id)
+        );
+        for (const removeId of removedIds) {
+          await fetch(
+            `/api/businesses/${businessId}/cctv/kits/${kitId}/components/${removeId}`,
+            { method: 'DELETE' }
+          );
+        }
+
+        // Update existing and create new
         for (const comp of components) {
           const compBody = {
             productId: comp.productId,

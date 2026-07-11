@@ -416,6 +416,11 @@ export function CCTVSaleDetail() {
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-gray-900 text-sm leading-snug">
                           {item.productName}
+                          {(item as Record<string, unknown>).kit && (
+                            <span className="ml-1.5 text-[9px] font-bold px-1.5 py-0.5 rounded bg-violet-50 text-violet-600 border border-violet-200 align-middle">
+                              Kit
+                            </span>
+                          )}
                         </p>
                         {item.productBrand && (
                           <p className="text-xs text-gray-400 mt-0.5">{item.productBrand}</p>
