@@ -89,9 +89,8 @@ export function CCTVDashboard() {
   /* ── Data ── */
 
   const reports = [
-    { label: 'Sales Report', icon: TrendingUp, gradient: 'from-violet-500 to-purple-600', view: 'reports' as const },
+    { label: 'Sales Report', icon: TrendingUp, gradient: 'from-violet-500 to-purple-600', view: 'sales-history' as const },
     { label: 'Due Book', icon: BookOpen, gradient: 'from-rose-500 to-pink-600', view: 'due-book' as const },
-    { label: 'Project Report', icon: Building2, gradient: 'from-cyan-500 to-teal-600', view: 'projects' as const },
     { label: 'Purchase Report', icon: Receipt, gradient: 'from-amber-500 to-orange-600', view: 'purchase-orders' as const },
   ];
 

@@ -118,7 +118,16 @@ export function CCTVCloudDashboard() {
     setLoading(true);
     try {
       const res = await fetch(`/api/businesses/${businessId}/cctv/cloud-dashboard`);
-      const json = await res.json();
+      if (!res.ok) {
+        console.error(`Cloud Dashboard API returned ${res.status}`);
+        return;
+      }
+      const text = await res.text();
+      if (!text) {
+        console.error('Cloud Dashboard API returned empty body');
+        return;
+      }
+      const json = JSON.parse(text);
       if (json.success) setData(json.data);
     } catch (err) { console.error(err); }
     finally { setLoading(false); }
@@ -140,7 +149,31 @@ export function CCTVCloudDashboard() {
     );
   }
 
-  if (!data) return null;
+  if (!data) {
+    return (
+      <div className="px-4 pt-4 pb-6">
+        <div className="flex items-center gap-3 mb-5">
+          <button onClick={goBack} className="p-2 rounded-xl hover:bg-gray-100"><ArrowLeft className="w-5 h-5 text-gray-600" /></button>
+          <div className="flex-1"><h1 className="text-lg font-bold text-gray-900">Cloud Dashboard</h1></div>
+        </div>
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <div className="w-14 h-14 rounded-2xl bg-gray-100 flex items-center justify-center mb-3">
+            <BarChart3 className="w-7 h-7 text-gray-400" />
+          </div>
+          <p className="text-sm font-semibold text-gray-700">No Data Available</p>
+          <p className="text-xs text-gray-400 mt-1 max-w-[240px]">
+            Cloud Dashboard KPIs will appear once you have sales, products, and customers in your system.
+          </p>
+          <button
+            onClick={load}
+            className="mt-4 px-5 py-2 rounded-xl bg-violet-100 text-violet-700 text-xs font-semibold hover:bg-violet-200 transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const salesGrowth = data.salesLastMonth > 0
     ? ((data.salesThisMonth - data.salesLastMonth) / data.salesLastMonth * 100).toFixed(0)

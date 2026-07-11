@@ -549,7 +549,7 @@ export function CCTVAmcDetail() {
               <SheetHeader className="mb-4">
                 <SheetTitle>Log Visit</SheetTitle>
               </SheetHeader>
-              <form onSubmit={handleSubmitVisit} className="space-y-4 pb-8">
+              <form onSubmit={handleSubmitVisit} className="space-y-4 px-4 pb-8">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <Label className="text-xs font-medium text-gray-500 mb-1 block">Visit Date</Label>

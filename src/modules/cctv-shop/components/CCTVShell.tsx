@@ -285,6 +285,9 @@ export function CCTVShell() {
         return <CCTVMushakInvoiceDetail />;
       case 'mushak-registers':
         return <CCTVMushakRegisters />;
+      // Mushak Report — redirects to Mushak Registers (6.1 & 6.2)
+      case 'mushak-report':
+        return <CCTVMushakRegisters />;
       // Monthly VAT Return – Mushak 9.1 (5D)
       case 'vat-return':
         return <CCTVVatReturn />;

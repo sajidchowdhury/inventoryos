@@ -76,7 +76,8 @@ export function CCTVCreateProject() {
       });
       if (res.ok) {
         const project = await res.json();
-        navigate('project-detail', project.id);
+        // Navigate to projects list so back button works correctly
+        navigate('projects');
         return;
       }
     } catch { /* silent */ }
