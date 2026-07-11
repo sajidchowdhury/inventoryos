@@ -3,12 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
-  Wrench,
-  Shield,
-  Building2,
-  CreditCard,
+  TrendingDown,
   FileText,
-  Users,
   BarChart3,
   Settings,
   User,
@@ -16,20 +12,16 @@ import {
   HelpCircle,
   LogOut,
   ChevronRight,
-  Package,
-  Hash,
-  Factory,
-  ShoppingCart,
-  Sparkles,
-  Banknote,
-  ClipboardList,
   Receipt,
-  FileBarChart,
   Landmark,
   BookOpen,
-  TrendingDown,
   BookCheck,
   TrendingUp,
+  ClipboardList,
+  Cloud,
+  FileBarChart,
+  Banknote,
+  PieChart,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useCCTVNavStore } from '@/stores/cctv-nav-store';
@@ -42,7 +34,6 @@ interface MenuItem {
   icon: React.ReactNode;
   view: CCTVViewType;
   color: string;
-  badge?: string;
 }
 
 interface QuickStatsData {
@@ -100,43 +91,24 @@ export function CCTVMoreHub() {
     {
       label: 'Active AMC',
       value: quickStats ? String(quickStats.activeAmc) : '...',
-      icon: Shield,
+      icon: PieChart,
       color: 'bg-violet-50 text-violet-600',
     },
   ];
 
-  const cctvOperations: MenuItem[] = [
-    { label: 'Job Cards', icon: <Wrench className="w-5 h-5" />, view: 'job-cards', color: 'bg-blue-50 text-blue-600', badge: '12' },
-    { label: 'Projects', icon: <Building2 className="w-5 h-5" />, view: 'projects', color: 'bg-orange-50 text-orange-600', badge: '5' },
-    { label: 'AMC Management', icon: <FileText className="w-5 h-5" />, view: 'amc', color: 'bg-teal-50 text-teal-600', badge: '15' },
-    { label: 'EMI Tracking', icon: <CreditCard className="w-5 h-5" />, view: 'emi', color: 'bg-pink-50 text-pink-600' },
-  ];
-
-  const inventory: MenuItem[] = [
-    { label: 'Products', icon: <Package className="w-5 h-5" />, view: 'products', color: 'bg-blue-50 text-blue-600', badge: '524' },
-    { label: 'Serial Items', icon: <Hash className="w-5 h-5" />, view: 'serial-items', color: 'bg-violet-50 text-violet-600', badge: '2,147' },
-    { label: 'Suppliers', icon: <Factory className="w-5 h-5" />, view: 'suppliers', color: 'bg-emerald-50 text-emerald-600' },
-    { label: 'Purchase Orders', icon: <ShoppingCart className="w-5 h-5" />, view: 'purchase-orders', color: 'bg-amber-50 text-amber-600', badge: '3' },
-  ];
-
-  const salesCustomers: MenuItem[] = [
-    { label: 'Due Book', icon: <BookOpen className="w-5 h-5" />, view: 'due-book', color: 'bg-red-50 text-red-600' },
+  const reports: MenuItem[] = [
     { label: 'Expenses', icon: <TrendingDown className="w-5 h-5" />, view: 'expenses', color: 'bg-rose-50 text-rose-600' },
-    { label: 'Customers', icon: <Users className="w-5 h-5" />, view: 'customers', color: 'bg-emerald-50 text-emerald-600', badge: '186' },
+    { label: 'Due Book', icon: <BookOpen className="w-5 h-5" />, view: 'due-book', color: 'bg-red-50 text-red-600' },
     { label: 'Sales History', icon: <FileBarChart className="w-5 h-5" />, view: 'sales-history', color: 'bg-amber-50 text-amber-600' },
-    { label: 'Mushak Report', icon: <FileText className="w-5 h-5" />, view: 'mushak-report', color: 'bg-red-50 text-red-600' },
-  ];
-
-  const tools: MenuItem[] = [
     { label: 'Financial Ledger', icon: <BookCheck className="w-5 h-5" />, view: 'ledger', color: 'bg-indigo-50 text-indigo-600' },
     { label: 'Profit & Loss', icon: <TrendingUp className="w-5 h-5" />, view: 'profit-loss', color: 'bg-emerald-50 text-emerald-600' },
+    { label: 'Mushak Report', icon: <FileText className="w-5 h-5" />, view: 'mushak-report', color: 'bg-red-50 text-red-600' },
     { label: 'NBR & Tax Setup', icon: <Landmark className="w-5 h-5" />, view: 'nbr-setup', color: 'bg-amber-50 text-amber-600' },
-    { label: 'Mushak 6.3 Invoices', icon: <FileText className="w-5 h-5" />, view: 'mushak-invoices', color: 'bg-red-50 text-red-600' },
-    { label: 'Mushak Registers (6.1/6.2)', icon: <ClipboardList className="w-5 h-5" />, view: 'mushak-registers', color: 'bg-orange-50 text-orange-600' },
-    { label: 'VAT Return (Mushak 9.1)', icon: <Receipt className="w-5 h-5" />, view: 'vat-return', color: 'bg-emerald-50 text-emerald-600' },
-    { label: 'Cloud Dashboard', icon: <BarChart3 className="w-5 h-5" />, view: 'cloud-dashboard', color: 'bg-sky-50 text-sky-600' },
-    { label: 'AI Hub', icon: <Sparkles className="w-5 h-5" />, view: 'ai-hub', color: 'bg-purple-50 text-purple-600' },
-    { label: 'Reports', icon: <BarChart3 className="w-5 h-5" />, view: 'reports', color: 'bg-cyan-50 text-cyan-600' },
+    { label: 'Mushak 6.3 Invoices', icon: <FileText className="w-5 h-5" />, view: 'mushak-invoices', color: 'bg-orange-50 text-orange-600' },
+    { label: 'Mushak Registers', icon: <ClipboardList className="w-5 h-5" />, view: 'mushak-registers', color: 'bg-orange-50 text-orange-600' },
+    { label: 'VAT Return', icon: <Receipt className="w-5 h-5" />, view: 'vat-return', color: 'bg-emerald-50 text-emerald-600' },
+    { label: 'Cloud Dashboard', icon: <Cloud className="w-5 h-5" />, view: 'cloud-dashboard', color: 'bg-sky-50 text-sky-600' },
+    { label: 'All Reports', icon: <BarChart3 className="w-5 h-5" />, view: 'reports', color: 'bg-violet-50 text-violet-600' },
   ];
 
   const account: MenuItem[] = [
@@ -154,10 +126,11 @@ export function CCTVMoreHub() {
       transition={{ delay: 0.05 + sectionIndex * 0.08 }}
       className="mb-5"
     >
-      <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 px-1">
-        {title}
-      </h3>
-      <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+      <div className="flex items-center gap-2.5 mb-2.5 px-1">
+        <div className="w-1 h-4 rounded-full bg-gradient-to-b from-violet-500 to-purple-600" />
+        <h3 className="text-[13px] font-bold text-gray-900 tracking-tight">{title}</h3>
+      </div>
+      <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
         {items.map((item, i) => (
           <button
             key={item.view}
@@ -171,11 +144,6 @@ export function CCTVMoreHub() {
               {item.icon}
             </div>
             <span className="flex-1 text-sm font-medium text-gray-800">{item.label}</span>
-            {item.badge && (
-              <span className="text-[10px] font-bold text-white bg-violet-500 px-2 py-0.5 rounded-full">
-                {item.badge}
-              </span>
-            )}
             <ChevronRight className="w-4 h-4 text-gray-300" />
           </button>
         ))}
@@ -240,18 +208,17 @@ export function CCTVMoreHub() {
         })}
       </motion.div>
 
-      {/* Sections */}
-      {renderSection('CCTV Operations', cctvOperations, 0)}
-      {renderSection('Inventory', inventory, 1)}
-      {renderSection('Sales & Customers', salesCustomers, 2)}
-      {renderSection('Tools', tools, 3)}
-      {renderSection('Account', account, 4)}
+      {/* Reports Dashboard */}
+      {renderSection('Reports', reports, 0)}
+
+      {/* Account */}
+      {renderSection('Account', account, 1)}
 
       {/* Logout */}
       <motion.button
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ delay: 0.6 }}
+        transition={{ delay: 0.4 }}
         onClick={logout}
         className="w-full flex items-center justify-center gap-2 py-3 mt-2 rounded-2xl border border-red-200 text-red-500 font-medium text-sm active:bg-red-50 transition-colors"
       >
