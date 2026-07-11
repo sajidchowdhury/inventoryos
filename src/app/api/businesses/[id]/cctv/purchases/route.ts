@@ -1,5 +1,5 @@
 // GET/POST /api/businesses/[id]/cctv/purchases
-// CCTV Purchase Order Flow (1B)
+// CCTV Purchase Order Flow (1B) — with Phase 5 serial number tracking
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 
@@ -63,7 +63,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   }
 }
 
-// ── POST: Create purchase + generate serial items ──
+// ── POST: Create purchase + handle serial numbers ──
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id: businessId } = await params;
@@ -93,6 +93,58 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       if (!productMap.has(item.productId)) {
         return NextResponse.json({ error: `Product not found: ${item.productId}` }, { status: 400 });
       }
+    }
+
+    // ── Phase 5: Validate serial numbers before creating purchase ──
+    // Collect all serial numbers from all items, check for:
+    // 1. Duplicates within the batch
+    // 2. Duplicates against existing serial items in the business
+    const allSerials: string[] = [];
+    const batchDuplicateSerials: string[] = [];
+
+    for (const item of items) {
+      const product = productMap.get(item.productId)!;
+      const serials: string[] = item.serialNumbers || [];
+
+      if (product.serialTracked && serials.length > 0) {
+        for (const sn of serials) {
+          const trimmed = sn.trim();
+          if (!trimmed) continue;
+
+          // Check batch duplicates (case-insensitive)
+          if (allSerials.some((s) => s.toLowerCase() === trimmed.toLowerCase())) {
+            if (!batchDuplicateSerials.includes(trimmed)) {
+              batchDuplicateSerials.push(trimmed);
+            }
+          } else {
+            allSerials.push(trimmed);
+          }
+        }
+      }
+    }
+
+    // Check against existing serial items in DB
+    let dbDuplicateSerials: string[] = [];
+    if (allSerials.length > 0) {
+      const existingSerials = await db.cCTVSerialItem.findMany({
+        where: {
+          businessId,
+          serialNumber: { in: allSerials.map((s) => s) },
+        },
+        select: { serialNumber: true },
+      });
+      dbDuplicateSerials = existingSerials.map((s) => s.serialNumber);
+    }
+
+    const allDuplicates = [...new Set([...batchDuplicateSerials, ...dbDuplicateSerials])];
+    if (allDuplicates.length > 0) {
+      return NextResponse.json(
+        {
+          error: `Duplicate serial number(s) found: ${allDuplicates.join(", ")}`,
+          duplicateSerials: allDuplicates,
+        },
+        { status: 409 }
+      );
     }
 
     // Verify supplier exists (if provided)
@@ -148,7 +200,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const discountAmount = body.discountAmount || 0;
     const totalAmount = subtotal - discountAmount;
 
-    // Create purchase with items in a transaction-like flow
+    // Create purchase with items
     const purchase = await db.cCTVPurchase.create({
       data: {
         businessId,
@@ -177,52 +229,126 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       },
     });
 
-    // ── Create serial items for serial-tracked products ──
-    // and increment stock for non-serial products
-    const serialResults: { productId: string; productName: string; created: number; method: string }[] = [];
+    // ── Create serial items and PO serial number records ──
+    const serialResults: { productId: string; productName: string; created: number; method: string; serialNumbers?: string[] }[] = [];
+
+    // Build a map from productId to its submitted serial numbers
+    const itemSerialMap = new Map<string, string[]>();
+    for (const item of items) {
+      const serials = (item.serialNumbers || []).map((s: string) => s.trim()).filter(Boolean);
+      if (serials.length > 0) {
+        itemSerialMap.set(item.productId, serials);
+      }
+    }
 
     for (const item of purchase.items) {
       const product = productMap.get(item.productId)!;
 
       if (product.serialTracked) {
-        // Auto-generate serial numbers for serial-tracked products
-        for (let i = 0; i < item.quantity; i++) {
-          const serialSuffix = (i + 1).toString().padStart(3, "0");
-          const serialNumber = `${product.sku || product.name.substring(0, 6).toUpperCase()}-${purchaseNo}-${serialSuffix}`;
+        const userSerials = itemSerialMap.get(item.productId) || [];
+        let createdCount = 0;
 
-          await db.cCTVSerialItem.create({
-            data: {
-              businessId,
-              productId: item.productId,
-              serialNumber,
-              status: "IN_STOCK",
-              grade: "A", // new purchase = grade A
-              costPrice: item.unitCost,
-              sellPrice: product.sellPrice,
-              purchaseId: purchase.id,
-              supplierId: supplierId || null,
-              purchaseDate: now,
-              warrantyMonths: product.warrantyMonths,
-              notes: `Auto-generated from ${purchaseNo}`,
-            },
-          });
+        if (userSerials.length > 0) {
+          // Phase 5: Use user-provided serial numbers
+          for (const serialNumber of userSerials) {
+            const serialItem = await db.cCTVSerialItem.create({
+              data: {
+                businessId,
+                productId: item.productId,
+                serialNumber,
+                status: "IN_STOCK",
+                grade: "A",
+                costPrice: item.unitCost,
+                sellPrice: product.sellPrice,
+                purchaseId: purchase.id,
+                supplierId: supplierId || null,
+                purchaseDate: now,
+                warrantyMonths: product.warrantyMonths,
+                source: "PURCHASE_ORDER",
+                notes: `From ${purchaseNo}`,
+              },
+            });
 
-          // Create history entry
-          // Note: We'd need the serial item ID, but we can't get it easily here in bulk.
-          // For now, the history will be created when the serial is first viewed/edited.
+            // Create history entry
+            await db.cCTVSerialItemHistory.create({
+              data: {
+                businessId,
+                serialItemId: serialItem.id,
+                toStatus: "IN_STOCK",
+                event: "STOCKED",
+                notes: `Received via purchase order ${purchaseNo}`,
+              },
+            });
+
+            // Record in PurchaseOrderSerialNumber for traceability
+            await db.purchaseOrderSerialNumber.create({
+              data: {
+                purchaseOrderItemId: item.id,
+                serialNumber,
+              },
+            });
+
+            createdCount++;
+          }
+        } else {
+          // Fallback: auto-generate serial numbers (backwards compatible)
+          for (let i = 0; i < item.quantity; i++) {
+            const serialSuffix = (i + 1).toString().padStart(3, "0");
+            const serialNumber = `${product.sku || product.name.substring(0, 6).toUpperCase()}-${purchaseNo}-${serialSuffix}`;
+
+            const serialItem = await db.cCTVSerialItem.create({
+              data: {
+                businessId,
+                productId: item.productId,
+                serialNumber,
+                status: "IN_STOCK",
+                grade: "A",
+                costPrice: item.unitCost,
+                sellPrice: product.sellPrice,
+                purchaseId: purchase.id,
+                supplierId: supplierId || null,
+                purchaseDate: now,
+                warrantyMonths: product.warrantyMonths,
+                source: "PURCHASE_ORDER",
+                notes: `Auto-generated from ${purchaseNo}`,
+              },
+            });
+
+            // Create history entry
+            await db.cCTVSerialItemHistory.create({
+              data: {
+                businessId,
+                serialItemId: serialItem.id,
+                toStatus: "IN_STOCK",
+                event: "STOCKED",
+                notes: `Auto-stocked via purchase order ${purchaseNo}`,
+              },
+            });
+
+            // Record in PurchaseOrderSerialNumber
+            await db.purchaseOrderSerialNumber.create({
+              data: {
+                purchaseOrderItemId: item.id,
+                serialNumber,
+              },
+            });
+
+            createdCount++;
+          }
         }
 
         // Update receivedQty
         await db.cCTVPurchaseItem.update({
           where: { id: item.id },
-          data: { receivedQty: item.quantity },
+          data: { receivedQty: createdCount },
         });
 
         serialResults.push({
           productId: item.productId,
           productName: item.productName,
-          created: item.quantity,
-          method: "serial-items",
+          created: createdCount,
+          method: userSerials.length > 0 ? "user-serials" : "auto-generated",
+          serialNumbers: userSerials.length > 0 ? userSerials : undefined,
         });
       } else {
         // Non-serial: just increment product stock

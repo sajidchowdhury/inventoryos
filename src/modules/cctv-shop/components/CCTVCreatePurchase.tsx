@@ -5,8 +5,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft, ArrowRight, Search, Plus, Minus, X, Loader2,
   Package, Truck, FileText, CheckCircle2, Hash, StickyNote,
-  Tag, ShoppingCart, Percent,
+  Tag, ShoppingCart, Percent, Shield, ChevronDown, ChevronUp,
 } from 'lucide-react';
+import { SerialNumberEntry } from './SerialNumberEntry';
 import { useCCTVNavStore } from '@/stores/cctv-nav-store';
 import { useCctvBusinessId } from '@/modules/cctv-shop/hooks/use-cctv-business-id';
 import { cn } from '@/lib/utils';
@@ -51,6 +52,8 @@ interface PurchaseItem {
   unitCost: number;
   serialTracked: boolean;
   unit?: string;
+  serialNumbers: string[]; // Phase 5: user-entered serials
+  showSerialEntry: boolean; // Phase 5: toggle serial entry panel
 }
 
 export function CCTVCreatePurchase() {
@@ -81,6 +84,8 @@ export function CCTVCreatePurchase() {
 
   // Status
   const [submitting, setSubmitting] = useState(false);
+  // Track which items have valid serials for submit validation
+  const [serialErrors, setSerialErrors] = useState<Record<string, string>>({});
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
 
@@ -152,6 +157,8 @@ export function CCTVCreatePurchase() {
         unitCost: p.costPrice,
         serialTracked: p.serialTracked,
         unit: p.unit,
+        serialNumbers: [],
+        showSerialEntry: false,
       },
     ]);
     setProductSearch('');
@@ -179,6 +186,32 @@ export function CCTVCreatePurchase() {
     setItems((prev) =>
       prev.map((it) => (it._localId === localId ? { ...it, quantity: n } : it))
     );
+  };
+
+  const toggleSerialEntry = (localId: string) => {
+    setItems((prev) =>
+      prev.map((it) =>
+        it._localId === localId
+          ? { ...it, showSerialEntry: !it.showSerialEntry }
+          : it
+      )
+    );
+  };
+
+  const handleSerialsChange = (localId: string, serials: string[]) => {
+    setItems((prev) =>
+      prev.map((it) =>
+        it._localId === localId
+          ? { ...it, serialNumbers: serials }
+          : it
+      )
+    );
+    // Clear error for this item when serials change
+    setSerialErrors((prev) => {
+      const next = { ...prev };
+      delete next[localId];
+      return next;
+    });
   };
 
   const setItemCost = (localId: string, val: string) => {
@@ -212,6 +245,7 @@ export function CCTVCreatePurchase() {
             productId: it.productId,
             quantity: it.quantity,
             unitCost: it.unitCost,
+            serialNumbers: it.serialTracked ? it.serialNumbers : undefined,
           })),
         }),
       });
@@ -220,7 +254,13 @@ export function CCTVCreatePurchase() {
         setTimeout(() => goBack(), 1000);
       } else {
         const data = await res.json().catch(() => ({}));
-        setError(data.error || data.message || 'Failed to create purchase order');
+        const msg = data.error || data.message || 'Failed to create purchase order';
+        // If API returned duplicate serial info, parse and show
+        if (data.duplicateSerials && Array.isArray(data.duplicateSerials)) {
+          setError(`${msg} (${data.duplicateSerials.length} duplicate(s))`);
+        } else {
+          setError(msg);
+        }
       }
     } catch {
       setError('Network error. Please try again.');
@@ -578,6 +618,56 @@ export function CCTVCreatePurchase() {
                         </p>
                       </div>
                     </div>
+
+                    {/* Serial number entry (Phase 5) */}
+                    {item.serialTracked && (
+                      <div className="mt-3 pt-3 border-t border-gray-50">
+                        <button
+                          onClick={() => toggleSerialEntry(item._localId)}
+                          className="flex items-center gap-2 w-full text-left group"
+                        >
+                          <Shield className="w-3.5 h-3.5 text-violet-500" />
+                          <span className="text-xs font-semibold text-gray-700 flex-1">
+                            Serial Numbers
+                          </span>
+                          <span className={cn(
+                            'text-[10px] font-bold',
+                            item.serialNumbers.length >= item.quantity
+                              ? 'text-emerald-600'
+                              : item.serialNumbers.length > 0
+                                ? 'text-amber-600'
+                                : 'text-gray-400'
+                          )}>
+                            {item.serialNumbers.length}/{item.quantity}
+                          </span>
+                          {item.showSerialEntry
+                            ? <ChevronUp className="w-3.5 h-3.5 text-gray-400" />
+                            : <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
+                          }
+                        </button>
+
+                        <AnimatePresence>
+                          {item.showSerialEntry && (
+                            <motion.div
+                              initial={{ height: 0, opacity: 0 }}
+                              animate={{ height: 'auto', opacity: 1 }}
+                              exit={{ height: 0, opacity: 0 }}
+                              transition={{ duration: 0.2 }}
+                              className="overflow-hidden"
+                            >
+                              <div className="mt-3 pt-3 border-t border-gray-100">
+                                <SerialNumberEntry
+                                  targetQty={item.quantity}
+                                  initialSerials={item.serialNumbers}
+                                  productName={item.productName}
+                                  onChange={(serials) => handleSerialsChange(item._localId, serials)}
+                                />
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    )}
                   </motion.div>
                 ))}
 
@@ -781,9 +871,26 @@ export function CCTVCreatePurchase() {
                       <tr key={item._localId}>
                         <td className="py-2.5 pr-2">
                           <p className="text-xs font-semibold text-gray-900 truncate max-w-[120px]">{item.productName}</p>
-                          {item.productBrand && (
-                            <p className="text-[10px] text-gray-400">{item.productBrand}</p>
-                          )}
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            {item.productBrand && (
+                              <p className="text-[10px] text-gray-400">{item.productBrand}</p>
+                            )}
+                            {item.serialTracked && (
+                              <span className={cn(
+                                'text-[9px] font-bold px-1.5 py-0.5 rounded',
+                                item.serialNumbers.length > 0
+                                  ? item.serialNumbers.length >= item.quantity
+                                    ? 'bg-emerald-50 text-emerald-600'
+                                    : 'bg-amber-50 text-amber-600'
+                                  : 'bg-amber-50 text-amber-500'
+                              )}>
+                                {item.serialNumbers.length > 0
+                                  ? `${item.serialNumbers.length}/${item.quantity} SN`
+                                  : 'No SN'
+                                }
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="py-2.5 text-center text-xs font-medium text-gray-700">{item.quantity}</td>
                         <td className="py-2.5 text-right text-xs font-medium text-gray-700">{formatBDT(item.unitCost)}</td>

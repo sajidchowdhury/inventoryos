@@ -157,6 +157,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           purchaseDate: now,
           warrantyMonths,
           // warrantyStart/warrantyEnd not set until sold
+          source: "STOCK_IN",
           notes: item.notes || null,
           // Procurement traceability (Phase 1D)
           purchaseId: purchaseId || null,

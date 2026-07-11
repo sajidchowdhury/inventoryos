@@ -11,6 +11,7 @@ import {
   ChevronRight,
   Loader2,
   RefreshCw,
+  PackageOpen,
 } from 'lucide-react';
 import { useCCTVNavStore } from '@/stores/cctv-nav-store';
 import { useCctvBusinessId } from '@/modules/cctv-shop/hooks/use-cctv-business-id';
@@ -74,6 +75,7 @@ interface SerialItem {
   customerName?: string | null;
   branchId?: string | null;
   currentLocation?: string | null;
+  source?: string | null;
   notes?: string | null;
   createdAt: string;
   product: {
@@ -336,6 +338,16 @@ export function CCTVSerialItemsList() {
                         <p className="text-xs font-mono text-gray-500 truncate">
                           {item.serialNumber}
                         </p>
+                        {item.source === 'PURCHASE_ORDER' && (
+                          <span className="shrink-0 text-[8px] font-bold px-1.5 py-0.5 rounded bg-violet-50 text-violet-600 border border-violet-200">
+                            PO
+                          </span>
+                        )}
+                        {item.source === 'STOCK_IN' && (
+                          <span className="shrink-0 text-[8px] font-bold px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-600 border border-emerald-200">
+                            Stock In
+                          </span>
+                        )}
                       </div>
                       {item.imei && (
                         <p className="text-[10px] font-mono text-gray-400 mt-0.5 ml-4.5">

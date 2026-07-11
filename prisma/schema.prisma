@@ -1873,6 +1873,9 @@ model CCTVSerialItem {
   branchId       String?              // Current branch (Phase 1D: multi-branch)
   currentLocation String?             // Free-text: "Showroom Shelf A3", "Warehouse Rack 2"
 
+  // ── Source Tracking (Phase 5) ──
+  source         String   @default("STOCK_IN") // "STOCK_IN" | "PURCHASE_ORDER" | "TRANSFER"
+
   // ── Metadata ──
   notes          String?
   isActive       Boolean  @default(true)
@@ -1899,6 +1902,7 @@ model CCTVSerialItem {
   @@index([warrantyEnd])
   @@index([purchaseId])
   @@index([branchId])
+  @@index([source])
   @@map("cctv_serial_items")
 }
 
@@ -3185,6 +3189,25 @@ model CCTVPurchaseItem {
   @@index([productId])
   @@index([businessId])
   @@map("cctv_purchase_items")
+  serialNumbers PurchaseOrderSerialNumber[]
+}
+
+// ── Purchase Order Serial Numbers (Phase 5) ──
+// Records the serial numbers entered for each line item in a purchase order.
+// Provides traceability from PO line item to the actual serial items created.
+model PurchaseOrderSerialNumber {
+  id                   String   @id @default(cuid())
+  purchaseOrderItemId  String
+  serialNumber         String
+
+  createdAt            DateTime @default(now())
+
+  purchaseItem         CCTVPurchaseItem @relation(fields: [purchaseOrderItemId], references: [id], onDelete: Cascade)
+
+  @@unique([purchaseOrderItemId, serialNumber])
+  @@index([purchaseOrderItemId])
+  @@index([serialNumber])
+  @@map("purchase_order_serial_numbers")
 }
 
 // ── CCTV Returns (2A: Sales Return Flow) ──

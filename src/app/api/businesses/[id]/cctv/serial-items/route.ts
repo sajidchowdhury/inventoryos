@@ -38,7 +38,23 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     const [items, total] = await Promise.all([
       db.cCTVSerialItem.findMany({
         where,
-        include: {
+        select: {
+          id: true,
+          serialNumber: true,
+          imei: true,
+          status: true,
+          grade: true,
+          costPrice: true,
+          sellPrice: true,
+          warrantyMonths: true,
+          warrantyStart: true,
+          warrantyEnd: true,
+          customerName: true,
+          branchId: true,
+          currentLocation: true,
+          notes: true,
+          source: true,
+          createdAt: true,
           product: {
             select: { id: true, name: true, brand: true, imageUrl: true, sellPrice: true },
           },
