@@ -1671,3 +1671,29 @@ Stage Summary:
 - 4 files modified: prisma/schema.prisma (+1), emi-plans/route.ts (+12/-12), CCTVCreatEmi.tsx (+243/-84), CCTVEmiDetail.tsx (+12/-12)
 - 184 insertions, 84 deletions total
 - Issues #7 and #8 fully resolved
+
+---
+Task ID: 4
+Agent: Main Agent
+Task: Phase 4 — Category Management System (Issue #9)
+
+Work Log:
+- Read Phase 4 plan: build full CRUD category management replacing "Coming Soon" placeholder
+- Verified CCTVCategory model already exists in Prisma schema (id, businessId, name, slug, icon, color, sortOrder, isActive)
+- Verified 'categories' already in CCTVViewType union and InventoryHub has Category menu item
+- Created API routes via subagent:
+  - GET/POST /api/businesses/[id]/cctv/categories (list with product count, create with slug generation)
+  - GET/PUT/DELETE /api/businesses/[id]/cctv/categories/[categoryId] (get, update, soft-delete)
+- Created CCTVCategoryList.tsx (searchable list, color-coded cards, product count, edit/delete, empty state)
+- Created CCTVCategoryForm.tsx (create/edit with name, icon, color swatch, sort order)
+- Wired views in CCTVShell.tsx switch/case + viewMeta
+- Added 'create-category' and 'edit-category' to CCTVViewType
+- Fixed SQLite-incompatible mode:"insensitive" queries (PostgreSQL feature) with JS-level case check
+- Fixed broken string literal in DELETE route error response
+
+Stage Summary:
+- 6 files changed, 519 insertions, 8 deletions
+- Commit: a4e22a5
+- Pushed to GitHub
+- Browser verified: create, list, edit, delete, empty state, search bar — all working
+- Zero console errors
