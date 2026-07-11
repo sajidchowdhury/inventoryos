@@ -64,6 +64,7 @@ import { CCTVSupplierView } from './CCTVSupplierView';
 import { CCTVSupplierDetail } from './CCTVSupplierDetail';
 import { CCTVPurchaseOrderView } from './CCTVPurchaseOrderView';
 import { CCTVCreatePurchase } from './CCTVCreatePurchase';
+import { CCTVReportsDashboard } from './CCTVReportsDashboard';
 
 function PlaceholderView({ title, icon }: { title: string; icon?: string }) {
   const { goBack } = useCCTVNavStore();
@@ -302,6 +303,9 @@ export function CCTVShell() {
       // Profit & Loss Report (3B)
       case 'profit-loss':
         return <CCTVProfitLossReport />;
+      // All Reports Dashboard
+      case 'reports':
+        return <CCTVReportsDashboard />;
       default: {
         const meta = viewMeta[activeView];
         return <PlaceholderView title={meta?.title || activeView} icon={meta?.icon} />;

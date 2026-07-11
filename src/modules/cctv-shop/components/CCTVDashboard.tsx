@@ -97,7 +97,7 @@ export function CCTVDashboard() {
 
   const row1 = [
     { label: 'Job Cards', icon: ClipboardCheck, view: 'job-cards' as const, gradient: 'from-amber-400 to-orange-500', ring: 'ring-amber-500/20' },
-    { label: 'AMC Management', icon: ShieldCheck, view: 'amc' as const, gradient: 'from-teal-400 to-emerald-500', ring: 'ring-teal-500/20' },
+    { label: 'AMC', icon: ShieldCheck, view: 'amc' as const, gradient: 'from-teal-400 to-emerald-500', ring: 'ring-teal-500/20' },
     { label: 'Projects', icon: Building2, view: 'projects' as const, gradient: 'from-cyan-400 to-blue-500', ring: 'ring-cyan-500/20' },
     { label: 'Tasks', icon: Calculator, view: 'installation-tasks' as const, gradient: 'from-fuchsia-400 to-purple-500', ring: 'ring-fuchsia-500/20' },
   ];

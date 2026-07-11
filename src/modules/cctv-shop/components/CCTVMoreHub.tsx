@@ -4,24 +4,18 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
   TrendingDown,
-  FileText,
-  BarChart3,
   Settings,
   User,
   Crown,
   HelpCircle,
   LogOut,
   ChevronRight,
-  Receipt,
-  Landmark,
   BookOpen,
   BookCheck,
   TrendingUp,
-  ClipboardList,
-  Cloud,
-  FileBarChart,
+  BarChart3,
   Banknote,
-  PieChart,
+  ClipboardList,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useCCTVNavStore } from '@/stores/cctv-nav-store';
@@ -91,23 +85,16 @@ export function CCTVMoreHub() {
     {
       label: 'Active AMC',
       value: quickStats ? String(quickStats.activeAmc) : '...',
-      icon: PieChart,
+      icon: BarChart3,
       color: 'bg-violet-50 text-violet-600',
     },
   ];
 
-  const reports: MenuItem[] = [
-    { label: 'Expenses', icon: <TrendingDown className="w-5 h-5" />, view: 'expenses', color: 'bg-rose-50 text-rose-600' },
+  const quickActions: MenuItem[] = [
+    { label: 'Expense', icon: <TrendingDown className="w-5 h-5" />, view: 'expenses', color: 'bg-rose-50 text-rose-600' },
     { label: 'Due Book', icon: <BookOpen className="w-5 h-5" />, view: 'due-book', color: 'bg-red-50 text-red-600' },
-    { label: 'Sales History', icon: <FileBarChart className="w-5 h-5" />, view: 'sales-history', color: 'bg-amber-50 text-amber-600' },
     { label: 'Financial Ledger', icon: <BookCheck className="w-5 h-5" />, view: 'ledger', color: 'bg-indigo-50 text-indigo-600' },
     { label: 'Profit & Loss', icon: <TrendingUp className="w-5 h-5" />, view: 'profit-loss', color: 'bg-emerald-50 text-emerald-600' },
-    { label: 'Mushak Report', icon: <FileText className="w-5 h-5" />, view: 'mushak-report', color: 'bg-red-50 text-red-600' },
-    { label: 'NBR & Tax Setup', icon: <Landmark className="w-5 h-5" />, view: 'nbr-setup', color: 'bg-amber-50 text-amber-600' },
-    { label: 'Mushak 6.3 Invoices', icon: <FileText className="w-5 h-5" />, view: 'mushak-invoices', color: 'bg-orange-50 text-orange-600' },
-    { label: 'Mushak Registers', icon: <ClipboardList className="w-5 h-5" />, view: 'mushak-registers', color: 'bg-orange-50 text-orange-600' },
-    { label: 'VAT Return', icon: <Receipt className="w-5 h-5" />, view: 'vat-return', color: 'bg-emerald-50 text-emerald-600' },
-    { label: 'Cloud Dashboard', icon: <Cloud className="w-5 h-5" />, view: 'cloud-dashboard', color: 'bg-sky-50 text-sky-600' },
     { label: 'All Reports', icon: <BarChart3 className="w-5 h-5" />, view: 'reports', color: 'bg-violet-50 text-violet-600' },
   ];
 
@@ -208,8 +195,8 @@ export function CCTVMoreHub() {
         })}
       </motion.div>
 
-      {/* Reports Dashboard */}
-      {renderSection('Reports', reports, 0)}
+      {/* Quick Action */}
+      {renderSection('Quick Action', quickActions, 0)}
 
       {/* Account */}
       {renderSection('Account', account, 1)}
