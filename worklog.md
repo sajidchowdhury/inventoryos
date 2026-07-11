@@ -1755,3 +1755,64 @@ Stage Summary:
 - 5 modified files: schema.prisma, purchases/route.ts, serial-items/route.ts, stock-in/route.ts, CCTVCreatePurchase.tsx, CCTVSerialItemsList.tsx
 - Full serial number tracking: user-entered serials in POs, source indicators on serial items, duplicate validation
 - Backwards compatible: auto-generation still works when no serials provided
+---
+Task ID: 6
+Agent: Main Agent
+Task: Phase 6 — Kits & Bundles Functionality (Issue #11)
+
+Work Log:
+- Read generate-plan.js to identify Phase 6 scope: Issue #11 (Kits & Bundles)
+- Explored existing codebase: CCTVKitDefinition, CCTVKitComponent, CCTVKitsList, CCTVKitDetail, CCTVKitForm, CCTVSellView, sales API
+- Found that Phase 6a (schema), 6b (form), 6c (availability) were ~80% already built
+- Main work needed: Phase 6d (Kit in Sales) and 6e (Kit Serial Support)
+
+Phase 6a - Database:
+- Added `kitId String?` field to CCTVSaleItem with index
+- Added reverse relation `saleItems CCTVSaleItem[]` on CCTVKitDefinition
+- Ran db:push + db:generate successfully
+
+Phase 6b - Kit Form Fix:
+- Found bug: edit mode never deleted removed components (data leak)
+- Added `originalComponentIds` useRef to track original component IDs
+- On save, computes diff and DELETEs removed components via API
+
+Phase 6c - Kit List Enhancement:
+- Changed "Partial" availability text to show actual count (e.g., "2 available")
+
+Phase 6d - Kit in Sales (main work):
+- Created POST /kits/[kitId]/sell API endpoint (430 lines):
+  - Validates kit, checks component stock, returns 409 on insufficient
+  - Expands kit into proportional-priced sale items with kitId
+  - Full transaction: sale + items + serial changes + payments + customer + loyalty
+- Created CCTVSellKitView component (476 lines):
+  - Kit info card, component breakdown with stock badges
+  - Customer name/phone inputs
+  - 5 payment methods (CASH/CARD/BKASH/NAGAD/ROCKET) with amount
+  - Real-time paid/due calculation
+  - Success state with "View Sale" button
+- Wired "Sell Kit" button on CCTVKitDetail → navigate('sell-kit', kit.id)
+- Added 'sell-kit' to CCTVViewType, CCTVShell switch/case, viewMeta
+- Updated sale detail API to include kit relation on items
+- Added "Kit" violet badge on kit-sourced items in CCTVSaleDetail
+
+Phase 6e - Kit Serial Number Support:
+- Sell Kit view auto-loads IN_STOCK serials per serial-tracked component
+- Radio-button serial picker per component
+- serialSelections passed to API; API creates per-serial sale items
+- Auto-FIFO fallback when no explicit serial selection
+- History notes reference kit name for traceability
+
+Verification:
+- ESLint: no new errors (only pre-existing in generate-plan.js, layout.tsx)
+- TypeScript: no new errors
+- Dev server: compiles, responds HTTP 200
+- Commit: e4642f3 (11 files, 944 insertions, 10 deletions)
+- Pushed to GitHub: afbb275..e4642f3 main → main
+
+Stage Summary:
+- 2 new files: kits/[kitId]/sell/route.ts (API), CCTVSellKitView.tsx (UI)
+- 9 modified files: schema, kit form, kit detail, kit list, shell, types, sale detail API
+- Full kit-to-sale flow: browse kits → view detail → sell kit → see sale with kit badge
+- Kit component stock deduction in transaction
+- Serial number selection support for kit components
+- Kit form edit mode component deletion bug fixed
