@@ -179,7 +179,7 @@ export function CCTVEmiDetail() {
       <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm space-y-3">
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-semibold text-gray-900">Plan Details</h3>
-          <span className="text-[10px] text-gray-400">{plan.interestType} Balance</span>
+          <span className="text-[10px] text-gray-400">{plan.months} months</span>
         </div>
         <div className="grid grid-cols-2 gap-2 text-xs">
           <div className="flex items-center gap-1.5">
@@ -190,10 +190,12 @@ export function CCTVEmiDetail() {
             <Phone className="w-3.5 h-3.5 text-gray-400" />
             <a href={`tel:${plan.customerPhone}`} className="text-violet-600 font-medium">{plan.customerPhone}</a>
           </div>
-          <div className="flex items-center gap-1.5">
-            <Percent className="w-3.5 h-3.5 text-gray-400" />
-            <span className="text-gray-600">{plan.interestRate}% interest ({plan.months} months)</span>
-          </div>
+          {plan.interestRate > 0 && (
+            <div className="flex items-center gap-1.5">
+              <Percent className="w-3.5 h-3.5 text-gray-400" />
+              <span className="text-gray-600">{plan.interestRate}% interest</span>
+            </div>
+          )}
           <div className="flex items-center gap-1.5">
             <Banknote className="w-3.5 h-3.5 text-gray-400" />
             <span className="text-gray-600 font-semibold">৳{plan.monthlyPayment.toLocaleString()}/mo</span>

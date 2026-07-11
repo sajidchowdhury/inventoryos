@@ -63,10 +63,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       customerPhone,
       productName,
       productBrand,
+      productId,
       totalAmount,
       downPayment,
-      interestRate,
-      interestType,
+      interestRate: _interestRate,
+      interestType: _interestType,
       months,
       startDate,
       graceDays,
@@ -77,6 +78,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       customerPhone?: string;
       productName?: string;
       productBrand?: string;
+      productId?: string;
       totalAmount?: number;
       downPayment?: number;
       interestRate?: number;
@@ -106,8 +108,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
 
     const dp = downPayment || 0;
-    const rate = interestRate || 0;
-    const iType = interestType || "REDUCING";
+    // Interest rate is permanently 0 — ignore any client-side value
+    const rate = 0;
+    const iType = "REDUCING";
     const grace = graceDays ?? 3;
 
     const financedAmount = totalAmount - dp;
@@ -144,6 +147,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       const createdPlan = await tx.cCTVEmiPlan.create({
         data: {
           businessId,
+          productId: productId || null,
           saleId: saleId || null,
           customerName: customerName.trim(),
           customerPhone: customerPhone.trim(),

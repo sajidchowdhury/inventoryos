@@ -2451,6 +2451,7 @@ model CCTVEmiPlan {
   // Product info (denormalised)
   productName     String
   productBrand    String?
+  productId       String?                 // link to actual inventory product
 
   // Financial terms
   totalAmount     Float                   // total price of the item (principal)
