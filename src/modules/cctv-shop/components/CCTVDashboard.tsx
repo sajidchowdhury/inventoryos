@@ -3,8 +3,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
-  ShoppingCart,
-  Plus,
   BarChart3,
   TrendingUp,
   FileText,
@@ -24,7 +22,9 @@ import {
   ExternalLink,
   Star,
   HardDrive,
-  Landmark,
+  BookOpen,
+  Receipt,
+  Calculator,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores/auth-store';
@@ -32,11 +32,11 @@ import { useCCTVNavStore } from '@/stores/cctv-nav-store';
 import { OfflinePill } from './OfflineIndicator';
 
 const stagger = {
-  animate: { transition: { staggerChildren: 0.04 } },
+  animate: { transition: { staggerChildren: 0.05 } },
 };
 const fadeUp = {
-  initial: { opacity: 0, y: 16 },
-  animate: { opacity: 1, y: 0, transition: { duration: 0.35, ease: 'easeOut' } },
+  initial: { opacity: 0, y: 18 },
+  animate: { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.22, 1, 0.36, 1] } },
 };
 
 export function CCTVDashboard() {
@@ -86,28 +86,27 @@ export function CCTVDashboard() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const reportShortcuts = [
-    { label: 'Sales Report', icon: TrendingUp, color: 'border-l-violet-500', bg: 'bg-violet-50', iconColor: 'text-violet-600' },
-    { label: 'Mushak Report', icon: FileText, color: 'border-l-red-500', bg: 'bg-red-50', iconColor: 'text-red-600' },
-    { label: 'EMI Report', icon: CreditCard, color: 'border-l-amber-500', bg: 'bg-amber-50', iconColor: 'text-amber-600' },
-    { label: 'Project Report', icon: Building2, color: 'border-l-cyan-500', bg: 'bg-cyan-50', iconColor: 'text-cyan-600' },
+  /* ── Data ── */
+
+  const reports = [
+    { label: 'Sales Report', icon: TrendingUp, gradient: 'from-violet-500 to-purple-600', view: 'reports' as const },
+    { label: 'Due Book', icon: BookOpen, gradient: 'from-rose-500 to-pink-600', view: 'due-book' as const },
+    { label: 'Project Report', icon: Building2, gradient: 'from-cyan-500 to-teal-600', view: 'projects' as const },
+    { label: 'Purchase Report', icon: Receipt, gradient: 'from-amber-500 to-orange-600', view: 'purchase-orders' as const },
   ];
 
-  const quickActions = [
-    { label: 'New Sale', icon: ShoppingCart, view: 'new-sale' as const, color: 'bg-green-500' },
-    { label: 'Sales History', icon: TrendingUp, view: 'sales-history' as const, color: 'bg-violet-500' },
-    { label: 'New Product', icon: Plus, view: 'add-product' as const, color: 'bg-blue-500' },
-    { label: 'Job Card', icon: ClipboardCheck, view: 'create-job-card' as const, color: 'bg-amber-500' },
-    { label: 'New AMC', icon: ShieldCheck, view: 'create-amc' as const, color: 'bg-teal-500' },
-    { label: 'Projects', icon: Building2, view: 'projects' as const, color: 'bg-cyan-500' },
-    { label: 'Tasks', icon: ClipboardCheck, view: 'installation-tasks' as const, color: 'bg-indigo-500' },
-    { label: 'EMI Sales', icon: CreditCard, view: 'emi' as const, color: 'bg-pink-500' },
-    { label: 'Warranties', icon: ShieldCheck, view: 'warranties' as const, color: 'bg-emerald-500' },
-    { label: 'Customers', icon: Users, view: 'customers' as const, color: 'bg-orange-500' },
-    { label: 'Loyalty', icon: Star, view: 'loyalty-center' as const, color: 'bg-fuchsia-500' },
-    { label: 'Storage Calc', icon: HardDrive, view: 'storage-calculator' as const, color: 'bg-slate-500' },
-    { label: 'NBR Setup', icon: Landmark, view: 'nbr-setup' as const, color: 'bg-amber-600' },
-    { label: 'All Reports', icon: BarChart3, view: 'reports' as const, color: 'bg-purple-500' },
+  const row1 = [
+    { label: 'Job Card', icon: ClipboardCheck, view: 'create-job-card' as const, gradient: 'from-amber-400 to-orange-500', ring: 'ring-amber-500/20' },
+    { label: 'AMC', icon: ShieldCheck, view: 'create-amc' as const, gradient: 'from-teal-400 to-emerald-500', ring: 'ring-teal-500/20' },
+    { label: 'Projects', icon: Building2, view: 'projects' as const, gradient: 'from-cyan-400 to-blue-500', ring: 'ring-cyan-500/20' },
+    { label: 'Tasks', icon: Calculator, view: 'installation-tasks' as const, gradient: 'from-fuchsia-400 to-purple-500', ring: 'ring-fuchsia-500/20' },
+  ];
+
+  const row2 = [
+    { label: 'EMI Sales', icon: CreditCard, view: 'emi' as const, gradient: 'from-pink-400 to-rose-500', ring: 'ring-pink-500/20' },
+    { label: 'Warranties', icon: ShieldCheck, view: 'warranties' as const, gradient: 'from-emerald-400 to-green-500', ring: 'ring-emerald-500/20' },
+    { label: 'Loyalty', icon: Star, view: 'loyalty-center' as const, gradient: 'from-yellow-400 to-amber-500', ring: 'ring-yellow-500/20' },
+    { label: 'Storage Calc', icon: HardDrive, view: 'storage-calculator' as const, gradient: 'from-slate-400 to-gray-500', ring: 'ring-slate-500/20' },
   ];
 
   const overviewCards = [
@@ -193,65 +192,99 @@ export function CCTVDashboard() {
         <div className="absolute bottom-0 left-10 w-20 h-20 bg-white/5 rounded-full translate-y-1/2" />
       </motion.div>
 
-      <div className="px-4 -mt-4 space-y-5">
-        {/* ── New Sale CTA ── */}
-        <motion.div variants={fadeUp}>
-          <button
-            onClick={() => navigate('sell')}
-            className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-gradient-to-r from-violet-500 to-purple-600 text-white font-semibold text-sm shadow-lg shadow-violet-500/25 active:scale-[0.98] transition-transform"
-          >
-            <ShoppingCart className="w-4 h-4" />
-            New Sale
-          </button>
-        </motion.div>
+      <div className="px-4 pt-5 space-y-6">
 
         {/* ── Quick Reports ── */}
         <motion.div variants={fadeUp}>
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-semibold text-gray-900">Quick Reports</h2>
-            <button onClick={() => navigate('reports')} className="text-xs text-violet-600 font-medium">
-              View All
+          <div className="flex items-center gap-2.5 mb-3">
+            <div className="w-1 h-4 rounded-full bg-gradient-to-b from-violet-500 to-purple-600" />
+            <h2 className="text-[13px] font-bold text-gray-900 tracking-tight">Quick Reports</h2>
+            <div className="flex-1 h-px bg-gray-100" />
+            <button onClick={() => navigate('reports')} className="text-[11px] text-violet-600 font-semibold flex items-center gap-0.5">
+              All <ArrowUpRight className="w-3 h-3" />
             </button>
           </div>
           <div className="grid grid-cols-2 gap-2.5">
-            {reportShortcuts.map((report) => {
-              const Icon = report.icon;
+            {reports.map((r) => {
+              const Icon = r.icon;
               return (
-                <button
-                  key={report.label}
-                  className={cn(
-                    'flex items-center gap-3 p-3 rounded-xl border-l-4 text-left active:scale-[0.97] transition-transform',
-                    report.bg,
-                    report.color,
-                  )}
+                <motion.button
+                  key={r.label}
+                  whileTap={{ scale: 0.97 }}
+                  onClick={() => navigate(r.view)}
+                  className="group relative flex items-center gap-3 p-3.5 rounded-2xl bg-white border border-gray-100 text-left shadow-[0_1px_3px_rgba(0,0,0,0.04)] overflow-hidden"
                 >
-                  <Icon className={cn('w-4 h-4', report.iconColor)} />
-                  <span className="text-xs font-semibold text-gray-800">{report.label}</span>
-                </button>
+                  {/* Hover glow */}
+                  <div className={cn('absolute inset-0 bg-gradient-to-br opacity-0 group-active:opacity-100 transition-opacity duration-200', r.gradient)} />
+                  <div className="relative z-10 flex items-center gap-3">
+                    <div className={cn('w-9 h-9 rounded-xl bg-gradient-to-br flex items-center justify-center shadow-sm', r.gradient)}>
+                      <Icon className="w-4 h-4 text-white" />
+                    </div>
+                    <span className="text-xs font-semibold text-gray-800 group-active:text-white">{r.label}</span>
+                  </div>
+                </motion.button>
               );
             })}
           </div>
         </motion.div>
 
-        {/* ── Quick Actions ── */}
+        {/* ── Row 1: Operations ── */}
         <motion.div variants={fadeUp}>
-          <h2 className="text-sm font-semibold text-gray-900 mb-3">Quick Actions</h2>
+          <div className="flex items-center gap-2.5 mb-3">
+            <div className="w-1 h-4 rounded-full bg-gradient-to-b from-amber-400 to-orange-500" />
+            <h2 className="text-[13px] font-bold text-gray-900 tracking-tight">Operations</h2>
+            <div className="flex-1 h-px bg-gray-100" />
+          </div>
           <div className="grid grid-cols-4 gap-3">
-            {quickActions.map((action) => {
-              const Icon = action.icon;
+            {row1.map((item) => {
+              const Icon = item.icon;
               return (
-                <button
-                  key={action.label}
-                  onClick={() => navigate(action.view)}
-                  className="flex flex-col items-center gap-2 py-3 active:scale-95 transition-transform"
+                <motion.button
+                  key={item.label}
+                  whileTap={{ scale: 0.93 }}
+                  onClick={() => navigate(item.view)}
+                  className="flex flex-col items-center gap-2.5 py-4 rounded-2xl bg-white border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] active:shadow-md transition-all"
                 >
-                  <div className={cn('w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm', action.color)}>
-                    <Icon className="w-5 h-5 text-white" />
+                  <div className={cn(
+                    'w-12 h-12 rounded-2xl bg-gradient-to-br flex items-center justify-center shadow-md ring-1',
+                    item.gradient,
+                    item.ring,
+                  )}>
+                    <Icon className="w-5.5 h-5.5 text-white" />
                   </div>
-                  <span className="text-[11px] font-medium text-gray-600 leading-tight text-center">
-                    {action.label}
-                  </span>
-                </button>
+                  <span className="text-[11px] font-semibold text-gray-700 leading-tight">{item.label}</span>
+                </motion.button>
+              );
+            })}
+          </div>
+        </motion.div>
+
+        {/* ── Row 2: Management ── */}
+        <motion.div variants={fadeUp}>
+          <div className="flex items-center gap-2.5 mb-3">
+            <div className="w-1 h-4 rounded-full bg-gradient-to-b from-emerald-400 to-teal-500" />
+            <h2 className="text-[13px] font-bold text-gray-900 tracking-tight">Management</h2>
+            <div className="flex-1 h-px bg-gray-100" />
+          </div>
+          <div className="grid grid-cols-4 gap-3">
+            {row2.map((item) => {
+              const Icon = item.icon;
+              return (
+                <motion.button
+                  key={item.label}
+                  whileTap={{ scale: 0.93 }}
+                  onClick={() => navigate(item.view)}
+                  className="flex flex-col items-center gap-2.5 py-4 rounded-2xl bg-white border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] active:shadow-md transition-all"
+                >
+                  <div className={cn(
+                    'w-12 h-12 rounded-2xl bg-gradient-to-br flex items-center justify-center shadow-md ring-1',
+                    item.gradient,
+                    item.ring,
+                  )}>
+                    <Icon className="w-5.5 h-5.5 text-white" />
+                  </div>
+                  <span className="text-[11px] font-semibold text-gray-700 leading-tight">{item.label}</span>
+                </motion.button>
               );
             })}
           </div>
@@ -335,7 +368,11 @@ export function CCTVDashboard() {
 
         {/* ── CCTV Overview — Scrollable Cards ── */}
         <motion.div variants={fadeUp}>
-          <h2 className="text-sm font-semibold text-gray-900 mb-3">Overview</h2>
+          <div className="flex items-center gap-2.5 mb-3">
+            <div className="w-1 h-4 rounded-full bg-gradient-to-b from-cyan-500 to-blue-600" />
+            <h2 className="text-[13px] font-bold text-gray-900 tracking-tight">Overview</h2>
+            <div className="flex-1 h-px bg-gray-100" />
+          </div>
           <div className="flex gap-3 overflow-x-auto scrollbar-hide -mx-4 px-4 pb-2">
             {overviewCards.map((card) => {
               const Icon = card.icon;
@@ -375,36 +412,43 @@ export function CCTVDashboard() {
           </div>
         </motion.div>
 
-        {/* ── Quick Stock Access ── */}
+        {/* ── Inventory Quick Access ── */}
         <motion.div variants={fadeUp}>
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-semibold text-gray-900">Inventory</h2>
-            <button onClick={() => navigate('inventory-hub')} className="text-xs text-violet-600 font-medium">
-              View All
+          <div className="flex items-center gap-2.5 mb-3">
+            <div className="w-1 h-4 rounded-full bg-gradient-to-b from-blue-500 to-indigo-600" />
+            <h2 className="text-[13px] font-bold text-gray-900 tracking-tight">Inventory</h2>
+            <div className="flex-1 h-px bg-gray-100" />
+            <button onClick={() => navigate('inventory-hub')} className="text-[11px] text-violet-600 font-semibold flex items-center gap-0.5">
+              All <ArrowUpRight className="w-3 h-3" />
             </button>
           </div>
           <div className="grid grid-cols-2 gap-2.5">
             {[
-              { label: 'Products', desc: 'Manage catalog', icon: Package, bg: 'bg-blue-50', iconColor: 'text-blue-600', view: 'products' as const },
-              { label: 'Serial Items', desc: 'Track by serial', icon: Sparkles, bg: 'bg-violet-50', iconColor: 'text-violet-600', view: 'serial-items' as const },
-              { label: 'Suppliers', desc: 'Vendor management', icon: Truck, bg: 'bg-amber-50', iconColor: 'text-amber-600', view: 'suppliers' as const },
-              { label: 'Categories', desc: 'Organize items', icon: BarChart3, bg: 'bg-emerald-50', iconColor: 'text-emerald-600', view: 'inventory-hub' as const },
+              { label: 'Products', desc: 'Manage catalog', icon: Package, gradient: 'from-blue-500 to-indigo-600', view: 'products' as const },
+              { label: 'Serial Items', desc: 'Track by serial', icon: Sparkles, gradient: 'from-violet-500 to-purple-600', view: 'serial-items' as const },
+              { label: 'Suppliers', desc: 'Vendor management', icon: Truck, gradient: 'from-amber-500 to-orange-600', view: 'suppliers' as const },
+              { label: 'Categories', desc: 'Organize items', icon: BarChart3, gradient: 'from-emerald-500 to-teal-600', view: 'inventory-hub' as const },
             ].map((item) => {
               const Icon = item.icon;
               return (
-                <button
+                <motion.button
                   key={item.label}
+                  whileTap={{ scale: 0.97 }}
                   onClick={() => navigate(item.view)}
-                  className="flex items-center gap-3 p-3.5 rounded-xl bg-white border border-gray-100 shadow-sm text-left active:scale-[0.97] transition-transform"
+                  className="group relative flex items-center gap-3 p-3.5 rounded-2xl bg-white border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] text-left overflow-hidden"
                 >
-                  <div className={cn('w-9 h-9 rounded-lg flex items-center justify-center', item.bg)}>
-                    <Icon className={cn('w-4 h-4', item.iconColor)} />
+                  {/* Hover glow */}
+                  <div className={cn('absolute inset-0 bg-gradient-to-br opacity-0 group-active:opacity-100 transition-opacity duration-200', item.gradient)} />
+                  <div className="relative z-10 flex items-center gap-3">
+                    <div className={cn('w-9 h-9 rounded-xl bg-gradient-to-br flex items-center justify-center shadow-sm', item.gradient)}>
+                      <Icon className="w-4 h-4 text-white" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-gray-800 group-active:text-white">{item.label}</p>
+                      <p className="text-[10px] text-gray-400 group-active:text-white/70">{item.desc}</p>
+                    </div>
                   </div>
-                  <div className="min-w-0">
-                    <p className="text-xs font-semibold text-gray-800">{item.label}</p>
-                    <p className="text-[10px] text-gray-400">{item.desc}</p>
-                  </div>
-                </button>
+                </motion.button>
               );
             })}
           </div>
