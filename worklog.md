@@ -1697,3 +1697,61 @@ Stage Summary:
 - Pushed to GitHub
 - Browser verified: create, list, edit, delete, empty state, search bar — all working
 - Zero console errors
+---
+Task ID: 5
+Agent: Main Agent
+Task: Phase 5 — Purchase Order Serial Number System (Issue #10)
+
+Work Log:
+- Read generate-plan.js to identify Phase 5 scope: Issue #10 (Serial number duplicates across PO and Stock In)
+- Explored existing codebase: CCTVPurchase, CCTVPurchaseItem, CCTVSerialItem, CCTVSerialItemHistory models
+- Analyzed existing purchase order flow: 3-step wizard (Supplier → Products → Review) in CCTVCreatePurchase.tsx
+- Analyzed existing stock-in flow: batch scanning UI in CCTVStockInView.tsx
+- Analyzed serial items list: CCTVSerialItemsList.tsx with status filter tabs
+
+Phase 5a - Database:
+- Added `source` field to CCTVSerialItem (default "STOCK_IN", values: STOCK_IN | PURCHASE_ORDER | TRANSFER) with index
+- Created PurchaseOrderSerialNumber model (id, purchaseOrderItemId, serialNumber, createdAt) with unique constraint [purchaseOrderItemId, serialNumber] and cascade delete
+- Added reverse relation serialNumbers[] on CCTVPurchaseItem
+- Ran db:push + db:generate successfully
+
+Phase 5b - UI Component:
+- Created SerialNumberEntry.tsx — reusable component for serial number input
+- Features: target quantity, progress bar, client-side duplicate detection, editable entries, clear all, partial entry support, readOnly mode
+- Progress color coding: gray (empty) → amber (partial) → emerald (complete)
+
+Phase 5c - Purchase Order Form Integration:
+- Extended PurchaseItem interface with serialNumbers[] and showSerialEntry fields
+- Added collapsible "Serial Numbers" section to each serial-tracked item in Step 2
+- Toggle shows count badge (e.g., "2/5") with color coding
+- Step 3 review table shows serial count badges (e.g., "3/5 SN" green, "No SN" amber)
+- Added toggleSerialEntry() and handleSerialsChange() helper functions
+- Updated submit payload to include serialNumbers per item
+
+Phase 5d - API & Business Logic:
+- Rewrote purchases/route.ts POST handler with full serial validation:
+  - Validates batch duplicates (case-insensitive) before creating purchase
+  - Validates against existing DB serial items per business
+  - Returns 409 with duplicateSerials[] on conflict
+- When user-provided serials exist: creates CCTVSerialItem + CCTVSerialItemHistory + PurchaseOrderSerialNumber records
+- Fallback: auto-generates serial numbers when none provided (backwards compatible)
+- All PO-created serials now have source='PURCHASE_ORDER' and proper history entries
+- Updated stock-in API to set source='STOCK_IN' on created serials
+
+Phase 5e - Serial Number Tracking:
+- Serial items list API now returns 'source' field via explicit select
+- CCTVSerialItemsList shows source badges: "PO" (violet) and "Stock In" (emerald) next to serial number
+- Added PackageOpen icon import
+
+Verification:
+- TypeScript: no new errors (only pre-existing in examples/, prisma/seed.ts, skills/)
+- ESLint: no new errors (only pre-existing in generate-plan.js, layout.tsx)
+- Dev server: starts, compiles, responds HTTP 200
+- Commit: afbb275 (8 files, 638 insertions, 40 deletions)
+- Pushed to GitHub: a4e22a5..afbb275 main → main
+
+Stage Summary:
+- 1 new file: SerialNumberEntry.tsx (reusable serial number entry component)
+- 5 modified files: schema.prisma, purchases/route.ts, serial-items/route.ts, stock-in/route.ts, CCTVCreatePurchase.tsx, CCTVSerialItemsList.tsx
+- Full serial number tracking: user-entered serials in POs, source indicators on serial items, duplicate validation
+- Backwards compatible: auto-generation still works when no serials provided
