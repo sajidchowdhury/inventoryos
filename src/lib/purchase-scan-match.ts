@@ -36,9 +36,11 @@ export interface MatchedPurchaseItem {
 }
 
 function nameSearchOr(name: string) {
+  // Drop mode:"insensitive" — it's PostgreSQL-only and breaks SQLite.
+  // SQLite is already case-insensitive for contains() on text.
   return [
-    { name: { contains: name, mode: "insensitive" as const } },
-    { genericName: { contains: name, mode: "insensitive" as const } },
+    { name: { contains: name } },
+    { genericName: { contains: name } },
   ];
 }
 

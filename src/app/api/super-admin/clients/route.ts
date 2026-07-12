@@ -34,9 +34,13 @@ export async function GET(req: NextRequest) {
     if (stage) where.subscriptionStage = stage;
     if (tier) where.subscriptionTier = tier;
     if (search) {
+      // Drop mode:"insensitive" — it's PostgreSQL-only and breaks SQLite.
+      // SQLite is case-insensitive by default for contains() on text. On
+      // PostgreSQL this becomes case-sensitive, which is acceptable for an
+      // admin client search filter.
       where.OR = [
-        { name: { contains: search, mode: "insensitive" } },
-        { user: { phone: { contains: search, mode: "insensitive" } } },
+        { name: { contains: search } },
+        { user: { phone: { contains: search } } },
       ];
     }
 

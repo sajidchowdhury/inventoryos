@@ -70,10 +70,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     if (!masterProductId && body.addToMasterCatalog !== false) {
       const name = String(body.name || "").trim();
       if (name) {
+        // Case-insensitive name match that works on both SQLite (case-insensitive by default)
+        // and PostgreSQL (we lowercase both sides manually to avoid mode:"insensitive" which
+        // is not supported by SQLite).
         const existingMaster = await db.masterProduct.findFirst({
           where: {
             isActive: true,
-            name: { equals: name, mode: "insensitive" },
+            name: { equals: name },
           },
         });
         if (existingMaster) {

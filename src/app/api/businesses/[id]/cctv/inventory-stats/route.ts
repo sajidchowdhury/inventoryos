@@ -202,16 +202,24 @@ export async function GET(
             { imei: { contains: searchQuery } },
           ],
         },
+        // NOTE: Prisma 6 disallows using `select` and `include` together.
+        // Put the relation inside `select` instead.
         select: {
           id: true,
           serialNumber: true,
           productId: true,
           costPrice: true,
+          product: {
+            select: {
+              name: true,
+              brand: true,
+              sellPrice: true,
+              serialTracked: true,
+              stock: true,
+            },
+          },
         },
         take: 10,
-        include: {
-          product: { select: { name: true, brand: true, sellPrice: true, serialTracked: true, stock: true } },
-        },
       });
 
       searchResults = [

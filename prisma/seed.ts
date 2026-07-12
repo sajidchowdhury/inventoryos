@@ -82,7 +82,7 @@ async function main() {
   const superAdminUsername = process.env.SUPER_ADMIN_USERNAME || "superadmin";
   const superAdminPassword = process.env.SUPER_ADMIN_DEFAULT_PASSWORD || "admin123";
   const existingSuperAdmin = await db.superAdmin.findFirst({
-    where: { username: { equals: superAdminUsername, mode: "insensitive" } },
+    where: { username: { equals: superAdminUsername } },
     select: { id: true },
   });
 
