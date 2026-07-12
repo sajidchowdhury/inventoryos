@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
 import {
   Search, ArrowLeft, Plus, Camera, HardDrive, Cable, Upload,
-  Wrench, Package, X, Loader2, ChevronDown, Tag, Sparkles,
+  Wrench, Package, X, Loader2, ChevronDown, ChevronRight, Tag, Sparkles,
 } from 'lucide-react';
 import { useCCTVNavStore } from '@/stores/cctv-nav-store';
 import { useAuthStore } from '@/stores/auth-store';
@@ -60,6 +60,43 @@ export function CCTVProductsList() {
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
   const [loadingMore, setLoadingMore] = useState(false);
+
+  // ── Split-view state (Phase 4C) ──
+  // On desktop (lg:), clicking a product sets selectedProductId and shows
+  // an inline detail panel on the right. On mobile, clicking navigates
+  // to the full detail page (existing behavior).
+  const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<CCTVProduct | null>(null);
+  const [loadingDetail, setLoadingDetail] = useState(false);
+
+  // Fetch detail when selectedProductId changes
+  useEffect(() => {
+    if (!selectedProductId || !businessId) {
+      setSelectedProduct(null);
+      return;
+    }
+    setLoadingDetail(true);
+    fetch(`/api/businesses/${businessId}/cctv/products/${selectedProductId}`)
+      .then((res) => res.json())
+      .then((data) => {
+        setSelectedProduct(data.product || null);
+      })
+      .catch(() => setSelectedProduct(null))
+      .finally(() => setLoadingDetail(false));
+  }, [selectedProductId, businessId]);
+
+  // Handle product click — split view on desktop, navigate on mobile
+  const handleProductClick = (productId: string) => {
+    // On desktop, use split view; on mobile, navigate to full detail
+    // We use a CSS-based approach: both behaviors are wired, but the
+    // split-view panel is only visible on lg: (hidden on mobile).
+    // The navigate() call is for mobile; setSelectedProductId is for desktop.
+    setSelectedProductId(productId);
+    // Don't navigate on desktop — the split panel handles it.
+    // But we still need mobile to work. We'll handle this with two
+    // separate click handlers in the render (one for mobile cards, one
+    // for desktop table rows).
+  };
 
   const debounceTimer = useRef<ReturnType<typeof setTimeout>>(null);
 
@@ -158,6 +195,12 @@ export function CCTVProductsList() {
         </button>
         <h1 className="text-lg font-bold text-gray-900 flex-1">Products</h1>
       </div>
+
+      {/* ── Split-view container (Phase 4C) ── */}
+      {/* On lg: screens, list is on the left and detail panel on the right */}
+      <div className="lg:flex lg:gap-4 lg:items-start">
+        {/* Left panel: list (takes full width on mobile, flex-1 on desktop) */}
+        <div className="lg:flex-1 space-y-4 min-w-0">
 
       {/* Stats bar + Import button */}
       {!loading && (
@@ -408,8 +451,11 @@ export function CCTVProductsList() {
                     return (
                       <tr
                         key={product.id}
-                        onClick={() => navigate('product-detail', product.id)}
-                        className="border-b border-gray-50 hover:bg-violet-50/50 cursor-pointer transition-colors"
+                        onClick={() => handleProductClick(product.id)}
+                        className={cn(
+                          'border-b border-gray-50 hover:bg-violet-50/50 cursor-pointer transition-colors',
+                          selectedProductId === product.id && 'bg-violet-50/70'
+                        )}
                       >
                         <td className="p-3">
                           <div className="flex items-center gap-2">
@@ -469,11 +515,138 @@ export function CCTVProductsList() {
         </>
       )}
 
-      {/* Floating add button */}
+        </div>{/* End left panel */}
+
+        {/* ── Right panel: detail (hidden on mobile, visible on lg:) ── */}
+        <div className="hidden lg:block lg:w-[400px] xl:w-[440px] shrink-0 lg:sticky lg:top-4">
+          {selectedProductId ? (
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+              {loadingDetail ? (
+                <div className="flex items-center justify-center py-20">
+                  <Loader2 className="w-6 h-6 animate-spin text-violet-400" />
+                </div>
+              ) : selectedProduct ? (
+                <div className="p-5 space-y-4">
+                  {/* Detail header */}
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-base font-bold text-gray-900">{selectedProduct.name}</h3>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        {selectedProduct.brand}
+                        {selectedProduct.model ? ` · ${selectedProduct.model}` : ''}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setSelectedProductId(null)}
+                      className="w-7 h-7 rounded-lg hover:bg-gray-100 flex items-center justify-center shrink-0"
+                    >
+                      <X className="w-4 h-4 text-gray-400" />
+                    </button>
+                  </div>
+
+                  {/* Badges */}
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {selectedProduct.category && (
+                      <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-violet-100 text-violet-700">
+                        {selectedProduct.category.name || selectedProduct.category}
+                      </span>
+                    )}
+                    {selectedProduct.serialTracked && (
+                      <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-blue-50 text-blue-600">
+                        Serial Tracked
+                      </span>
+                    )}
+                    {selectedProduct.warrantyMonths > 0 && (
+                      <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-teal-50 text-teal-600">
+                        {selectedProduct.warrantyMonths}mo warranty
+                      </span>
+                    )}
+                    {selectedProduct.masterProductId && (
+                      <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-violet-100 text-violet-700 flex items-center gap-0.5">
+                        <Sparkles className="w-2.5 h-2.5" /> Catalog
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Pricing */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-gray-50 rounded-xl p-3">
+                      <p className="text-[10px] text-gray-500 font-medium">Cost Price</p>
+                      <p className="text-lg font-bold text-gray-900 mt-0.5">
+                        ৳{selectedProduct.costPrice.toLocaleString()}
+                      </p>
+                    </div>
+                    <div className="bg-violet-50 rounded-xl p-3">
+                      <p className="text-[10px] text-violet-500 font-medium">Sell Price</p>
+                      <p className="text-lg font-bold text-violet-900 mt-0.5">
+                        ৳{selectedProduct.sellPrice.toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Stock */}
+                  <div className="flex items-center justify-between bg-gray-50 rounded-xl p-3">
+                    <span className="text-xs text-gray-500 font-medium">Stock</span>
+                    <span className="text-sm font-bold text-gray-900">{selectedProduct.stock}</span>
+                  </div>
+
+                  {/* Description */}
+                  {selectedProduct.description && (
+                    <div>
+                      <p className="text-[10px] text-gray-500 font-medium mb-1">Description</p>
+                      <p className="text-xs text-gray-600 leading-relaxed">{selectedProduct.description}</p>
+                    </div>
+                  )}
+
+                  {/* HSN + SKU */}
+                  <div className="grid grid-cols-2 gap-3 text-xs">
+                    {selectedProduct.hsnCode && (
+                      <div>
+                        <p className="text-[10px] text-gray-500 font-medium">HSN Code</p>
+                        <p className="text-gray-700 font-mono mt-0.5">{selectedProduct.hsnCode}</p>
+                      </div>
+                    )}
+                    {selectedProduct.sku && (
+                      <div>
+                        <p className="text-[10px] text-gray-500 font-medium">SKU</p>
+                        <p className="text-gray-700 font-mono mt-0.5">{selectedProduct.sku}</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Open full detail button */}
+                  <button
+                    onClick={() => navigate('product-detail', selectedProduct.id)}
+                    className="w-full h-10 rounded-xl bg-gradient-to-r from-violet-500 to-purple-600 text-white text-sm font-semibold flex items-center justify-center gap-2 hover:shadow-md transition-shadow"
+                  >
+                    Open Full Detail
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-20 text-gray-400">
+                  <Package className="w-10 h-10 mb-2 opacity-50" />
+                  <p className="text-sm">Product not found</p>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm">
+              <div className="flex flex-col items-center justify-center py-20 text-gray-400">
+                <Package className="w-10 h-10 mb-2 opacity-50" />
+                <p className="text-sm font-medium">Select a product</p>
+                <p className="text-xs mt-0.5">Click a product to view details here</p>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>{/* End split-view container */}
+
+      {/* Floating add button (mobile only) */}
       {!loading && products.length > 0 && (
         <button
           onClick={() => navigate('add-product')}
-          className="fixed bottom-24 right-4 w-14 h-14 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-lg shadow-violet-500/30 flex items-center justify-center active:scale-95 transition-transform z-50"
+          className="fixed bottom-24 right-4 lg:hidden w-14 h-14 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-lg shadow-violet-500/30 flex items-center justify-center active:scale-95 transition-transform z-50"
         >
           <Plus className="w-6 h-6" />
         </button>
