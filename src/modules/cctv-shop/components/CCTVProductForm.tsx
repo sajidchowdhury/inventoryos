@@ -553,9 +553,9 @@ export function CCTVProductForm() {
       <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
         {sectionHeader(<Package className="w-4 h-4 text-violet-500" />, 'Basic Info')}
 
-        <div className="space-y-4">
+        <div className="space-y-4 md:grid md:grid-cols-2 md:gap-4 md:space-y-0">
           {/* Product Name */}
-          <div className="space-y-1.5">
+          <div className="space-y-1.5 md:col-span-2">
             <Label className="text-xs text-gray-600">
               Product Name <span className="text-red-500">*</span>
             </Label>
@@ -679,7 +679,7 @@ export function CCTVProductForm() {
           </div>
 
           {/* Description */}
-          <div className="space-y-1.5">
+          <div className="space-y-1.5 md:col-span-2">
             <Label className="text-xs text-gray-600">Description</Label>
             <Textarea
               value={form.description}
@@ -707,7 +707,7 @@ export function CCTVProductForm() {
       <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
         {sectionHeader(<DollarSign className="w-4 h-4 text-violet-500" />, 'Pricing')}
 
-        <div className="space-y-4">
+        <div className="space-y-4 md:grid md:grid-cols-2 md:gap-4 md:space-y-0">
           {/* Cost Price */}
           <div className="space-y-1.5">
             <Label className="text-xs text-gray-600">
@@ -800,7 +800,7 @@ export function CCTVProductForm() {
       <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
         {sectionHeader(<BarChart3 className="w-4 h-4 text-violet-500" />, 'Stock & Tracking')}
 
-        <div className="space-y-4">
+        <div className="space-y-4 md:grid md:grid-cols-2 md:gap-4 md:space-y-0">
           {/* Serial Tracked */}
           <div className="flex items-center justify-between py-1">
             <div>

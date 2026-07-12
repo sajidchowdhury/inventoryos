@@ -137,7 +137,7 @@ export function PharmacyDashboard() {
       {/* ═══════════════════════════════════════
           4 REPORT SHORTCUTS
       ═══════════════════════════════════════ */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <div
           className="card-hover bg-white rounded-2xl p-4 shadow-pharmacy relative overflow-hidden"
           onClick={() => setActiveView("analytics")}
@@ -214,7 +214,7 @@ export function PharmacyDashboard() {
       {/* ═══════════════════════════════════════
           QUICK ACTIONS — 8-grid
       ═══════════════════════════════════════ */}
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">
         <button
           className="card-hover flex flex-col items-center gap-2 p-3 rounded-2xl bg-white shadow-pharmacy"
           onClick={() => setActiveView("products")}

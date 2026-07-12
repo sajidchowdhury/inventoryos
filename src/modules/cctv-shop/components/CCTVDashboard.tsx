@@ -203,7 +203,7 @@ export function CCTVDashboard() {
               All <ArrowUpRight className="w-3 h-3" />
             </button>
           </div>
-          <div className="grid grid-cols-2 gap-2.5">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5">
             {reports.map((r) => {
               const Icon = r.icon;
               return (
@@ -234,7 +234,7 @@ export function CCTVDashboard() {
             <h2 className="text-[13px] font-bold text-gray-900 tracking-tight">Operations</h2>
             <div className="flex-1 h-px bg-gray-100" />
           </div>
-          <div className="grid grid-cols-4 gap-3">
+          <div className="grid grid-cols-4 md:grid-cols-4 lg:grid-cols-6 gap-3">
             {row1.map((item) => {
               const Icon = item.icon;
               return (
@@ -265,7 +265,7 @@ export function CCTVDashboard() {
             <h2 className="text-[13px] font-bold text-gray-900 tracking-tight">Management</h2>
             <div className="flex-1 h-px bg-gray-100" />
           </div>
-          <div className="grid grid-cols-4 gap-3">
+          <div className="grid grid-cols-4 md:grid-cols-4 lg:grid-cols-6 gap-3">
             {row2.map((item) => {
               const Icon = item.icon;
               return (
@@ -421,7 +421,7 @@ export function CCTVDashboard() {
               All <ArrowUpRight className="w-3 h-3" />
             </button>
           </div>
-          <div className="grid grid-cols-2 gap-2.5">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5">
             {[
               { label: 'Products', desc: 'Manage catalog', icon: Package, gradient: 'from-blue-500 to-indigo-600', view: 'products' as const },
               { label: 'Serial Items', desc: 'Track by serial', icon: Sparkles, gradient: 'from-violet-500 to-purple-600', view: 'serial-items' as const },

@@ -301,7 +301,9 @@ export function CCTVProductsList() {
           <p className="text-xs text-gray-400 px-1">
             {total} product{total !== 1 ? 's' : ''} found
           </p>
-          <div className="space-y-3 max-h-[calc(100vh-420px)] overflow-y-auto pr-0.5 scrollbar-thin">
+
+          {/* ── Mobile card view (hidden on desktop) ── */}
+          <div className="md:hidden space-y-3 max-h-[calc(100vh-420px)] overflow-y-auto pr-0.5 scrollbar-thin">
             {(activeBrand === 'All' ? products : products.filter((p) => p.brand === activeBrand)).map(
               (product, i) => {
                 const prodData = product as Record<string, unknown>;
@@ -382,6 +384,69 @@ export function CCTVProductsList() {
                 );
               }
             )}
+          </div>
+
+          {/* ── Desktop table view (hidden on mobile) ── */}
+          <div className="hidden md:block bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-gray-100 bg-gray-50">
+                    <th className="text-left p-3 font-semibold text-gray-700">Name</th>
+                    <th className="text-left p-3 font-semibold text-gray-700">Brand</th>
+                    <th className="text-left p-3 font-semibold text-gray-700">Model</th>
+                    <th className="text-left p-3 font-semibold text-gray-700">Category</th>
+                    <th className="text-right p-3 font-semibold text-gray-700">Sell Price</th>
+                    <th className="text-center p-3 font-semibold text-gray-700">Stock</th>
+                    <th className="text-center p-3 font-semibold text-gray-700">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(activeBrand === 'All' ? products : products.filter((p) => p.brand === activeBrand)).map((product) => {
+                    const prodData = product as Record<string, unknown>;
+                    const isLow = product.stock <= (prodData.minStock as number || 0);
+                    return (
+                      <tr
+                        key={product.id}
+                        onClick={() => navigate('product-detail', product.id)}
+                        className="border-b border-gray-50 hover:bg-violet-50/50 cursor-pointer transition-colors"
+                      >
+                        <td className="p-3">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-gray-900 truncate max-w-[200px]">{product.name}</span>
+                            {product.masterProductId && (
+                              <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-violet-100 text-violet-700 font-medium shrink-0 flex items-center gap-0.5">
+                                <Sparkles className="w-2.5 h-2.5" />
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="p-3 text-gray-600">{product.brand}</td>
+                        <td className="p-3 text-gray-500 font-mono text-xs">{product.model || '—'}</td>
+                        <td className="p-3 text-gray-600">{product.category || '—'}</td>
+                        <td className="p-3 text-right font-semibold text-gray-900">৳{product.sellPrice.toLocaleString()}</td>
+                        <td className="p-3 text-center">
+                          <span className={cn(
+                            'text-xs px-2 py-0.5 rounded-full font-medium',
+                            isLow ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-700'
+                          )}>
+                            {product.stock}
+                          </span>
+                        </td>
+                        <td className="p-3 text-center">
+                          {product.serialTracked && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-600">Serial</span>
+                          )}
+                          {isLow && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-50 text-red-600 ml-1">Low</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
 
           {/* Load More */}
