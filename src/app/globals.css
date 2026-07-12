@@ -300,9 +300,10 @@
 
 @media (min-width: 768px) {
   .pharmacy-shell-wrap {
-    box-shadow: 0 0 40px rgba(0, 0, 0, 0.08);
-    border-left: 1px solid rgba(0, 0, 0, 0.05);
-    border-right: 1px solid rgba(0, 0, 0, 0.05);
+    max-width: 100%;
+    box-shadow: none;
+    border-left: none;
+    border-right: none;
   }
 }
 
@@ -318,8 +319,9 @@
 
 @media (min-width: 768px) {
   .cctv-shell-wrap {
-    box-shadow: 0 0 40px rgba(124, 58, 237, 0.06);
-    border-left: 1px solid rgba(124, 58, 237, 0.04);
-    border-right: 1px solid rgba(124, 58, 237, 0.04);
+    max-width: 100%;
+    box-shadow: none;
+    border-left: none;
+    border-right: none;
   }
 }
