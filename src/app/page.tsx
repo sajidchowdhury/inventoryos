@@ -102,15 +102,72 @@ const scaleIn = {
 
 /* ── View type ── */
 type AppView = 'landing' | 'admin-login' | 'staff-login';
-type AdminStep = 'phone' | 'otp' | 'business-list' | 'register';
+type AdminStep = 'choose-path' | 'phone' | 'otp' | 'business-list' | 'register-type' | 'register';
 
 /* ────────────────────────────────────────────
    MAIN PAGE COMPONENT
    ──────────────────────────────────────────── */
 export default function HomePage() {
   const session = useAuthStore((s) => s.session);
+  const setSession = useAuthStore((s) => s.setSession);
+  const logout = useAuthStore((s) => s.logout);
+  const [hydrated, setHydrated] = useState(false);
+  const [validating, setValidating] = useState(false);
   const [view, setView] = useState<AppView>('landing');
   const [preselectedSlug, setPreselectedSlug] = useState<string | null>(null);
+
+  // Hydrate from localStorage (Zustand persist) + validate stored session
+  useEffect(() => {
+    // Mark hydrated and validate session in a microtask to avoid sync setState in effect
+    const init = async () => {
+      // Wait for Zustand persist to hydrate
+      await useAuthStore.persist.rehydrate();
+
+      const token = useAuthStore.getState().session?.sessionToken;
+      if (!token) return;
+
+      setValidating(true);
+      try {
+        const res = await fetch('/api/auth/validate-session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          setSession({
+            sessionToken: data.session.token,
+            expiresAt: data.session.expiresAt,
+            user: {
+              id: data.user.id,
+              name: data.user.fullName || data.user.username || '',
+              username: data.user.username,
+              role: data.user.role,
+            },
+            permissions: data.permissions || {},
+            business: {
+              id: data.business.id,
+              name: data.business.name,
+              shopCode: data.business.shopCode || '',
+              address: data.business.address || '',
+              phone: useAuthStore.getState().session?.business?.phone || '',
+              businessType: data.business.businessType,
+            },
+          });
+        } else {
+          // Session invalid/expired — clear it
+          logout();
+        }
+      } catch {
+        // Network error — keep session, will be validated on next API call
+      } finally {
+        setValidating(false);
+      }
+    };
+
+    setHydrated(true);
+    init();
+  }, [setSession, logout]);
 
   const goAdminLogin = useCallback((slug?: string) => {
     setPreselectedSlug(slug || null);
@@ -121,6 +178,15 @@ export default function HomePage() {
     setView('landing');
     setPreselectedSlug(null);
   }, []);
+
+  // Show loading while hydrating or validating
+  if (!hydrated || validating) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />
+      </div>
+    );
+  }
 
   // If authenticated, show dashboard
   if (session) return <DashboardView />;
@@ -675,6 +741,10 @@ function BusinessDetailSheet({
 
 /* ────────────────────────────────────────────
    ADMIN / OWNER LOGIN VIEW
+   Flow:
+     1. Choose Path → "Login to existing" | "Create new business"
+     2a. Login: Phone → OTP → Business List → Select → Auto-login
+     2b. New: Choose Business Type → Phone → OTP → Shop Details → Auto-login
    ──────────────────────────────────────────── */
 function AdminLoginView({
   preselectedSlug,
@@ -686,7 +756,8 @@ function AdminLoginView({
   onSwitchToStaff: () => void;
 }) {
   const setSession = useAuthStore((s) => s.setSession);
-  const [step, setStep] = useState<AdminStep>('phone');
+  // If preselectedSlug is set, skip choose-path and go straight to register-type
+  const [step, setStep] = useState<AdminStep>(preselectedSlug ? 'register-type' : 'choose-path');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -704,15 +775,12 @@ function AdminLoginView({
   const [regUsername, setRegUsername] = useState('');
   const [regPassword, setRegPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [regBusinessTypeId, setRegBusinessTypeId] = useState('');
+  const [regBusinessTypeId, setRegBusinessTypeId] = useState(preselectedSlug || '');
 
   // Auto-set business type from preselected slug
   useEffect(() => {
     if (preselectedSlug) {
-      const mod = moduleRegistry.find((m) => m.slug === preselectedSlug);
-      if (mod) {
-        setRegBusinessTypeId(preselectedSlug);
-      }
+      setRegBusinessTypeId(preselectedSlug);
     }
   }, [preselectedSlug]);
 
@@ -763,6 +831,7 @@ function AdminLoginView({
         setBusinesses(data.businesses);
         setStep('business-list');
       } else {
+        // New user — go to registration details
         setStep('register');
       }
     } catch (err: unknown) {
@@ -911,6 +980,120 @@ function AdminLoginView({
       {/* Content */}
       <div className="flex-1 flex items-center justify-center px-4 py-8 sm:py-12">
         <AnimatePresence mode="wait">
+          {/* ── Step: Choose Path ── */}
+          {step === 'choose-path' && (
+            <motion.div key="choose-path" {...slideUp} className="w-full max-w-md">
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-200/80 p-6 sm:p-8">
+                <div className="text-center mb-8">
+                  <div className="w-14 h-14 rounded-2xl bg-emerald-50 flex items-center justify-center mx-auto mb-4">
+                    <LogIn className="w-6 h-6 text-emerald-600" />
+                  </div>
+                  <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Welcome to InventoryOS</h2>
+                  <p className="text-sm text-gray-500 mt-2">
+                    How would you like to continue?
+                  </p>
+                </div>
+
+                <div className="space-y-3">
+                  {/* Login to existing business */}
+                  <button
+                    onClick={() => setStep('phone')}
+                    className="w-full flex items-center gap-4 p-5 rounded-xl border-2 border-gray-200 hover:border-emerald-400 hover:bg-emerald-50/30 transition-all text-left group"
+                  >
+                    <div className="w-12 h-12 rounded-xl bg-gray-900 flex items-center justify-center flex-shrink-0">
+                      <Shield className="w-5 h-5 text-white" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-gray-900 text-sm">Login to Existing Business</p>
+                      <p className="text-xs text-gray-500 mt-0.5">Verify phone number to access your businesses</p>
+                    </div>
+                    <ArrowRight className="w-5 h-5 text-gray-300 group-hover:text-emerald-600 transition-colors flex-shrink-0" />
+                  </button>
+
+                  {/* Create new business */}
+                  <button
+                    onClick={() => setStep('register-type')}
+                    className="w-full flex items-center gap-4 p-5 rounded-xl border-2 border-gray-200 hover:border-emerald-400 hover:bg-emerald-50/30 transition-all text-left group"
+                  >
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center flex-shrink-0">
+                      <UserPlus className="w-5 h-5 text-white" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-gray-900 text-sm">Create New Business</p>
+                      <p className="text-xs text-gray-500 mt-0.5">Set up a new business account in minutes</p>
+                    </div>
+                    <ArrowRight className="w-5 h-5 text-gray-300 group-hover:text-emerald-600 transition-colors flex-shrink-0" />
+                  </button>
+                </div>
+
+                <Separator className="my-6" />
+
+                <p className="text-center text-sm text-gray-400">
+                  Staff member?{' '}
+                  <button
+                    onClick={onSwitchToStaff}
+                    className="text-violet-600 font-medium hover:underline"
+                  >
+                    Login with shop code
+                  </button>
+                </p>
+              </div>
+            </motion.div>
+          )}
+
+          {/* ── Step: Register Type (Choose Business Type for new business) ── */}
+          {step === 'register-type' && (
+            <motion.div key="register-type" {...slideUp} className="w-full max-w-md">
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-200/80 p-6 sm:p-8">
+                <div className="text-center mb-6">
+                  <div className="w-14 h-14 rounded-2xl bg-emerald-50 flex items-center justify-center mx-auto mb-4">
+                    <UserPlus className="w-6 h-6 text-emerald-600" />
+                  </div>
+                  <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Create Your Business</h2>
+                  <p className="text-sm text-gray-500 mt-2">
+                    Choose your business type to get started
+                  </p>
+                </div>
+
+                {error && (
+                  <p className="text-sm text-red-500 bg-red-50 px-3 py-2 rounded-lg mb-4">{error}</p>
+                )}
+
+                <div className="grid grid-cols-2 gap-2.5 max-h-72 overflow-y-auto pr-1">
+                  {moduleRegistry.map((mod) => (
+                    <button
+                      key={mod.slug}
+                      type="button"
+                      onClick={() => {
+                        setRegBusinessTypeId(mod.slug);
+                        setStep('phone');
+                        setError('');
+                      }}
+                      disabled={!mod.isActive}
+                      className={`flex items-center gap-2.5 p-3 rounded-xl border-2 text-left text-sm transition-all ${
+                        regBusinessTypeId === mod.slug
+                          ? 'border-emerald-500 bg-emerald-50 ring-1 ring-emerald-500/20'
+                          : 'border-gray-200 hover:border-gray-300 bg-white'
+                      } ${!mod.isActive ? 'opacity-40 cursor-not-allowed' : ''}`}
+                    >
+                      <span className="text-lg">{mod.icon}</span>
+                      <span className="font-medium truncate text-gray-800">{mod.name}</span>
+                    </button>
+                  ))}
+                </div>
+
+                <Separator className="my-5" />
+
+                <button
+                  onClick={() => setStep('choose-path')}
+                  className="w-full text-sm text-gray-500 hover:text-gray-700 transition-colors py-1"
+                >
+                  &larr; Back to login options
+                </button>
+              </div>
+            </motion.div>
+          )}
+
           {/* ── Step: Phone ── */}
           {step === 'phone' && (
             <motion.div key="phone" {...slideUp} className="w-full max-w-md">
@@ -919,13 +1102,30 @@ function AdminLoginView({
                   <div className="w-14 h-14 rounded-2xl bg-emerald-50 flex items-center justify-center mx-auto mb-4">
                     <LogIn className="w-6 h-6 text-emerald-600" />
                   </div>
-                  <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Login to Your Account</h2>
+                  <h2 className="text-xl sm:text-2xl font-bold text-gray-900">
+                    {regBusinessTypeId ? 'Verify Your Phone' : 'Login to Your Account'}
+                  </h2>
                   <p className="text-sm text-gray-500 mt-2">
-                    We&apos;ll verify your phone number with an OTP
+                    {regBusinessTypeId
+                      ? `Creating ${moduleRegistry.find(m => m.slug === regBusinessTypeId)?.name || 'business'} — verify your phone`
+                      : "We'll verify your phone number with an OTP"}
                   </p>
                 </div>
 
                 <div className="space-y-4">
+                  {/* Show selected business type badge if creating new */}
+                  {regBusinessTypeId && (
+                    <div className="flex items-center gap-2 p-2.5 rounded-lg bg-emerald-50 border border-emerald-200">
+                      <span className="text-base">
+                        {moduleRegistry.find((m) => m.slug === regBusinessTypeId)?.icon}
+                      </span>
+                      <span className="text-sm font-medium text-emerald-800">
+                        {moduleRegistry.find((m) => m.slug === regBusinessTypeId)?.name}
+                      </span>
+                      <Check className="w-4 h-4 text-emerald-600 ml-auto" />
+                    </div>
+                  )}
+
                   <div>
                     <Label className="mb-2">Phone Number</Label>
                     <div className="flex items-stretch">
@@ -975,15 +1175,12 @@ function AdminLoginView({
 
                 <Separator className="my-6" />
 
-                <p className="text-center text-sm text-gray-400">
-                  Staff member?{' '}
-                  <button
-                    onClick={onSwitchToStaff}
-                    className="text-emerald-600 font-medium hover:underline"
-                  >
-                    Login with shop code
-                  </button>
-                </p>
+                <button
+                  onClick={() => setStep(regBusinessTypeId ? 'register-type' : 'choose-path')}
+                  className="w-full text-sm text-gray-500 hover:text-gray-700 transition-colors py-1"
+                >
+                  &larr; Back
+                </button>
               </div>
             </motion.div>
           )}
@@ -1112,7 +1309,7 @@ function AdminLoginView({
             </motion.div>
           )}
 
-          {/* ── Step: Register ── */}
+          {/* ── Step: Register (Shop Details) ── */}
           {step === 'register' && (
             <motion.div key="register" {...slideUp} className="w-full max-w-md">
               <div className="bg-white rounded-2xl shadow-sm border border-gray-200/80 p-6 sm:p-8">
@@ -1120,15 +1317,28 @@ function AdminLoginView({
                   <div className="w-14 h-14 rounded-2xl bg-emerald-50 flex items-center justify-center mx-auto mb-4">
                     <UserPlus className="w-6 h-6 text-emerald-600" />
                   </div>
-                  <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Create Your Business</h2>
+                  <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Set Up Your Business</h2>
                   <p className="text-sm text-gray-500 mt-2">
-                    Set up your shop in under a minute
+                    Almost there! Fill in your business details
                   </p>
                 </div>
 
                 <div className="space-y-4">
+                  {/* Show selected business type */}
+                  {regBusinessTypeId && (
+                    <div className="flex items-center gap-2 p-3 rounded-lg bg-emerald-50 border border-emerald-200">
+                      <span className="text-lg">
+                        {moduleRegistry.find((m) => m.slug === regBusinessTypeId)?.icon}
+                      </span>
+                      <span className="text-sm font-medium text-emerald-800">
+                        {moduleRegistry.find((m) => m.slug === regBusinessTypeId)?.name}
+                      </span>
+                      <Check className="w-4 h-4 text-emerald-600 ml-auto" />
+                    </div>
+                  )}
+
                   {/* Business Type Selector (only if not preselected) */}
-                  {!preselectedSlug && (
+                  {!regBusinessTypeId && (
                     <div>
                       <Label className="mb-2">Business Type</Label>
                       <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto">
@@ -1155,19 +1365,6 @@ function AdminLoginView({
                     </div>
                   )}
 
-                  {/* Preselected business type indicator */}
-                  {preselectedSlug && (
-                    <div className="flex items-center gap-2 p-3 rounded-lg bg-emerald-50 border border-emerald-200">
-                      <span className="text-lg">
-                        {moduleRegistry.find((m) => m.slug === preselectedSlug)?.icon}
-                      </span>
-                      <span className="text-sm font-medium text-emerald-800">
-                        {moduleRegistry.find((m) => m.slug === preselectedSlug)?.name}
-                      </span>
-                      <Check className="w-4 h-4 text-emerald-600 ml-auto" />
-                    </div>
-                  )}
-
                   <div>
                     <Label className="mb-2">Business / Shop Name</Label>
                     <Input
@@ -1178,7 +1375,7 @@ function AdminLoginView({
                         setError('');
                       }}
                       className="h-11"
-                      autoFocus={!preselectedSlug}
+                      autoFocus={!regBusinessTypeId}
                     />
                   </div>
 

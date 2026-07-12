@@ -14,6 +14,7 @@ import {
   Cloud,
   FileBarChart,
   ChevronRight,
+  Package,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useCCTVNavStore } from '@/stores/cctv-nav-store';
@@ -29,6 +30,12 @@ interface ReportItem {
 }
 
 const REPORT_SECTIONS: { title: string; items: ReportItem[] }[] = [
+  {
+    title: 'Inventory',
+    items: [
+      { label: 'Stock Report', desc: 'Current stock overview & values', icon: <Package className="w-5 h-5 text-white" />, view: 'stock-report', gradient: 'from-gray-600 to-gray-800', ring: 'ring-gray-500/20' },
+    ],
+  },
   {
     title: 'Financial',
     items: [

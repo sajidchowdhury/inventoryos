@@ -61,6 +61,7 @@ import { CCTVDueBook } from './CCTVDueBook';
 import { CCTVExpenseView } from './CCTVExpenseView';
 import { CCTVLedgerView } from './CCTVLedgerView';
 import { CCTVProfitLossReport } from './CCTVProfitLossReport';
+import { CCTVStockReport } from './CCTVStockReport';
 import { CCTVSupplierView } from './CCTVSupplierView';
 import { CCTVCategoryList } from './CCTVCategoryList';
 import { CCTVCategoryForm } from './CCTVCategoryForm';
@@ -157,6 +158,7 @@ const viewMeta: Record<string, { title: string; icon: string }> = {
   'due-book': { title: 'Due Book', icon: '📒' },
   'expenses': { title: 'Expenses', icon: '💸' },
   'ledger': { title: 'Financial Ledger', icon: '📒' },
+  'stock-report': { title: 'Stock Report', icon: '📦' },
   'profit-loss': { title: 'Profit & Loss', icon: '📊' },
   'categories': { title: 'Categories', icon: '🏷️' },
   'create-category': { title: 'Create Category', icon: '➕' },
@@ -314,6 +316,9 @@ export function CCTVShell() {
       // Financial Ledger (3A)
       case 'ledger':
         return <CCTVLedgerView />;
+      // Stock Report
+      case 'stock-report':
+        return <CCTVStockReport />;
       // Profit & Loss Report (3B)
       case 'profit-loss':
         return <CCTVProfitLossReport />;

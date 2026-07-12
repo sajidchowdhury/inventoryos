@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 
 export interface BusinessTypeInfo {
   id: string;
@@ -41,9 +42,20 @@ interface AuthState {
   logout: () => void;
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
-  session: null,
-  isAuthenticated: false,
-  setSession: (session) => set({ session, isAuthenticated: true }),
-  logout: () => set({ session: null, isAuthenticated: false }),
-}));
+export const useAuthStore = create<AuthState>()(
+  persist(
+    (set) => ({
+      session: null,
+      isAuthenticated: false,
+      setSession: (session) => set({ session, isAuthenticated: true }),
+      logout: () => set({ session: null, isAuthenticated: false }),
+    }),
+    {
+      name: 'inventoryos-auth',
+      partialize: (state) => ({
+        session: state.session,
+        isAuthenticated: state.isAuthenticated,
+      }),
+    }
+  )
+);

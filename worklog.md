@@ -1871,3 +1871,43 @@ Stage Summary:
 - 3 modified files: products list (import button), shell (route), types (view type)
 - Full CSV import flow: download template → upload → parse/validate → preview → import → done
 - All 7 phases of the 14-issue CCTV module fix plan are now complete
+---
+Task ID: 6
+Agent: Main Agent
+Task: Auth flow fixes (3 login types), session persistence, stock report
+
+Work Log:
+- Analyzed current auth system: staff login (shop code + user + pass), admin login (phone → OTP → business list → select), registration (phone → OTP → register form)
+- Confirmed Staff Login flow already correct (no mobile verification needed)
+- Confirmed Admin Login flow already correct (phone verify → business list → select → auto-login)
+- Restructured AdminLoginView with new 'choose-path' step: "Login to Existing Business" | "Create New Business"
+- New business flow now: choose business type FIRST → phone → OTP → shop details → auto-login
+- If user clicks "Get Started" from landing with a specific module, skips choose-path and goes straight to business type selection
+- Added Zustand `persist` middleware to auth-store.ts (persists session to localStorage)
+- Created `/api/auth/validate-session` POST endpoint to verify stored token on page refresh
+- Updated HomePage to validate session on mount (rehydrate from localStorage → validate token → restore or clear)
+- Added hydration state to prevent SSR/client mismatch flash
+
+Stock Report:
+- Created `/api/businesses/[id]/reports/stock` GET API endpoint
+  - Summary stats: total products, in-stock, cost value, sell value, low stock count, out of stock count, potential profit
+  - Category breakdown with product counts and values
+  - Per-product stock info with serial status breakdown (IN_STOCK, IN_TRANSIT, SOLD, INSTALLED, DAMAGED, RETURNED)
+  - Non-serial products use stock field
+  - Filters: search (name/brand/model), status filter (all/in-stock/low-stock/out-of-stock), category filter
+- Created `CCTVStockReport.tsx` component
+  - Summary cards (total products, total stock, cost value, sell value)
+  - Alert cards (low stock, out of stock)
+  - Potential profit indicator
+  - Search with debounce, status filter pills, category breakdown with tap-to-filter
+  - Product list cards with serial breakdown, price info, low/out badges
+  - CSV export functionality
+  - Empty state handling
+- Added 'stock-report' to CCTVViewType union
+- Added import + case in CCTVShell.tsx
+- Added Stock Report to Reports Dashboard under new "Inventory" section
+
+Stage Summary:
+- Auth flows verified and restructured: staff (direct), admin (phone OTP), new user (type → phone → OTP → details)
+- Session persists across page refresh via Zustand persist + validate-session API
+- Stock Report fully functional with API, component, and navigation wiring

@@ -448,6 +448,7 @@ export type CCTVViewType =
   | 'due-book'
   | 'expenses'
   | 'ledger'
+  | 'stock-report'
   | 'profit-loss';
 
 // ── 3A: Payment Integration ──
