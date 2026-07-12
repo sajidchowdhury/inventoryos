@@ -390,28 +390,18 @@ export function CCTVDashboard() {
               ))}
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            {/* Left arrow */}
-            <button
-              onClick={() => setOverviewIndex((prev) => (prev === 0 ? overviewCards.length - 1 : prev - 1))}
-              className="w-8 h-8 rounded-full bg-white border border-gray-200 flex items-center justify-center shrink-0 hover:bg-gray-50 active:scale-95 transition-all shadow-sm"
-            >
-              <ChevronLeft className="w-4 h-4 text-gray-600" />
-            </button>
-
-            {/* Card viewport */}
-            <div className="flex-1 overflow-hidden">
+          {/* Carousel - relative container with overlay arrows so card is full-width */}
+          <div className="relative">
+            {/* Card viewport - full width, aligned with other sections */}
+            <div className="overflow-hidden rounded-2xl">
               <div
-                className="flex transition-transform duration-300 ease-out gap-3"
+                className="flex transition-transform duration-300 ease-out"
                 style={{ transform: `translateX(-${overviewIndex * 100}%)` }}
               >
                 {overviewCards.map((card) => {
                   const Icon = card.icon;
                   return (
-                    <div
-                      key={card.title}
-                      className="min-w-full"
-                    >
+                    <div key={card.title} className="min-w-full">
                       <motion.button
                         whileTap={{ scale: 0.97 }}
                         onClick={() => navigate(card.view)}
@@ -446,12 +436,20 @@ export function CCTVDashboard() {
               </div>
             </div>
 
-            {/* Right arrow */}
+            {/* Left arrow - overlayed on top, doesn't affect card width */}
+            <button
+              onClick={() => setOverviewIndex((prev) => (prev === 0 ? overviewCards.length - 1 : prev - 1))}
+              className="absolute left-2 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-white/90 backdrop-blur-sm border border-white/30 flex items-center justify-center shrink-0 hover:bg-white active:scale-95 transition-all shadow-md"
+            >
+              <ChevronLeft className="w-4 h-4 text-gray-700" />
+            </button>
+
+            {/* Right arrow - overlayed on top, doesn't affect card width */}
             <button
               onClick={() => setOverviewIndex((prev) => (prev === overviewCards.length - 1 ? 0 : prev + 1))}
-              className="w-8 h-8 rounded-full bg-white border border-gray-200 flex items-center justify-center shrink-0 hover:bg-gray-50 active:scale-95 transition-all shadow-sm"
+              className="absolute right-2 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-white/90 backdrop-blur-sm border border-white/30 flex items-center justify-center shrink-0 hover:bg-white active:scale-95 transition-all shadow-md"
             >
-              <ChevronRight className="w-4 h-4 text-gray-600" />
+              <ChevronRight className="w-4 h-4 text-gray-700" />
             </button>
           </div>
         </motion.div>
