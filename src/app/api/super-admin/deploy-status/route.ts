@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
 
     // ── Environment Variable Checks ──
     const envVars = [
-      { name: "DATABASE_URL", value: process.env.DATABASE_URL ? "✓ Set" : "✗ Missing", configured: !!process.env.DATABASE_URL, required: true, description: "Database connection string (PostgreSQL or SQLite)" },
+      { name: "DATABASE_URL", value: process.env.DATABASE_URL ? "✓ Set" : "✗ Missing", configured: !!process.env.DATABASE_URL, required: true, description: "PostgreSQL connection string" },
       { name: "DIRECT_DATABASE_URL", value: process.env.DIRECT_DATABASE_URL ? "✓ Set" : "✗ Missing (optional for dev)", configured: !!process.env.DIRECT_DATABASE_URL, required: false, description: "Direct DB URL for Prisma migrations (bypasses PgBouncer)" },
       { name: "CRON_SECRET", value: process.env.CRON_SECRET ? "✓ Set" : "✗ Missing", configured: !!process.env.CRON_SECRET, required: true, description: "Secret for cron job endpoints (x-cron-secret header)" },
       { name: "SMTP_HOST", value: process.env.SMTP_HOST ? "✓ Set (or use DB config)" : "✗ Not set (use DB config in SMTP tab)", configured: !!process.env.SMTP_HOST, required: false, description: "SMTP server hostname (or configure via /admin/api-setup → SMTP tab)" },
@@ -62,9 +62,7 @@ export async function GET(req: NextRequest) {
       await db.$queryRaw`SELECT 1`;
       const latency = Date.now() - start;
 
-      // Count tables — uses information_schema (PostgreSQL-compatible, standard SQL)
-      // Note: sqlite_master was used previously but is SQLite-specific.
-      // After Phase 1 (PostgreSQL-only), information_schema.tables is the correct source.
+      // Count tables — uses information_schema (standard SQL, PostgreSQL-compatible)
       const tableCountResult = await db.$queryRaw`
         SELECT COUNT(*) as count
         FROM information_schema.tables

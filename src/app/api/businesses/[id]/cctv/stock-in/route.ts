@@ -132,9 +132,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       }, { status: 409 });
     }
 
-    // ── Create Serial Items + History in a transaction-like sequence ──
-    // SQLite doesn't support Prisma interactive transactions well, so we do
-    // sequential operations. For PostgreSQL this should use $transaction.
+    // ── Create Serial Items + History in a sequential operation ──
+    // TODO (future): wrap in a Prisma $transaction for atomicity.
+    // The current sequential approach works but is not atomic — if a later
+    // operation fails, earlier ones are not rolled back.
     const now = new Date();
     const createdItems: string[] = [];
 

@@ -33,7 +33,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       return NextResponse.json({ error: "Category name is required" }, { status: 400 });
     }
 
-    // Case-insensitive unique name check (SQLite compatible — no mode:"insensitive")
+    // Case-insensitive unique name check (in-memory comparison).
+    // TODO (Phase 2B): simplify using mode:"insensitive" once PostgreSQL-only is confirmed.
     const allCats = await db.cCTVCategory.findMany({
       where: { businessId, isActive: true },
       select: { name: true },

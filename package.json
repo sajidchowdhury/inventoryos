@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "db:push": "prisma db push",
+    "db:push": "echo '⚠️  db:push is dev-only. Never use in production. Use db:deploy (prisma migrate deploy) instead.' && prisma db push",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",

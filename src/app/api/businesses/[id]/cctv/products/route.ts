@@ -19,9 +19,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     const where: Record<string, unknown> = { businessId, isActive: true };
 
     if (category) where.categoryId = category;
-    // Note: SQLite is case-insensitive by default; PostgreSQL needs mode:"insensitive".
-    // We omit mode: here so the same code works on both. SQLite does case-insensitive
-    // LIKE natively; PostgreSQL will fall back to case-sensitive — acceptable for a brand filter.
+    // TODO (Phase 2A): restore mode:"insensitive" for case-insensitive brand search.
+    // It was removed temporarily during the SQLite-to-PostgreSQL migration.
+    // See InventoryOS_Architecture_Roadmap.docx Problem 2.
     if (brand) where.brand = { contains: brand };
     if (serialTracked === "true") where.serialTracked = true;
     else if (serialTracked === "false") where.serialTracked = false;

@@ -106,7 +106,7 @@ function logLine(lines: string[], message: string): void {
   console.log(`[cron] ${message}`);
 }
 
-/** Truncate a string to fit in a TEXT column (SQLite has no real limit, but we cap at 64KB). */
+/** Truncate a string to fit in a TEXT column (capped at 64KB to avoid oversized log rows). */
 function truncateLog(s: string, maxLen = 64_000): string {
   if (s.length <= maxLen) return s;
   return s.slice(0, maxLen - 200) + `\n…[truncated, ${s.length - maxLen + 200} chars omitted]`;

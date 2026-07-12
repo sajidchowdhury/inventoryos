@@ -38,10 +38,9 @@ export async function POST(req: NextRequest) {
     }
 
     // ── Look up the super admin by username ──
-    // SQLite is case-insensitive by default for equals() on text, so we drop
-    // mode:"insensitive" here (which is PostgreSQL-only and crashes SQLite).
-    // On PostgreSQL the SuperAdmin.username unique constraint makes case-sensitivity
-    // acceptable for login — the seeded username is "superadmin" (all lowercase).
+    // TODO (Phase 2A): restore mode:"insensitive" for case-insensitive username match.
+    // It was removed temporarily during the SQLite-to-PostgreSQL migration.
+    // See InventoryOS_Architecture_Roadmap.docx Problem 2.
     const superAdmin = await db.superAdmin.findFirst({
       where: {
         username: { equals: normalizedUsername },

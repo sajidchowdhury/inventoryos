@@ -143,8 +143,8 @@ export async function GET(req: NextRequest) {
       _sum: { tokensUsed: true, costEstimate: true },
       _count: true,
     });
-    // We want a per-day trend, so we have to fetch raw rows and bucket locally
-    // (Prisma groupBy can't bucket by date with SQLite without raw SQL).
+    // We want a per-day trend, so we fetch raw rows and bucket locally.
+    // TODO (future): use PostgreSQL date_trunc() via $queryRaw for server-side bucketing.
     const recentRows = await db.aIUsageLog.findMany({
       where: { createdAt: { gte: sevenDaysAgo } },
       select: { createdAt: true, tokensUsed: true, costEstimate: true, success: true },

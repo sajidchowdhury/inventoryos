@@ -36,8 +36,9 @@ export interface MatchedPurchaseItem {
 }
 
 function nameSearchOr(name: string) {
-  // Drop mode:"insensitive" — it's PostgreSQL-only and breaks SQLite.
-  // SQLite is already case-insensitive for contains() on text.
+  // TODO (Phase 2A): restore mode:"insensitive" as const for case-insensitive search.
+  // It was removed temporarily during the SQLite-to-PostgreSQL migration.
+  // See InventoryOS_Architecture_Roadmap.docx Problem 2.
   return [
     { name: { contains: name } },
     { genericName: { contains: name } },

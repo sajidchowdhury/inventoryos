@@ -70,9 +70,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     if (!masterProductId && body.addToMasterCatalog !== false) {
       const name = String(body.name || "").trim();
       if (name) {
-        // Case-insensitive name match that works on both SQLite (case-insensitive by default)
-        // and PostgreSQL (we lowercase both sides manually to avoid mode:"insensitive" which
-        // is not supported by SQLite).
+        // TODO (Phase 2A): restore mode:"insensitive" for case-insensitive name match.
+        // It was removed temporarily during the SQLite-to-PostgreSQL migration.
+        // See InventoryOS_Architecture_Roadmap.docx Problem 2.
         const existingMaster = await db.masterProduct.findFirst({
           where: {
             isActive: true,

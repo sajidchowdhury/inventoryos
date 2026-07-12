@@ -2,9 +2,9 @@
 
 Smart business management platform for every trade — pharmacy, CCTV shop, and beyond. Multi-tenant, mobile-first, AI-powered inventory, sales, and operations management.
 
-> **Status:** Phase 1 (Database Unification) in progress. The codebase is migrating from dual SQLite/PostgreSQL support to PostgreSQL-only. See `InventoryOS_Architecture_Roadmap.docx` for the full phased plan.
+> **Status:** Phase 1 (Database Unification) **complete.** The codebase is now PostgreSQL-only. All SQLite-specific code has been removed. See the [Architecture Roadmap](#) for the full phased plan (Problems 2, 3, 4 remain).
 
-> **Phase 1A + 1B + 1C complete.** Local dev environment, migration baseline, and production cutover runbook are all done. The codebase is now PostgreSQL-only. Phase 1D (final cleanup) remains.
+> **Phase 1 complete (1A + 1B + 1C + 1D).** Local dev environment, migration baseline, production cutover runbook, and final cleanup are all done. Next up: Phase 2A (restore `mode: "insensitive"` for case-insensitive search).
 
 ---
 
@@ -53,11 +53,9 @@ Open <http://localhost:3000> in your browser.
 
 ---
 
-## Interim Setup (Phase 1A + 1B done, 1C + 1D remaining)
+## Interim Setup
 
-The Quick Start above works as-is once you have PostgreSQL running locally (via `docker compose up -d` or a self-installed PostgreSQL). The schema provider is already `postgresql` and the migration baseline exists at `prisma/migrations/0_init/`.
-
-The only manual step still required locally:
+The Quick Start above works as-is once you have PostgreSQL running locally (via `docker compose up -d` or a self-installed PostgreSQL). The schema provider is `postgresql` and the migration baseline exists at `prisma/migrations/0_init/`.
 
 ```bash
 # After docker compose up -d, apply the baseline migration:
@@ -70,9 +68,7 @@ bunx prisma db seed
 bun run dev
 ```
 
-Phase 1C will apply the same migration to the production server. Phase 1D will remove the leftover SQLite database files and finalize documentation.
-
-If you cannot run PostgreSQL locally (no Docker), you can temporarily fall back to SQLite by changing `prisma/schema.prisma` line 11 back to `provider = "sqlite"` and setting `DATABASE_URL="file:./dev.db"` in `.env`. This is **not recommended** — the production server runs PostgreSQL, so testing on SQLite masks bugs.
+**Note:** The codebase is now PostgreSQL-only. SQLite is no longer supported. If you need to test without Docker, install PostgreSQL locally — it's a one-command install on most platforms.
 
 ---
 
