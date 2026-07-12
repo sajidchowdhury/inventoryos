@@ -372,7 +372,7 @@ export function CCTVDashboard() {
             <h2 className="text-[13px] font-bold text-gray-900 tracking-tight">Overview</h2>
             <div className="flex-1 h-px bg-gray-100" />
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {overviewCards.map((card) => {
               const Icon = card.icon;
               return (
