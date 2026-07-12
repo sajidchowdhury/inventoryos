@@ -1,0 +1,66 @@
+# docker-compose.yml — InventoryOS local development environment
+#
+# Brings up PostgreSQL and Redis with a single command:
+#   docker compose up -d
+#
+# Matches the production stack so local dev is a faithful replica.
+# PostgreSQL version: 16 (same major version as production — confirm with server admin)
+# Redis version: 7
+#
+# To reset everything (including data):
+#   docker compose down -v
+#
+# To view logs:
+#   docker compose logs -f postgres redis
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: inventoryos-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: inventoryos
+      POSTGRES_PASSWORD: inventoryos_dev_password
+      POSTGRES_DB: inventoryos
+      # Optional: tune for dev (smaller shared_buffers = faster start)
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --locale=C"
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U inventoryos -d inventoryos"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    # Optional: keep connections long-lived (good for Prisma connection pool)
+    command: >
+      postgres
+      -c max_connections=100
+      -c shared_buffers=128MB
+      -c work_mem=4MB
+      -c log_min_duration_statement=200
+
+  redis:
+    image: redis:7-alpine
+    container_name: inventoryos-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+    # Optional: enable AOF persistence so cached data survives restarts
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local

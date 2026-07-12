@@ -30,8 +30,14 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
+# env files (real .env files contain secrets — never commit them)
+.env
+.env.local
+.env.*.local
+.env.production
+.env.staging
+# Exception: .env.example is the template and SHOULD be committed
+!.env.example
 
 # vercel
 .vercel
@@ -57,5 +63,9 @@ server.log
 tool-results/
 .zscripts/
 
-# Database local files
+# Database local files (SQLite leftovers from before PostgreSQL migration —
+# safe to remove entirely after Phase 1D completes)
 db/*.db
+db/*.db-journal
+db/*.db-wal
+db/*.db-shm
