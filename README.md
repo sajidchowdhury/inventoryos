@@ -4,7 +4,7 @@ Smart business management platform for every trade — pharmacy, CCTV shop, and 
 
 > **Status:** Phase 1 (Database Unification) in progress. The codebase is migrating from dual SQLite/PostgreSQL support to PostgreSQL-only. See `InventoryOS_Architecture_Roadmap.docx` for the full phased plan.
 
-> **Phase 1A + 1B complete.** `docker-compose.yml`, `.env.example`, this README, the migration baseline (`prisma/migrations/0_init/`), and the provider switch to `postgresql` are all done. To run locally, follow Quick Start below — Phase 1C (production cutover) and Phase 1D (final cleanup) remain.
+> **Phase 1A + 1B + 1C complete.** Local dev environment, migration baseline, and production cutover runbook are all done. The codebase is now PostgreSQL-only. Phase 1D (final cleanup) remains.
 
 ---
 
@@ -124,7 +124,89 @@ bunx prisma db seed           # reseed
 
 ---
 
+## Production Cutover (Phase 1C)
+
+When you're ready to apply the schema to your production PostgreSQL server, use the cutover script. This script **destroys and recreates** the target database, so only run it when you have no data to preserve (or have a verified `pg_dump` backup).
+
+### Prerequisites
+
+- PostgreSQL 14+ running on your production server
+- `psql` client installed on the machine where you run the script
+- The PostgreSQL user must have permission to DROP and CREATE databases
+
+### Steps
+
+```bash
+# 1. On your production server (or a machine that can reach it),
+#    clone the repo and install deps:
+git clone https://github.com/sajidchowdhury/inventoryos.git
+cd inventoryos
+bun install
+
+# 2. Set DATABASE_URL to point at the PostgreSQL admin database
+#    (usually "postgres" — the script will create the inventoryos database)
+export DATABASE_URL="postgresql://USER:PASSWORD@HOST:5432/postgres"
+# Override the target database name if needed:
+# export INVENTORYOS_DB_NAME=inventoryos
+
+# 3. Run the cutover script
+bash scripts/production-cutover.sh
+
+# 4. When prompted, type DESTROY to confirm database recreation
+
+# 5. The script will:
+#    - Drop and recreate the inventoryos database
+#    - Apply prisma/migrations/0_init/migration.sql (creates all 104 tables)
+#    - Run the seed (creates 7 business types + default super-admin)
+#    - Run smoke tests (verify table count, business types, super-admin exists)
+```
+
+### What the script does
+
+| Phase | Action | Verification |
+|---|---|---|
+| 0 | Preflight: checks psql, bun, migration files, admin connection | All tools available |
+| 1 | DROP + CREATE the target database | Database exists and is empty |
+| 2 | `prisma migrate deploy` | All tables created (100+) |
+| 3 | `prisma generate` | Prisma Client regenerated |
+| 4 | `prisma db seed` | 7 business types + 1 super-admin |
+| 5 | Smoke tests | Table count, business types, super-admin, migration recorded |
+
+### After the cutover
+
+```bash
+# Update your production .env to point at the new database:
+# DATABASE_URL="postgresql://USER:PASSWORD@HOST:5432/inventoryos?schema=public"
+
+# Restart your production server
+# Visit https://your-domain.com/admin
+# Log in as superadmin / admin123
+# CHANGE THE PASSWORD IMMEDIATELY via Admin → User Management
+```
+
+### Verifying the cutover
+
+Run the smoke test script to verify all API endpoints work:
+
+```bash
+API_BASE_URL=https://your-domain.com bunx tsx scripts/post-cutover-smoke-test.ts
+```
+
+This checks: home page, admin page, `/api/health`, `/api/setup-status`, super-admin login, and the businesses API auth gate.
+
+### Troubleshooting
+
+**"Cannot connect to admin database"** — Check that your DATABASE_URL points at the `postgres` admin database (not the target database). The script needs admin access to DROP and CREATE.
+
+**"Permission denied to drop database"** — Your PostgreSQL user needs the CREATEDB role. Connect as a superuser and run: `ALTER USER your_user CREATEDB;`
+
+**"Migration failed: relation already exists"** — The target database wasn't fully dropped. The script should handle this, but if it happens, manually run `DROP DATABASE inventoryos;` and re-run the script.
+
+---
+
 ## Available Scripts
+
+### Application
 
 | Script | Description |
 |---|---|
@@ -132,11 +214,37 @@ bunx prisma db seed           # reseed
 | `bun run build` | Production build (outputs to `.next/standalone/`) |
 | `bun run start` | Start the production server (use `node .next/standalone/server.js` for standalone output) |
 | `bun run lint` | Run ESLint |
-| `bunx prisma migrate dev` | Create + apply a new migration |
+
+### Database (npm scripts)
+
+| Script | Description |
+|---|---|
+| `bun run db:deploy` | Apply pending migrations (production-safe) |
+| `bun run db:migrate` | Create + apply a new migration (development) |
+| `bun run db:generate` | Regenerate Prisma Client after schema changes |
+| `bun run db:seed` | Seed reference data + default super-admin |
+| `bun run db:reset` | Reset database (drops all data, reapplies migrations, reseeds) |
+| `bun run db:studio` | Open Prisma Studio (GUI for browsing database) |
+| `bun run db:push` | Sync schema directly (development only — never use in production) |
+
+### Database (prisma CLI)
+
+| Command | Description |
+|---|---|
+| `bunx prisma migrate dev --name <name>` | Create + apply a new migration |
 | `bunx prisma migrate deploy` | Apply pending migrations (production-safe) |
-| `bunx prisma generate` | Regenerate Prisma Client after schema changes |
+| `bunx prisma migrate status` | Show migration history and pending migrations |
+| `bunx prisma migrate resolve --applied 0_init` | Mark a migration as applied without running it |
+| `bunx prisma generate` | Regenerate Prisma Client |
 | `bunx prisma db seed` | Seed reference data + default super-admin |
 | `bunx prisma studio` | Open Prisma Studio (GUI for browsing database) |
+
+### Operations (Phase 1C)
+
+| Script | Description |
+|---|---|
+| `bash scripts/production-cutover.sh` | Drop + recreate + migrate + seed the production database (Phase 1C runbook) |
+| `bunx tsx scripts/post-cutover-smoke-test.ts` | Smoke test API endpoints after cutover |
 
 ---
 
