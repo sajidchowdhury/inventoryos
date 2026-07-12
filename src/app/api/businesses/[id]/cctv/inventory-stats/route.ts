@@ -175,10 +175,10 @@ export async function GET(
           businessId,
           isActive: true,
           OR: [
-            { name: { contains: searchQuery } },
-            { brand: { contains: searchQuery } },
-            { model: { contains: searchQuery } },
-            { sku: { contains: searchQuery } },
+            { name: { contains: searchQuery, mode: "insensitive" } },
+            { brand: { contains: searchQuery, mode: "insensitive" } },
+            { model: { contains: searchQuery, mode: "insensitive" } },
+            { sku: { contains: searchQuery, mode: "insensitive" } },
           ],
         },
         select: {
@@ -198,8 +198,8 @@ export async function GET(
           isActive: true,
           status: { in: ["IN_STOCK", "IN_TRANSIT"] },
           OR: [
-            { serialNumber: { contains: searchQuery } },
-            { imei: { contains: searchQuery } },
+            { serialNumber: { contains: searchQuery, mode: "insensitive" } },
+            { imei: { contains: searchQuery, mode: "insensitive" } },
           ],
         },
         // NOTE: Prisma 6 disallows using `select` and `include` together.

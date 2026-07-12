@@ -18,9 +18,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     const where: Record<string, unknown> = { businessId };
     if (search) {
       where.OR = [
-        { purchaseNo: { contains: search } },
-        { invoiceNo: { contains: search } },
-        { supplier: { name: { contains: search } } },
+        { purchaseNo: { contains: search, mode: "insensitive" } },
+        { invoiceNo: { contains: search, mode: "insensitive" } },
+        { supplier: { name: { contains: search, mode: "insensitive" } } },
       ];
     }
     if (status) where.status = status;

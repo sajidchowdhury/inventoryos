@@ -19,8 +19,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         ...(search
           ? {
               OR: [
-                { customerName: { contains: search } },
-                { customerPhone: { contains: search } },
+                { customerName: { contains: search, mode: "insensitive" } },
+                { customerPhone: { contains: search, mode: "insensitive" } },
               ],
             }
           : {}),

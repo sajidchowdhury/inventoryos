@@ -35,10 +35,10 @@ export async function GET(
 
     if (search) {
       where.OR = [
-        { serialNumber: { contains: search } },
-        { imei: { contains: search } },
-        { product: { name: { contains: search } } },
-        { product: { brand: { contains: search } } },
+        { serialNumber: { contains: search, mode: "insensitive" } },
+        { imei: { contains: search, mode: "insensitive" } },
+        { product: { name: { contains: search, mode: "insensitive" } } },
+        { product: { brand: { contains: search, mode: "insensitive" } } },
       ];
     }
 

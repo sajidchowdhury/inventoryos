@@ -148,7 +148,7 @@ export async function GET(req: NextRequest) {
       db.aIUsageLog.count({
         where: {
           createdAt: { gte: weekAgo },
-          errorMessage: { contains: "circuit" },
+          errorMessage: { contains: "circuit", mode: "insensitive" },
         },
       }),
       // Currently active kill-switches

@@ -17,13 +17,13 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     if (priority) where.priority = priority;
     if (search) {
       where.OR = [
-        { jobCode: { contains: search } },
-        { customerName: { contains: search } },
-        { customerPhone: { contains: search } },
-        { deviceName: { contains: search } },
-        { serialNumber: { contains: search } },
-        { reportedFault: { contains: search } },
-        { assignedToName: { contains: search } },
+        { jobCode: { contains: search, mode: "insensitive" } },
+        { customerName: { contains: search, mode: "insensitive" } },
+        { customerPhone: { contains: search, mode: "insensitive" } },
+        { deviceName: { contains: search, mode: "insensitive" } },
+        { serialNumber: { contains: search, mode: "insensitive" } },
+        { reportedFault: { contains: search, mode: "insensitive" } },
+        { assignedToName: { contains: search, mode: "insensitive" } },
       ];
     }
 

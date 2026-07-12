@@ -19,10 +19,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     if (status) where.status = status;
     if (search) {
       where.OR = [
-        { serialNumber: { contains: search } },
-        { customerName: { contains: search } },
-        { customerPhone: { contains: search } },
-        { notes: { contains: search } },
+        { serialNumber: { contains: search, mode: "insensitive" } },
+        { customerName: { contains: search, mode: "insensitive" } },
+        { customerPhone: { contains: search, mode: "insensitive" } },
+        { notes: { contains: search, mode: "insensitive" } },
       ];
     }
 

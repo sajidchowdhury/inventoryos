@@ -14,10 +14,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     const where: Record<string, unknown> = { businessId, isActive: true };
     if (search) {
       where.OR = [
-        { name: { contains: search } },
-        { phone: { contains: search } },
-        { email: { contains: search } },
-        { code: { contains: search } },
+        { name: { contains: search, mode: "insensitive" } },
+        { phone: { contains: search, mode: "insensitive" } },
+        { email: { contains: search, mode: "insensitive" } },
+        { code: { contains: search, mode: "insensitive" } },
       ];
     }
 

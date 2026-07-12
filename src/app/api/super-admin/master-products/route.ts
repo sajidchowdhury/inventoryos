@@ -21,13 +21,13 @@ export async function GET(req: NextRequest) {
     const where: any = { isActive: true };
     if (q) {
       where.OR = [
-        { name: { contains: q } },
-        { genericName: { contains: q } },
-        { manufacturerStr: { contains: q } },
-        { barcode: { contains: q } },
+        { name: { contains: q, mode: "insensitive" } },
+        { genericName: { contains: q, mode: "insensitive" } },
+        { manufacturerStr: { contains: q, mode: "insensitive" } },
+        { barcode: { contains: q, mode: "insensitive" } },
       ];
     }
-    if (manufacturer) where.manufacturerStr = { contains: manufacturer };
+    if (manufacturer) where.manufacturerStr = { contains: manufacturer, mode: "insensitive" };
     if (category) where.categoryName = category;
     if (dosageForm) where.dosageForm = dosageForm;
 

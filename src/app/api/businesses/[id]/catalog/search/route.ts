@@ -20,13 +20,13 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     const where: any = { isActive: true };
     if (q) {
       where.OR = [
-        { name: { contains: q } },
-        { genericName: { contains: q } },
-        { barcode: { contains: q } },
+        { name: { contains: q, mode: "insensitive" } },
+        { genericName: { contains: q, mode: "insensitive" } },
+        { barcode: { contains: q, mode: "insensitive" } },
       ];
     }
     if (manufacturer) {
-      where.manufacturerStr = { contains: manufacturer };
+      where.manufacturerStr = { contains: manufacturer, mode: "insensitive" };
     }
 
     // Get master products

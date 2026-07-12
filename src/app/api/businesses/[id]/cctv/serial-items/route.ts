@@ -25,13 +25,13 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
     if (search) {
       where.OR = [
-        { serialNumber: { contains: search } },
-        { imei: { contains: search } },
-        { customerName: { contains: search } },
-        { customerPhone: { contains: search } },
-        { notes: { contains: search } },
-        { product: { name: { contains: search } } },
-        { product: { brand: { contains: search } } },
+        { serialNumber: { contains: search, mode: "insensitive" } },
+        { imei: { contains: search, mode: "insensitive" } },
+        { customerName: { contains: search, mode: "insensitive" } },
+        { customerPhone: { contains: search, mode: "insensitive" } },
+        { notes: { contains: search, mode: "insensitive" } },
+        { product: { name: { contains: search, mode: "insensitive" } } },
+        { product: { brand: { contains: search, mode: "insensitive" } } },
       ];
     }
 

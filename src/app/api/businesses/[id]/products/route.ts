@@ -21,11 +21,11 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     if (type) where.productType = type;
     if (search) {
       where.OR = [
-        { name: { contains: search } },
-        { genericName: { contains: search } },
-        { manufacturer: { contains: search } },
-        { barcode: { contains: search } },
-        { rackNo: { contains: search } },
+        { name: { contains: search, mode: "insensitive" } },
+        { genericName: { contains: search, mode: "insensitive" } },
+        { manufacturer: { contains: search, mode: "insensitive" } },
+        { barcode: { contains: search, mode: "insensitive" } },
+        { rackNo: { contains: search, mode: "insensitive" } },
       ];
     }
 

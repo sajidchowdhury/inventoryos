@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
     const q = searchParams.get("q") || "";
 
     const where: any = {};
-    if (q) where.name = { contains: q };
+    if (q) where.name = { contains: q, mode: "insensitive" };
 
     const manufacturers = await db.masterManufacturer.findMany({
       where,

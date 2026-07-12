@@ -15,9 +15,9 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       isActive: true,
       ...(search && {
         OR: [
-          { category: { contains: search } },
-          { hsCode: { contains: search } },
-          { description: { contains: search } },
+          { category: { contains: search, mode: "insensitive" } },
+          { hsCode: { contains: search, mode: "insensitive" } },
+          { description: { contains: search, mode: "insensitive" } },
         ],
       }),
     };

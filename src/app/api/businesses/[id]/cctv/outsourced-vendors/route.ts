@@ -16,9 +16,9 @@ export async function GET(
     if (!includeInactive) where.isActive = true;
     if (search.trim()) {
       where.OR = [
-        { name: { contains: search.trim() } },
-        { phone: { contains: search.trim() } },
-        { specialization: { contains: search.trim() } },
+        { name: { contains: search.trim(), mode: "insensitive" } },
+        { phone: { contains: search.trim(), mode: "insensitive" } },
+        { specialization: { contains: search.trim(), mode: "insensitive" } },
       ];
     }
 

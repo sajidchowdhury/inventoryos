@@ -17,9 +17,9 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       isActive: true,
       ...(search && {
         OR: [
-          { invoiceNumber: { contains: search } },
-          { buyerName: { contains: search } },
-          { buyerBin: { contains: search } },
+          { invoiceNumber: { contains: search, mode: "insensitive" } },
+          { buyerName: { contains: search, mode: "insensitive" } },
+          { buyerBin: { contains: search, mode: "insensitive" } },
         ],
       }),
     };

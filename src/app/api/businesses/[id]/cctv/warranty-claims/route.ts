@@ -19,9 +19,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
     if (search) {
       where.OR = [
-        { customerName: { contains: search } },
-        { customerPhone: { contains: search } },
-        { issueDescription: { contains: search } },
+        { customerName: { contains: search, mode: "insensitive" } },
+        { customerPhone: { contains: search, mode: "insensitive" } },
+        { issueDescription: { contains: search, mode: "insensitive" } },
       ];
     }
 

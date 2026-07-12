@@ -38,10 +38,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     // Search filter on serialNumber/imei/customerName + product.name
     if (search) {
       where.OR = [
-        { serialNumber: { contains: search } },
-        { imei: { contains: search } },
-        { customerName: { contains: search } },
-        { product: { name: { contains: search } } },
+        { serialNumber: { contains: search, mode: "insensitive" } },
+        { imei: { contains: search, mode: "insensitive" } },
+        { customerName: { contains: search, mode: "insensitive" } },
+        { product: { name: { contains: search, mode: "insensitive" } } },
       ];
     }
 
