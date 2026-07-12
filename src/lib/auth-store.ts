@@ -83,16 +83,16 @@ function buildBridgeSession(s: {
 
 /* ── Sync: When the new auth store changes, update the bridge ── */
 useNewAuthStore.subscribe((newState) => {
-  const currentBridge = get().session;
+  const currentBridge = useAuthStore.getState().session;
 
   if (newState.isAuthenticated && newState.session) {
     const s = newState.session;
     // Only update if business ID changed (avoid infinite loops)
     if (currentBridge?.business.id !== s.business.id) {
-      set({ session: buildBridgeSession(s) });
+      useAuthStore.getState().setSession(buildBridgeSession(s));
     }
   } else if (!newState.isAuthenticated && currentBridge) {
-    set({ session: null });
+    useAuthStore.getState().setSession(null);
   }
 });
 
