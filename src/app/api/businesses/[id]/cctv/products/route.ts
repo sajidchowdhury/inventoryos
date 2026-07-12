@@ -39,6 +39,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         where,
         include: {
           category: { select: { id: true, name: true, color: true, icon: true, slug: true } },
+          masterProduct: { select: { id: true, name: true, brand: true, model: true } },
         },
         orderBy: { name: "asc" },
         skip,
@@ -73,6 +74,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       data: {
         businessId,
         categoryId: body.categoryId || null,
+        masterProductId: body.masterProductId || null,
         name: body.name,
         brand: body.brand,
         model: body.model || null,
@@ -93,6 +95,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       },
       include: {
         category: { select: { id: true, name: true, color: true, icon: true, slug: true } },
+        masterProduct: { select: { id: true, name: true, brand: true, model: true } },
       },
     });
 

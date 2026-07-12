@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import {
   ArrowLeft, Loader2, Package, Tag, DollarSign, BarChart3, Save,
+  Search, CheckCircle2, Sparkles,
 } from 'lucide-react';
 import { useCCTVNavStore } from '@/stores/cctv-nav-store';
 import { useAuthStore } from '@/stores/auth-store';
@@ -31,6 +32,24 @@ const UNITS = ['piece', 'box', 'pair', 'set', 'roll', 'meter'];
 interface CategoryItem {
   id: string;
   name: string;
+}
+
+interface CatalogMatch {
+  id: string;
+  name: string;
+  brand: string;
+  model: string;
+  sku: string | null;
+  description: string | null;
+  hsnCode: string | null;
+  defaultCategoryName: string | null;
+  defaultWarrantyMonths: number;
+  defaultSerialTracked: boolean;
+  defaultUnit: string;
+  defaultImageUrl: string | null;
+  defaultVatRate: number;
+  defaultMrp: number | null;
+  subscribed: boolean;
 }
 
 interface ProductFormData {
@@ -87,6 +106,16 @@ export function CCTVProductForm() {
   const [errors, setErrors] = useState<Partial<Record<keyof ProductFormData, string>>>({});
   const { toast } = useToast();
 
+  // ── Catalog search state (Phase 3D) ──
+  const [catalogQuery, setCatalogQuery] = useState('');          // the search text
+  const [catalogResults, setCatalogResults] = useState<CatalogMatch[]>([]);
+  const [catalogSearching, setCatalogSearching] = useState(false);
+  const [showCatalogDropdown, setShowCatalogDropdown] = useState(false);
+  const [selectedMasterProductId, setSelectedMasterProductId] = useState<string | null>(null);
+  const [addToMasterCatalog, setAddToMasterCatalog] = useState(true);
+  const catalogSearchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const catalogDropdownRef = useRef<HTMLDivElement>(null);
+
   // Fetch categories
   useEffect(() => {
     if (!businessId) return;
@@ -127,6 +156,10 @@ export function CCTVProductForm() {
           serialTracked: !!p.serialTracked,
           warrantyMonths: String(p.warrantyMonths ?? ''),
         });
+        // If editing, set the masterProductId so the "linked to catalog" badge shows
+        if (p.masterProductId) {
+          setSelectedMasterProductId(p.masterProductId);
+        }
       })
       .catch(() => {
         toast({ title: 'Failed to load product', variant: 'destructive' });
@@ -146,9 +179,109 @@ export function CCTVProductForm() {
         setExistingBrands(brands.sort());
       })
       .catch(() => {
-        // Non-critical — brand suggestions are optional
+        // Non-critical
       });
   }, [businessId]);
+
+  // ── Catalog search with debounce (Phase 3D) ──
+  const performCatalogSearch = useCallback(async (q: string) => {
+    if (!businessId || q.trim().length < 2) {
+      setCatalogResults([]);
+      setShowCatalogDropdown(false);
+      return;
+    }
+    setCatalogSearching(true);
+    try {
+      const res = await fetch(
+        `/api/businesses/${businessId}/catalog/cctv/search?q=${encodeURIComponent(q.trim())}&limit=8`
+      );
+      if (!res.ok) return;
+      const data = await res.json();
+      setCatalogResults(data.products || []);
+      setShowCatalogDropdown(true);
+    } catch {
+      // non-critical
+    } finally {
+      setCatalogSearching(false);
+    }
+  }, [businessId]);
+
+  const handleCatalogSearchChange = (value: string) => {
+    setCatalogQuery(value);
+    if (catalogSearchTimeout.current) clearTimeout(catalogSearchTimeout.current);
+    catalogSearchTimeout.current = setTimeout(() => {
+      performCatalogSearch(value);
+    }, 300);
+  };
+
+  // Click outside to close dropdown
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (catalogDropdownRef.current && !catalogDropdownRef.current.contains(e.target as Node)) {
+        setShowCatalogDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
+
+  // ── Prefill form on catalog match selection (Phase 3D) ──
+  const selectCatalogMatch = (m: CatalogMatch) => {
+    setForm((prev) => ({
+      ...prev,
+      name: m.name,
+      brand: m.brand,
+      model: m.model,
+      sku: m.sku || prev.sku,
+      description: m.description || prev.description,
+      hsnCode: m.hsnCode || prev.hsnCode,
+      unit: m.defaultUnit || prev.unit,
+      serialTracked: m.defaultSerialTracked,
+      warrantyMonths: String(m.defaultWarrantyMonths || ''),
+      vatRate: String(m.defaultVatRate || ''),
+      mrp: m.defaultMrp ? String(m.defaultMrp) : prev.mrp,
+    }));
+    setSelectedMasterProductId(m.id);
+    setCatalogQuery('');
+    setCatalogResults([]);
+    setShowCatalogDropdown(false);
+
+    // Try to match a category by name
+    if (m.defaultCategoryName) {
+      const existingCat = categories.find(
+        (c) => c.name.toLowerCase() === m.defaultCategoryName!.toLowerCase()
+      );
+      if (existingCat) {
+        setForm((prev) => ({ ...prev, categoryId: existingCat.id }));
+      }
+    }
+
+    toast({
+      title: 'Catalog match applied',
+      description: `Prefilled from "${m.name}". Adjust pricing and stock as needed.`,
+    });
+  };
+
+  // Clear the catalog link when user edits brand or model manually
+  const handleBrandChange = (value: string) => {
+    setForm((prev) => ({ ...prev, brand: value }));
+    if (selectedMasterProductId) {
+      setSelectedMasterProductId(null);
+    }
+    // Default addToMasterCatalog based on brand
+    if (value && value.toLowerCase() !== 'generic') {
+      setAddToMasterCatalog(true);
+    } else {
+      setAddToMasterCatalog(false);
+    }
+  };
+
+  const handleNameChange = (value: string) => {
+    setForm((prev) => ({ ...prev, name: value }));
+    if (selectedMasterProductId) {
+      setSelectedMasterProductId(null);
+    }
+  };
 
   const updateField = (field: keyof ProductFormData, value: string | boolean) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -196,12 +329,55 @@ export function CCTVProductForm() {
     if (!validate() || !businessId) return;
     setSubmitting(true);
 
+    let masterProductId = selectedMasterProductId;
+
+    // ── If "Add to master catalog" is checked and no master selected, suggest first (Phase 3D) ──
+    if (!isEdit && !masterProductId && addToMasterCatalog) {
+      try {
+        const suggestRes = await fetch(
+          `/api/businesses/${businessId}/catalog/cctv/suggest`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              name: form.name.trim(),
+              brand: form.brand.trim(),
+              model: form.model.trim() || form.name.trim(),
+              sku: form.sku.trim() || null,
+              description: form.description.trim() || null,
+              hsnCode: form.hsnCode.trim() || null,
+              defaultCategoryName: categories.find((c) => c.id === form.categoryId)?.name || null,
+              defaultWarrantyMonths: parseInt(form.warrantyMonths) || 0,
+              defaultSerialTracked: form.serialTracked,
+              defaultUnit: form.unit,
+              defaultVatRate: parseFloat(form.vatRate) || 0,
+              defaultMrp: form.mrp ? parseFloat(form.mrp) : null,
+            }),
+          }
+        );
+        if (suggestRes.ok) {
+          const suggestData = await suggestRes.json();
+          masterProductId = suggestData.masterProductId;
+          if (!suggestData.isApproved) {
+            toast({
+              title: 'Submitted to catalog',
+              description: 'Product added to master catalog (pending admin review).',
+            });
+          }
+        }
+      } catch {
+        // Non-fatal — proceed without master link
+        console.error('[CCTVProductForm] suggest failed, proceeding without master link');
+      }
+    }
+
     const payload: Record<string, unknown> = {
       name: form.name.trim(),
       brand: form.brand.trim(),
       model: form.model.trim() || undefined,
       sku: form.sku.trim() || undefined,
       categoryId: form.categoryId || undefined,
+      masterProductId: masterProductId || undefined,
       description: form.description.trim() || undefined,
       hsnCode: form.hsnCode.trim() || undefined,
       costPrice: parseFloat(form.costPrice) || 0,
@@ -290,6 +466,89 @@ export function CCTVProductForm() {
         </h1>
       </div>
 
+      {/* ── Catalog Search Section (Phase 3D) ── */}
+      {!isEdit && (
+        <div className="bg-gradient-to-br from-violet-50 to-purple-50 rounded-2xl border border-violet-100 p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-7 h-7 rounded-lg bg-violet-500 flex items-center justify-center">
+              <Search className="w-4 h-4 text-white" />
+            </div>
+            <h2 className="text-sm font-bold text-gray-800">Search Master Catalog</h2>
+          </div>
+          <p className="text-xs text-gray-500 mb-3">
+            Search the shared catalog to prefill product details. Skip if you want to create a private product.
+          </p>
+          <div className="relative" ref={catalogDropdownRef}>
+            <Input
+              value={catalogQuery}
+              onChange={(e) => handleCatalogSearchChange(e.target.value)}
+              placeholder="Type product name, brand, or model (e.g. Hikvision DS-2CD)..."
+              className="h-10 rounded-xl bg-white"
+            />
+            {catalogSearching && (
+              <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-violet-400" />
+            )}
+
+            {/* Catalog dropdown */}
+            {showCatalogDropdown && catalogResults.length > 0 && (
+              <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white rounded-xl border border-gray-200 shadow-lg max-h-72 overflow-y-auto">
+                {catalogResults.map((m) => (
+                  <button
+                    key={m.id}
+                    onClick={() => selectCatalogMatch(m)}
+                    className="w-full text-left p-3 hover:bg-violet-50 border-b border-gray-50 last:border-0 transition-colors"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900 truncate">{m.name}</p>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          {m.brand} · {m.model}
+                          {m.defaultMrp ? ` · ৳${m.defaultMrp.toLocaleString()}` : ''}
+                        </p>
+                      </div>
+                      {m.subscribed ? (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-medium shrink-0">
+                          Already added
+                        </span>
+                      ) : (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-violet-100 text-violet-700 font-medium shrink-0">
+                          Use
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {showCatalogDropdown && catalogResults.length === 0 && !catalogSearching && catalogQuery.trim().length >= 2 && (
+              <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white rounded-xl border border-gray-200 shadow-lg p-3 text-center text-xs text-gray-500">
+                No catalog matches. Fill the form below — you can add it to the catalog on submit.
+              </div>
+            )}
+          </div>
+
+          {/* Selected catalog product badge */}
+          {selectedMasterProductId && (
+            <div className="mt-3 flex items-center gap-2 px-3 py-2 bg-emerald-50 rounded-xl border border-emerald-100">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+              <span className="text-xs text-emerald-700 font-medium flex-1">
+                Linked to master catalog — fields prefilled
+              </span>
+              <button
+                onClick={() => {
+                  setSelectedMasterProductId(null);
+                  setForm(initialForm);
+                }}
+                className="text-xs text-gray-500 hover:text-gray-700"
+              >
+                Clear
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Basic Info Section */}
       <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
         {sectionHeader(<Package className="w-4 h-4 text-violet-500" />, 'Basic Info')}
@@ -302,7 +561,7 @@ export function CCTVProductForm() {
             </Label>
             <Input
               value={form.name}
-              onChange={(e) => updateField('name', e.target.value)}
+              onChange={(e) => handleNameChange(e.target.value)}
               placeholder="e.g. Hikvision DS-2CD2143G2"
               className={cn(
                 'h-10 rounded-xl',
@@ -321,7 +580,7 @@ export function CCTVProductForm() {
             </Label>
             <Input
               value={form.brand}
-              onChange={(e) => updateField('brand', e.target.value)}
+              onChange={(e) => handleBrandChange(e.target.value)}
               placeholder="e.g. Hikvision"
               list="brand-list"
               className={cn(
@@ -620,6 +879,32 @@ export function CCTVProductForm() {
           </div>
         </div>
       </div>
+
+      {/* ── Add to Master Catalog checkbox (Phase 3D) ── */}
+      {!isEdit && !selectedMasterProductId && (
+        <div className="bg-violet-50 rounded-2xl border border-violet-100 p-4">
+          <label className="flex items-start gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={addToMasterCatalog}
+              onChange={(e) => setAddToMasterCatalog(e.target.checked)}
+              className="mt-0.5 h-4 w-4 rounded border-violet-300 text-violet-600 focus:ring-violet-500"
+            />
+            <div className="flex-1">
+              <div className="flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-violet-500" />
+                <span className="text-sm font-semibold text-gray-800">Add to master catalog</span>
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                Submit this product to the shared catalog so other shops can discover it.
+                {form.brand && form.brand.toLowerCase() === 'generic'
+                  ? ' (Generic items usually skip this — leave unchecked.)'
+                  : ' An admin will review before it appears publicly.'}
+              </p>
+            </div>
+          </label>
+        </div>
+      )}
 
       {/* Submit Button */}
       <button

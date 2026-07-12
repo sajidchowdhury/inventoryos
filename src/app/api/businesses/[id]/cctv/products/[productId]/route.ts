@@ -13,6 +13,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       where: { id: productId, businessId, isActive: true },
       include: {
         category: { select: { id: true, name: true, color: true, icon: true, slug: true } },
+        masterProduct: { select: { id: true, name: true, brand: true, model: true } },
         _count: { select: { serialItems: { where: { isActive: true } } } },
       },
     });
@@ -55,6 +56,11 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       updateData.categoryId = body.categoryId === null ? null : String(body.categoryId);
     }
 
+    // Nullable string field for masterProductId (catalog link)
+    if (body.masterProductId !== undefined) {
+      updateData.masterProductId = body.masterProductId === null ? null : String(body.masterProductId);
+    }
+
     // Numeric fields
     const numberFields = ["costPrice", "sellPrice", "vatRate", "stock", "minStock", "maxStock", "warrantyMonths"];
     for (const field of numberFields) {
@@ -77,6 +83,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       data: updateData,
       include: {
         category: { select: { id: true, name: true, color: true, icon: true, slug: true } },
+        masterProduct: { select: { id: true, name: true, brand: true, model: true } },
       },
     });
 

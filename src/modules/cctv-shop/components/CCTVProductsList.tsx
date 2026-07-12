@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
 import {
   Search, ArrowLeft, Plus, Camera, HardDrive, Cable, Upload,
-  Wrench, Package, X, Loader2, ChevronDown, Tag,
+  Wrench, Package, X, Loader2, ChevronDown, Tag, Sparkles,
 } from 'lucide-react';
 import { useCCTVNavStore } from '@/stores/cctv-nav-store';
 import { useAuthStore } from '@/stores/auth-store';
@@ -325,7 +325,15 @@ export function CCTVProductsList() {
                         <Icon className="w-5 h-5 text-violet-500" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-gray-900 truncate">{product.name}</p>
+                        <div className="flex items-center gap-1.5">
+                          <p className="text-sm font-semibold text-gray-900 truncate flex-1">{product.name}</p>
+                          {product.masterProductId && (
+                            <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-violet-100 text-violet-700 font-medium shrink-0 flex items-center gap-0.5">
+                              <Sparkles className="w-2.5 h-2.5" />
+                              Catalog
+                            </span>
+                          )}
+                        </div>
                         <p className="text-xs text-gray-400 mt-0.5 truncate">
                           {product.brand}
                           {hasModel ? ` · ${product.model}` : ''}

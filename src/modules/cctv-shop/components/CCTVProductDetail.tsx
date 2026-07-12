@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
   ArrowLeft, Package, Edit3, Trash2, Shield, Hash, Plus,
-  ChevronRight, AlertCircle, Loader2, Copy, BarChart3, Tag, RefreshCw,
+  ChevronRight, AlertCircle, Loader2, Copy, BarChart3, Tag, RefreshCw, Sparkles,
 } from 'lucide-react';
 import { useCCTVNavStore } from '@/stores/cctv-nav-store';
 import { useAuthStore } from '@/stores/auth-store';
@@ -68,6 +68,7 @@ interface ProductDetail {
   brand: string;
   model?: string;
   sku: string;
+  masterProductId?: string | null;
   category?: { id: string; name: string };
   description?: string;
   costPrice: number;
@@ -227,6 +228,11 @@ export function CCTVProductDetail() {
           <span className={cn('text-[11px] px-2.5 py-1 rounded-full font-semibold', getCategoryColor(categoryName))}>
             {categoryName}
           </span>
+          {product.masterProductId && (
+            <span className="text-[11px] px-2.5 py-1 rounded-full font-medium bg-violet-100 text-violet-700 flex items-center gap-1">
+              <Sparkles className="w-3 h-3" /> Master Catalog
+            </span>
+          )}
           {product.sku && (
             <span className="text-[11px] px-2.5 py-1 rounded-full font-medium bg-gray-100 text-gray-600 flex items-center gap-1">
               <Copy className="w-3 h-3" />
