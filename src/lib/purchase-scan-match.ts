@@ -36,12 +36,10 @@ export interface MatchedPurchaseItem {
 }
 
 function nameSearchOr(name: string) {
-  // TODO (Phase 2A): restore mode:"insensitive" as const for case-insensitive search.
-  // It was removed temporarily during the SQLite-to-PostgreSQL migration.
-  // See InventoryOS_Architecture_Roadmap.docx Problem 2.
+  // Case-insensitive search on product name and generic name (restored in Phase 2A).
   return [
-    { name: { contains: name } },
-    { genericName: { contains: name } },
+    { name: { contains: name, mode: "insensitive" as const } },
+    { genericName: { contains: name, mode: "insensitive" as const } },
   ];
 }
 

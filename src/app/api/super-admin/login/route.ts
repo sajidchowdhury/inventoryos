@@ -37,13 +37,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // ── Look up the super admin by username ──
-    // TODO (Phase 2A): restore mode:"insensitive" for case-insensitive username match.
-    // It was removed temporarily during the SQLite-to-PostgreSQL migration.
-    // See InventoryOS_Architecture_Roadmap.docx Problem 2.
+    // ── Look up the super admin by username (case-insensitive — restored in Phase 2A) ──
     const superAdmin = await db.superAdmin.findFirst({
       where: {
-        username: { equals: normalizedUsername },
+        username: { equals: normalizedUsername, mode: "insensitive" },
       },
       select: {
         id: true,

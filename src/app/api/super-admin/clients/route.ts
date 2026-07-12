@@ -34,12 +34,10 @@ export async function GET(req: NextRequest) {
     if (stage) where.subscriptionStage = stage;
     if (tier) where.subscriptionTier = tier;
     if (search) {
-      // TODO (Phase 2A): restore mode:"insensitive" for proper case-insensitive search.
-      // It was removed temporarily during the SQLite-to-PostgreSQL migration.
-      // See InventoryOS_Architecture_Roadmap.docx Problem 2.
+      // Case-insensitive search on business name and user phone (restored in Phase 2A).
       where.OR = [
-        { name: { contains: search } },
-        { user: { phone: { contains: search } } },
+        { name: { contains: search, mode: "insensitive" } },
+        { user: { phone: { contains: search, mode: "insensitive" } } },
       ];
     }
 
