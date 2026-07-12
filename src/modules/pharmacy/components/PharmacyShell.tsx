@@ -51,9 +51,19 @@ import { ProfileView } from "./ProfileView";
 import { SubscriptionStatus } from "./SubscriptionStatus";
 import { BottomNav } from "./BottomNav";
 import { PharmacyDesktopSidebar } from "./PharmacyDesktopSidebar";
+import { CommandPalette, usePharmacyCommands } from "@/components/CommandPalette";
+import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
 
 export function PharmacyShell() {
   const activeView = useNavStore((s) => s.activeView);
+  const setActiveView = useNavStore((s) => s.setActiveView);
+
+  // ── Desktop power features (Phase 4D) ──
+  const commands = usePharmacyCommands(setActiveView as (view: string) => void);
+  useKeyboardShortcuts({
+    onNewProduct: () => setActiveView("add-product"),
+    onNewSale: () => setActiveView("dispense"),
+  });
 
   const renderView = () => {
     switch (activeView) {
@@ -216,6 +226,8 @@ export function PharmacyShell() {
           <BottomNav />
         </div>
       </div>
+      {/* Command palette (desktop only, triggered by Cmd+K / Ctrl+K) */}
+      <CommandPalette commands={commands} />
     </div>
   );
 }

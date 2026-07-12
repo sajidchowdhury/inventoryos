@@ -7,6 +7,8 @@ import { OfflineIndicator } from './OfflineIndicator';
 import { CCTVDashboard } from './CCTVDashboard';
 import { CCTVBottomNav } from './CCTVBottomNav';
 import { CCTVDesktopSidebar } from './CCTVDesktopSidebar';
+import { CommandPalette, useCCTVCommands } from '@/components/CommandPalette';
+import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
 import { CCTVInventoryHub } from './CCTVInventoryHub';
 import { CCTVAIHub } from './CCTVAIHub';
 import { CCTVMoreHub } from './CCTVMoreHub';
@@ -167,7 +169,14 @@ const viewMeta: Record<string, { title: string; icon: string }> = {
 };
 
 export function CCTVShell() {
-  const { activeView } = useCCTVNavStore();
+  const { activeView, navigate } = useCCTVNavStore();
+
+  // ── Desktop power features (Phase 4D) ──
+  const commands = useCCTVCommands(navigate as (view: string, contextId?: string) => void);
+  useKeyboardShortcuts({
+    onNewProduct: () => navigate('add-product'),
+    onNewSale: () => navigate('sell'),
+  });
 
   // Start offline listeners on mount (online/offline detection + auto-sync)
   useEffect(() => {
@@ -355,6 +364,8 @@ export function CCTVShell() {
           <CCTVBottomNav />
         </div>
       </div>
+      {/* Command palette (desktop only, triggered by Cmd+K / Ctrl+K) */}
+      <CommandPalette commands={commands} />
     </div>
   );
 }
