@@ -102,6 +102,86 @@ async function main() {
     console.log(`Super-admin "${superAdminUsername}" already exists — password left unchanged`);
   }
 
+  // ── Seed CCTV Master Products (catalog) ──
+  // A small starter catalog so the master catalog is not empty on first run.
+  // Super-admin can add more via /admin/catalog/cctv (Phase 3B).
+  const cctvMasterProducts = [
+    {
+      name: "DS-2CD2143G2-I 4MP Bullet Camera",
+      brand: "Hikvision",
+      model: "DS-2CD2143G2-I",
+      description: "4MP AcuSense Gen-2 Bullet Network Camera, 2.8mm lens, DarkFighter, IR up to 40m",
+      hsnCode: "8525.89.00",
+      defaultCategoryName: "Cameras",
+      defaultWarrantyMonths: 12,
+      defaultSerialTracked: true,
+      defaultUnit: "piece",
+      defaultVatRate: 15,
+      defaultMrp: 6500,
+    },
+    {
+      name: "DS-7608NI-K2/8P 8-Ch 4K NVR",
+      brand: "Hikvision",
+      model: "DS-7608NI-K2/8P",
+      description: "8-Channel 4K NVR, 8 PoE ports, supports up to 8MP cameras, 2x HDD bays",
+      hsnCode: "8517.62.00",
+      defaultCategoryName: "DVR/NVR",
+      defaultWarrantyMonths: 24,
+      defaultSerialTracked: true,
+      defaultUnit: "piece",
+      defaultVatRate: 15,
+      defaultMrp: 11500,
+    },
+    {
+      name: "IPC-HFW2431S 4MP Bullet Camera",
+      brand: "Dahua",
+      model: "IPC-HFW2431S",
+      description: "4MP Starlight Bullet Camera, 2.8mm fixed lens, IR LED up to 50m, ePoE",
+      hsnCode: "8525.89.00",
+      defaultCategoryName: "Cameras",
+      defaultWarrantyMonths: 12,
+      defaultSerialTracked: true,
+      defaultUnit: "piece",
+      defaultVatRate: 15,
+      defaultMrp: 5500,
+    },
+    {
+      name: "VIGI C400HP 4MP Bullet Camera",
+      brand: "TP-Link",
+      model: "VIGI-C400HP",
+      description: "4MP Bullet Camera, 2.8mm lens, Smart Detection, IR up to 30m, PoE",
+      hsnCode: "8525.89.00",
+      defaultCategoryName: "Cameras",
+      defaultWarrantyMonths: 12,
+      defaultSerialTracked: true,
+      defaultUnit: "piece",
+      defaultVatRate: 15,
+      defaultMrp: 4200,
+    },
+    {
+      name: "RG59 Siamese Cable 100m Roll",
+      brand: "Generic",
+      model: "RG59-100M",
+      description: "RG59 Siamese Coaxial + 2C Power Cable, 100m roll, for CCTV installations",
+      hsnCode: "8544.70.00",
+      defaultCategoryName: "Cables",
+      defaultWarrantyMonths: 0,
+      defaultSerialTracked: false,
+      defaultUnit: "roll",
+      defaultVatRate: 15,
+      defaultMrp: 1200,
+    },
+  ];
+
+  for (const mp of cctvMasterProducts) {
+    await db.cCTVMasterProduct.upsert({
+      where: { brand_model: { brand: mp.brand, model: mp.model } },
+      update: {},
+      create: mp,
+    });
+  }
+  console.log(`Seeded ${cctvMasterProducts.length} CCTV master products`);
+
   console.log("Done!");
 }
 

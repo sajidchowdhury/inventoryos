@@ -1441,7 +1441,8 @@ model MasterManufacturer {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  products MasterProduct[]
+  products      MasterProduct[]
+  cctvProducts  CCTVMasterProduct[]
 
   @@map("master_manufacturers")
 }
@@ -1761,11 +1762,57 @@ model CCTVCategory {
   @@map("cctv_categories")
 }
 
+// ── CCTV Master Product Catalog ──
+// The shared CCTV product catalog, curated by super-admin.
+// Mirrors the pharmacy MasterProduct pattern but with CCTV-specific fields.
+// CCTV shops subscribe to these via CCTVProduct.masterProductId.
+// No businessId — this is platform-level reference data.
+model CCTVMasterProduct {
+  id                    String   @id @default(cuid())
+  manufacturerId        String?              // FK to master_manufacturers (shared with pharmacy)
+  name                  String               // "DS-2CD2143G2-I 4MP Bullet Camera" (full product name)
+  brand                 String               // "Hikvision" (denormalized for fast filtering)
+  model                 String               // "DS-2CD2143G2-I" (required — the canonical identifier)
+  sku                   String?              // Default SKU suggestion
+  description           String?              // Short description
+  hsnCode               String?              // VAT HSN code
+
+  // CCTV-specific defaults (inherited by shop-level CCTVProduct on subscribe)
+  defaultCategoryName   String?              // "Cameras" (suggested category name)
+  defaultWarrantyMonths Int      @default(0)
+  defaultSerialTracked  Boolean  @default(false)
+  defaultUnit           String   @default("piece")  // piece, box, roll, meter
+  defaultImageUrl       String?
+  defaultVatRate        Float    @default(0)
+  defaultMrp            Float?               // Suggested MRP in BDT
+  specs                 Json?                // Structured spec data (resolution, lens, IR range, etc.)
+
+  // Lifecycle
+  isActive              Boolean  @default(true)
+  isApproved            Boolean  @default(true)  // false = pending admin review (user-submitted)
+  submittedByBusinessId String?               // Business that first added this (for attribution)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  // Relations
+  manufacturer  MasterManufacturer? @relation(fields: [manufacturerId], references: [id], onDelete: SetNull)
+  products      CCTVProduct[]       // Shop-level products linked to this master
+
+  @@unique([brand, model])  // Prevent duplicates — (brand, model) is the natural key
+  @@index([brand])
+  @@index([name])
+  @@index([manufacturerId])
+  @@index([isActive])
+  @@index([isApproved])
+  @@map("cctv_master_products")
+}
+
 // ── CCTV Products ──
 model CCTVProduct {
   id           String   @id @default(cuid())
   businessId   String
   categoryId   String?
+  masterProductId String?           // Optional link to CCTVMasterProduct (master catalog)
   name         String               // "DS-2CD2143G2" (model name)
   brand        String               // "Hikvision", "Dahua", "TP-Link"
   model        String?              // Full model: "Hikvision DS-2CD2143G2-I 4MP"
@@ -1798,6 +1845,7 @@ model CCTVProduct {
 
   business  Business            @relation(fields: [businessId], references: [id], onDelete: Cascade)
   category  CCTVCategory?       @relation(fields: [categoryId], references: [id])
+  masterProduct  CCTVMasterProduct?  @relation(fields: [masterProductId], references: [id], onDelete: SetNull)
   serialItems     CCTVSerialItem[]
   kitComponents   CCTVKitComponent[]
   saleItems       CCTVSaleItem[]
@@ -1805,6 +1853,7 @@ model CCTVProduct {
 
   @@index([businessId])
   @@index([categoryId])
+  @@index([masterProductId])
   @@index([brand])
   @@index([name])
   @@index([serialTracked])

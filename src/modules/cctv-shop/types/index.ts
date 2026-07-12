@@ -36,6 +36,17 @@ export interface CCTVProduct {
   name: string;
   brand: string;
   category?: { id: string; name: string; color: string; icon: string; slug: string } | null;
+  masterProductId?: string | null;
+  masterProduct?: {
+    id: string;
+    name: string;
+    brand: string;
+    model: string;
+    hsnCode?: string | null;
+    defaultWarrantyMonths: number;
+    defaultSerialTracked: boolean;
+    defaultImageUrl?: string | null;
+  } | null;
   model?: string;
   sku?: string;
   costPrice: number;
@@ -45,6 +56,31 @@ export interface CCTVProduct {
   warrantyMonths: number;
   imageUrl?: string;
   businessId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ── CCTV Master Product (shared catalog) ──
+export interface CCTVMasterProduct {
+  id: string;
+  manufacturerId?: string | null;
+  name: string;
+  brand: string;
+  model: string;
+  sku?: string | null;
+  description?: string | null;
+  hsnCode?: string | null;
+  defaultCategoryName?: string | null;
+  defaultWarrantyMonths: number;
+  defaultSerialTracked: boolean;
+  defaultUnit: string;
+  defaultImageUrl?: string | null;
+  defaultVatRate: number;
+  defaultMrp?: number | null;
+  specs?: unknown;
+  isActive: boolean;
+  isApproved: boolean;
+  submittedByBusinessId?: string | null;
   createdAt: string;
   updatedAt: string;
 }
