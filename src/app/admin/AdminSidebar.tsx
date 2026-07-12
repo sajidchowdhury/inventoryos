@@ -7,7 +7,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  LayoutDashboard, Settings, Pill, Rocket, Package, Users, ShieldCheck,
+  LayoutDashboard, Settings, Pill, Rocket, Package, Users, ShieldCheck, Camera,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -25,10 +25,16 @@ const NAV_ITEMS = [
     description: "Subscriptions + revenue tracking",
   },
   {
-    label: "Catalog",
+    label: "Pharmacy Catalog",
     href: "/admin/catalog",
     icon: Package,
-    description: "Master product catalog (14K+)",
+    description: "Pharmacy master product catalog (14K+)",
+  },
+  {
+    label: "CCTV Catalog",
+    href: "/admin/catalog/cctv",
+    icon: Camera,
+    description: "CCTV master product catalog",
   },
   {
     label: "System Config",
