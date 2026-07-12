@@ -50,6 +50,7 @@ import { ExpiryOptimizer } from "./ExpiryOptimizer";
 import { ProfileView } from "./ProfileView";
 import { SubscriptionStatus } from "./SubscriptionStatus";
 import { BottomNav } from "./BottomNav";
+import { PharmacyDesktopSidebar } from "./PharmacyDesktopSidebar";
 
 export function PharmacyShell() {
   const activeView = useNavStore((s) => s.activeView);
@@ -204,11 +205,16 @@ export function PharmacyShell() {
 
   return (
     <div className="pharmacy-shell-wrap">
-      <div className="flex flex-col min-h-0 flex-1">
-        <div className="flex-1 pb-20 px-4 pt-4">
+      {/* Desktop sidebar (hidden on mobile, shown on md:) */}
+      <PharmacyDesktopSidebar />
+      <div className="flex flex-col min-h-0 flex-1 md:pl-64">
+        <div className="flex-1 pb-20 md:pb-4 px-4 pt-4 max-w-[1200px] mx-auto w-full">
           {renderView()}
         </div>
-        <BottomNav />
+        {/* Bottom nav (shown on mobile, hidden on md:) */}
+        <div className="md:hidden">
+          <BottomNav />
+        </div>
       </div>
     </div>
   );

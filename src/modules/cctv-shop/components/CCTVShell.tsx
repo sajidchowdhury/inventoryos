@@ -6,6 +6,7 @@ import { startOfflineListeners } from '@/lib/offline-sync';
 import { OfflineIndicator } from './OfflineIndicator';
 import { CCTVDashboard } from './CCTVDashboard';
 import { CCTVBottomNav } from './CCTVBottomNav';
+import { CCTVDesktopSidebar } from './CCTVDesktopSidebar';
 import { CCTVInventoryHub } from './CCTVInventoryHub';
 import { CCTVAIHub } from './CCTVAIHub';
 import { CCTVMoreHub } from './CCTVMoreHub';
@@ -342,12 +343,17 @@ export function CCTVShell() {
 
   return (
     <div className="cctv-shell-wrap">
-      <div className="flex flex-col min-h-0 flex-1">
+      {/* Desktop sidebar (hidden on mobile, shown on md:) */}
+      <CCTVDesktopSidebar />
+      <div className="flex flex-col min-h-0 flex-1 md:pl-64">
         <OfflineIndicator />
-        <div className="flex-1 pb-20 px-4 pt-4">
+        <div className="flex-1 pb-20 md:pb-4 px-4 pt-4 max-w-[1200px] mx-auto w-full">
           {renderView()}
         </div>
-        <CCTVBottomNav />
+        {/* Bottom nav (shown on mobile, hidden on md:) */}
+        <div className="md:hidden">
+          <CCTVBottomNav />
+        </div>
       </div>
     </div>
   );
