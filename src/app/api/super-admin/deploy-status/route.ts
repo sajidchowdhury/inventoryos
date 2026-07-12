@@ -62,8 +62,14 @@ export async function GET(req: NextRequest) {
       await db.$queryRaw`SELECT 1`;
       const latency = Date.now() - start;
 
-      // Count tables
-      const tableCountResult = await db.$queryRaw`SELECT COUNT(*) as count FROM sqlite_master WHERE type='table'` as any[];
+      // Count tables — uses information_schema (PostgreSQL-compatible, standard SQL)
+      // Note: sqlite_master was used previously but is SQLite-specific.
+      // After Phase 1 (PostgreSQL-only), information_schema.tables is the correct source.
+      const tableCountResult = await db.$queryRaw`
+        SELECT COUNT(*) as count
+        FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
+      ` as any[];
       const tableCount = Number(tableCountResult[0]?.count) || 0;
 
       dbStatus = { connected: true, latencyMs: latency, tableCount, error: null };

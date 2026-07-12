@@ -4,7 +4,7 @@ Smart business management platform for every trade — pharmacy, CCTV shop, and 
 
 > **Status:** Phase 1 (Database Unification) in progress. The codebase is migrating from dual SQLite/PostgreSQL support to PostgreSQL-only. See `InventoryOS_Architecture_Roadmap.docx` for the full phased plan.
 
-> **Phase 1A complete.** `docker-compose.yml`, `.env.example`, and this README are ready. The Prisma schema provider is still `sqlite` (Phase 1D will change it to `postgresql`). To test with PostgreSQL locally right now, see the [Interim Setup](#interim-setup-phase-1a-to-1d) section below.
+> **Phase 1A + 1B complete.** `docker-compose.yml`, `.env.example`, this README, the migration baseline (`prisma/migrations/0_init/`), and the provider switch to `postgresql` are all done. To run locally, follow Quick Start below — Phase 1C (production cutover) and Phase 1D (final cleanup) remain.
 
 ---
 
@@ -53,25 +53,26 @@ Open <http://localhost:3000> in your browser.
 
 ---
 
-## Interim Setup (Phase 1A to 1D)
+## Interim Setup (Phase 1A + 1B done, 1C + 1D remaining)
 
-The Quick Start above documents the **intended** setup once Phase 1D is complete. Right now (after Phase 1A, before Phase 1D), the Prisma schema in `prisma/schema.prisma` still declares `provider = "sqlite"`. To test with PostgreSQL locally today:
+The Quick Start above works as-is once you have PostgreSQL running locally (via `docker compose up -d` or a self-installed PostgreSQL). The schema provider is already `postgresql` and the migration baseline exists at `prisma/migrations/0_init/`.
 
-1. Follow Quick Start steps 1–4 (clone, install, `docker compose up -d`, copy `.env.example`).
-2. Edit `prisma/schema.prisma` — change line 11 from `provider = "sqlite"` to `provider = "postgresql"`.
-3. Run `bunx prisma db push` (instead of `migrate deploy` — proper migrations arrive in Phase 1B).
-4. Run `bunx prisma generate` and `bunx prisma db seed`.
-5. Run `bun run dev`.
+The only manual step still required locally:
 
-This manual step goes away in Phase 1D, when the provider change is committed permanently.
+```bash
+# After docker compose up -d, apply the baseline migration:
+bunx prisma migrate deploy
+# This applies prisma/migrations/0_init/migration.sql to your local PostgreSQL.
+# On a fresh database this creates all 104 tables, 328 indexes, and 160 foreign keys.
 
-If you prefer to keep using SQLite for now (no Docker), copy `.env.example` to `.env` and change `DATABASE_URL` to a SQLite file path:
-
+# Then seed and start:
+bunx prisma db seed
+bun run dev
 ```
-DATABASE_URL="file:./dev.db"
-```
 
-Then run `bunx prisma db push && bunx prisma db seed && bun run dev`.
+Phase 1C will apply the same migration to the production server. Phase 1D will remove the leftover SQLite database files and finalize documentation.
+
+If you cannot run PostgreSQL locally (no Docker), you can temporarily fall back to SQLite by changing `prisma/schema.prisma` line 11 back to `provider = "sqlite"` and setting `DATABASE_URL="file:./dev.db"` in `.env`. This is **not recommended** — the production server runs PostgreSQL, so testing on SQLite masks bugs.
 
 ---
 
