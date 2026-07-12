@@ -372,7 +372,7 @@ export function CCTVDashboard() {
             <h2 className="text-[13px] font-bold text-gray-900 tracking-tight">Overview</h2>
             <div className="flex-1 h-px bg-gray-100" />
           </div>
-          <div className="flex gap-3 overflow-x-auto scrollbar-hide -mx-4 px-4 pb-2 md:mx-0 md:px-0 md:grid md:grid-cols-3 lg:grid-cols-5 md:gap-3 md:overflow-visible">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
             {overviewCards.map((card) => {
               const Icon = card.icon;
               return (
@@ -380,7 +380,7 @@ export function CCTVDashboard() {
                   key={card.title}
                   whileTap={{ scale: 0.97 }}
                   onClick={() => navigate(card.view)}
-                  className="min-w-[180px] flex-shrink-0 md:min-w-0 rounded-2xl text-left active:scale-[0.97] transition-transform"
+                  className="rounded-2xl text-left active:scale-[0.97] transition-transform w-full"
                 >
                   <div className={cn('rounded-2xl bg-gradient-to-br p-4 shadow-lg relative overflow-hidden h-full', card.gradient)}>
                     {/* Decorative circle */}
