@@ -25,6 +25,8 @@ import {
   BookOpen,
   Receipt,
   Calculator,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores/auth-store';
@@ -43,6 +45,9 @@ export function CCTVDashboard() {
   const session = useAuthStore((s) => s.session);
   const { navigate } = useCCTVNavStore();
   const [copied, setCopied] = React.useState(false);
+
+  // Overview carousel state
+  const [overviewIndex, setOverviewIndex] = React.useState(0);
 
   // 2E: Outsourced job tracking
   const [outsourceAlerts, setOutsourceAlerts] = React.useState<{ total: number; overdue: number }>({ total: 0, overdue: 0 });
@@ -365,48 +370,89 @@ export function CCTVDashboard() {
           </motion.div>
         )}
 
-        {/* ── CCTV Overview — Scrollable Cards ── */}
+        {/* ── CCTV Overview — Single Row Carousel ── */}
         <motion.div variants={fadeUp}>
           <div className="flex items-center gap-2.5 mb-3">
             <div className="w-1 h-4 rounded-full bg-gradient-to-b from-cyan-500 to-blue-600" />
             <h2 className="text-[13px] font-bold text-gray-900 tracking-tight">Overview</h2>
             <div className="flex-1 h-px bg-gray-100" />
+            {/* Dots indicator */}
+            <div className="flex items-center gap-1">
+              {overviewCards.map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => setOverviewIndex(i)}
+                  className={cn(
+                    'w-1.5 h-1.5 rounded-full transition-all',
+                    i === overviewIndex ? 'bg-violet-500 w-4' : 'bg-gray-300 hover:bg-gray-400'
+                  )}
+                />
+              ))}
+            </div>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {overviewCards.map((card) => {
-              const Icon = card.icon;
-              return (
-                <motion.button
-                  key={card.title}
-                  whileTap={{ scale: 0.97 }}
-                  onClick={() => navigate(card.view)}
-                  className="rounded-2xl text-left active:scale-[0.97] transition-transform w-full"
-                >
-                  <div className={cn('rounded-2xl bg-gradient-to-br p-4 shadow-lg relative overflow-hidden h-full', card.gradient)}>
-                    {/* Decorative circle */}
-                    <div className="absolute -top-4 -right-4 w-20 h-20 bg-white/10 rounded-full" />
-                    <div className="absolute -bottom-6 -left-6 w-16 h-16 bg-white/5 rounded-full" />
+          <div className="flex items-center gap-2">
+            {/* Left arrow */}
+            <button
+              onClick={() => setOverviewIndex((prev) => (prev === 0 ? overviewCards.length - 1 : prev - 1))}
+              className="w-8 h-8 rounded-full bg-white border border-gray-200 flex items-center justify-center shrink-0 hover:bg-gray-50 active:scale-95 transition-all shadow-sm"
+            >
+              <ChevronLeft className="w-4 h-4 text-gray-600" />
+            </button>
 
-                    <div className="relative z-10">
-                      <div className="flex items-center justify-between mb-5">
-                        <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center backdrop-blur-sm">
-                          <Icon className="w-5 h-5 text-white" />
+            {/* Card viewport */}
+            <div className="flex-1 overflow-hidden">
+              <div
+                className="flex transition-transform duration-300 ease-out gap-3"
+                style={{ transform: `translateX(-${overviewIndex * 100}%)` }}
+              >
+                {overviewCards.map((card) => {
+                  const Icon = card.icon;
+                  return (
+                    <div
+                      key={card.title}
+                      className="min-w-full"
+                    >
+                      <motion.button
+                        whileTap={{ scale: 0.97 }}
+                        onClick={() => navigate(card.view)}
+                        className="w-full rounded-2xl text-left active:scale-[0.97] transition-transform"
+                      >
+                        <div className={cn('rounded-2xl bg-gradient-to-br p-4 shadow-lg relative overflow-hidden', card.gradient)}>
+                          {/* Decorative circle */}
+                          <div className="absolute -top-4 -right-4 w-20 h-20 bg-white/10 rounded-full" />
+                          <div className="absolute -bottom-6 -left-6 w-16 h-16 bg-white/5 rounded-full" />
+
+                          <div className="relative z-10">
+                            <div className="flex items-center justify-between mb-5">
+                              <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center backdrop-blur-sm">
+                                <Icon className="w-5 h-5 text-white" />
+                              </div>
+                              <span className="text-[10px] font-semibold text-white/80 bg-white/15 px-2 py-0.5 rounded-full backdrop-blur-sm">
+                                {card.tag}
+                              </span>
+                            </div>
+                            <p className="text-sm font-bold text-white leading-tight">{card.title}</p>
+                            <p className="text-[11px] text-white/70 mt-1 leading-relaxed">{card.description}</p>
+                            <div className="flex items-center gap-1 mt-3">
+                              <span className="text-[11px] font-semibold text-white/90">Open</span>
+                              <ArrowRight className="w-3 h-3 text-white/70" />
+                            </div>
+                          </div>
                         </div>
-                        <span className="text-[10px] font-semibold text-white/80 bg-white/15 px-2 py-0.5 rounded-full backdrop-blur-sm">
-                          {card.tag}
-                        </span>
-                      </div>
-                      <p className="text-sm font-bold text-white leading-tight">{card.title}</p>
-                      <p className="text-[11px] text-white/70 mt-1 leading-relaxed">{card.description}</p>
-                      <div className="flex items-center gap-1 mt-3">
-                        <span className="text-[11px] font-semibold text-white/90">Open</span>
-                        <ArrowRight className="w-3 h-3 text-white/70" />
-                      </div>
+                      </motion.button>
                     </div>
-                  </div>
-                </motion.button>
-              );
-            })}
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Right arrow */}
+            <button
+              onClick={() => setOverviewIndex((prev) => (prev === overviewCards.length - 1 ? 0 : prev + 1))}
+              className="w-8 h-8 rounded-full bg-white border border-gray-200 flex items-center justify-center shrink-0 hover:bg-gray-50 active:scale-95 transition-all shadow-sm"
+            >
+              <ChevronRight className="w-4 h-4 text-gray-600" />
+            </button>
           </div>
         </motion.div>
 
