@@ -372,7 +372,7 @@ export function CCTVDashboard() {
             <h2 className="text-[13px] font-bold text-gray-900 tracking-tight">Overview</h2>
             <div className="flex-1 h-px bg-gray-100" />
           </div>
-          <div className="flex gap-3 overflow-x-auto scrollbar-hide -mx-4 px-4 pb-2">
+          <div className="flex gap-3 overflow-x-auto scrollbar-hide -mx-4 px-4 pb-2 md:mx-0 md:px-0 md:grid md:grid-cols-3 lg:grid-cols-5 md:gap-3 md:overflow-visible">
             {overviewCards.map((card) => {
               const Icon = card.icon;
               return (
@@ -380,10 +380,9 @@ export function CCTVDashboard() {
                   key={card.title}
                   whileTap={{ scale: 0.97 }}
                   onClick={() => navigate(card.view)}
-                  className="min-w-[180px] flex-shrink-0 rounded-2xl bg-gradient-to-br p-4 text-left shadow-lg active:scale-[0.97] transition-transform"
-                  style={{ boxShadow: `0 8px 24px var(--tw-shadow-opacity, 0.15)` }}
+                  className="min-w-[180px] flex-shrink-0 md:min-w-0 rounded-2xl text-left active:scale-[0.97] transition-transform"
                 >
-                  <div className={cn('rounded-2xl bg-gradient-to-br p-4 text-left shadow-lg relative overflow-hidden', card.gradient)}>
+                  <div className={cn('rounded-2xl bg-gradient-to-br p-4 shadow-lg relative overflow-hidden h-full', card.gradient)}>
                     {/* Decorative circle */}
                     <div className="absolute -top-4 -right-4 w-20 h-20 bg-white/10 rounded-full" />
                     <div className="absolute -bottom-6 -left-6 w-16 h-16 bg-white/5 rounded-full" />
