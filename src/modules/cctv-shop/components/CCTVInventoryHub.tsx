@@ -66,6 +66,7 @@ function formatCompact(n: number): string {
 
 const MENU_ITEMS = [
   { label: 'Suppliers', desc: 'Manage vendor contacts & orders', view: 'suppliers' as const, icon: Factory, gradient: 'from-emerald-400 to-teal-500', ring: 'ring-emerald-500/20' },
+  { label: 'Products List', desc: 'Manage all CCTV products', view: 'products' as const, icon: Package, gradient: 'from-blue-400 to-indigo-500', ring: 'ring-blue-500/20' },
   { label: 'Serial Products', desc: 'Track individual items by serial', view: 'serial-items' as const, icon: Fingerprint, gradient: 'from-violet-400 to-purple-500', ring: 'ring-violet-500/20' },
   { label: 'Category', desc: 'Organize products by type & brand', view: 'categories' as const, icon: Tags, gradient: 'from-amber-400 to-orange-500', ring: 'ring-amber-500/20' },
   { label: 'Kits & Bundle', desc: 'Pre-configured product packages', view: 'kits' as const, icon: Box, gradient: 'from-cyan-400 to-blue-500', ring: 'ring-cyan-500/20' },

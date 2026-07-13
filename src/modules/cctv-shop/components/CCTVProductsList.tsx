@@ -350,8 +350,9 @@ export function CCTVProductsList() {
             {(activeBrand === 'All' ? products : products.filter((p) => p.brand === activeBrand)).map(
               (product, i) => {
                 const prodData = product as Record<string, unknown>;
-                const Icon = categoryIcon(product.category);
-                const colorClass = getCategoryColor(product.category);
+                const categoryName = typeof product.category === 'object' ? product.category?.name : product.category;
+                const Icon = categoryIcon(categoryName || '');
+                const colorClass = getCategoryColor(categoryName || '');
                 const isLow = product.stock <= (prodData.minStock as number || 0);
                 const isSerialTracked = product.serialTracked;
                 const warrantyMonths = prodData.warrantyMonths as number || 0;
@@ -392,7 +393,7 @@ export function CCTVProductsList() {
                           colorClass
                         )}
                       >
-                        {product.category}
+                        {categoryName || 'Uncategorized'}
                       </span>
                       {isSerialTracked && (
                         <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-blue-50 text-blue-600">
@@ -469,7 +470,7 @@ export function CCTVProductsList() {
                         </td>
                         <td className="p-3 text-gray-600">{product.brand}</td>
                         <td className="p-3 text-gray-500 font-mono text-xs">{product.model || '—'}</td>
-                        <td className="p-3 text-gray-600">{product.category || '—'}</td>
+                        <td className="p-3 text-gray-600">{(typeof product.category === 'object' ? product.category?.name : product.category) || '—'}</td>
                         <td className="p-3 text-right font-semibold text-gray-900">৳{product.sellPrice.toLocaleString()}</td>
                         <td className="p-3 text-center">
                           <span className={cn(
@@ -548,7 +549,7 @@ export function CCTVProductsList() {
                   <div className="flex items-center gap-1.5 flex-wrap">
                     {selectedProduct.category && (
                       <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-violet-100 text-violet-700">
-                        {selectedProduct.category.name || selectedProduct.category}
+                        {typeof selectedProduct.category === 'object' ? selectedProduct.category?.name : selectedProduct.category}
                       </span>
                     )}
                     {selectedProduct.serialTracked && (
