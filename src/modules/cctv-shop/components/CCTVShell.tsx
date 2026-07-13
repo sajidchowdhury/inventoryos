@@ -6,6 +6,7 @@ import { CCTVPurchase } from './CCTVPurchase';
 import { CCTVProductsList } from './CCTVProductsList';
 import { CCTVProductForm } from './CCTVProductForm';
 import { CCTVSales } from './CCTVSales';
+import { CCTVCashBook } from './CCTVCashBook';
 import {
   Home, Package, ShoppingCart, Users, Building2, Receipt,
   BarChart3, Settings, Camera, Plus, TrendingUp, AlertTriangle,
@@ -46,7 +47,7 @@ export function CCTVShell() {
             { view: 'customers' as const, label: 'Customers', icon: Users },
             { view: 'suppliers' as const, label: 'Suppliers', icon: Building2 },
             { view: 'expenses' as const, label: 'Expenses', icon: Receipt },
-            { view: 'reports' as const, label: 'Reports', icon: BarChart3 },
+            { view: 'reports' as const, label: 'Cash Book', icon: BarChart3 },
             { view: 'settings' as const, label: 'Settings', icon: Settings },
           ].map((item) => {
             const isActive = activeView === item.view;
@@ -80,7 +81,7 @@ export function CCTVShell() {
             { view: 'products' as const, label: 'Products', icon: Package },
             { view: 'purchase' as const, label: 'Buy', icon: ShoppingCart },
             { view: 'sales' as const, label: 'Sell', icon: TrendingUp },
-            { view: 'reports' as const, label: 'Reports', icon: BarChart3 },
+            { view: 'reports' as const, label: 'Cash', icon: BarChart3 },
           ].map((item) => {
             const isActive = activeView === item.view;
             return (
@@ -112,7 +113,7 @@ export function CCTVShell() {
           {activeView === 'customers' && <PlaceholderView title="Customers" desc="Customer management with ledger — coming in Phase 5" />}
           {activeView === 'suppliers' && <PlaceholderView title="Suppliers" desc="Supplier management with ledger — coming in Phase 5" />}
           {activeView === 'expenses' && <PlaceholderView title="Expenses" desc="Daily expense tracking — coming soon" />}
-          {activeView === 'reports' && <PlaceholderView title="Reports" desc="Daily cash book, P&L, ledgers — coming in Phase 4-6" />}
+          {activeView === 'reports' && <CCTVCashBook />}
           {activeView === 'settings' && <PlaceholderView title="Settings" desc="Business settings — coming soon" />}
         </div>
       </div>
