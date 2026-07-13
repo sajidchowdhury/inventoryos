@@ -32,7 +32,7 @@ const PRIORITY_STYLES: Record<TaskPriority, string> = {
 // ── Status badge colors ──
 const STATUS_STYLES: Record<TaskStatus, string> = {
   PENDING: 'bg-gray-100 text-gray-600',
-  IN_PROGRESS: 'bg-violet-100 text-violet-700',
+  IN_PROGRESS: 'bg-cyan-100 text-cyan-700',
   OVERDUE: 'bg-red-100 text-red-700',
   COMPLETED: 'bg-green-100 text-green-700',
   CANCELLED: 'bg-gray-100 text-gray-400 line-through',
@@ -259,7 +259,7 @@ export function MSInstallationTasks() {
       <div className="grid grid-cols-4 gap-2">
         {[
           { label: 'Pending', value: summary.pending, bg: 'bg-gray-50', color: 'text-gray-600', border: 'border-gray-100' },
-          { label: 'In Progress', value: summary.inProgress, bg: 'bg-violet-50', color: 'text-violet-600', border: 'border-violet-100' },
+          { label: 'In Progress', value: summary.inProgress, bg: 'bg-cyan-50', color: 'text-cyan-600', border: 'border-cyan-100' },
           { label: 'Overdue', value: summary.overdue, bg: 'bg-red-50', color: 'text-red-600', border: 'border-red-100', pulse: summary.overdue > 0 },
           { label: 'Done Today', value: summary.completedToday, bg: 'bg-green-50', color: 'text-green-600', border: 'border-green-100' },
         ].map((s) => (
@@ -288,7 +288,7 @@ export function MSInstallationTasks() {
             className={cn(
               'px-3 py-1.5 rounded-full text-[11px] font-semibold whitespace-nowrap transition-all shrink-0',
               activeFilter === tab.value
-                ? 'bg-gradient-to-r from-violet-500 to-purple-600 text-white shadow-sm'
+                ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-sm'
                 : 'bg-white text-gray-600 border border-gray-100 hover:bg-gray-50'
             )}
           >
@@ -407,7 +407,7 @@ export function MSInstallationTasks() {
                               ? 'bg-green-500'
                               : task.status === 'OVERDUE'
                                 ? 'bg-red-500'
-                                : 'bg-gradient-to-r from-violet-500 to-purple-500'
+                                : 'bg-gradient-to-r from-cyan-500 to-blue-600'
                           )}
                         />
                       </div>
@@ -424,7 +424,7 @@ export function MSInstallationTasks() {
       <motion.button
         whileTap={{ scale: 0.92 }}
         onClick={() => navigate('create-task')}
-        className="fixed bottom-20 right-4 w-14 h-14 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 text-white flex items-center justify-center shadow-lg shadow-violet-500/20 z-50"
+        className="fixed bottom-20 right-4 w-14 h-14 rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-600 text-white flex items-center justify-center shadow-lg shadow-cyan-500/20 z-50"
       >
         <Plus className="w-6 h-6" />
       </motion.button>

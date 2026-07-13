@@ -52,7 +52,7 @@ export function MSAIHub() {
         className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm mb-6"
       >
         <div className="flex items-center gap-2 mb-3">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center">
             <Brain className="w-4 h-4 text-white" />
           </div>
           <div>
@@ -63,7 +63,7 @@ export function MSAIHub() {
         <p className="text-xs text-gray-600 leading-relaxed">
           {dailyInsights}
         </p>
-        <div className="mt-3 flex items-center gap-1.5 text-violet-600">
+        <div className="mt-3 flex items-center gap-1.5 text-cyan-600">
           <Sparkles className="w-3 h-3" />
           <span className="text-[11px] font-medium">AI-powered analysis</span>
         </div>
@@ -79,8 +79,8 @@ export function MSAIHub() {
           onClick={() => navigate('ai-chat')}
           className="w-full relative overflow-hidden rounded-2xl p-5 text-left active:scale-[0.98] transition-transform"
         >
-          <div className="absolute inset-0 bg-gradient-to-br from-violet-500 to-purple-600 opacity-[0.06]" />
-          <div className="absolute top-4 right-4 w-14 h-14 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 shadow-lg shadow-violet-500/25 flex items-center justify-center">
+          <div className="absolute inset-0 bg-gradient-to-br from-cyan-500 to-blue-600 opacity-[0.06]" />
+          <div className="absolute top-4 right-4 w-14 h-14 rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-600 shadow-lg shadow-cyan-500/25 flex items-center justify-center">
             <MessageSquare className="w-7 h-7 text-white" />
           </div>
           <div className="relative z-10">
@@ -90,7 +90,7 @@ export function MSAIHub() {
             </p>
             <div className="mt-3 flex items-center gap-2 bg-gray-50 rounded-xl px-3 py-2.5">
               <span className="text-xs text-gray-400 flex-1">Ask about sales, stock, customers...</span>
-              <div className="w-7 h-7 rounded-lg bg-violet-500 flex items-center justify-center flex-shrink-0">
+              <div className="w-7 h-7 rounded-lg bg-cyan-500 flex items-center justify-center flex-shrink-0">
                 <Send className="w-3.5 h-3.5 text-white" />
               </div>
             </div>

@@ -41,7 +41,7 @@ const REPORT_SECTIONS: { title: string; items: ReportItem[] }[] = [
     items: [
       { label: 'Expenses', desc: 'Track & manage expenses', icon: <TrendingDown className="w-5 h-5 text-white" />, view: 'expenses', gradient: 'from-rose-400 to-pink-500', ring: 'ring-rose-500/20' },
       { label: 'Due Book', desc: 'Client dues & follow-ups', icon: <BookOpen className="w-5 h-5 text-white" />, view: 'due-book', gradient: 'from-red-400 to-rose-500', ring: 'ring-red-500/20' },
-      { label: 'Financial Ledger', desc: 'Complete transaction history', icon: <BookCheck className="w-5 h-5 text-white" />, view: 'ledger', gradient: 'from-indigo-400 to-violet-500', ring: 'ring-indigo-500/20' },
+      { label: 'Financial Ledger', desc: 'Complete transaction history', icon: <BookCheck className="w-5 h-5 text-white" />, view: 'ledger', gradient: 'from-indigo-400 to-cyan-500', ring: 'ring-indigo-500/20' },
       { label: 'Profit & Loss', desc: 'Revenue vs expense analysis', icon: <TrendingUp className="w-5 h-5 text-white" />, view: 'profit-loss', gradient: 'from-emerald-400 to-green-500', ring: 'ring-emerald-500/20' },
     ],
   },
@@ -98,7 +98,7 @@ export function MSReportsDashboard() {
         <motion.div key={section.title} variants={fadeUp} className="mb-6">
           {/* Section Header */}
           <div className="flex items-center gap-2.5 mb-3">
-            <div className="w-1 h-4 rounded-full bg-gradient-to-b from-violet-500 to-purple-600" />
+            <div className="w-1 h-4 rounded-full bg-gradient-to-b from-cyan-500 to-blue-600" />
             <h3 className="text-[13px] font-bold text-gray-900 tracking-tight">{section.title}</h3>
             <div className="flex-1 h-px bg-gray-100" />
           </div>

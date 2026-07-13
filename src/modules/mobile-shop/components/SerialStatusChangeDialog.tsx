@@ -26,7 +26,7 @@ const STATUS_OPTIONS: { value: string; label: string; color: string; bg: string;
   { value: 'IN_STOCK', label: 'In Stock', color: 'text-emerald-700', bg: 'bg-emerald-50 border-emerald-200', icon: '📦' },
   { value: 'IN_TRANSIT', label: 'In Transit', color: 'text-cyan-700', bg: 'bg-cyan-50 border-cyan-200', icon: '🚚' },
   { value: 'SOLD', label: 'Sold', color: 'text-blue-700', bg: 'bg-blue-50 border-blue-200', icon: '💰' },
-  { value: 'INSTALLED', label: 'Installed', color: 'text-violet-700', bg: 'bg-violet-50 border-violet-200', icon: '🔧' },
+  { value: 'INSTALLED', label: 'Installed', color: 'text-cyan-700', bg: 'bg-cyan-50 border-cyan-200', icon: '🔧' },
   { value: 'IN_REPAIR', label: 'In Repair', color: 'text-amber-700', bg: 'bg-amber-50 border-amber-200', icon: '🛠️' },
   { value: 'RETURNED', label: 'Returned', color: 'text-orange-700', bg: 'bg-orange-50 border-orange-200', icon: '↩️' },
   { value: 'WARRANTY_ACTIVE', label: 'Warranty Active', color: 'text-green-700', bg: 'bg-green-50 border-green-200', icon: '🛡️' },
@@ -121,7 +121,7 @@ export function SerialStatusChangeDialog({
         {/* Header */}
         <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-gray-100 shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center">
               <RefreshCw className="w-4 h-4 text-white" />
             </div>
             <div>
@@ -173,7 +173,7 @@ export function SerialStatusChangeDialog({
                   className={cn(
                     'relative flex items-center gap-2 p-3 rounded-xl border text-left transition-all',
                     isSelected
-                      ? cn(opt.bg, 'ring-2 ring-violet-400 ring-offset-1')
+                      ? cn(opt.bg, 'ring-2 ring-cyan-400 ring-offset-1')
                       : isCurrent && !isChanged
                         ? 'bg-gray-50 border-gray-200 opacity-50'
                         : 'bg-white border-gray-100 hover:border-gray-200 active:scale-[0.97]',
@@ -189,7 +189,7 @@ export function SerialStatusChangeDialog({
                     )}
                   </div>
                   {isSelected && (
-                    <div className="ml-auto w-5 h-5 rounded-full bg-violet-500 flex items-center justify-center shrink-0">
+                    <div className="ml-auto w-5 h-5 rounded-full bg-cyan-500 flex items-center justify-center shrink-0">
                       <Check className="w-3 h-3 text-white" />
                     </div>
                   )}
@@ -208,7 +208,7 @@ export function SerialStatusChangeDialog({
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Reason for status change..."
               rows={2}
-              className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50 border border-gray-200 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-400/40 focus:border-violet-400 transition-all resize-none"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50 border border-gray-200 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-400/40 focus:border-cyan-400 transition-all resize-none"
             />
           </div>
 
@@ -239,7 +239,7 @@ export function SerialStatusChangeDialog({
           <button
             onClick={handleSave}
             disabled={saving || !isChanged}
-            className="flex-1 h-11 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 text-white text-sm font-semibold shadow-lg shadow-violet-500/20 active:opacity-90 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+            className="flex-1 h-11 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 text-white text-sm font-semibold shadow-lg shadow-cyan-500/20 active:opacity-90 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {saving ? (
               <Loader2 className="w-4 h-4 animate-spin" />

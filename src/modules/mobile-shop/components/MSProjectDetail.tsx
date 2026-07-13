@@ -26,7 +26,7 @@ const statusConfig: Record<ProjectStatus, { label: string; bg: string; text: str
   PLANNING:     { label: 'Planning',     bg: 'bg-gray-100',  text: 'text-gray-600', bar: 'bg-gray-400' },
   SURVEY:       { label: 'Survey',       bg: 'bg-cyan-100',  text: 'text-cyan-700', bar: 'bg-cyan-500' },
   PROCUREMENT:  { label: 'Procurement',  bg: 'bg-blue-100',  text: 'text-blue-700', bar: 'bg-blue-500' },
-  INSTALLATION: { label: 'Installation', bg: 'bg-violet-100', text: 'text-violet-700', bar: 'bg-violet-500' },
+  INSTALLATION: { label: 'Installation', bg: 'bg-cyan-100', text: 'text-cyan-700', bar: 'bg-cyan-500' },
   TESTING:      { label: 'Testing',      bg: 'bg-amber-100', text: 'text-amber-700', bar: 'bg-amber-500' },
   HANDOVER:     { label: 'Handover',     bg: 'bg-emerald-100', text: 'text-emerald-700', bar: 'bg-emerald-500' },
   COMPLETED:    { label: 'Completed',    bg: 'bg-green-100', text: 'text-green-700', bar: 'bg-green-500' },
@@ -59,7 +59,7 @@ function ProjectTasksTab({ projectId, navigate }: { projectId: string; navigate:
 
   const statusColors: Record<string, string> = {
     PENDING: 'bg-gray-100 text-gray-600',
-    IN_PROGRESS: 'bg-violet-100 text-violet-700',
+    IN_PROGRESS: 'bg-cyan-100 text-cyan-700',
     COMPLETED: 'bg-emerald-100 text-emerald-700',
     OVERDUE: 'bg-red-100 text-red-700',
     CANCELLED: 'bg-gray-100 text-gray-400 line-through',
@@ -91,7 +91,7 @@ function ProjectTasksTab({ projectId, navigate }: { projectId: string; navigate:
         onClick={() => navigate('create-task', projectId)}
         className="w-full flex items-center gap-3 p-4 rounded-2xl bg-white border border-gray-100 shadow-sm text-left active:scale-[0.98] transition-transform"
       >
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg shadow-violet-500/20">
+        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
           <Plus className="w-5 h-5 text-white" />
         </div>
         <div className="flex-1">
@@ -144,10 +144,10 @@ function ProjectTasksTab({ projectId, navigate }: { projectId: string; navigate:
                   <div className="mt-2.5">
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-[10px] text-gray-400">{task.completedChecklist}/{task.totalChecklist} done</span>
-                      <span className="text-[10px] font-semibold text-violet-600">{pct}%</span>
+                      <span className="text-[10px] font-semibold text-cyan-600">{pct}%</span>
                     </div>
                     <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                      <div className="h-full bg-gradient-to-r from-violet-500 to-purple-600 rounded-full transition-all" style={{ width: `${pct}%` }} />
+                      <div className="h-full bg-gradient-to-r from-cyan-500 to-blue-600 rounded-full transition-all" style={{ width: `${pct}%` }} />
                     </div>
                   </div>
                 )}
@@ -444,7 +444,7 @@ export function MSProjectDetail() {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
         <p className="text-sm text-gray-500">Project not found</p>
-        <button onClick={goBack} className="mt-3 text-xs text-violet-600 font-semibold">Go Back</button>
+        <button onClick={goBack} className="mt-3 text-xs text-cyan-600 font-semibold">Go Back</button>
       </div>
     );
   }
@@ -522,7 +522,7 @@ export function MSProjectDetail() {
                   initial={{ width: 0 }}
                   animate={{ width: `${(activeLine / (WORKFLOW_STEPS.length - 1)) * 100}%` }}
                   transition={{ duration: 0.5, ease: 'easeOut' }}
-                  className="absolute top-4 left-6 h-0.5 bg-gradient-to-r from-violet-500 to-purple-500"
+                  className="absolute top-4 left-6 h-0.5 bg-gradient-to-r from-cyan-500 to-blue-600"
                 />
               );
             }
@@ -547,7 +547,7 @@ export function MSProjectDetail() {
                 <div className={cn(
                   'w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-colors',
                   isActive
-                    ? 'bg-violet-500 border-violet-500 text-white shadow-lg shadow-violet-500/30'
+                    ? 'bg-cyan-500 border-cyan-500 text-white shadow-lg shadow-cyan-500/30'
                     : isCompleted
                     ? 'bg-emerald-100 border-emerald-400 text-emerald-600'
                     : 'bg-white border-gray-200 text-gray-400',
@@ -556,7 +556,7 @@ export function MSProjectDetail() {
                 </div>
                 <span className={cn(
                   'text-[10px] font-semibold whitespace-nowrap',
-                  isActive ? 'text-violet-700' : isCompleted ? 'text-emerald-600' : 'text-gray-400',
+                  isActive ? 'text-cyan-700' : isCompleted ? 'text-emerald-600' : 'text-gray-400',
                 )}>
                   {step.label}
                 </span>
@@ -577,7 +577,7 @@ export function MSProjectDetail() {
               className={cn(
                 'flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-colors',
                 activeTab === tab.key
-                  ? 'bg-white text-violet-700 shadow-sm'
+                  ? 'bg-white text-cyan-700 shadow-sm'
                   : 'text-gray-500',
               )}
             >
@@ -738,7 +738,7 @@ export function MSProjectDetail() {
             <h3 className="text-sm font-bold text-gray-800">Surveys ({surveys.length})</h3>
             <button
               onClick={createSurvey}
-              className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-violet-50 text-violet-700 text-xs font-semibold active:scale-95 transition-transform"
+              className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-cyan-50 text-cyan-700 text-xs font-semibold active:scale-95 transition-transform"
             >
               <Plus className="w-3.5 h-3.5" /> New Survey
             </button>
@@ -760,7 +760,7 @@ export function MSProjectDetail() {
                     className={cn(
                       'px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors',
                       activeSurveyId === s.id
-                        ? 'bg-violet-500 text-white shadow-sm'
+                        ? 'bg-cyan-500 text-white shadow-sm'
                         : 'bg-white border border-gray-100 text-gray-500',
                     )}
                   >
@@ -782,7 +782,7 @@ export function MSProjectDetail() {
                           value={surveyorName}
                           onChange={(e) => setSurveyorName(e.target.value)}
                           onBlur={saveSurveyMeta}
-                          className="w-full px-3 py-2 rounded-lg bg-gray-50 border border-gray-100 text-xs text-gray-900 focus:outline-none focus:ring-2 focus:ring-violet-500/20"
+                          className="w-full px-3 py-2 rounded-lg bg-gray-50 border border-gray-100 text-xs text-gray-900 focus:outline-none focus:ring-2 focus:ring-cyan-500/20"
                         />
                       </div>
                       <div>
@@ -805,7 +805,7 @@ export function MSProjectDetail() {
                         onChange={(e) => setSurveyNote(e.target.value)}
                         onBlur={saveSurveyMeta}
                         rows={2}
-                        className="w-full px-3 py-2 rounded-lg bg-gray-50 border border-gray-100 text-xs text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-500/20 resize-none"
+                        className="w-full px-3 py-2 rounded-lg bg-gray-50 border border-gray-100 text-xs text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 resize-none"
                       />
                     </div>
                   </div>
@@ -818,7 +818,7 @@ export function MSProjectDetail() {
                         {!floorPlanData && (
                           <button
                             onClick={() => fileInputRef.current?.click()}
-                            className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-violet-50 text-violet-700 text-[11px] font-semibold active:scale-95 transition-transform"
+                            className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-cyan-50 text-cyan-700 text-[11px] font-semibold active:scale-95 transition-transform"
                           >
                             <ImageIcon className="w-3 h-3" /> Upload
                           </button>
@@ -891,10 +891,10 @@ export function MSProjectDetail() {
                             className="absolute -translate-x-1/2 -translate-y-1/2 group"
                             style={{ left: `${cam.posX}%`, top: `${cam.posY}%` }}
                           >
-                            <div className="w-7 h-7 rounded-full bg-violet-500 border-2 border-white shadow-lg flex items-center justify-center text-white text-sm">
+                            <div className="w-7 h-7 rounded-full bg-cyan-500 border-2 border-white shadow-lg flex items-center justify-center text-white text-sm">
                               {getCameraIcon(cam.cameraType)}
                             </div>
-                            <div className="absolute -bottom-5 left-1/2 -translate-x-1/2 whitespace-nowrap text-[9px] font-bold text-violet-700 bg-white/90 px-1.5 py-0.5 rounded shadow-sm">
+                            <div className="absolute -bottom-5 left-1/2 -translate-x-1/2 whitespace-nowrap text-[9px] font-bold text-cyan-700 bg-white/90 px-1.5 py-0.5 rounded shadow-sm">
                               {cam.label}
                             </div>
                           </div>
@@ -924,7 +924,7 @@ export function MSProjectDetail() {
                         className={cn(
                           'flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors',
                           mode === 'place-camera'
-                            ? 'bg-violet-500 text-white shadow-sm'
+                            ? 'bg-cyan-500 text-white shadow-sm'
                             : 'bg-white border border-gray-100 text-gray-600',
                         )}
                       >
@@ -1032,12 +1032,12 @@ export function MSProjectDetail() {
 
           {/* Survey complete action */}
           {surveys.length > 0 && project?.status === 'SURVEY' && (
-            <div className="bg-gradient-to-r from-violet-500 to-purple-600 rounded-2xl p-4 text-center shadow-lg shadow-violet-500/20">
+            <div className="bg-gradient-to-r from-cyan-500 to-blue-600 rounded-2xl p-4 text-center shadow-lg shadow-cyan-500/20">
               <p className="text-xs font-bold text-white mb-1">Survey Ready?</p>
-              <p className="text-[10px] text-violet-100 mb-3">Mark survey complete and move to Equipment planning</p>
+              <p className="text-[10px] text-cyan-100 mb-3">Mark survey complete and move to Equipment planning</p>
               <button
                 onClick={() => changeStatus('PROCUREMENT')}
-                className="px-6 py-2.5 rounded-xl bg-white text-violet-700 text-xs font-bold active:scale-95 transition-transform shadow-sm"
+                className="px-6 py-2.5 rounded-xl bg-white text-cyan-700 text-xs font-bold active:scale-95 transition-transform shadow-sm"
               >
                 Complete Survey → Equipment
               </button>
@@ -1051,13 +1051,13 @@ export function MSProjectDetail() {
         <motion.div {...fadeUp} className="space-y-3">
           {/* Workflow guidance for equipment step */}
           {surveys.length > 0 && project?.status !== 'COMPLETED' && project?.status !== 'CANCELLED' && (
-            <div className="bg-violet-50 border border-violet-200 rounded-2xl p-4 space-y-2">
-              <p className="text-xs font-bold text-violet-800">
+            <div className="bg-cyan-50 border border-cyan-200 rounded-2xl p-4 space-y-2">
+              <p className="text-xs font-bold text-cyan-800">
                 {cameras.length > 0 || cableRoutes.length > 0
                   ? 'Survey data available from Site Survey tab'
                   : 'Complete the Site Survey first for best results'}
               </p>
-              <p className="text-[11px] text-violet-600">
+              <p className="text-[11px] text-cyan-600">
                 {cameras.length > 0
                   ? `${cameras.length} camera(s) and ${cableRoutes.length} cable route(s) mapped. Use this info when planning equipment.`
                   : 'Equipment will be linked here from serial items when assigned to this project.'}
@@ -1065,14 +1065,14 @@ export function MSProjectDetail() {
               <div className="flex gap-2 pt-1">
                 <button
                   onClick={() => setActiveTab('survey')}
-                  className="text-[11px] font-semibold text-violet-600 flex items-center gap-1"
+                  className="text-[11px] font-semibold text-cyan-600 flex items-center gap-1"
                 >
                   <Camera className="w-3 h-3" /> View Survey
                 </button>
-                <span className="text-violet-300">·</span>
+                <span className="text-cyan-300">·</span>
                 <button
                   onClick={() => setActiveTab('tasks')}
-                  className="text-[11px] font-semibold text-violet-600 flex items-center gap-1"
+                  className="text-[11px] font-semibold text-cyan-600 flex items-center gap-1"
                 >
                   <ClipboardList className="w-3 h-3" /> Create Tasks
                 </button>
@@ -1142,7 +1142,7 @@ export function MSProjectDetail() {
                     placeholder={`Camera ${cameras.length + 1}`}
                     value={camForm.label}
                     onChange={(e) => setCamForm((f) => ({ ...f, label: e.target.value }))}
-                    className="w-full px-3 py-2.5 rounded-xl bg-gray-50 border border-gray-100 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-violet-500/20"
+                    className="w-full px-3 py-2.5 rounded-xl bg-gray-50 border border-gray-100 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-cyan-500/20"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
@@ -1151,7 +1151,7 @@ export function MSProjectDetail() {
                     <select
                       value={camForm.cameraType}
                       onChange={(e) => setCamForm((f) => ({ ...f, cameraType: e.target.value as CameraType }))}
-                      className="w-full px-3 py-2.5 rounded-xl bg-gray-50 border border-gray-100 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-violet-500/20"
+                      className="w-full px-3 py-2.5 rounded-xl bg-gray-50 border border-gray-100 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-cyan-500/20"
                     >
                       {cameraTypes.map((t) => <option key={t} value={t}>{t}</option>)}
                     </select>
@@ -1163,7 +1163,7 @@ export function MSProjectDetail() {
                       placeholder="4MP"
                       value={camForm.resolution}
                       onChange={(e) => setCamForm((f) => ({ ...f, resolution: e.target.value }))}
-                      className="w-full px-3 py-2.5 rounded-xl bg-gray-50 border border-gray-100 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-violet-500/20"
+                      className="w-full px-3 py-2.5 rounded-xl bg-gray-50 border border-gray-100 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-cyan-500/20"
                     />
                   </div>
                 </div>
@@ -1174,14 +1174,14 @@ export function MSProjectDetail() {
                     value={camForm.notes}
                     onChange={(e) => setCamForm((f) => ({ ...f, notes: e.target.value }))}
                     rows={2}
-                    className="w-full px-3 py-2.5 rounded-xl bg-gray-50 border border-gray-100 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-500/20 resize-none"
+                    className="w-full px-3 py-2.5 rounded-xl bg-gray-50 border border-gray-100 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 resize-none"
                   />
                 </div>
               </div>
 
               <button
                 onClick={saveCamera}
-                className="w-full mt-4 py-3 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 text-white font-semibold text-sm shadow-lg shadow-violet-500/20 active:scale-[0.98] transition-transform"
+                className="w-full mt-4 py-3 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 text-white font-semibold text-sm shadow-lg shadow-cyan-500/20 active:scale-[0.98] transition-transform"
               >
                 <Save className="w-4 h-4 inline mr-1.5" />
                 Save Camera
@@ -1223,7 +1223,7 @@ export function MSProjectDetail() {
                     placeholder={`Route ${cableRoutes.length + 1}`}
                     value={cableForm.label}
                     onChange={(e) => setCableForm((f) => ({ ...f, label: e.target.value }))}
-                    className="w-full px-3 py-2.5 rounded-xl bg-gray-50 border border-gray-100 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-violet-500/20"
+                    className="w-full px-3 py-2.5 rounded-xl bg-gray-50 border border-gray-100 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-cyan-500/20"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
@@ -1232,7 +1232,7 @@ export function MSProjectDetail() {
                     <select
                       value={cableForm.cableType}
                       onChange={(e) => setCableForm((f) => ({ ...f, cableType: e.target.value as CableType }))}
-                      className="w-full px-3 py-2.5 rounded-xl bg-gray-50 border border-gray-100 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-violet-500/20"
+                      className="w-full px-3 py-2.5 rounded-xl bg-gray-50 border border-gray-100 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-cyan-500/20"
                     >
                       {cableTypes.map((t) => <option key={t} value={t}>{t}</option>)}
                     </select>
@@ -1244,7 +1244,7 @@ export function MSProjectDetail() {
                       placeholder="e.g., 50"
                       value={cableForm.cableLength}
                       onChange={(e) => setCableForm((f) => ({ ...f, cableLength: e.target.value }))}
-                      className="w-full px-3 py-2.5 rounded-xl bg-gray-50 border border-gray-100 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-violet-500/20"
+                      className="w-full px-3 py-2.5 rounded-xl bg-gray-50 border border-gray-100 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-cyan-500/20"
                     />
                   </div>
                 </div>
@@ -1255,7 +1255,7 @@ export function MSProjectDetail() {
                     value={cableForm.notes}
                     onChange={(e) => setCableForm((f) => ({ ...f, notes: e.target.value }))}
                     rows={2}
-                    className="w-full px-3 py-2.5 rounded-xl bg-gray-50 border border-gray-100 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-500/20 resize-none"
+                    className="w-full px-3 py-2.5 rounded-xl bg-gray-50 border border-gray-100 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 resize-none"
                   />
                 </div>
               </div>
@@ -1305,7 +1305,7 @@ export function MSProjectDetail() {
                       className={cn(
                         'px-3 py-2.5 rounded-xl text-xs font-semibold transition-colors',
                         project.status === s
-                          ? 'bg-violet-500 text-white shadow-sm'
+                          ? 'bg-cyan-500 text-white shadow-sm'
                           : `${sc.bg} ${sc.text}`,
                       )}
                     >

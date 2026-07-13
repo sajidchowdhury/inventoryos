@@ -261,18 +261,18 @@ export function MSCreateTask() {
 
       {/* Selected project display */}
       {selectedProjectName && (
-        <div className="bg-violet-50 border border-violet-200 rounded-xl p-3 flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-violet-100 flex items-center justify-center shrink-0">
+        <div className="bg-cyan-50 border border-cyan-200 rounded-xl p-3 flex items-center gap-2">
+          <div className="w-8 h-8 rounded-lg bg-cyan-100 flex items-center justify-center shrink-0">
             <span className="text-sm">📁</span>
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-violet-800 truncate">{selectedProjectName}</p>
+            <p className="text-sm font-semibold text-cyan-800 truncate">{selectedProjectName}</p>
           </div>
           <button
             onClick={() => { setProjectId(''); setSelectedProjectName(''); }}
-            className="w-6 h-6 rounded-full bg-violet-200 flex items-center justify-center"
+            className="w-6 h-6 rounded-full bg-cyan-200 flex items-center justify-center"
           >
-            <X className="w-3 h-3 text-violet-600" />
+            <X className="w-3 h-3 text-cyan-600" />
           </button>
         </div>
       )}
@@ -289,7 +289,7 @@ export function MSCreateTask() {
                 setShowProjectDropdown(true);
               }}
               onFocus={() => setShowProjectDropdown(true)}
-              className="bg-gray-50 border-0 focus-visible:ring-2 focus-visible:ring-violet-500/30 pr-10"
+              className="bg-gray-50 border-0 focus-visible:ring-2 focus-visible:ring-cyan-500/30 pr-10"
             />
             <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           </div>
@@ -322,7 +322,7 @@ export function MSCreateTask() {
                   <p className="text-xs text-gray-400">No projects found</p>
                   <button
                     onClick={() => navigate('create-project')}
-                    className="mt-2 text-xs font-semibold text-violet-600"
+                    className="mt-2 text-xs font-semibold text-cyan-600"
                   >
                     + Create a project first
                   </button>
@@ -339,7 +339,7 @@ export function MSCreateTask() {
         placeholder="e.g., Install 8 IP cameras at warehouse"
         value={taskTitle}
         onChange={(e) => setTaskTitle(e.target.value)}
-        className="bg-gray-50 border-0 focus-visible:ring-2 focus-visible:ring-violet-500/30"
+        className="bg-gray-50 border-0 focus-visible:ring-2 focus-visible:ring-cyan-500/30"
       />
 
       {/* Scheduled Date */}
@@ -348,7 +348,7 @@ export function MSCreateTask() {
         type="date"
         value={scheduledDate}
         onChange={(e) => setScheduledDate(e.target.value)}
-        className="bg-gray-50 border-0 focus-visible:ring-2 focus-visible:ring-violet-500/30"
+        className="bg-gray-50 border-0 focus-visible:ring-2 focus-visible:ring-cyan-500/30"
       />
 
       {/* Priority */}
@@ -374,7 +374,7 @@ export function MSCreateTask() {
         placeholder="Technician name"
         value={assignedToName}
         onChange={(e) => setAssignedToName(e.target.value)}
-        className="bg-gray-50 border-0 focus-visible:ring-2 focus-visible:ring-violet-500/30"
+        className="bg-gray-50 border-0 focus-visible:ring-2 focus-visible:ring-cyan-500/30"
       />
 
       {/* Location */}
@@ -383,7 +383,7 @@ export function MSCreateTask() {
         placeholder="e.g., Building A, Floor 3"
         value={location}
         onChange={(e) => setLocation(e.target.value)}
-        className="bg-gray-50 border-0 focus-visible:ring-2 focus-visible:ring-violet-500/30"
+        className="bg-gray-50 border-0 focus-visible:ring-2 focus-visible:ring-cyan-500/30"
       />
 
       {/* Site Address */}
@@ -392,7 +392,7 @@ export function MSCreateTask() {
         placeholder="Full site address"
         value={siteAddress}
         onChange={(e) => setSiteAddress(e.target.value)}
-        className="bg-gray-50 border-0 focus-visible:ring-2 focus-visible:ring-violet-500/30"
+        className="bg-gray-50 border-0 focus-visible:ring-2 focus-visible:ring-cyan-500/30"
       />
 
       {/* Checklist Items */}
@@ -404,7 +404,7 @@ export function MSCreateTask() {
           <button
             key={chip}
             onClick={() => addChecklistItem(chip)}
-            className="text-[10px] px-2 py-1 rounded-full bg-violet-50 text-violet-600 border border-violet-100 hover:bg-violet-100 transition-colors"
+            className="text-[10px] px-2 py-1 rounded-full bg-cyan-50 text-cyan-600 border border-cyan-100 hover:bg-cyan-100 transition-colors"
           >
             + {chip}
           </button>
@@ -419,7 +419,7 @@ export function MSCreateTask() {
               key={idx}
               className="flex items-center gap-2 bg-gray-50 rounded-xl px-3 py-2"
             >
-              <span className="w-5 h-5 rounded-full bg-violet-100 text-violet-600 text-[10px] font-bold flex items-center justify-center shrink-0">
+              <span className="w-5 h-5 rounded-full bg-cyan-100 text-cyan-600 text-[10px] font-bold flex items-center justify-center shrink-0">
                 {idx + 1}
               </span>
               <span className="text-sm text-gray-700 flex-1 truncate">{item}</span>
@@ -447,14 +447,14 @@ export function MSCreateTask() {
               setNewChecklistItem('');
             }
           }}
-          className="bg-gray-50 border-0 focus-visible:ring-2 focus-visible:ring-violet-500/30 flex-1"
+          className="bg-gray-50 border-0 focus-visible:ring-2 focus-visible:ring-cyan-500/30 flex-1"
         />
         <button
           onClick={() => {
             addChecklistItem(newChecklistItem);
             setNewChecklistItem('');
           }}
-          className="w-10 h-10 rounded-xl bg-violet-100 text-violet-600 flex items-center justify-center shrink-0 hover:bg-violet-200 transition-colors"
+          className="w-10 h-10 rounded-xl bg-cyan-100 text-cyan-600 flex items-center justify-center shrink-0 hover:bg-cyan-200 transition-colors"
         >
           <Plus className="w-4 h-4" />
         </button>
@@ -466,7 +466,7 @@ export function MSCreateTask() {
         placeholder="Any additional notes..."
         value={notes}
         onChange={(e) => setNotes(e.target.value)}
-        className="bg-gray-50 border-0 focus-visible:ring-2 focus-visible:ring-violet-500/30 min-h-[80px] resize-none"
+        className="bg-gray-50 border-0 focus-visible:ring-2 focus-visible:ring-cyan-500/30 min-h-[80px] resize-none"
         rows={3}
       />
 
@@ -476,7 +476,7 @@ export function MSCreateTask() {
         placeholder="Internal notes (not visible to client)..."
         value={internalNotes}
         onChange={(e) => setInternalNotes(e.target.value)}
-        className="bg-gray-50 border-0 focus-visible:ring-2 focus-visible:ring-violet-500/30 min-h-[80px] resize-none"
+        className="bg-gray-50 border-0 focus-visible:ring-2 focus-visible:ring-cyan-500/30 min-h-[80px] resize-none"
         rows={3}
       />
 
@@ -490,7 +490,7 @@ export function MSCreateTask() {
             className={cn(
               'w-full py-3.5 rounded-2xl font-semibold text-sm flex items-center justify-center gap-2 transition-all',
               canSubmit
-                ? 'bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-lg shadow-violet-500/20'
+                ? 'bg-gradient-to-br from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/20'
                 : 'bg-gray-200 text-gray-400 cursor-not-allowed'
             )}
           >

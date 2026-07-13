@@ -205,7 +205,7 @@ export function MSSupplierView() {
         <h1 className="text-lg font-bold text-gray-900 flex-1">Suppliers</h1>
         <button
           onClick={() => setDialogOpen(true)}
-          className="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg shadow-violet-500/20 active:opacity-90 transition-all"
+          className="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20 active:opacity-90 transition-all"
         >
           <Plus className="w-5 h-5 text-white" />
         </button>
@@ -219,8 +219,8 @@ export function MSSupplierView() {
           className="grid grid-cols-3 gap-2.5"
         >
           <div className="bg-white rounded-2xl border border-gray-100 p-3 text-center shadow-sm">
-            <div className="flex items-center justify-center w-7 h-7 mx-auto rounded-lg bg-violet-50 mb-1.5">
-              <Building2 className="w-3.5 h-3.5 text-violet-600" />
+            <div className="flex items-center justify-center w-7 h-7 mx-auto rounded-lg bg-cyan-50 mb-1.5">
+              <Building2 className="w-3.5 h-3.5 text-cyan-600" />
             </div>
             <p className="text-base font-bold text-gray-900">
               {stats?.totals.supplierCount ?? localStats.totalSuppliers}
@@ -250,13 +250,13 @@ export function MSSupplierView() {
 
       {/* ── Search ── */}
       <div className="relative">
-        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-violet-400" />
+        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-cyan-400" />
         <input
           type="text"
           placeholder="Search by name, phone, code..."
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
-          className="w-full h-11 pl-10 pr-10 rounded-2xl bg-white border border-gray-200 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-400/40 focus:border-violet-400 transition-all"
+          className="w-full h-11 pl-10 pr-10 rounded-2xl bg-white border border-gray-200 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-400/40 focus:border-cyan-400 transition-all"
         />
         {searchInput && (
           <button
@@ -321,7 +321,7 @@ export function MSSupplierView() {
                   >
                     {/* Top row */}
                     <div className="flex items-start gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shrink-0 shadow-sm">
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shrink-0 shadow-sm">
                         <span className="text-white text-sm font-bold">
                           {supplier.name.charAt(0).toUpperCase()}
                         </span>
@@ -360,7 +360,7 @@ export function MSSupplierView() {
                         <p className="text-xs font-semibold text-gray-900 mt-0.5">
                           {totalPurchases}
                           {supplier._count?.cctvPurchases && supplier._count.cctvPurchases > 0 && (
-                            <span className="ml-1 text-[9px] text-violet-500">({supplier._count.cctvPurchases} CCTV)</span>
+                            <span className="ml-1 text-[9px] text-cyan-500">({supplier._count.cctvPurchases} CCTV)</span>
                           )}
                         </p>
                       </div>

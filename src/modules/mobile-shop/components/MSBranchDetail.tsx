@@ -203,7 +203,7 @@ export function MSBranchDetail() {
             {branch.code}
           </span>
           {branch.isDefault && (
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-violet-100 text-violet-700">
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-cyan-100 text-cyan-700">
               Default
             </span>
           )}
@@ -264,8 +264,8 @@ export function MSBranchDetail() {
           transition={{ delay: 0.2 }}
           className="bg-white rounded-2xl border border-gray-100 p-3 shadow-sm text-center"
         >
-          <div className="w-8 h-8 rounded-lg bg-violet-50 flex items-center justify-center mx-auto mb-1.5">
-            <ArrowRightLeft className="w-4 h-4 text-violet-600" />
+          <div className="w-8 h-8 rounded-lg bg-cyan-50 flex items-center justify-center mx-auto mb-1.5">
+            <ArrowRightLeft className="w-4 h-4 text-cyan-600" />
           </div>
           <p className="text-lg font-bold text-gray-900">{totalTransfers}</p>
           <p className="text-[10px] text-gray-400 font-medium">Transfers</p>
@@ -281,8 +281,8 @@ export function MSBranchDetail() {
         className="w-full bg-white rounded-2xl border border-gray-100 p-4 shadow-sm flex items-center justify-between active:scale-[0.98] transition-transform"
       >
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-violet-50 flex items-center justify-center">
-            <Box className="w-5 h-5 text-violet-500" />
+          <div className="w-10 h-10 rounded-xl bg-cyan-50 flex items-center justify-center">
+            <Box className="w-5 h-5 text-cyan-500" />
           </div>
           <div className="text-left">
             <p className="text-sm font-semibold text-gray-900">View Inventory</p>
@@ -299,7 +299,7 @@ export function MSBranchDetail() {
           {transfers.length > 0 && (
             <button
               onClick={() => navigate('transfers')}
-              className="text-xs text-violet-600 font-medium"
+              className="text-xs text-cyan-600 font-medium"
             >
               View All
             </button>
@@ -341,7 +341,7 @@ export function MSBranchDetail() {
                     </span>
                   </div>
                   <div className="flex items-center gap-1.5 text-xs text-gray-500">
-                    <span className="text-violet-600 font-medium">{direction}</span>
+                    <span className="text-cyan-600 font-medium">{direction}</span>
                     <span className="truncate font-medium">{otherBranch?.name || 'Unknown'}</span>
                     <span className="text-gray-300 ml-auto shrink-0">
                       {transfer._count?.items || 0} items
@@ -363,7 +363,7 @@ export function MSBranchDetail() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.3 }}
         onClick={() => navigate('create-transfer')}
-        className="w-full py-3.5 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 text-white text-sm font-semibold shadow-lg shadow-violet-500/20 flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
+        className="w-full py-3.5 rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-600 text-white text-sm font-semibold shadow-lg shadow-cyan-500/20 flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
       >
         <Plus className="w-4 h-4" />
         New Transfer

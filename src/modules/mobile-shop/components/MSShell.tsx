@@ -90,7 +90,7 @@ function PlaceholderView({ title, icon }: { title: string; icon?: string }) {
         <h1 className="text-lg font-bold text-gray-900">{title}</h1>
       </div>
       <div className="flex flex-col items-center justify-center py-20 text-center">
-        <div className="w-16 h-16 rounded-2xl bg-violet-100 flex items-center justify-center mb-4">
+        <div className="w-16 h-16 rounded-2xl bg-cyan-100 flex items-center justify-center mb-4">
           <span className="text-2xl">{icon || '🔧'}</span>
         </div>
         <p className="text-sm font-semibold text-gray-800">Coming Soon</p>

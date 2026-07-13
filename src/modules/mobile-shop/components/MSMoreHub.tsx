@@ -86,7 +86,7 @@ export function MSMoreHub() {
       label: 'Active AMC',
       value: quickStats ? String(quickStats.activeAmc) : '...',
       icon: BarChart3,
-      color: 'bg-violet-50 text-violet-600',
+      color: 'bg-cyan-50 text-cyan-600',
     },
   ];
 
@@ -95,11 +95,11 @@ export function MSMoreHub() {
     { label: 'Due Book', icon: <BookOpen className="w-5 h-5" />, view: 'due-book', color: 'bg-red-50 text-red-600' },
     { label: 'Financial Ledger', icon: <BookCheck className="w-5 h-5" />, view: 'ledger', color: 'bg-indigo-50 text-indigo-600' },
     { label: 'Profit & Loss', icon: <TrendingUp className="w-5 h-5" />, view: 'profit-loss', color: 'bg-emerald-50 text-emerald-600' },
-    { label: 'All Reports', icon: <BarChart3 className="w-5 h-5" />, view: 'reports', color: 'bg-violet-50 text-violet-600' },
+    { label: 'All Reports', icon: <BarChart3 className="w-5 h-5" />, view: 'reports', color: 'bg-cyan-50 text-cyan-600' },
   ];
 
   const account: MenuItem[] = [
-    { label: 'Profile', icon: <User className="w-5 h-5" />, view: 'profile', color: 'bg-violet-50 text-violet-600' },
+    { label: 'Profile', icon: <User className="w-5 h-5" />, view: 'profile', color: 'bg-cyan-50 text-cyan-600' },
     { label: 'Settings', icon: <Settings className="w-5 h-5" />, view: 'settings', color: 'bg-gray-100 text-gray-600' },
     { label: 'Subscription', icon: <Crown className="w-5 h-5" />, view: 'subscription', color: 'bg-yellow-50 text-yellow-600' },
     { label: 'Help & Support', icon: <HelpCircle className="w-5 h-5" />, view: 'help', color: 'bg-green-50 text-green-600' },
@@ -114,7 +114,7 @@ export function MSMoreHub() {
       className="mb-5"
     >
       <div className="flex items-center gap-2.5 mb-2.5 px-1">
-        <div className="w-1 h-4 rounded-full bg-gradient-to-b from-violet-500 to-purple-600" />
+        <div className="w-1 h-4 rounded-full bg-gradient-to-b from-cyan-500 to-blue-600" />
         <h3 className="text-[13px] font-bold text-gray-900 tracking-tight">{title}</h3>
       </div>
       <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
@@ -152,7 +152,7 @@ export function MSMoreHub() {
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl p-4 mb-4 text-white"
+        className="bg-gradient-to-br from-cyan-500 to-blue-600 rounded-2xl p-4 mb-4 text-white"
       >
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center text-lg font-bold">

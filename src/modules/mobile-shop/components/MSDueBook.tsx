@@ -155,7 +155,7 @@ export function MSDueBook() {
         <motion.div {...fadeUp} className="grid grid-cols-3 gap-2.5">
           <div className="bg-white rounded-2xl border border-gray-100 p-3 shadow-sm">
             <div className="flex items-center gap-1.5 mb-1">
-              <Users className="w-3.5 h-3.5 text-violet-500" />
+              <Users className="w-3.5 h-3.5 text-cyan-500" />
               <p className="text-[10px] text-gray-400">Customers</p>
             </div>
             <p className="text-lg font-bold text-gray-900">{summary.totalCustomers}</p>
@@ -257,8 +257,8 @@ export function MSDueBook() {
                   onClick={() => toggleCustomer(customer.customerPhone || customer.customerName)}
                   className="w-full flex items-center gap-3 p-4 text-left active:bg-gray-50 transition-colors"
                 >
-                  <div className="w-10 h-10 rounded-full bg-violet-100 flex items-center justify-center shrink-0">
-                    <span className="text-sm font-bold text-violet-600">
+                  <div className="w-10 h-10 rounded-full bg-cyan-100 flex items-center justify-center shrink-0">
+                    <span className="text-sm font-bold text-cyan-600">
                       {customer.customerName.charAt(0).toUpperCase()}
                     </span>
                   </div>
@@ -350,10 +350,10 @@ export function MSDueBook() {
                               </div>
                               <button
                                 onClick={() => navigate('sale-detail', sale.id)}
-                                className="p-1.5 rounded-lg hover:bg-violet-50 transition-colors shrink-0"
+                                className="p-1.5 rounded-lg hover:bg-cyan-50 transition-colors shrink-0"
                                 title="View sale"
                               >
-                                <ExternalLink className="w-3.5 h-3.5 text-violet-500" />
+                                <ExternalLink className="w-3.5 h-3.5 text-cyan-500" />
                               </button>
                             </div>
                           ))}
@@ -363,7 +363,7 @@ export function MSDueBook() {
                         {customer.sales.length === 1 && (
                           <button
                             onClick={() => navigate('sale-detail', customer.sales[0].id)}
-                            className="w-full h-10 rounded-xl bg-gradient-to-r from-violet-500 to-purple-600 text-white text-sm font-semibold flex items-center justify-center gap-2 shadow-lg shadow-violet-500/20 active:scale-[0.98] transition-transform"
+                            className="w-full h-10 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white text-sm font-semibold flex items-center justify-center gap-2 shadow-lg shadow-cyan-500/20 active:scale-[0.98] transition-transform"
                           >
                             <Banknote className="w-4 h-4" />
                             Collect {formatBDT(customer.totalBalance)}

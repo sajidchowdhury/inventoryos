@@ -243,7 +243,7 @@ export function MSSupplierDetail() {
     return (
       <motion.div {...fadeUp} className="text-center py-20">
         <p className="text-sm text-gray-500">Supplier not found</p>
-        <button onClick={goBack} className="mt-3 text-violet-600 text-sm font-medium">
+        <button onClick={goBack} className="mt-3 text-cyan-600 text-sm font-medium">
           Go Back
         </button>
       </motion.div>
@@ -284,7 +284,7 @@ export function MSSupplierDetail() {
       {/* ── Supplier info card ── */}
       <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shrink-0 shadow-sm">
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shrink-0 shadow-sm">
             <span className="text-white text-lg font-bold">
               {supplier.name.charAt(0).toUpperCase()}
             </span>
@@ -413,7 +413,7 @@ export function MSSupplierDetail() {
             onClick={() => setActiveTab(tab.key)}
             className={`flex-1 py-2 rounded-lg text-[11px] font-semibold transition-all whitespace-nowrap px-2 ${
               activeTab === tab.key
-                ? 'bg-white text-violet-700 shadow-sm'
+                ? 'bg-white text-cyan-700 shadow-sm'
                 : 'text-gray-500 hover:text-gray-700'
             }`}
           >
@@ -446,7 +446,7 @@ export function MSSupplierDetail() {
                     <div className="flex items-center gap-1.5">
                       <p className="text-sm font-semibold text-gray-900">{p.purchaseNo}</p>
                       {p.source === 'cctv' && (
-                        <span className="text-[9px] font-bold bg-violet-100 text-violet-600 px-1.5 py-0.5 rounded leading-4">
+                        <span className="text-[9px] font-bold bg-cyan-100 text-cyan-600 px-1.5 py-0.5 rounded leading-4">
                           CCTV
                         </span>
                       )}
@@ -517,7 +517,7 @@ export function MSSupplierDetail() {
                       <div className="flex items-center gap-1.5">
                         <p className="text-sm font-semibold text-gray-900">{p.purchaseNo}</p>
                         {p.source === 'cctv' && (
-                          <span className="text-[9px] font-bold bg-violet-100 text-violet-600 px-1.5 py-0.5 rounded leading-4">
+                          <span className="text-[9px] font-bold bg-cyan-100 text-cyan-600 px-1.5 py-0.5 rounded leading-4">
                             CCTV
                           </span>
                         )}
@@ -569,7 +569,7 @@ export function MSSupplierDetail() {
                       <div className="flex items-center gap-1.5">
                         <p className="text-sm font-semibold text-gray-900">{p.purchaseNo}</p>
                         {p.source === 'cctv' && (
-                          <span className="text-[9px] font-bold bg-violet-100 text-violet-600 px-1.5 py-0.5 rounded leading-4">
+                          <span className="text-[9px] font-bold bg-cyan-100 text-cyan-600 px-1.5 py-0.5 rounded leading-4">
                             CCTV
                           </span>
                         )}
@@ -640,7 +640,7 @@ export function MSSupplierDetail() {
               <span className="text-gray-400 flex items-center gap-1">
                 <Monitor className="w-3 h-3" /> CCTV Outstanding
               </span>
-              <span className="text-violet-600 font-semibold">{summary.cctvOutstanding}</span>
+              <span className="text-cyan-600 font-semibold">{summary.cctvOutstanding}</span>
             </div>
           )}
           <div className="flex justify-between text-xs">

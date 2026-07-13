@@ -229,8 +229,8 @@ export function MSTransferDetail() {
           <div className="flex-1 min-w-0">
             <p className="text-[10px] text-gray-400 mb-1">From</p>
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-violet-50 flex items-center justify-center shrink-0">
-                <Building2 className="w-4 h-4 text-violet-500" />
+              <div className="w-8 h-8 rounded-lg bg-cyan-50 flex items-center justify-center shrink-0">
+                <Building2 className="w-4 h-4 text-cyan-500" />
               </div>
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-gray-900 truncate">
@@ -325,7 +325,7 @@ export function MSTransferDetail() {
                 key={item.id}
                 className="bg-gray-50 rounded-xl p-3 flex items-center gap-2.5"
               >
-                <span className="w-5 h-5 rounded-full bg-violet-100 text-violet-600 flex items-center justify-center text-[10px] font-bold shrink-0">
+                <span className="w-5 h-5 rounded-full bg-cyan-100 text-cyan-600 flex items-center justify-center text-[10px] font-bold shrink-0">
                   {i + 1}
                 </span>
                 <div className="flex-1 min-w-0">
@@ -387,7 +387,7 @@ export function MSTransferDetail() {
             <Button
               onClick={() => setSendDialogOpen(true)}
               disabled={actionLoading !== null}
-              className="flex-1 h-11 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 text-white text-sm font-semibold shadow-lg shadow-violet-500/20"
+              className="flex-1 h-11 rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-600 text-white text-sm font-semibold shadow-lg shadow-cyan-500/20"
             >
               {actionLoading === 'send' ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -459,7 +459,7 @@ export function MSTransferDetail() {
             <AlertDialogCancel className="rounded-xl h-10 text-sm">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleSend}
-              className="rounded-xl h-10 bg-gradient-to-br from-violet-500 to-purple-600 text-white text-sm font-semibold"
+              className="rounded-xl h-10 bg-gradient-to-br from-cyan-500 to-blue-600 text-white text-sm font-semibold"
             >
               Confirm Send
             </AlertDialogAction>

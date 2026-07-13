@@ -212,7 +212,7 @@ export function MSSellKitView() {
 
       {loading ? (
         <div className="flex items-center justify-center py-20">
-          <Loader2 className="w-6 h-6 text-violet-500 animate-spin" />
+          <Loader2 className="w-6 h-6 text-cyan-500 animate-spin" />
         </div>
       ) : success ? (
         /* Success */
@@ -224,12 +224,12 @@ export function MSSellKitView() {
           <CheckCircle2 className="w-16 h-16 text-emerald-500 mx-auto mb-4" />
           <p className="text-base font-bold text-gray-900">Kit Sold!</p>
           <p className="text-sm text-gray-500 mt-1">{kit?.name}</p>
-          <p className="text-lg font-bold text-violet-600 mt-3">{formatBDT(kitPrice)}</p>
+          <p className="text-lg font-bold text-cyan-600 mt-3">{formatBDT(kitPrice)}</p>
           <div className="flex gap-3 mt-6 justify-center">
             {saleId && (
               <button
                 onClick={() => navigate('sale-detail', saleId)}
-                className="px-5 py-2.5 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 text-white text-sm font-semibold shadow-sm"
+                className="px-5 py-2.5 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 text-white text-sm font-semibold shadow-sm"
               >
                 View Sale
               </button>
@@ -256,7 +256,7 @@ export function MSSellKitView() {
           {kit && (
             <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
               <div className="flex items-center gap-2 mb-1">
-                <Package className="w-4 h-4 text-violet-500" />
+                <Package className="w-4 h-4 text-cyan-500" />
                 <p className="text-sm font-bold text-gray-900 truncate">{kit.name}</p>
               </div>
               <p className="text-[11px] text-gray-400">
@@ -309,7 +309,7 @@ export function MSSellKitView() {
             return (
               <div key={`serial-${comp.component.id}`} className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
                 <div className="flex items-center gap-2 mb-2">
-                  <Shield className="w-4 h-4 text-violet-500" />
+                  <Shield className="w-4 h-4 text-cyan-500" />
                   <p className="text-xs font-semibold text-gray-700 flex-1 truncate">
                     Select Serial: {comp.component.product?.name}
                   </p>
@@ -317,7 +317,7 @@ export function MSSellKitView() {
                 </div>
                 {loadingSerials[String(idx)] ? (
                   <div className="flex items-center justify-center py-3">
-                    <Loader2 className="w-4 h-4 text-violet-500 animate-spin" />
+                    <Loader2 className="w-4 h-4 text-cyan-500 animate-spin" />
                   </div>
                 ) : options.length > 0 ? (
                   <div className="max-h-32 overflow-y-auto space-y-1">
@@ -333,14 +333,14 @@ export function MSSellKitView() {
                         className={cn(
                           'w-full flex items-center gap-2 px-3 py-2 rounded-xl text-left transition-colors',
                           selected === opt.id
-                            ? 'bg-violet-50 border border-violet-200'
+                            ? 'bg-cyan-50 border border-cyan-200'
                             : 'bg-gray-50 border border-gray-100 hover:bg-gray-100'
                         )}
                       >
                         <div className={cn(
                           'w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0',
                           selected === opt.id
-                            ? 'border-violet-500 bg-violet-500'
+                            ? 'border-cyan-500 bg-cyan-500'
                             : 'border-gray-300'
                         )}>
                           {selected === opt.id && (
@@ -368,7 +368,7 @@ export function MSSellKitView() {
                 placeholder="Customer name (optional)"
                 value={customerName}
                 onChange={(e) => setCustomerName(e.target.value)}
-                className="w-full h-10 pl-9 pr-3.5 rounded-xl bg-gray-50 border border-gray-200 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-400/40 focus:border-violet-400 transition-all"
+                className="w-full h-10 pl-9 pr-3.5 rounded-xl bg-gray-50 border border-gray-200 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-400/40 focus:border-cyan-400 transition-all"
               />
             </div>
             <div className="relative">
@@ -378,7 +378,7 @@ export function MSSellKitView() {
                 placeholder="Phone number (optional)"
                 value={customerPhone}
                 onChange={(e) => setCustomerPhone(e.target.value)}
-                className="w-full h-10 pl-9 pr-3.5 rounded-xl bg-gray-50 border border-gray-200 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-400/40 focus:border-violet-400 transition-all"
+                className="w-full h-10 pl-9 pr-3.5 rounded-xl bg-gray-50 border border-gray-200 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-400/40 focus:border-cyan-400 transition-all"
               />
             </div>
           </div>
@@ -398,7 +398,7 @@ export function MSSellKitView() {
                   className={cn(
                     'flex-1 h-9 rounded-lg text-[11px] font-semibold transition-all',
                     payMethod === m
-                      ? 'bg-violet-500 text-white shadow-sm'
+                      ? 'bg-cyan-500 text-white shadow-sm'
                       : 'bg-gray-50 text-gray-500 border border-gray-200'
                   )}
                 >
@@ -415,7 +415,7 @@ export function MSSellKitView() {
                 placeholder="Amount"
                 value={payAmount}
                 onChange={(e) => setPayAmount(e.target.value)}
-                className="w-full h-11 pl-8 pr-3.5 rounded-xl bg-gray-50 border border-gray-200 text-sm font-semibold placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-400/40 focus:border-violet-400 transition-all"
+                className="w-full h-11 pl-8 pr-3.5 rounded-xl bg-gray-50 border border-gray-200 text-sm font-semibold placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-400/40 focus:border-cyan-400 transition-all"
               />
             </div>
           </div>
@@ -454,7 +454,7 @@ export function MSSellKitView() {
               'w-full py-3.5 rounded-2xl text-sm font-semibold shadow-lg flex items-center justify-center gap-2 active:scale-[0.98] transition-transform',
               submitting || !avail?.canFulfill
                 ? 'bg-gray-100 text-gray-400 shadow-none'
-                : 'bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-lg shadow-violet-500/20'
+                : 'bg-gradient-to-br from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/20'
             )}
           >
             {submitting ? (

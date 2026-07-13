@@ -41,7 +41,7 @@ const FILTERS = [
 const STATUS_STYLES: Record<string, string> = {
   IN_STOCK: 'bg-emerald-100 text-emerald-700',
   SOLD: 'bg-blue-100 text-blue-700',
-  INSTALLED: 'bg-violet-100 text-violet-700',
+  INSTALLED: 'bg-cyan-100 text-cyan-700',
   IN_REPAIR: 'bg-amber-100 text-amber-700',
   IN_TRANSIT: 'bg-cyan-100 text-cyan-700',
   RETURNED: 'bg-orange-100 text-orange-700',
@@ -245,13 +245,13 @@ export function MSSerialItemsList() {
 
       {/* ── Search ── */}
       <div className="relative">
-        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-violet-400" />
+        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-cyan-400" />
         <input
           type="text"
           placeholder="Search by product, serial, IMEI, customer..."
           value={search}
           onChange={(e) => handleSearchChange(e.target.value)}
-          className="w-full h-11 pl-10 pr-10 rounded-2xl bg-white border border-gray-200 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-400/40 focus:border-violet-400 transition-all"
+          className="w-full h-11 pl-10 pr-10 rounded-2xl bg-white border border-gray-200 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-400/40 focus:border-cyan-400 transition-all"
         />
         {search && (
           <button
@@ -272,7 +272,7 @@ export function MSSerialItemsList() {
             className={cn(
               'px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-all shrink-0',
               activeFilter === f.key
-                ? 'bg-gradient-to-r from-violet-500 to-purple-600 text-white shadow-sm'
+                ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-sm'
                 : 'bg-white text-gray-600 border border-gray-100 hover:bg-gray-50'
             )}
           >
@@ -339,7 +339,7 @@ export function MSSerialItemsList() {
                           {item.serialNumber}
                         </p>
                         {item.source === 'PURCHASE_ORDER' && (
-                          <span className="shrink-0 text-[8px] font-bold px-1.5 py-0.5 rounded bg-violet-50 text-violet-600 border border-violet-200">
+                          <span className="shrink-0 text-[8px] font-bold px-1.5 py-0.5 rounded bg-cyan-50 text-cyan-600 border border-cyan-200">
                             PO
                           </span>
                         )}
@@ -386,7 +386,7 @@ export function MSSerialItemsList() {
                       </Badge>
                       <button
                         onClick={() => { setStatusItem(item); setShowStatusDialog(true); }}
-                        className="w-8 h-8 rounded-lg bg-gray-50 border border-gray-100 flex items-center justify-center active:bg-violet-50 active:border-violet-200 transition-colors"
+                        className="w-8 h-8 rounded-lg bg-gray-50 border border-gray-100 flex items-center justify-center active:bg-cyan-50 active:border-cyan-200 transition-colors"
                       >
                         <RefreshCw className="w-3.5 h-3.5 text-gray-400" />
                       </button>

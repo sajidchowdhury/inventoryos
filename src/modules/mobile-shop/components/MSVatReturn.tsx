@@ -271,7 +271,7 @@ export function MSVatReturn() {
           onClick={() => setActiveTab(activeTab === 'form' ? 'history' : 'form')}
           className={`px-3 py-2 rounded-xl text-xs font-semibold transition-colors ${
             activeTab === 'history'
-              ? 'bg-violet-100 text-violet-700'
+              ? 'bg-cyan-100 text-cyan-700'
               : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
           }`}
         >
@@ -304,7 +304,7 @@ export function MSVatReturn() {
                   <button
                     key={r.id}
                     onClick={() => navigateToReturn(r)}
-                    className="w-full bg-white rounded-2xl border border-gray-100 p-4 shadow-sm text-left hover:border-violet-200 transition-colors"
+                    className="w-full bg-white rounded-2xl border border-gray-100 p-4 shadow-sm text-left hover:border-cyan-200 transition-colors"
                   >
                     <div className="flex items-center justify-between mb-1.5">
                       <span className="text-sm font-bold text-gray-900">
@@ -350,7 +350,7 @@ export function MSVatReturn() {
             <div className="flex-1 bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-2.5 text-center">
               <p className="text-sm font-bold text-gray-900">{monthLabel} {taxYear}</p>
               {isCurrentMonth && (
-                <p className="text-[10px] text-violet-600 font-semibold">Current Month</p>
+                <p className="text-[10px] text-cyan-600 font-semibold">Current Month</p>
               )}
             </div>
             <button
@@ -376,14 +376,14 @@ export function MSVatReturn() {
           {/* Loading */}
           {loading ? (
             <div className="flex items-center justify-center py-20">
-              <div className="w-6 h-6 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
+              <div className="w-6 h-6 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin" />
             </div>
           ) : (
             <>
               {/* Business & BIN Info Card */}
               <motion.div variants={fadeUp} initial="initial" animate="animate" className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm mb-4">
                 <div className="flex items-center gap-2 mb-3">
-                  <Landmark className="w-4 h-4 text-violet-500" />
+                  <Landmark className="w-4 h-4 text-cyan-500" />
                   <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider">Taxpayer Info</h3>
                 </div>
                 <div className="grid grid-cols-2 gap-3 text-[11px]">
@@ -470,14 +470,14 @@ export function MSVatReturn() {
               </motion.div>
 
               {/* Section D: Total Input Tax Credit */}
-              <motion.div variants={fadeUp} initial="initial" animate="animate" className="bg-white rounded-2xl border-2 border-violet-200 shadow-sm mb-3 overflow-hidden">
-                <div className="flex items-center gap-2 px-4 py-3 bg-gradient-to-r from-violet-50 to-white">
-                  <span className="w-6 h-6 rounded-lg bg-violet-100 flex items-center justify-center text-[10px] font-bold text-violet-700">D</span>
-                  <h3 className="text-xs font-bold text-violet-800">Total Input Tax Credit (A+B+C)</h3>
+              <motion.div variants={fadeUp} initial="initial" animate="animate" className="bg-white rounded-2xl border-2 border-cyan-200 shadow-sm mb-3 overflow-hidden">
+                <div className="flex items-center gap-2 px-4 py-3 bg-gradient-to-r from-cyan-50 to-white">
+                  <span className="w-6 h-6 rounded-lg bg-cyan-100 flex items-center justify-center text-[10px] font-bold text-cyan-700">D</span>
+                  <h3 className="text-xs font-bold text-cyan-800">Total Input Tax Credit (A+B+C)</h3>
                 </div>
                 <div className="px-4 py-3 flex items-center justify-between">
                   <span className="text-[10px] text-gray-400">Sum of all input credits</span>
-                  <span className="text-xl font-bold text-violet-700">{formatBDT(calculated?.totalInputCredit || 0)}</span>
+                  <span className="text-xl font-bold text-cyan-700">{formatBDT(calculated?.totalInputCredit || 0)}</span>
                 </div>
               </motion.div>
 
@@ -542,7 +542,7 @@ export function MSVatReturn() {
                       value={adjustmentAmount}
                       onChange={(e) => setAdjustmentAmount(e.target.value)}
                       disabled={savedReturn?.status === 'SUBMITTED' || savedReturn?.status === 'APPROVED'}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm font-mono focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-400 disabled:bg-gray-50 disabled:text-gray-400 transition-all"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm font-mono focus:outline-none focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-400 disabled:bg-gray-50 disabled:text-gray-400 transition-all"
                       placeholder="0.00"
                     />
                     <p className="text-[9px] text-gray-400 mt-1">Use negative for decrease, positive for increase</p>
@@ -554,7 +554,7 @@ export function MSVatReturn() {
                       value={adjustmentNote}
                       onChange={(e) => setAdjustmentNote(e.target.value)}
                       disabled={savedReturn?.status === 'SUBMITTED' || savedReturn?.status === 'APPROVED'}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-400 disabled:bg-gray-50 disabled:text-gray-400 transition-all"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-400 disabled:bg-gray-50 disabled:text-gray-400 transition-all"
                       placeholder="Reason for adjustment (optional)"
                     />
                   </div>
@@ -565,7 +565,7 @@ export function MSVatReturn() {
                       value={declaredBy}
                       onChange={(e) => setDeclaredBy(e.target.value)}
                       disabled={savedReturn?.status === 'SUBMITTED' || savedReturn?.status === 'APPROVED'}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-400 disabled:bg-gray-50 disabled:text-gray-400 transition-all"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-400 disabled:bg-gray-50 disabled:text-gray-400 transition-all"
                       placeholder="Name of authorized person"
                     />
                   </div>
@@ -573,33 +573,33 @@ export function MSVatReturn() {
               </motion.div>
 
               {/* Summary Card */}
-              <motion.div variants={fadeUp} initial="initial" animate="animate" className="bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl p-4 shadow-lg shadow-violet-500/20 mb-4">
-                <h3 className="text-xs font-bold text-violet-200 uppercase tracking-wider mb-3">Return Summary</h3>
+              <motion.div variants={fadeUp} initial="initial" animate="animate" className="bg-gradient-to-br from-cyan-500 to-blue-600 rounded-2xl p-4 shadow-lg shadow-cyan-500/20 mb-4">
+                <h3 className="text-xs font-bold text-cyan-200 uppercase tracking-wider mb-3">Return Summary</h3>
                 <div className="space-y-2 text-[11px]">
                   <div className="flex justify-between text-white">
-                    <span className="text-violet-200">Period</span>
+                    <span className="text-cyan-200">Period</span>
                     <span className="font-semibold">{monthLabel} {taxYear}</span>
                   </div>
                   <div className="flex justify-between text-white">
-                    <span className="text-violet-200">Total Input Credit (D)</span>
+                    <span className="text-cyan-200">Total Input Credit (D)</span>
                     <span className="font-semibold">{formatBDT(calculated?.totalInputCredit || 0)}</span>
                   </div>
                   <div className="flex justify-between text-white">
-                    <span className="text-violet-200">Output Tax (E)</span>
+                    <span className="text-cyan-200">Output Tax (E)</span>
                     <span className="font-semibold">{formatBDT(calculated?.outputTax || 0)}</span>
                   </div>
                   <div className="flex justify-between text-white">
-                    <span className="text-violet-200">Adjustment (G)</span>
+                    <span className="text-cyan-200">Adjustment (G)</span>
                     <span className="font-semibold">{formatBDT(adjNum)}</span>
                   </div>
-                  <div className="border-t border-violet-400/40 pt-2 mt-2">
+                  <div className="border-t border-cyan-400/40 pt-2 mt-2">
                     <div className="flex justify-between text-white">
                       <span className="font-bold">Net {adjustedNetVat >= 0 ? 'Payable' : 'Refundable'}</span>
                       <span className="text-lg font-bold">
                         {adjustedNetVat < 0 ? '(' : ''}{formatBDT(finalAmount)}{adjustedNetVat < 0 ? ')' : ''}
                       </span>
                     </div>
-                    <p className="text-[10px] text-violet-200 text-right italic mt-0.5">{finalWords}</p>
+                    <p className="text-[10px] text-cyan-200 text-right italic mt-0.5">{finalWords}</p>
                   </div>
                 </div>
               </motion.div>
@@ -649,7 +649,7 @@ export function MSVatReturn() {
                     <button
                       onClick={() => handleSave(true)}
                       disabled={saving || !nbrConfig?.bin}
-                      className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 text-white text-sm font-semibold shadow-lg shadow-violet-500/20 hover:shadow-violet-500/30 disabled:opacity-50 transition-all"
+                      className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 text-white text-sm font-semibold shadow-lg shadow-cyan-500/20 hover:shadow-cyan-500/30 disabled:opacity-50 transition-all"
                     >
                       <ShieldCheck className="w-4 h-4" />
                       {saving ? 'Submitting...' : 'Submit'}

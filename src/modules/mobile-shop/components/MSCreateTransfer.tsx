@@ -225,7 +225,7 @@ export function MSCreateTransfer() {
       {/* Progress bar */}
       <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
         <motion.div
-          className="h-full bg-gradient-to-r from-violet-500 to-purple-600 rounded-full"
+          className="h-full bg-gradient-to-r from-cyan-500 to-blue-600 rounded-full"
           initial={{ width: 0 }}
           animate={{ width: `${progressPct}%` }}
           transition={{ duration: 0.3, ease: 'easeOut' }}
@@ -258,7 +258,7 @@ export function MSCreateTransfer() {
                 <p className="text-sm text-gray-500">No branches available</p>
                 <button
                   onClick={() => navigate('branches')}
-                  className="text-xs text-violet-600 font-medium mt-2"
+                  className="text-xs text-cyan-600 font-medium mt-2"
                 >
                   Create a branch first
                 </button>
@@ -274,7 +274,7 @@ export function MSCreateTransfer() {
                     className={cn(
                       'w-full bg-white rounded-2xl border p-4 shadow-sm text-left active:scale-[0.98] transition-all',
                       fromBranchId === branch.id
-                        ? 'border-violet-400 ring-2 ring-violet-400/20'
+                        ? 'border-cyan-400 ring-2 ring-cyan-400/20'
                         : 'border-gray-100'
                     )}
                   >
@@ -282,7 +282,7 @@ export function MSCreateTransfer() {
                       <div className={cn(
                         'w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors',
                         fromBranchId === branch.id
-                          ? 'border-violet-500 bg-violet-500'
+                          ? 'border-cyan-500 bg-cyan-500'
                           : 'border-gray-300'
                       )}>
                         {fromBranchId === branch.id && (
@@ -315,7 +315,7 @@ export function MSCreateTransfer() {
               className={cn(
                 'w-full h-11 rounded-2xl text-sm font-semibold shadow-sm transition-all',
                 fromBranchId
-                  ? 'bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-lg shadow-violet-500/20'
+                  ? 'bg-gradient-to-br from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/20'
                   : 'bg-gray-100 text-gray-400'
               )}
             >
@@ -336,13 +336,13 @@ export function MSCreateTransfer() {
             className="space-y-3"
           >
             {/* From branch summary */}
-            <div className="bg-violet-50 rounded-xl p-3 flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-violet-100 flex items-center justify-center">
-                <Building2 className="w-4 h-4 text-violet-600" />
+            <div className="bg-cyan-50 rounded-xl p-3 flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-cyan-100 flex items-center justify-center">
+                <Building2 className="w-4 h-4 text-cyan-600" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-[10px] text-violet-500 font-medium">Sending from</p>
-                <p className="text-xs font-semibold text-violet-800 truncate">
+                <p className="text-[10px] text-cyan-500 font-medium">Sending from</p>
+                <p className="text-xs font-semibold text-cyan-800 truncate">
                   {branches.find((b) => b.id === fromBranchId)?.name}
                 </p>
               </div>
@@ -358,7 +358,7 @@ export function MSCreateTransfer() {
                   className={cn(
                     'w-full bg-white rounded-2xl border p-4 shadow-sm text-left active:scale-[0.98] transition-all',
                     toBranchId === branch.id
-                      ? 'border-violet-400 ring-2 ring-violet-400/20'
+                      ? 'border-cyan-400 ring-2 ring-cyan-400/20'
                       : 'border-gray-100'
                   )}
                 >
@@ -366,7 +366,7 @@ export function MSCreateTransfer() {
                     <div className={cn(
                       'w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors',
                       toBranchId === branch.id
-                        ? 'border-violet-500 bg-violet-500'
+                        ? 'border-cyan-500 bg-cyan-500'
                         : 'border-gray-300'
                     )}>
                       {toBranchId === branch.id && (
@@ -388,7 +388,7 @@ export function MSCreateTransfer() {
                   <p className="text-sm text-gray-500">No other branches available</p>
                   <button
                     onClick={() => navigate('branches')}
-                    className="text-xs text-violet-600 font-medium mt-2"
+                    className="text-xs text-cyan-600 font-medium mt-2"
                   >
                     Add another branch
                   </button>
@@ -410,7 +410,7 @@ export function MSCreateTransfer() {
                 className={cn(
                   'flex-1 h-11 rounded-2xl text-sm font-semibold shadow-sm transition-all',
                   toBranchId
-                    ? 'bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-lg shadow-violet-500/20'
+                    ? 'bg-gradient-to-br from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/20'
                     : 'bg-gray-100 text-gray-400'
                 )}
               >
@@ -439,7 +439,7 @@ export function MSCreateTransfer() {
                   {branches.find((b) => b.id === fromBranchId)?.name}
                 </p>
               </div>
-              <ArrowRight className="w-4 h-4 text-violet-500 shrink-0" />
+              <ArrowRight className="w-4 h-4 text-cyan-500 shrink-0" />
               <div className="flex-1 min-w-0 text-center">
                 <p className="text-[10px] text-gray-400">To</p>
                 <p className="text-xs font-semibold text-gray-700 truncate">
@@ -450,20 +450,20 @@ export function MSCreateTransfer() {
 
             {/* Search + Scanner */}
             <div className="relative">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-violet-400" />
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-cyan-400" />
               <input
                 type="text"
                 placeholder="Search by serial, IMEI, or product..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full h-11 pl-10 pr-20 rounded-2xl bg-white border border-gray-200 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-400/40 focus:border-violet-400 transition-all"
+                className="w-full h-11 pl-10 pr-20 rounded-2xl bg-white border border-gray-200 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-400/40 focus:border-cyan-400 transition-all"
               />
               <button
                 onClick={() => {
                   const input = document.getElementById('scan-input');
                   if (input) input.focus();
                 }}
-                className="absolute right-2 top-1/2 -translate-y-1/2 h-7 px-2 rounded-lg bg-violet-50 text-violet-600 flex items-center gap-1 text-[10px] font-semibold hover:bg-violet-100 transition-colors"
+                className="absolute right-2 top-1/2 -translate-y-1/2 h-7 px-2 rounded-lg bg-cyan-50 text-cyan-600 flex items-center gap-1 text-[10px] font-semibold hover:bg-cyan-100 transition-colors"
               >
                 <ScanBarcode className="w-3.5 h-3.5" />
                 Scan
@@ -529,7 +529,7 @@ export function MSCreateTransfer() {
                 {hasMoreSearch && (
                   <button
                     onClick={() => searchInventory(searchQuery, searchPage + 1, true)}
-                    className="w-full py-2 text-xs text-violet-600 font-medium text-center"
+                    className="w-full py-2 text-xs text-cyan-600 font-medium text-center"
                   >
                     Load more results
                   </button>
@@ -549,10 +549,10 @@ export function MSCreateTransfer() {
                   {stagedItems.map((item) => (
                     <div
                       key={item.id}
-                      className="bg-violet-50/60 rounded-xl border border-violet-100 p-2.5 flex items-center gap-2.5"
+                      className="bg-cyan-50/60 rounded-xl border border-cyan-100 p-2.5 flex items-center gap-2.5"
                     >
-                      <div className="w-8 h-8 rounded-lg bg-violet-100 flex items-center justify-center shrink-0">
-                        <Package className="w-4 h-4 text-violet-600" />
+                      <div className="w-8 h-8 rounded-lg bg-cyan-100 flex items-center justify-center shrink-0">
+                        <Package className="w-4 h-4 text-cyan-600" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-medium text-gray-800 truncate">{item.productName}</p>
@@ -589,7 +589,7 @@ export function MSCreateTransfer() {
                 className={cn(
                   'flex-1 h-11 rounded-2xl text-sm font-semibold shadow-sm transition-all',
                   stagedItems.length > 0
-                    ? 'bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-lg shadow-violet-500/20'
+                    ? 'bg-gradient-to-br from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/20'
                     : 'bg-gray-100 text-gray-400'
                 )}
               >
@@ -613,7 +613,7 @@ export function MSCreateTransfer() {
             {/* Transfer summary */}
             <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
               <div className="flex items-center gap-2 mb-3">
-                <ArrowRightLeft className="w-4 h-4 text-violet-500" />
+                <ArrowRightLeft className="w-4 h-4 text-cyan-500" />
                 <p className="text-sm font-semibold text-gray-900">Transfer Summary</p>
               </div>
 
@@ -625,7 +625,7 @@ export function MSCreateTransfer() {
                     {branches.find((b) => b.id === fromBranchId)?.name}
                   </p>
                 </div>
-                <ArrowRight className="w-4 h-4 text-violet-400 shrink-0" />
+                <ArrowRight className="w-4 h-4 text-cyan-400 shrink-0" />
                 <div className="flex-1 min-w-0 bg-gray-50 rounded-xl p-3 text-center">
                   <p className="text-[10px] text-gray-400 mb-0.5">To</p>
                   <p className="text-xs font-semibold text-gray-800 truncate">
@@ -634,7 +634,7 @@ export function MSCreateTransfer() {
                 </div>
               </div>
 
-              <div className="flex items-center justify-center gap-1.5 text-sm font-bold text-violet-600 mb-1">
+              <div className="flex items-center justify-center gap-1.5 text-sm font-bold text-cyan-600 mb-1">
                 <Package className="w-4 h-4" />
                 {stagedItems.length} item{stagedItems.length !== 1 ? 's' : ''}
               </div>
@@ -649,7 +649,7 @@ export function MSCreateTransfer() {
                     key={item.id}
                     className="flex items-center gap-2.5 bg-gray-50 rounded-xl px-3 py-2.5"
                   >
-                    <span className="w-5 h-5 rounded-full bg-violet-100 text-violet-600 flex items-center justify-center text-[10px] font-bold shrink-0">
+                    <span className="w-5 h-5 rounded-full bg-cyan-100 text-cyan-600 flex items-center justify-center text-[10px] font-bold shrink-0">
                       {i + 1}
                     </span>
                     <div className="flex-1 min-w-0">
@@ -689,7 +689,7 @@ export function MSCreateTransfer() {
               <Button
                 onClick={handleCreateTransfer}
                 disabled={creating}
-                className="flex-1 h-11 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 text-white text-sm font-semibold shadow-lg shadow-violet-500/20 disabled:opacity-50"
+                className="flex-1 h-11 rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-600 text-white text-sm font-semibold shadow-lg shadow-cyan-500/20 disabled:opacity-50"
               >
                 {creating ? (
                   <Loader2 className="w-4 h-4 animate-spin" />

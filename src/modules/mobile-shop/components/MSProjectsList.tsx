@@ -20,7 +20,7 @@ const statusConfig: Record<ProjectStatus, { label: string; bg: string; text: str
   PLANNING:     { label: 'Planning',     bg: 'bg-gray-100',  text: 'text-gray-600', bar: 'bg-gray-400' },
   SURVEY:       { label: 'Survey',       bg: 'bg-cyan-100',  text: 'text-cyan-700', bar: 'bg-cyan-500' },
   PROCUREMENT:  { label: 'Procurement',  bg: 'bg-blue-100',  text: 'text-blue-700', bar: 'bg-blue-500' },
-  INSTALLATION: { label: 'Installation', bg: 'bg-violet-100', text: 'text-violet-700', bar: 'bg-violet-500' },
+  INSTALLATION: { label: 'Installation', bg: 'bg-cyan-100', text: 'text-cyan-700', bar: 'bg-cyan-500' },
   TESTING:      { label: 'Testing',      bg: 'bg-amber-100', text: 'text-amber-700', bar: 'bg-amber-500' },
   HANDOVER:     { label: 'Handover',     bg: 'bg-emerald-100', text: 'text-emerald-700', bar: 'bg-emerald-500' },
   COMPLETED:    { label: 'Completed',    bg: 'bg-green-100', text: 'text-green-700', bar: 'bg-green-500' },
@@ -87,7 +87,7 @@ export function MSProjectsList() {
         <h1 className="text-lg font-bold text-gray-900 flex-1">Projects</h1>
         <button
           onClick={() => navigate('create-project')}
-          className="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 text-white flex items-center justify-center shadow-lg shadow-violet-500/20 active:scale-95 transition-transform"
+          className="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 text-white flex items-center justify-center shadow-lg shadow-cyan-500/20 active:scale-95 transition-transform"
         >
           <Plus className="w-5 h-5" />
         </button>
@@ -95,7 +95,7 @@ export function MSProjectsList() {
 
       {/* Summary */}
       <div className="flex items-center gap-3 text-xs text-gray-500 px-1">
-        <span className="font-semibold text-violet-600">{activeCount} Active</span>
+        <span className="font-semibold text-cyan-600">{activeCount} Active</span>
         <span>·</span>
         <span>৳{totalValue.toLocaleString()}</span>
         {nearDeadline > 0 && (
@@ -117,7 +117,7 @@ export function MSProjectsList() {
           placeholder="Search projects..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-white border border-gray-100 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-300 shadow-sm"
+          className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-white border border-gray-100 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-300 shadow-sm"
         />
       </div>
 
@@ -130,7 +130,7 @@ export function MSProjectsList() {
             className={cn(
               'px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors',
               activeTab === tab.key
-                ? 'bg-violet-500 text-white shadow-sm'
+                ? 'bg-cyan-500 text-white shadow-sm'
                 : 'bg-white text-gray-500 border border-gray-100',
             )}
           >
@@ -152,8 +152,8 @@ export function MSProjectsList() {
         </div>
       ) : projects.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center">
-          <div className="w-14 h-14 rounded-2xl bg-violet-100 flex items-center justify-center mb-3">
-            <BarChart3 className="w-7 h-7 text-violet-400" />
+          <div className="w-14 h-14 rounded-2xl bg-cyan-100 flex items-center justify-center mb-3">
+            <BarChart3 className="w-7 h-7 text-cyan-400" />
           </div>
           <p className="text-sm font-semibold text-gray-800">No Projects</p>
           <p className="text-xs text-gray-400 mt-1 max-w-[200px]">
@@ -164,7 +164,7 @@ export function MSProjectsList() {
           {!search && activeTab === 'ALL' && (
             <button
               onClick={() => navigate('create-project')}
-              className="mt-3 px-4 py-2 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 text-white text-xs font-semibold shadow-lg shadow-violet-500/20 active:scale-95 transition-transform"
+              className="mt-3 px-4 py-2 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 text-white text-xs font-semibold shadow-lg shadow-cyan-500/20 active:scale-95 transition-transform"
             >
               Create Project
             </button>

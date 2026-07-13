@@ -63,15 +63,15 @@ export function MSTechnicianDetail() {
           <ArrowLeft className="w-4 h-4 text-gray-600" />
         </button>
         <div className="flex items-center gap-3 flex-1">
-          <div className="w-11 h-11 rounded-xl bg-violet-50 flex items-center justify-center">
-            <User className="w-5 h-5 text-violet-500" />
+          <div className="w-11 h-11 rounded-xl bg-cyan-50 flex items-center justify-center">
+            <User className="w-5 h-5 text-cyan-500" />
           </div>
           <div>
             <h2 className="text-base font-bold text-gray-900">{tech.displayName}</h2>
             <div className="flex items-center gap-2">
               {tech.phone && <span className="text-[10px] text-gray-400 flex items-center gap-0.5"><Phone className="w-2.5 h-2.5" />{tech.phone}</span>}
               {tech.specialization && (
-                <Badge variant="secondary" className="text-[9px] px-1.5 py-0 h-4 bg-purple-50 text-purple-600">
+                <Badge variant="secondary" className="text-[9px] px-1.5 py-0 h-4 bg-cyan-50 text-cyan-600">
                   {tech.specialization}
                 </Badge>
               )}
@@ -88,8 +88,8 @@ export function MSTechnicianDetail() {
           className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm"
         >
           <div className="flex items-center gap-2 mb-3">
-            <div className="w-7 h-7 rounded-lg bg-violet-50 flex items-center justify-center">
-              <TrendingUp className="w-4 h-4 text-violet-500" />
+            <div className="w-7 h-7 rounded-lg bg-cyan-50 flex items-center justify-center">
+              <TrendingUp className="w-4 h-4 text-cyan-500" />
             </div>
             <h3 className="text-sm font-bold text-gray-800">Performance</h3>
           </div>

@@ -131,7 +131,7 @@ const TIER_CONFIG = [
   { key: 'tierBronze' as const, label: 'Bronze', color: 'bg-amber-100 text-amber-700', icon: Award },
   { key: 'tierSilver' as const, label: 'Silver', color: 'bg-gray-100 text-gray-600', icon: Award },
   { key: 'tierGold' as const, label: 'Gold', color: 'bg-yellow-100 text-yellow-700', icon: Crown },
-  { key: 'tierPlatinum' as const, label: 'Platinum', color: 'bg-violet-100 text-violet-700', icon: Crown },
+  { key: 'tierPlatinum' as const, label: 'Platinum', color: 'bg-cyan-100 text-cyan-700', icon: Crown },
 ];
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -438,8 +438,8 @@ export function MSLoyaltyCenter() {
         className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm"
       >
         <div className="flex items-center gap-2 mb-3">
-          <div className="w-8 h-8 rounded-lg bg-violet-50 flex items-center justify-center">
-            <Star className="w-4 h-4 text-violet-600" />
+          <div className="w-8 h-8 rounded-lg bg-cyan-50 flex items-center justify-center">
+            <Star className="w-4 h-4 text-cyan-600" />
           </div>
           <h3 className="text-sm font-semibold text-gray-900">Earning Rules</h3>
         </div>
@@ -468,8 +468,8 @@ export function MSLoyaltyCenter() {
             </div>
           </div>
 
-          <div className="rounded-xl bg-violet-50/60 border border-violet-100 px-3 py-2.5">
-            <p className="text-xs text-violet-700 font-medium text-center">
+          <div className="rounded-xl bg-cyan-50/60 border border-cyan-100 px-3 py-2.5">
+            <p className="text-xs text-cyan-700 font-medium text-center">
               Customer earns <span className="font-bold">{earnPoints}</span> point{earnPoints !== 1 ? 's' : ''} for every{' '}
               <span className="font-bold">{formatBDT(earnAmount)}</span> spent
             </p>
@@ -570,7 +570,7 @@ export function MSLoyaltyCenter() {
         <Button
           onClick={handleSaveConfig}
           disabled={savingConfig}
-          className="w-full h-11 bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-lg shadow-violet-500/20 rounded-xl font-semibold text-sm hover:from-violet-600 hover:to-purple-700 transition-all"
+          className="w-full h-11 bg-gradient-to-br from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/20 rounded-xl font-semibold text-sm hover:from-cyan-600 hover:to-cyan-700 transition-all"
         >
           {savingConfig ? 'Saving...' : 'Save Configuration'}
         </Button>
@@ -586,10 +586,10 @@ export function MSLoyaltyCenter() {
       >
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <Gift className="w-4 h-4 text-violet-500" />
+            <Gift className="w-4 h-4 text-cyan-500" />
             <h3 className="text-sm font-semibold text-gray-900">Promotional Offers</h3>
             {offers.length > 0 && (
-              <Badge variant="secondary" className="text-[10px] px-2 py-0 rounded-full bg-violet-100 text-violet-700 border-0">
+              <Badge variant="secondary" className="text-[10px] px-2 py-0 rounded-full bg-cyan-100 text-cyan-700 border-0">
                 {offers.length}
               </Badge>
             )}
@@ -597,7 +597,7 @@ export function MSLoyaltyCenter() {
           <Button
             size="sm"
             onClick={openCreateDialog}
-            className="h-8 px-3 text-xs bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-lg shadow-violet-500/20 rounded-lg hover:from-violet-600 hover:to-purple-700"
+            className="h-8 px-3 text-xs bg-gradient-to-br from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/20 rounded-lg hover:from-cyan-600 hover:to-cyan-700"
           >
             <Plus className="w-3.5 h-3.5 mr-1" />
             Create Offer
@@ -637,7 +637,7 @@ export function MSLoyaltyCenter() {
                         variant="secondary"
                         className={cn(
                           'text-[10px] px-2 py-0 rounded-full font-semibold border-0 shrink-0',
-                          offer.offerType === 'DOUBLE_POINTS' ? 'bg-violet-100 text-violet-700' : 'bg-emerald-100 text-emerald-700',
+                          offer.offerType === 'DOUBLE_POINTS' ? 'bg-cyan-100 text-cyan-700' : 'bg-emerald-100 text-emerald-700',
                         )}
                       >
                         {offer.offerType === 'DOUBLE_POINTS' ? 'Double Points' : 'Bonus Points'}
@@ -686,7 +686,7 @@ export function MSLoyaltyCenter() {
                       variant="ghost"
                       size="sm"
                       onClick={() => openEditDialog(offer)}
-                      className="h-8 px-2 text-xs text-gray-500 hover:text-violet-600"
+                      className="h-8 px-2 text-xs text-gray-500 hover:text-cyan-600"
                     >
                       <Pencil className="w-3.5 h-3.5" />
                     </Button>
@@ -831,7 +831,7 @@ export function MSLoyaltyCenter() {
                 rows={2}
                 value={offerForm.description}
                 onChange={(e) => setOfferForm((prev) => ({ ...prev, description: e.target.value }))}
-                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-400/40 focus:border-violet-400 transition-all resize-none"
+                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-400/40 focus:border-cyan-400 transition-all resize-none"
               />
             </div>
 
@@ -839,7 +839,7 @@ export function MSLoyaltyCenter() {
             <Button
               onClick={handleSubmitOffer}
               disabled={submittingOffer}
-              className="w-full h-10 bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-lg shadow-violet-500/20 rounded-xl font-semibold text-sm hover:from-violet-600 hover:to-purple-700 transition-all"
+              className="w-full h-10 bg-gradient-to-br from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/20 rounded-xl font-semibold text-sm hover:from-cyan-600 hover:to-cyan-700 transition-all"
             >
               {submittingOffer
                 ? 'Saving...'

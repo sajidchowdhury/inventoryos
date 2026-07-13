@@ -28,7 +28,7 @@ const STATUS_TABS: { label: string; value: string }[] = [
 ];
 
 const STATUS_COLORS: Record<string, string> = {
-  ACTIVE: 'bg-violet-100 text-violet-700',
+  ACTIVE: 'bg-cyan-100 text-cyan-700',
   COMPLETED: 'bg-green-100 text-green-700',
   DEFAULTED: 'bg-red-100 text-red-700',
   CANCELLED: 'bg-slate-100 text-slate-500',
@@ -99,14 +99,14 @@ export function MSEMIList() {
         <motion.button
           whileTap={{ scale: 0.95 }}
           onClick={() => navigate('create-emi')}
-          className="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 text-white flex items-center justify-center shadow-lg shadow-violet-500/20"
+          className="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 text-white flex items-center justify-center shadow-lg shadow-cyan-500/20"
         >
           <Plus className="w-5 h-5" />
         </motion.button>
       </div>
 
       {/* Stats banner */}
-      <div className="bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl p-4 text-white shadow-lg shadow-violet-500/20">
+      <div className="bg-gradient-to-br from-cyan-500 to-blue-600 rounded-2xl p-4 text-white shadow-lg shadow-cyan-500/20">
         <div className="grid grid-cols-3 gap-3">
           <div>
             <p className="text-2xl font-bold">{activePlans.length}</p>
@@ -134,7 +134,7 @@ export function MSEMIList() {
           placeholder="Search customer, product..."
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
-          className="pl-10 bg-gray-50 border-0 focus-visible:ring-2 focus-visible:ring-violet-500/30"
+          className="pl-10 bg-gray-50 border-0 focus-visible:ring-2 focus-visible:ring-cyan-500/30"
         />
       </div>
 
@@ -147,7 +147,7 @@ export function MSEMIList() {
             className={cn(
               'px-3 py-1.5 rounded-full text-[11px] font-semibold whitespace-nowrap transition-all shrink-0',
               activeFilter === tab.value
-                ? 'bg-gradient-to-r from-violet-500 to-purple-600 text-white shadow-sm'
+                ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-sm'
                 : 'bg-white text-gray-600 border border-gray-100 hover:bg-gray-50'
             )}
           >
@@ -177,7 +177,7 @@ export function MSEMIList() {
               <motion.button
                 whileTap={{ scale: 0.95 }}
                 onClick={() => navigate('create-emi')}
-                className="mt-3 px-4 py-2 rounded-xl bg-gradient-to-r from-violet-500 to-purple-600 text-white text-xs font-semibold shadow-lg shadow-violet-500/20"
+                className="mt-3 px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white text-xs font-semibold shadow-lg shadow-cyan-500/20"
               >
                 Create EMI Plan
               </motion.button>
@@ -232,7 +232,7 @@ export function MSEMIList() {
                           'h-full rounded-full',
                           plan.status === 'COMPLETED' ? 'bg-green-500' :
                           isOverdue ? 'bg-red-500' :
-                          'bg-violet-500'
+                          'bg-cyan-500'
                         )}
                       />
                     </div>

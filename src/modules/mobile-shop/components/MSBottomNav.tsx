@@ -65,10 +65,10 @@ export function MSBottomNav() {
             return (
               <button key={item.view}
                 className={cn("flex flex-col items-center justify-center gap-0.5 flex-1 h-full transition-colors",
-                  isActive ? "text-violet-600" : "text-gray-400 hover:text-gray-600")}
+                  isActive ? "text-cyan-600" : "text-gray-400 hover:text-gray-600")}
                 onClick={() => navigate(item.view)}>
                 <div className={cn("h-10 w-10 rounded-full flex items-center justify-center -mt-4 shadow-lg transition-all active:scale-95",
-                  isActive ? "bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-violet-500/30" : "bg-violet-50 text-violet-600")}>
+                  isActive ? "bg-gradient-to-br from-cyan-500 to-blue-600 text-white shadow-cyan-500/30" : "bg-cyan-50 text-cyan-600")}>
                   <item.icon className="h-5 w-5" />
                 </div>
                 <span className="text-[10px] font-medium -mt-0.5">{item.label}</span>
@@ -76,19 +76,19 @@ export function MSBottomNav() {
             );
           }
 
-          // AI tab — special purple glow
+          // AI tab — special cyan glow
           if (item.isAI) {
             return (
               <button key={item.view}
                 className={cn("relative flex flex-col items-center justify-center gap-0.5 flex-1 h-full transition-all",
-                  isActive ? "text-violet-600" : "text-gray-400 hover:text-violet-500")}
+                  isActive ? "text-cyan-600" : "text-gray-400 hover:text-cyan-500")}
                 onClick={() => handleTap(item)}>
-                {isActive && <div className="absolute top-0 left-1/2 -translate-x-1/2 w-6 h-[3px] bg-gradient-to-r from-violet-400 to-purple-600 rounded-b-full" />}
+                {isActive && <div className="absolute top-0 left-1/2 -translate-x-1/2 w-6 h-[3px] bg-gradient-to-r from-cyan-400 to-blue-600 rounded-b-full" />}
                 <div className={cn("relative h-7 w-7 flex items-center justify-center transition-all", isActive && "animate-pulse-soft")}>
-                  {isActive && <div className="absolute inset-0 rounded-lg bg-violet-100 blur-sm" />}
-                  <item.icon className={cn("h-5 w-5 relative z-10 transition-colors", isActive ? "text-violet-600" : "text-gray-400")} />
+                  {isActive && <div className="absolute inset-0 rounded-lg bg-cyan-100 blur-sm" />}
+                  <item.icon className={cn("h-5 w-5 relative z-10 transition-colors", isActive ? "text-cyan-600" : "text-gray-400")} />
                 </div>
-                <span className={cn("text-[10px] font-medium transition-colors", isActive ? "text-violet-600 font-semibold" : "text-gray-400")}>{item.label}</span>
+                <span className={cn("text-[10px] font-medium transition-colors", isActive ? "text-cyan-600 font-semibold" : "text-gray-400")}>{item.label}</span>
               </button>
             );
           }
@@ -97,11 +97,11 @@ export function MSBottomNav() {
           return (
             <button key={item.view}
               className={cn("relative flex flex-col items-center justify-center gap-0.5 flex-1 h-full transition-all",
-                isActive ? "text-violet-600" : "text-gray-400 hover:text-gray-600")}
+                isActive ? "text-cyan-600" : "text-gray-400 hover:text-gray-600")}
               onClick={() => handleTap(item)}>
-              {isActive && <div className="absolute top-0 left-1/2 -translate-x-1/2 w-6 h-[3px] bg-violet-500 rounded-b-full" />}
+              {isActive && <div className="absolute top-0 left-1/2 -translate-x-1/2 w-6 h-[3px] bg-cyan-500 rounded-b-full" />}
               <item.icon className={cn("h-5 w-5 transition-transform", isActive && "scale-110")} />
-              <span className={cn("text-[10px] font-medium transition-colors", isActive ? "text-violet-600 font-semibold" : "text-gray-400")}>{item.label}</span>
+              <span className={cn("text-[10px] font-medium transition-colors", isActive ? "text-cyan-600 font-semibold" : "text-gray-400")}>{item.label}</span>
             </button>
           );
         })}

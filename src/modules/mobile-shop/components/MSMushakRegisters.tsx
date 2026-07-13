@@ -136,7 +136,7 @@ export function MSMushakRegisters() {
         <button
           onClick={() => setTab('sales')}
           className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-xs font-semibold transition-all ${
-            tab === 'sales' ? 'bg-white text-violet-700 shadow-sm' : 'text-gray-500'
+            tab === 'sales' ? 'bg-white text-cyan-700 shadow-sm' : 'text-gray-500'
           }`}
         >
           <FileText className="w-4 h-4" />
@@ -161,7 +161,7 @@ export function MSMushakRegisters() {
           value={fromDate}
           onChange={(e) => setFromDate(e.target.value)}
           max={toDate || today}
-          className="flex-1 px-2.5 py-2 border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-400 transition-all"
+          className="flex-1 px-2.5 py-2 border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-400 transition-all"
         />
         <span className="text-xs text-gray-400">to</span>
         <input
@@ -170,12 +170,12 @@ export function MSMushakRegisters() {
           onChange={(e) => setToDate(e.target.value)}
           min={fromDate}
           max={today}
-          className="flex-1 px-2.5 py-2 border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-400 transition-all"
+          className="flex-1 px-2.5 py-2 border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-400 transition-all"
         />
         {(fromDate || toDate) && (
           <button
             onClick={() => { setFromDate(''); setToDate(''); }}
-            className="text-[10px] text-violet-600 font-semibold px-2 py-1 rounded-md bg-violet-50 hover:bg-violet-100 transition-colors"
+            className="text-[10px] text-cyan-600 font-semibold px-2 py-1 rounded-md bg-cyan-50 hover:bg-cyan-100 transition-colors"
           >
             Clear
           </button>
@@ -205,13 +205,13 @@ export function MSMushakRegisters() {
             <p className="text-[10px] font-medium text-gray-400 uppercase tracking-wider">
               {isSales ? 'VAT Collected' : 'Tax Paid'}
             </p>
-            <p className="text-xl font-bold text-violet-600 mt-1">
+            <p className="text-xl font-bold text-cyan-600 mt-1">
               {formatBDT(isSales ? summary.totalVat : summary.totalTax)}
             </p>
           </div>
-          <div className={`rounded-2xl border p-3.5 shadow-sm ${isSales ? 'bg-violet-50 border-violet-100' : 'bg-amber-50 border-amber-100'}`}>
+          <div className={`rounded-2xl border p-3.5 shadow-sm ${isSales ? 'bg-cyan-50 border-cyan-100' : 'bg-amber-50 border-amber-100'}`}>
             <p className="text-[10px] font-medium text-gray-400 uppercase tracking-wider">Grand Total</p>
-            <p className={`text-xl font-bold mt-1 ${isSales ? 'text-violet-700' : 'text-amber-700'}`}>
+            <p className={`text-xl font-bold mt-1 ${isSales ? 'text-cyan-700' : 'text-amber-700'}`}>
               {formatBDT(summary.grandTotal)}
             </p>
           </div>
@@ -221,7 +221,7 @@ export function MSMushakRegisters() {
       {/* Table */}
       {loading ? (
         <div className="flex items-center justify-center py-20">
-          <div className="w-6 h-6 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
+          <div className="w-6 h-6 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin" />
         </div>
       ) : rows.length === 0 ? (
         <motion.div variants={fadeUp} initial="initial" animate="animate" className="text-center py-16">
@@ -237,7 +237,7 @@ export function MSMushakRegisters() {
           {!fromDate && !toDate && (
             <button
               onClick={() => { setFromDate(thirtyDaysAgo); setToDate(today); }}
-              className="mt-3 text-violet-600 text-xs font-semibold"
+              className="mt-3 text-cyan-600 text-xs font-semibold"
             >
               Show last 30 days
             </button>
@@ -282,7 +282,7 @@ export function MSMushakRegisters() {
                   <span className="text-right text-gray-700 font-mono">{r.quantity}</span>
                   <span className="text-right text-gray-400 font-mono text-[10px]">{r.hsCode || '-'}</span>
                   <span className="text-right text-gray-900 font-mono font-semibold">{((r.totalPrice || r.totalValue) || 0).toFixed(0)}</span>
-                  <span className="text-right text-violet-600 font-mono font-medium">{r.vatAmount.toFixed(0)}</span>
+                  <span className="text-right text-cyan-600 font-mono font-medium">{r.vatAmount.toFixed(0)}</span>
                 </div>
               ))}
             </div>
@@ -298,7 +298,7 @@ export function MSMushakRegisters() {
               <span className="text-right font-mono font-bold text-gray-900">
                 {rows.reduce((s, r) => s + ((r.totalPrice || r.totalValue) || 0), 0).toFixed(0)}
               </span>
-              <span className="text-right font-mono font-bold text-violet-600">
+              <span className="text-right font-mono font-bold text-cyan-600">
                 {rows.reduce((s, r) => s + r.vatAmount, 0).toFixed(0)}
               </span>
             </div>

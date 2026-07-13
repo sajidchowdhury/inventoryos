@@ -206,7 +206,7 @@ export function MSCategoryForm() {
         <button
           onClick={handleSubmit}
           disabled={!name.trim() || saving}
-          className="w-full h-11 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 text-white text-sm font-semibold shadow-sm active:scale-[0.98] transition-transform flex items-center justify-center gap-2 disabled:opacity-50 disabled:active:scale-100"
+          className="w-full h-11 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 text-white text-sm font-semibold shadow-sm active:scale-[0.98] transition-transform flex items-center justify-center gap-2 disabled:opacity-50 disabled:active:scale-100"
         >
           {saving ? (
             <Loader2 className="w-4 h-4 animate-spin" />

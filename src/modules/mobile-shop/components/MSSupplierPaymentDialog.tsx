@@ -22,7 +22,7 @@ const PAYMENT_METHODS = [
   { key: 'cash', label: 'Cash', icon: Banknote, color: 'bg-emerald-50 text-emerald-600 border-emerald-200' },
   { key: 'bkash', label: 'bKash', icon: Smartphone, color: 'bg-pink-50 text-pink-600 border-pink-200' },
   { key: 'nagad', label: 'Nagad', icon: Smartphone, color: 'bg-orange-50 text-orange-600 border-orange-200' },
-  { key: 'rocket', label: 'Rocket', icon: Smartphone, color: 'bg-purple-50 text-purple-600 border-purple-200' },
+  { key: 'rocket', label: 'Rocket', icon: Smartphone, color: 'bg-cyan-50 text-cyan-600 border-cyan-200' },
   { key: 'card', label: 'Card', icon: CreditCard, color: 'bg-blue-50 text-blue-600 border-blue-200' },
   { key: 'bank', label: 'Bank Transfer', icon: Landmark, color: 'bg-sky-50 text-sky-600 border-sky-200' },
 ] as const;
@@ -257,12 +257,12 @@ export function MSSupplierPaymentDialog({
                         onChange={(e) => { setAmount(e.target.value); setError(''); }}
                         placeholder="0"
                         autoFocus
-                        className="w-full h-14 pl-9 pr-20 rounded-2xl bg-gray-50 border border-gray-200 text-xl font-bold focus:outline-none focus:ring-2 focus:ring-violet-400/40 focus:border-violet-400 transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        className="w-full h-14 pl-9 pr-20 rounded-2xl bg-gray-50 border border-gray-200 text-xl font-bold focus:outline-none focus:ring-2 focus:ring-cyan-400/40 focus:border-cyan-400 transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                       />
                       {parsedAmount > 0 && parsedAmount <= outstandingBalance && (
                         <button
                           onClick={() => setAmount(outstandingBalance.toString())}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-semibold text-violet-600 bg-violet-50 px-2 py-1 rounded-lg"
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-semibold text-cyan-600 bg-cyan-50 px-2 py-1 rounded-lg"
                         >
                           MAX
                         </button>
@@ -277,7 +277,7 @@ export function MSSupplierPaymentDialog({
                           onClick={() => setAmount(qa.toString())}
                           className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                             parsedAmount === qa
-                              ? 'bg-violet-100 text-violet-700 border border-violet-200'
+                              ? 'bg-cyan-100 text-cyan-700 border border-cyan-200'
                               : 'bg-gray-50 text-gray-600 border border-gray-200 hover:bg-gray-100'
                           }`}
                         >
@@ -345,7 +345,7 @@ export function MSSupplierPaymentDialog({
                           value={reference}
                           onChange={(e) => setReference(e.target.value)}
                           placeholder="Txn ID / Reference No."
-                          className="w-full h-11 pl-10 pr-3 rounded-xl bg-gray-50 border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400/40 focus:border-violet-400 transition-all"
+                          className="w-full h-11 pl-10 pr-3 rounded-xl bg-gray-50 border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400/40 focus:border-cyan-400 transition-all"
                         />
                       </div>
                     </div>
@@ -362,7 +362,7 @@ export function MSSupplierPaymentDialog({
                           onClick={() => setAllocationMode('fifo')}
                           className={`flex-1 h-11 rounded-xl border-2 text-xs font-semibold transition-all flex items-center justify-center gap-1.5 ${
                             allocationMode === 'fifo'
-                              ? 'border-violet-400 bg-violet-50 text-violet-700'
+                              ? 'border-cyan-400 bg-cyan-50 text-cyan-700'
                               : 'border-gray-100 bg-white text-gray-500'
                           }`}
                         >
@@ -373,7 +373,7 @@ export function MSSupplierPaymentDialog({
                           onClick={() => setAllocationMode('specific')}
                           className={`flex-1 h-11 rounded-xl border-2 text-xs font-semibold transition-all flex items-center justify-center gap-1.5 ${
                             allocationMode === 'specific'
-                              ? 'border-violet-400 bg-violet-50 text-violet-700'
+                              ? 'border-cyan-400 bg-cyan-50 text-cyan-700'
                               : 'border-gray-100 bg-white text-gray-500'
                           }`}
                         >
@@ -393,7 +393,7 @@ export function MSSupplierPaymentDialog({
                           onClick={() => setSelectedPurchaseId(p.id === selectedPurchaseId ? '' : p.id)}
                           className={`w-full p-3 rounded-xl border-2 text-left transition-all ${
                             selectedPurchaseId === p.id
-                              ? 'border-violet-400 bg-violet-50'
+                              ? 'border-cyan-400 bg-cyan-50'
                               : 'border-gray-100 bg-white'
                           }`}
                         >
@@ -402,7 +402,7 @@ export function MSSupplierPaymentDialog({
                               <p className="text-xs font-semibold text-gray-900">
                                 {p.purchaseNo}
                                 {p.source === 'cctv' && (
-                                  <span className="ml-1.5 text-[9px] font-bold bg-violet-100 text-violet-600 px-1.5 py-0.5 rounded">
+                                  <span className="ml-1.5 text-[9px] font-bold bg-cyan-100 text-cyan-600 px-1.5 py-0.5 rounded">
                                     CCTV
                                   </span>
                                 )}
@@ -432,7 +432,7 @@ export function MSSupplierPaymentDialog({
                               <p className="text-[11px] font-semibold text-gray-900 truncate">
                                 {p.purchaseNo}
                                 {p.source === 'cctv' && (
-                                  <span className="ml-1 text-[9px] font-bold bg-violet-100 text-violet-600 px-1 py-0.5 rounded">
+                                  <span className="ml-1 text-[9px] font-bold bg-cyan-100 text-cyan-600 px-1 py-0.5 rounded">
                                     CCTV
                                   </span>
                                 )}
@@ -481,7 +481,7 @@ export function MSSupplierPaymentDialog({
                   <button
                     onClick={() => setStep('confirm')}
                     disabled={parsedAmount <= 0 || parsedAmount > outstandingBalance || (allocationMode === 'specific' && !selectedPurchaseId)}
-                    className="w-full h-13 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 text-white text-sm font-bold shadow-lg shadow-violet-500/20 active:opacity-90 transition-all disabled:opacity-40 flex items-center justify-center gap-2"
+                    className="w-full h-13 rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-600 text-white text-sm font-bold shadow-lg shadow-cyan-500/20 active:opacity-90 transition-all disabled:opacity-40 flex items-center justify-center gap-2"
                   >
                     Review Payment
                   </button>
@@ -522,7 +522,7 @@ export function MSSupplierPaymentDialog({
                           <span className="text-[11px] text-gray-600">
                             {p.purchaseNo}
                             {p.source === 'cctv' && (
-                              <span className="ml-1 text-[9px] font-bold bg-violet-100 text-violet-600 px-1 py-0.5 rounded">
+                              <span className="ml-1 text-[9px] font-bold bg-cyan-100 text-cyan-600 px-1 py-0.5 rounded">
                                 CCTV
                               </span>
                             )}

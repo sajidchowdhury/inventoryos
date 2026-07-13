@@ -25,14 +25,14 @@ interface CategoryItem {
 }
 
 const categoryColor: Record<string, string> = {
-  Cameras: 'bg-violet-100 text-violet-700',
+  Cameras: 'bg-cyan-100 text-cyan-700',
   'DVR/NVR': 'bg-amber-100 text-amber-700',
   Accessories: 'bg-emerald-100 text-emerald-700',
   Cables: 'bg-sky-100 text-sky-700',
 };
 
 function getCategoryColor(name: string): string {
-  return categoryColor[name] || 'bg-purple-100 text-purple-700';
+  return categoryColor[name] || 'bg-cyan-100 text-cyan-700';
 }
 
 const categoryIcon = (cat: string) => {
@@ -224,13 +224,13 @@ export function MSProductsList() {
 
       {/* Search */}
       <div className="relative">
-        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-violet-400" />
+        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-cyan-400" />
         <input
           type="text"
           placeholder="Search by name, brand, model..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full h-11 pl-10 pr-10 rounded-2xl bg-white border border-gray-200 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-400/40 focus:border-violet-400 transition-all"
+          className="w-full h-11 pl-10 pr-10 rounded-2xl bg-white border border-gray-200 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-400/40 focus:border-cyan-400 transition-all"
         />
         {search && (
           <button
@@ -249,7 +249,7 @@ export function MSProductsList() {
           className={cn(
             'px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-all shrink-0',
             activeCategory === 'All'
-              ? 'bg-gradient-to-r from-violet-500 to-purple-600 text-white shadow-sm'
+              ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-sm'
               : 'bg-white text-gray-600 border border-gray-100 hover:bg-gray-50'
           )}
         >
@@ -262,7 +262,7 @@ export function MSProductsList() {
             className={cn(
               'px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-all shrink-0',
               activeCategory === cat.name
-                ? 'bg-gradient-to-r from-violet-500 to-purple-600 text-white shadow-sm'
+                ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-sm'
                 : 'bg-white text-gray-600 border border-gray-100 hover:bg-gray-50'
             )}
           >
@@ -279,7 +279,7 @@ export function MSProductsList() {
             className={cn(
               'px-3 py-1.5 rounded-full text-[11px] font-semibold whitespace-nowrap transition-all shrink-0',
               activeBrand === 'All'
-                ? 'bg-violet-100 text-violet-700'
+                ? 'bg-cyan-100 text-cyan-700'
                 : 'bg-white text-gray-500 border border-gray-100 hover:bg-gray-50'
             )}
           >
@@ -292,7 +292,7 @@ export function MSProductsList() {
               className={cn(
                 'px-3 py-1.5 rounded-full text-[11px] font-semibold whitespace-nowrap transition-all shrink-0',
                 activeBrand === brand
-                  ? 'bg-violet-100 text-violet-700'
+                  ? 'bg-cyan-100 text-cyan-700'
                   : 'bg-white text-gray-500 border border-gray-100 hover:bg-gray-50'
               )}
             >
@@ -323,14 +323,14 @@ export function MSProductsList() {
       {/* Empty state */}
       {!loading && products.length === 0 && (
         <div className="text-center py-12">
-          <div className="w-14 h-14 rounded-2xl bg-violet-50 flex items-center justify-center mx-auto mb-3">
-            <Package className="w-7 h-7 text-violet-400" />
+          <div className="w-14 h-14 rounded-2xl bg-cyan-50 flex items-center justify-center mx-auto mb-3">
+            <Package className="w-7 h-7 text-cyan-400" />
           </div>
           <p className="text-sm font-semibold text-gray-700">No products yet</p>
           <p className="text-xs text-gray-400 mt-1 mb-4">Add your first CCTV product to get started</p>
           <button
             onClick={() => navigate('add-product')}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-violet-500 to-purple-600 text-white text-sm font-semibold shadow-sm active:scale-[0.98] transition-transform"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white text-sm font-semibold shadow-sm active:scale-[0.98] transition-transform"
           >
             <Plus className="w-4 h-4" />
             Add Product
@@ -367,14 +367,14 @@ export function MSProductsList() {
                     className="w-full bg-white rounded-2xl border border-gray-100 p-4 shadow-sm text-left active:scale-[0.98] transition-transform"
                   >
                     <div className="flex items-start gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-violet-50 flex items-center justify-center shrink-0">
-                        <Icon className="w-5 h-5 text-violet-500" />
+                      <div className="w-10 h-10 rounded-xl bg-cyan-50 flex items-center justify-center shrink-0">
+                        <Icon className="w-5 h-5 text-cyan-500" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5">
                           <p className="text-sm font-semibold text-gray-900 truncate flex-1">{product.name}</p>
                           {product.masterProductId && (
-                            <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-violet-100 text-violet-700 font-medium shrink-0 flex items-center gap-0.5">
+                            <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-cyan-100 text-cyan-700 font-medium shrink-0 flex items-center gap-0.5">
                               <Sparkles className="w-2.5 h-2.5" />
                               Catalog
                             </span>
@@ -454,15 +454,15 @@ export function MSProductsList() {
                         key={product.id}
                         onClick={() => handleProductClick(product.id)}
                         className={cn(
-                          'border-b border-gray-50 hover:bg-violet-50/50 cursor-pointer transition-colors',
-                          selectedProductId === product.id && 'bg-violet-50/70'
+                          'border-b border-gray-50 hover:bg-cyan-50/50 cursor-pointer transition-colors',
+                          selectedProductId === product.id && 'bg-cyan-50/70'
                         )}
                       >
                         <td className="p-3">
                           <div className="flex items-center gap-2">
                             <span className="font-medium text-gray-900 truncate max-w-[200px]">{product.name}</span>
                             {product.masterProductId && (
-                              <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-violet-100 text-violet-700 font-medium shrink-0 flex items-center gap-0.5">
+                              <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-cyan-100 text-cyan-700 font-medium shrink-0 flex items-center gap-0.5">
                                 <Sparkles className="w-2.5 h-2.5" />
                               </span>
                             )}
@@ -524,7 +524,7 @@ export function MSProductsList() {
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
               {loadingDetail ? (
                 <div className="flex items-center justify-center py-20">
-                  <Loader2 className="w-6 h-6 animate-spin text-violet-400" />
+                  <Loader2 className="w-6 h-6 animate-spin text-cyan-400" />
                 </div>
               ) : selectedProduct ? (
                 <div className="p-5 space-y-4">
@@ -548,7 +548,7 @@ export function MSProductsList() {
                   {/* Badges */}
                   <div className="flex items-center gap-1.5 flex-wrap">
                     {selectedProduct.category && (
-                      <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-violet-100 text-violet-700">
+                      <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-cyan-100 text-cyan-700">
                         {typeof selectedProduct.category === 'object' ? selectedProduct.category?.name : selectedProduct.category}
                       </span>
                     )}
@@ -563,7 +563,7 @@ export function MSProductsList() {
                       </span>
                     )}
                     {selectedProduct.masterProductId && (
-                      <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-violet-100 text-violet-700 flex items-center gap-0.5">
+                      <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-cyan-100 text-cyan-700 flex items-center gap-0.5">
                         <Sparkles className="w-2.5 h-2.5" /> Catalog
                       </span>
                     )}
@@ -577,9 +577,9 @@ export function MSProductsList() {
                         ৳{selectedProduct.costPrice.toLocaleString()}
                       </p>
                     </div>
-                    <div className="bg-violet-50 rounded-xl p-3">
-                      <p className="text-[10px] text-violet-500 font-medium">Sell Price</p>
-                      <p className="text-lg font-bold text-violet-900 mt-0.5">
+                    <div className="bg-cyan-50 rounded-xl p-3">
+                      <p className="text-[10px] text-cyan-500 font-medium">Sell Price</p>
+                      <p className="text-lg font-bold text-cyan-900 mt-0.5">
                         ৳{selectedProduct.sellPrice.toLocaleString()}
                       </p>
                     </div>
@@ -618,7 +618,7 @@ export function MSProductsList() {
                   {/* Open full detail button */}
                   <button
                     onClick={() => navigate('product-detail', selectedProduct.id)}
-                    className="w-full h-10 rounded-xl bg-gradient-to-r from-violet-500 to-purple-600 text-white text-sm font-semibold flex items-center justify-center gap-2 hover:shadow-md transition-shadow"
+                    className="w-full h-10 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white text-sm font-semibold flex items-center justify-center gap-2 hover:shadow-md transition-shadow"
                   >
                     Open Full Detail
                     <ChevronRight className="w-4 h-4" />
@@ -647,7 +647,7 @@ export function MSProductsList() {
       {!loading && products.length > 0 && (
         <button
           onClick={() => navigate('add-product')}
-          className="fixed bottom-24 right-4 lg:hidden w-14 h-14 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-lg shadow-violet-500/30 flex items-center justify-center active:scale-95 transition-transform z-50"
+          className="fixed bottom-24 right-4 lg:hidden w-14 h-14 rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/30 flex items-center justify-center active:scale-95 transition-transform z-50"
         >
           <Plus className="w-6 h-6" />
         </button>

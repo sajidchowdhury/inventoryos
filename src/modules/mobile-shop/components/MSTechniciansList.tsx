@@ -96,7 +96,7 @@ export function MSTechniciansList() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg shadow-violet-500/20">
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
             <Users className="w-4 h-4 text-white" />
           </div>
           <div>
@@ -107,7 +107,7 @@ export function MSTechniciansList() {
         {!showCreate && (
           <button
             onClick={() => setShowCreate(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 text-white text-xs font-semibold shadow-lg shadow-violet-500/20 hover:shadow-violet-500/40 transition-shadow"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 text-white text-xs font-semibold shadow-lg shadow-cyan-500/20 hover:shadow-cyan-500/40 transition-shadow"
           >
             <Plus className="w-3.5 h-3.5" /> Add
           </button>
@@ -133,7 +133,7 @@ export function MSTechniciansList() {
             </div>
             <button
               onClick={handleCreate} disabled={creating || !createName.trim()}
-              className="w-full py-2 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 text-white text-xs font-semibold disabled:opacity-50 shadow-lg shadow-violet-500/20"
+              className="w-full py-2 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 text-white text-xs font-semibold disabled:opacity-50 shadow-lg shadow-cyan-500/20"
             >
               {creating ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : 'Add Technician'}
             </button>
@@ -169,8 +169,8 @@ export function MSTechniciansList() {
               >
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-violet-50 flex items-center justify-center">
-                      <User className="w-5 h-5 text-violet-500" />
+                    <div className="w-10 h-10 rounded-xl bg-cyan-50 flex items-center justify-center">
+                      <User className="w-5 h-5 text-cyan-500" />
                     </div>
                     <div>
                       <p className="text-sm font-bold text-gray-900">{tech.displayName}</p>
@@ -181,7 +181,7 @@ export function MSTechniciansList() {
                           </span>
                         )}
                         {tech.specialization && (
-                          <Badge variant="secondary" className="text-[9px] px-1.5 py-0 h-4 bg-purple-50 text-purple-600">
+                          <Badge variant="secondary" className="text-[9px] px-1.5 py-0 h-4 bg-cyan-50 text-cyan-600">
                             {tech.specialization}
                           </Badge>
                         )}

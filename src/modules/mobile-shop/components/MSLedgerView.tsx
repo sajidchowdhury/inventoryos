@@ -240,29 +240,29 @@ export function MSLedgerView() {
       <div className="bg-white rounded-2xl border border-gray-100 p-3.5 shadow-sm">
         <div className="flex items-center gap-2">
           <div className="flex-1 relative">
-            <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-violet-400" />
+            <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-cyan-400" />
             <input
               type="date"
               value={fromDate}
               onChange={(e) => setFromDate(e.target.value)}
-              className="w-full h-10 pl-9 pr-2 rounded-xl bg-gray-50 border border-gray-200 text-xs focus:outline-none focus:ring-2 focus:ring-violet-400/40 focus:border-violet-400 transition-all"
+              className="w-full h-10 pl-9 pr-2 rounded-xl bg-gray-50 border border-gray-200 text-xs focus:outline-none focus:ring-2 focus:ring-cyan-400/40 focus:border-cyan-400 transition-all"
             />
           </div>
           <span className="text-xs text-gray-400 font-medium">to</span>
           <div className="flex-1 relative">
-            <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-violet-400" />
+            <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-cyan-400" />
             <input
               type="date"
               value={toDate}
               onChange={(e) => setToDate(e.target.value)}
-              className="w-full h-10 pl-9 pr-2 rounded-xl bg-gray-50 border border-gray-200 text-xs focus:outline-none focus:ring-2 focus:ring-violet-400/40 focus:border-violet-400 transition-all"
+              className="w-full h-10 pl-9 pr-2 rounded-xl bg-gray-50 border border-gray-200 text-xs focus:outline-none focus:ring-2 focus:ring-cyan-400/40 focus:border-cyan-400 transition-all"
             />
           </div>
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className={`w-10 h-10 rounded-xl border flex items-center justify-center transition-all ${showFilters ? 'bg-violet-50 border-violet-200' : 'bg-white border-gray-200'}`}
+            className={`w-10 h-10 rounded-xl border flex items-center justify-center transition-all ${showFilters ? 'bg-cyan-50 border-cyan-200' : 'bg-white border-gray-200'}`}
           >
-            <Filter className={`w-4 h-4 ${showFilters ? 'text-violet-600' : 'text-gray-500'}`} />
+            <Filter className={`w-4 h-4 ${showFilters ? 'text-cyan-600' : 'text-gray-500'}`} />
           </button>
         </div>
 
@@ -279,7 +279,7 @@ export function MSLedgerView() {
                 <button
                   key={r.label}
                   onClick={() => handleQuickRange(resolveRange(r.from))}
-                  className="h-8 px-3 rounded-full text-[11px] font-semibold bg-gray-50 text-gray-600 border border-gray-200 hover:bg-violet-50 hover:text-violet-700 hover:border-violet-200 transition-all"
+                  className="h-8 px-3 rounded-full text-[11px] font-semibold bg-gray-50 text-gray-600 border border-gray-200 hover:bg-cyan-50 hover:text-cyan-700 hover:border-cyan-200 transition-all"
                 >
                   {r.label}
                 </button>
@@ -324,11 +324,11 @@ export function MSLedgerView() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.15 }}
-          className="bg-gradient-to-r from-violet-50 to-purple-50 rounded-2xl border border-violet-200/60 p-3.5 flex items-center justify-between"
+          className="bg-gradient-to-r from-cyan-50 to-cyan-50 rounded-2xl border border-cyan-200/60 p-3.5 flex items-center justify-between"
         >
           <div>
-            <p className="text-[10px] text-violet-500 font-semibold uppercase tracking-wider">Opening Balance</p>
-            <p className="text-sm font-bold text-violet-700">{formatBDT(data.openingBalance)}</p>
+            <p className="text-[10px] text-cyan-500 font-semibold uppercase tracking-wider">Opening Balance</p>
+            <p className="text-sm font-bold text-cyan-700">{formatBDT(data.openingBalance)}</p>
           </div>
           <div className="text-center">
             <p className="text-[10px] text-gray-400 font-medium">Net Flow</p>
@@ -337,8 +337,8 @@ export function MSLedgerView() {
             </p>
           </div>
           <div className="text-right">
-            <p className="text-[10px] text-violet-500 font-semibold uppercase tracking-wider">Closing Balance</p>
-            <p className="text-sm font-bold text-violet-700">{formatBDT(data.closingBalance)}</p>
+            <p className="text-[10px] text-cyan-500 font-semibold uppercase tracking-wider">Closing Balance</p>
+            <p className="text-sm font-bold text-cyan-700">{formatBDT(data.closingBalance)}</p>
           </div>
         </motion.div>
       )}

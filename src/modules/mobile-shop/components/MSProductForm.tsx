@@ -427,7 +427,7 @@ export function MSProductForm() {
 
   const sectionHeader = (icon: React.ReactNode, title: string) => (
     <div className="flex items-center gap-2 mb-4 mt-2">
-      <div className="w-7 h-7 rounded-lg bg-violet-50 flex items-center justify-center">
+      <div className="w-7 h-7 rounded-lg bg-cyan-50 flex items-center justify-center">
         {icon}
       </div>
       <h2 className="text-sm font-bold text-gray-800">{title}</h2>
@@ -468,9 +468,9 @@ export function MSProductForm() {
 
       {/* ── Catalog Search Section (Phase 3D) ── */}
       {!isEdit && (
-        <div className="bg-gradient-to-br from-violet-50 to-purple-50 rounded-2xl border border-violet-100 p-4">
+        <div className="bg-gradient-to-br from-cyan-50 to-cyan-50 rounded-2xl border border-cyan-100 p-4">
           <div className="flex items-center gap-2 mb-3">
-            <div className="w-7 h-7 rounded-lg bg-violet-500 flex items-center justify-center">
+            <div className="w-7 h-7 rounded-lg bg-cyan-500 flex items-center justify-center">
               <Search className="w-4 h-4 text-white" />
             </div>
             <h2 className="text-sm font-bold text-gray-800">Search Master Catalog</h2>
@@ -486,7 +486,7 @@ export function MSProductForm() {
               className="h-10 rounded-xl bg-white"
             />
             {catalogSearching && (
-              <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-violet-400" />
+              <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-cyan-400" />
             )}
 
             {/* Catalog dropdown */}
@@ -496,7 +496,7 @@ export function MSProductForm() {
                   <button
                     key={m.id}
                     onClick={() => selectCatalogMatch(m)}
-                    className="w-full text-left p-3 hover:bg-violet-50 border-b border-gray-50 last:border-0 transition-colors"
+                    className="w-full text-left p-3 hover:bg-cyan-50 border-b border-gray-50 last:border-0 transition-colors"
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1 min-w-0">
@@ -511,7 +511,7 @@ export function MSProductForm() {
                           Already added
                         </span>
                       ) : (
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-violet-100 text-violet-700 font-medium shrink-0">
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-cyan-100 text-cyan-700 font-medium shrink-0">
                           Use
                         </span>
                       )}
@@ -551,7 +551,7 @@ export function MSProductForm() {
 
       {/* Basic Info Section */}
       <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
-        {sectionHeader(<Package className="w-4 h-4 text-violet-500" />, 'Basic Info')}
+        {sectionHeader(<Package className="w-4 h-4 text-cyan-500" />, 'Basic Info')}
 
         <div className="space-y-4 md:grid md:grid-cols-2 md:gap-4 md:space-y-0">
           {/* Product Name */}
@@ -636,7 +636,7 @@ export function MSProductForm() {
                 />
                 <button
                   onClick={handleCreateCategory}
-                  className="px-3 h-10 rounded-xl bg-violet-500 text-white text-xs font-medium shrink-0 active:scale-[0.98] transition-transform"
+                  className="px-3 h-10 rounded-xl bg-cyan-500 text-white text-xs font-medium shrink-0 active:scale-[0.98] transition-transform"
                 >
                   Add
                 </button>
@@ -670,7 +670,7 @@ export function MSProductForm() {
                       {cat.name}
                     </SelectItem>
                   ))}
-                  <SelectItem value="__create_new__" className="text-violet-600 font-medium">
+                  <SelectItem value="__create_new__" className="text-cyan-600 font-medium">
                     + Create New Category
                   </SelectItem>
                 </SelectContent>
@@ -705,7 +705,7 @@ export function MSProductForm() {
 
       {/* Pricing Section */}
       <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
-        {sectionHeader(<DollarSign className="w-4 h-4 text-violet-500" />, 'Pricing')}
+        {sectionHeader(<DollarSign className="w-4 h-4 text-cyan-500" />, 'Pricing')}
 
         <div className="space-y-4 md:grid md:grid-cols-2 md:gap-4 md:space-y-0">
           {/* Cost Price */}
@@ -798,7 +798,7 @@ export function MSProductForm() {
 
       {/* Stock & Tracking Section */}
       <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
-        {sectionHeader(<BarChart3 className="w-4 h-4 text-violet-500" />, 'Stock & Tracking')}
+        {sectionHeader(<BarChart3 className="w-4 h-4 text-cyan-500" />, 'Stock & Tracking')}
 
         <div className="space-y-4 md:grid md:grid-cols-2 md:gap-4 md:space-y-0">
           {/* Serial Tracked */}
@@ -882,17 +882,17 @@ export function MSProductForm() {
 
       {/* ── Add to Master Catalog checkbox (Phase 3D) ── */}
       {!isEdit && !selectedMasterProductId && (
-        <div className="bg-violet-50 rounded-2xl border border-violet-100 p-4">
+        <div className="bg-cyan-50 rounded-2xl border border-cyan-100 p-4">
           <label className="flex items-start gap-3 cursor-pointer">
             <input
               type="checkbox"
               checked={addToMasterCatalog}
               onChange={(e) => setAddToMasterCatalog(e.target.checked)}
-              className="mt-0.5 h-4 w-4 rounded border-violet-300 text-violet-600 focus:ring-violet-500"
+              className="mt-0.5 h-4 w-4 rounded border-cyan-300 text-cyan-600 focus:ring-cyan-500"
             />
             <div className="flex-1">
               <div className="flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-violet-500" />
+                <Sparkles className="w-3.5 h-3.5 text-cyan-500" />
                 <span className="text-sm font-semibold text-gray-800">Add to master catalog</span>
               </div>
               <p className="text-xs text-gray-500 mt-1">
@@ -910,7 +910,7 @@ export function MSProductForm() {
       <button
         onClick={handleSubmit}
         disabled={submitting}
-        className="w-full h-12 rounded-2xl bg-gradient-to-r from-violet-500 to-purple-600 text-white font-semibold text-sm shadow-lg shadow-violet-500/20 flex items-center justify-center gap-2 active:scale-[0.98] transition-transform disabled:opacity-60"
+        className="w-full h-12 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-semibold text-sm shadow-lg shadow-cyan-500/20 flex items-center justify-center gap-2 active:scale-[0.98] transition-transform disabled:opacity-60"
       >
         {submitting ? (
           <Loader2 className="w-5 h-5 animate-spin" />

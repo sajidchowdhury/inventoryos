@@ -221,14 +221,14 @@ export function MSCreateJobCard() {
               className={cn(
                 'flex items-center gap-2.5 px-3.5 py-3 rounded-xl border-2 text-left transition-all',
                 jobType === jt.value
-                  ? 'border-violet-500 bg-violet-50 shadow-sm'
+                  ? 'border-cyan-500 bg-cyan-50 shadow-sm'
                   : 'border-gray-100 bg-white hover:border-gray-200',
               )}
             >
               <span className="text-lg">{jt.icon}</span>
               <span className={cn(
                 'text-sm font-semibold',
-                jobType === jt.value ? 'text-violet-700' : 'text-gray-600',
+                jobType === jt.value ? 'text-cyan-700' : 'text-gray-600',
               )}>
                 {jt.label}
               </span>
@@ -290,7 +290,7 @@ export function MSCreateJobCard() {
           {/* Link device toggle */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Hash className="w-4 h-4 text-violet-500" />
+              <Hash className="w-4 h-4 text-cyan-500" />
               <span className="text-sm font-semibold text-gray-700">Link Serial Item</span>
             </div>
             <button
@@ -302,7 +302,7 @@ export function MSCreateJobCard() {
               className={cn(
                 'text-xs font-semibold px-3 py-1.5 rounded-full transition-all',
                 linkDevice
-                  ? 'bg-violet-100 text-violet-700'
+                  ? 'bg-cyan-100 text-cyan-700'
                   : 'bg-gray-100 text-gray-500',
               )}
             >
@@ -320,7 +320,7 @@ export function MSCreateJobCard() {
                 onFocus={() => serialResults.length > 0 && setShowSerialDropdown(true)}
                 className="pl-10 pr-10 h-10 rounded-xl"
               />
-              {serialSearching && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-violet-500 animate-spin" />}
+              {serialSearching && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-cyan-500 animate-spin" />}
               {!serialSearching && serialSearch && (
                 <button
                   type="button"
@@ -345,7 +345,7 @@ export function MSCreateJobCard() {
                         key={item.id}
                         type="button"
                         onClick={() => selectSerialItem(item)}
-                        className="w-full text-left px-3 py-2.5 hover:bg-violet-50 transition-colors border-b border-gray-50 last:border-0"
+                        className="w-full text-left px-3 py-2.5 hover:bg-cyan-50 transition-colors border-b border-gray-50 last:border-0"
                       >
                         <p className="text-sm font-medium text-gray-800 truncate">
                           {item.product ? `${item.product.brand} ${item.product.name}` : 'Unknown Product'}
@@ -366,9 +366,9 @@ export function MSCreateJobCard() {
           )}
 
           {serialItemId && (
-            <div className="bg-violet-50 rounded-xl p-3 space-y-1.5">
+            <div className="bg-cyan-50 rounded-xl p-3 space-y-1.5">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-violet-700">Device Linked</span>
+                <span className="text-xs font-semibold text-cyan-700">Device Linked</span>
                 <button
                   type="button"
                   onClick={unlinkDevice}
@@ -510,8 +510,8 @@ export function MSCreateJobCard() {
             disabled={loading || !isFormValid}
             className={cn(
               'w-full h-12 rounded-2xl text-sm font-bold shadow-lg transition-all',
-              'bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-violet-500/20',
-              'hover:shadow-violet-500/30 active:scale-[0.98]',
+              'bg-gradient-to-br from-cyan-500 to-blue-600 text-white shadow-cyan-500/20',
+              'hover:shadow-cyan-500/30 active:scale-[0.98]',
               (loading || !isFormValid) && 'opacity-60 pointer-events-none',
             )}
           >

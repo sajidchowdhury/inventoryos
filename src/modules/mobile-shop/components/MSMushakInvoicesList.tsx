@@ -59,14 +59,14 @@ export function MSMushakInvoicesList() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search by invoice #, buyer name or BIN..."
-          className="w-full pl-9 pr-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-400 transition-all"
+          className="w-full pl-9 pr-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-400 transition-all"
         />
       </motion.div>
 
       {/* List */}
       {loading ? (
         <div className="flex items-center justify-center py-20">
-          <div className="w-6 h-6 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
+          <div className="w-6 h-6 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin" />
         </div>
       ) : invoices.length === 0 ? (
         <motion.div variants={fadeUp} initial="initial" animate="animate" className="text-center py-16">
@@ -87,8 +87,8 @@ export function MSMushakInvoicesList() {
               onClick={() => navigate('mushak-invoice-detail', inv.id)}
               className="w-full bg-white rounded-2xl border border-gray-100 p-4 shadow-sm flex items-center gap-3 hover:bg-gray-50 transition-colors text-left"
             >
-              <div className="w-10 h-10 rounded-xl bg-violet-100 flex items-center justify-center shrink-0">
-                <FileText className="w-5 h-5 text-violet-600" />
+              <div className="w-10 h-10 rounded-xl bg-cyan-100 flex items-center justify-center shrink-0">
+                <FileText className="w-5 h-5 text-cyan-600" />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">

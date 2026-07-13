@@ -23,7 +23,7 @@ const fadeUp = {
 
 const COVERAGE_OPTIONS: { value: AmcCoverageType; label: string; color: string; activeColor: string }[] = [
   { value: 'Basic', label: 'Basic', color: 'bg-gray-100 text-gray-600 border-gray-200', activeColor: 'bg-gray-200 text-gray-800 border-gray-400' },
-  { value: 'Standard', label: 'Standard', color: 'bg-gray-50 text-gray-500 border-gray-100', activeColor: 'bg-violet-100 text-violet-700 border-violet-400' },
+  { value: 'Standard', label: 'Standard', color: 'bg-gray-50 text-gray-500 border-gray-100', activeColor: 'bg-cyan-100 text-cyan-700 border-cyan-400' },
   { value: 'Premium', label: 'Premium', color: 'bg-gray-50 text-gray-500 border-gray-100', activeColor: 'bg-amber-100 text-amber-700 border-amber-400' },
 ];
 
@@ -347,7 +347,7 @@ export function MSCreateAmc() {
                   className={cn(
                     'flex-1 py-2 rounded-xl text-xs font-semibold transition-all border-2',
                     paymentFrequency === opt.value
-                      ? 'bg-violet-100 text-violet-700 border-violet-400'
+                      ? 'bg-cyan-100 text-cyan-700 border-cyan-400'
                       : 'bg-gray-50 text-gray-500 border-gray-100',
                   )}
                 >
@@ -356,9 +356,9 @@ export function MSCreateAmc() {
               ))}
             </div>
             {/* Auto-calculated payment amount */}
-            <div className="mt-2.5 flex items-center justify-between bg-violet-50 rounded-xl px-3 py-2">
-              <span className="text-[11px] text-violet-600 font-medium">Payment Amount</span>
-              <span className="text-sm font-bold text-violet-700">৳{Number(paymentAmount).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
+            <div className="mt-2.5 flex items-center justify-between bg-cyan-50 rounded-xl px-3 py-2">
+              <span className="text-[11px] text-cyan-600 font-medium">Payment Amount</span>
+              <span className="text-sm font-bold text-cyan-700">৳{Number(paymentAmount).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
             </div>
           </div>
         </div>
@@ -421,8 +421,8 @@ export function MSCreateAmc() {
             disabled={loading || !isFormValid}
             className={cn(
               'w-full h-12 rounded-2xl text-sm font-bold shadow-lg transition-all',
-              'bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-violet-500/20',
-              'hover:shadow-violet-500/30 active:scale-[0.98]',
+              'bg-gradient-to-br from-cyan-500 to-blue-600 text-white shadow-cyan-500/20',
+              'hover:shadow-cyan-500/30 active:scale-[0.98]',
               (loading || !isFormValid) && 'opacity-60 pointer-events-none',
             )}
           >

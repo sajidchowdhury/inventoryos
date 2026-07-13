@@ -21,7 +21,7 @@ const fadeUp = {
 
 const COVERAGE_COLORS: Record<AmcCoverageType, string> = {
   Basic: 'bg-gray-100 text-gray-600',
-  Standard: 'bg-violet-100 text-violet-700',
+  Standard: 'bg-cyan-100 text-cyan-700',
   Premium: 'bg-amber-100 text-amber-700',
 };
 
@@ -162,7 +162,7 @@ export function MSAMCList() {
             <p className="text-[9px] text-gray-400 font-medium">Expired</p>
           </div>
           <div className="bg-white rounded-2xl border border-gray-100 p-2.5 shadow-sm text-center">
-            <Banknote className="w-4 h-4 text-violet-500 mx-auto mb-0.5" />
+            <Banknote className="w-4 h-4 text-cyan-500 mx-auto mb-0.5" />
             <p className="text-base font-bold text-gray-900">{(summary.annualValue / 1000).toFixed(0)}K</p>
             <p className="text-[9px] text-gray-400 font-medium">Annual ৳</p>
           </div>
@@ -199,12 +199,12 @@ export function MSAMCList() {
 
       {/* Search */}
       <div className="relative">
-        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-violet-400" />
+        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-cyan-400" />
         <Input
           placeholder="Search by client name, contract code..."
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
-          className="pl-10 pr-10 bg-gray-50 border-0 focus-visible:ring-2 focus-visible:ring-violet-500/30 rounded-2xl h-11"
+          className="pl-10 pr-10 bg-gray-50 border-0 focus-visible:ring-2 focus-visible:ring-cyan-500/30 rounded-2xl h-11"
         />
         {searchInput && (
           <button
@@ -225,7 +225,7 @@ export function MSAMCList() {
             className={cn(
               'px-3 py-1.5 rounded-full text-[11px] font-semibold whitespace-nowrap transition-all shrink-0',
               activeFilter === tab.value
-                ? 'bg-gradient-to-r from-violet-500 to-purple-600 text-white shadow-sm'
+                ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-sm'
                 : 'bg-white text-gray-600 border border-gray-100 hover:bg-gray-50',
             )}
           >
@@ -290,7 +290,7 @@ export function MSAMCList() {
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-mono font-bold text-violet-600">{amc.contractCode}</span>
+                      <span className="text-xs font-mono font-bold text-cyan-600">{amc.contractCode}</span>
                       <span className={cn('text-[10px] px-2 py-0.5 rounded-full font-semibold', statusBadge)}>
                         {statusLabel}
                       </span>
@@ -305,7 +305,7 @@ export function MSAMCList() {
                   <span className={cn('text-[10px] px-2 py-0.5 rounded-full font-medium', coverageBadge)}>
                     {amc.coverageType}
                   </span>
-                  <span className="text-[10px] bg-violet-50 text-violet-600 px-2 py-0.5 rounded-full font-medium">
+                  <span className="text-[10px] bg-cyan-50 text-cyan-600 px-2 py-0.5 rounded-full font-medium">
                     {visitCount} visit{visitCount !== 1 ? 's' : ''}
                   </span>
                   <span className="text-[10px] bg-gray-50 text-gray-500 px-2 py-0.5 rounded-full font-medium">
@@ -334,7 +334,7 @@ export function MSAMCList() {
         initial={{ scale: 0, opacity: 0 }}
         animate={{ scale: 1, opacity: 1, transition: { delay: 0.3, duration: 0.3, ease: 'easeOut' as const } }}
         onClick={() => navigate('create-amc')}
-        className="fixed bottom-24 right-4 w-14 h-14 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-lg shadow-violet-500/20 flex items-center justify-center active:scale-95 transition-transform z-40"
+        className="fixed bottom-24 right-4 w-14 h-14 rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/20 flex items-center justify-center active:scale-95 transition-transform z-40"
         style={{ maxWidth: '480px', position: 'fixed' }}
       >
         <Plus className="w-6 h-6" />

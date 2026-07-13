@@ -193,10 +193,10 @@ export function MSImportProducts() {
             className={cn(
               'border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-all',
               dragOver
-                ? 'border-violet-400 bg-violet-50'
+                ? 'border-cyan-400 bg-cyan-50'
                 : file
                   ? 'border-emerald-300 bg-emerald-50/50'
-                  : 'border-gray-200 bg-gray-50/50 hover:border-violet-300 hover:bg-violet-50/50'
+                  : 'border-gray-200 bg-gray-50/50 hover:border-cyan-300 hover:bg-cyan-50/50'
             )}
           >
             <input
@@ -231,8 +231,8 @@ export function MSImportProducts() {
               </>
             ) : (
               <>
-                <div className="w-12 h-12 rounded-2xl bg-violet-100 flex items-center justify-center mx-auto mb-3">
-                  <Upload className="w-6 h-6 text-violet-600" />
+                <div className="w-12 h-12 rounded-2xl bg-cyan-100 flex items-center justify-center mx-auto mb-3">
+                  <Upload className="w-6 h-6 text-cyan-600" />
                 </div>
                 <p className="text-sm font-semibold text-gray-700">
                   Drop CSV file here
@@ -250,7 +250,7 @@ export function MSImportProducts() {
             download
             className="flex items-center gap-2.5 px-4 py-3 bg-white rounded-2xl border border-gray-100 shadow-sm text-sm font-medium text-gray-700 active:bg-gray-50 transition-colors"
           >
-            <Download className="w-4 h-4 text-violet-500" />
+            <Download className="w-4 h-4 text-cyan-500" />
             <span className="flex-1">Download Template</span>
             <span className="text-[10px] text-gray-400">12 sample products</span>
           </a>
@@ -283,7 +283,7 @@ export function MSImportProducts() {
             className={cn(
               'w-full py-3.5 rounded-2xl text-sm font-semibold shadow-lg flex items-center justify-center gap-2 active:scale-[0.98] transition-transform',
               file
-                ? 'bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-lg shadow-violet-500/20'
+                ? 'bg-gradient-to-br from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/20'
                 : 'bg-gray-100 text-gray-400 shadow-none'
             )}
           >
@@ -404,7 +404,7 @@ export function MSImportProducts() {
             className={cn(
               'w-full py-3.5 rounded-2xl text-sm font-semibold shadow-lg flex items-center justify-center gap-2 active:scale-[0.98] transition-transform',
               result.validCount > 0
-                ? 'bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-lg shadow-violet-500/20'
+                ? 'bg-gradient-to-br from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/20'
                 : 'bg-gray-100 text-gray-400 shadow-none'
             )}
           >
@@ -421,7 +421,7 @@ export function MSImportProducts() {
           animate={{ opacity: 1 }}
           className="flex flex-col items-center justify-center py-16"
         >
-          <Loader2 className="w-8 h-8 text-violet-500 animate-spin mb-4" />
+          <Loader2 className="w-8 h-8 text-cyan-500 animate-spin mb-4" />
           <p className="text-sm font-semibold text-gray-700">Importing products...</p>
           <p className="text-xs text-gray-400 mt-1">Please wait</p>
         </motion.div>
@@ -449,7 +449,7 @@ export function MSImportProducts() {
 
           <button
             onClick={goBack}
-            className="mt-6 px-6 py-2.5 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 text-white text-sm font-semibold shadow-sm"
+            className="mt-6 px-6 py-2.5 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 text-white text-sm font-semibold shadow-sm"
           >
             Done
           </button>

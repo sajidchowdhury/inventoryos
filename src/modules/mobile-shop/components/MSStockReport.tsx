@@ -398,7 +398,7 @@ export function MSStockReport() {
                       <div className="flex items-center gap-1.5">
                         <p className="text-sm font-semibold text-gray-900 truncate">{product.productName}</p>
                         {product.serialTracked && (
-                          <Badge variant="secondary" className="text-[9px] px-1.5 py-0 bg-violet-100 text-violet-700 border-violet-200 flex-shrink-0">
+                          <Badge variant="secondary" className="text-[9px] px-1.5 py-0 bg-cyan-100 text-cyan-700 border-cyan-200 flex-shrink-0">
                             SN
                           </Badge>
                         )}

@@ -255,31 +255,31 @@ export function MSProfitLossReport() {
       <div className="bg-white rounded-2xl border border-gray-100 p-3.5 shadow-sm">
         <div className="flex items-center gap-2">
           <div className="flex-1 relative">
-            <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-violet-400" />
+            <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-cyan-400" />
             <input
               type="date"
               value={fromDate}
               onChange={(e) => setFromDate(e.target.value)}
-              className="w-full h-10 pl-9 pr-2 rounded-xl bg-gray-50 border border-gray-200 text-xs focus:outline-none focus:ring-2 focus:ring-violet-400/40 focus:border-violet-400 transition-all"
+              className="w-full h-10 pl-9 pr-2 rounded-xl bg-gray-50 border border-gray-200 text-xs focus:outline-none focus:ring-2 focus:ring-cyan-400/40 focus:border-cyan-400 transition-all"
             />
           </div>
           <span className="text-xs text-gray-400 font-medium">to</span>
           <div className="flex-1 relative">
-            <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-violet-400" />
+            <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-cyan-400" />
             <input
               type="date"
               value={toDate}
               onChange={(e) => setToDate(e.target.value)}
-              className="w-full h-10 pl-9 pr-2 rounded-xl bg-gray-50 border border-gray-200 text-xs focus:outline-none focus:ring-2 focus:ring-violet-400/40 focus:border-violet-400 transition-all"
+              className="w-full h-10 pl-9 pr-2 rounded-xl bg-gray-50 border border-gray-200 text-xs focus:outline-none focus:ring-2 focus:ring-cyan-400/40 focus:border-cyan-400 transition-all"
             />
           </div>
           <button
             onClick={() => setShowFilters(!showFilters)}
             className={`w-10 h-10 rounded-xl border flex items-center justify-center transition-all ${
-              showFilters ? 'bg-violet-50 border-violet-200' : 'bg-white border-gray-200'
+              showFilters ? 'bg-cyan-50 border-cyan-200' : 'bg-white border-gray-200'
             }`}
           >
-            <Filter className={`w-4 h-4 ${showFilters ? 'text-violet-600' : 'text-gray-500'}`} />
+            <Filter className={`w-4 h-4 ${showFilters ? 'text-cyan-600' : 'text-gray-500'}`} />
           </button>
         </div>
 
@@ -296,7 +296,7 @@ export function MSProfitLossReport() {
                 <button
                   key={r.label}
                   onClick={() => handleQuickRange(resolveRange(r.from))}
-                  className="h-8 px-3 rounded-full text-[11px] font-semibold bg-gray-50 text-gray-600 border border-gray-200 hover:bg-violet-50 hover:text-violet-700 hover:border-violet-200 transition-all"
+                  className="h-8 px-3 rounded-full text-[11px] font-semibold bg-gray-50 text-gray-600 border border-gray-200 hover:bg-cyan-50 hover:text-cyan-700 hover:border-cyan-200 transition-all"
                 >
                   {r.label}
                 </button>
@@ -323,8 +323,8 @@ export function MSProfitLossReport() {
       ) : !data || data.summary.saleCount === 0 ? (
         /* ── Empty state ── */
         <div className="text-center py-16">
-          <div className="w-14 h-14 rounded-2xl bg-violet-100 flex items-center justify-center mx-auto mb-3">
-            <PieChart className="w-7 h-7 text-violet-400" />
+          <div className="w-14 h-14 rounded-2xl bg-cyan-100 flex items-center justify-center mx-auto mb-3">
+            <PieChart className="w-7 h-7 text-cyan-400" />
           </div>
           <p className="text-sm font-medium text-gray-500">No sales data in this period</p>
           <p className="text-xs text-gray-400 mt-1">Try a different date range</p>
@@ -345,7 +345,7 @@ export function MSProfitLossReport() {
                 onClick={() => setActiveTab(tab.key)}
                 className={`flex-1 h-9 rounded-xl text-xs font-semibold transition-all ${
                   activeTab === tab.key
-                    ? 'bg-violet-100 text-violet-700 shadow-sm'
+                    ? 'bg-cyan-100 text-cyan-700 shadow-sm'
                     : 'text-gray-500 active:bg-gray-50'
                 }`}
               >
@@ -454,7 +454,7 @@ export function MSProfitLossReport() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <p className="text-xs font-bold text-gray-800">Gross Profit</p>
-                      <Badge className="text-[9px] px-1.5 py-0 rounded-full border-0 font-semibold leading-3 bg-violet-100 text-violet-700">
+                      <Badge className="text-[9px] px-1.5 py-0 rounded-full border-0 font-semibold leading-3 bg-cyan-100 text-cyan-700">
                         {summary?.grossMargin || 0}%
                       </Badge>
                     </div>
@@ -560,7 +560,7 @@ export function MSProfitLossReport() {
                               initial={{ height: 0 }}
                               animate={{ height: `${revH}%` }}
                               transition={{ duration: 0.4, delay: i * 0.06 }}
-                              className="w-[45%] rounded-t-sm bg-violet-400"
+                              className="w-[45%] rounded-t-sm bg-cyan-400"
                             />
                             {/* Net profit bar */}
                             <motion.div
@@ -582,7 +582,7 @@ export function MSProfitLossReport() {
                   {/* Legend */}
                   <div className="flex items-center justify-center gap-4 mt-2.5">
                     <div className="flex items-center gap-1.5">
-                      <div className="w-2.5 h-2.5 rounded-sm bg-violet-400" />
+                      <div className="w-2.5 h-2.5 rounded-sm bg-cyan-400" />
                       <span className="text-[9px] text-gray-500">Revenue</span>
                     </div>
                     <div className="flex items-center gap-1.5">

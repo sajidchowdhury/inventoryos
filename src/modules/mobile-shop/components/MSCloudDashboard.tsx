@@ -59,13 +59,13 @@ function formatBDT(n: number) {
 }
 
 function MetricCard({
-  icon: Icon, label, value, sub, trend, color = 'violet',
+  icon: Icon, label, value, sub, trend, color = 'cyan',
 }: {
   icon: typeof Package; label: string; value: string; sub?: string;
   trend?: 'up' | 'down' | 'neutral'; color?: string;
 }) {
   const colorMap: Record<string, string> = {
-    violet: 'from-violet-500 to-purple-600',
+    cyan: 'from-cyan-500 to-blue-600',
     emerald: 'from-emerald-500 to-green-600',
     amber: 'from-amber-500 to-orange-600',
     rose: 'from-rose-500 to-red-600',
@@ -77,7 +77,7 @@ function MetricCard({
       className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm hover:shadow-md transition-shadow"
     >
       <div className="flex items-start justify-between mb-3">
-        <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${colorMap[color] || colorMap.violet} flex items-center justify-center shadow-lg`}>
+        <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${colorMap[color] || colorMap.cyan} flex items-center justify-center shadow-lg`}>
           <Icon className="w-5 h-5 text-white" />
         </div>
         {trend && trend !== 'neutral' && (
@@ -143,7 +143,7 @@ export function MSCloudDashboard() {
           <div className="flex-1"><h1 className="text-lg font-bold text-gray-900">Cloud Dashboard</h1></div>
         </div>
         <div className="flex items-center justify-center py-20">
-          <div className="w-6 h-6 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
+          <div className="w-6 h-6 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin" />
         </div>
       </div>
     );
@@ -166,7 +166,7 @@ export function MSCloudDashboard() {
           </p>
           <button
             onClick={load}
-            className="mt-4 px-5 py-2 rounded-xl bg-violet-100 text-violet-700 text-xs font-semibold hover:bg-violet-200 transition-colors"
+            className="mt-4 px-5 py-2 rounded-xl bg-cyan-100 text-cyan-700 text-xs font-semibold hover:bg-cyan-200 transition-colors"
           >
             Retry
           </button>
@@ -196,7 +196,7 @@ export function MSCloudDashboard() {
         </button>
         <div className="flex-1">
           <div className="flex items-center gap-2">
-            <BarChart3 className="w-5 h-5 text-violet-500" />
+            <BarChart3 className="w-5 h-5 text-cyan-500" />
             <h1 className="text-lg font-bold text-gray-900">Cloud Dashboard</h1>
           </div>
           <p className="text-xs text-gray-500 mt-0.5">Real-time business KPIs & analytics</p>
@@ -221,7 +221,7 @@ export function MSCloudDashboard() {
           icon={ShoppingCart} label="Sales This Month" value={String(data.salesThisMonth)}
           sub={`Last month: ${data.salesLastMonth}`}
           trend={salesGrowth ? (Number(salesGrowth) >= 0 ? 'up' : 'down') : undefined}
-          color="violet"
+          color="cyan"
         />
         <MetricCard
           icon={TrendingUp} label="Revenue This Month" value={formatBDT(data.revenueThisMonth)}
@@ -246,7 +246,7 @@ export function MSCloudDashboard() {
         <MetricCard icon={Wrench} label="Pending Repairs" value={String(data.pendingJobs)} color="amber" />
         <MetricCard icon={CreditCard} label="Active EMI Plans" value={String(data.activeEmiPlans)} sub={`Collected: ${formatBDT(data.emiCollectedThisMonth)}`} color="rose" />
         <MetricCard icon={ShieldCheck} label="Active AMC" value={String(data.activeAmcContracts)} color="emerald" />
-        <MetricCard icon={FileText} label="Mushak Invoices" value={String(data.mushakInvoicesThisMonth)} sub="This month" color="violet" />
+        <MetricCard icon={FileText} label="Mushak Invoices" value={String(data.mushakInvoicesThisMonth)} sub="This month" color="cyan" />
       </div>
 
       {/* ── Charts Row ── */}
@@ -258,7 +258,7 @@ export function MSCloudDashboard() {
               <h3 className="text-sm font-bold text-gray-800">Revenue Trend</h3>
               <p className="text-[10px] text-gray-400 mt-0.5">Last 6 months</p>
             </div>
-            <Activity className="w-4 h-4 text-violet-400" />
+            <Activity className="w-4 h-4 text-cyan-400" />
           </div>
           <div className="h-56">
             <ResponsiveContainer width="100%" height="100%">
@@ -328,7 +328,7 @@ export function MSCloudDashboard() {
             <h3 className="text-sm font-bold text-gray-800">Sales Volume</h3>
             <p className="text-[10px] text-gray-400 mt-0.5">Number of transactions per month</p>
           </div>
-          <ShoppingCart className="w-4 h-4 text-violet-400" />
+          <ShoppingCart className="w-4 h-4 text-cyan-400" />
         </div>
         <div className="h-44">
           <ResponsiveContainer width="100%" height="100%">

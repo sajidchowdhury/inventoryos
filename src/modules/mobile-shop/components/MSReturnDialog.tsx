@@ -28,7 +28,7 @@ const REFUND_METHODS: { value: RefundMethod; label: string; icon: React.ReactNod
   { value: 'CARD', label: 'Card', icon: <CreditCard className="w-4 h-4" />, color: 'bg-blue-100 text-blue-700 border-blue-200' },
   { value: 'BKASH', label: 'bKash', icon: <span className="text-xs font-bold">b</span>, color: 'bg-pink-100 text-pink-700 border-pink-200' },
   { value: 'NAGAD', label: 'Nagad', icon: <span className="text-xs font-bold">N</span>, color: 'bg-orange-100 text-orange-700 border-orange-200' },
-  { value: 'ROCKET', label: 'Rocket', icon: <span className="text-xs font-bold">R</span>, color: 'bg-purple-100 text-purple-700 border-purple-200' },
+  { value: 'ROCKET', label: 'Rocket', icon: <span className="text-xs font-bold">R</span>, color: 'bg-cyan-100 text-cyan-700 border-cyan-200' },
   { value: 'STORE_CREDIT', label: 'Store Credit', icon: <CreditCard className="w-4 h-4" />, color: 'bg-amber-100 text-amber-700 border-amber-200' },
   { value: 'NO_REFUND', label: 'No Refund', icon: <X className="w-4 h-4" />, color: 'bg-gray-100 text-gray-500 border-gray-200' },
 ];
@@ -256,7 +256,7 @@ export function MSReturnDialog({ sale, open, onClose, onReturnSuccess }: MSRetur
                               <span className="text-[10px] text-gray-400">{saleItem.productBrand}</span>
                             )}
                             {item.serialNumber && (
-                              <span className="flex items-center gap-0.5 text-[10px] text-violet-600 font-mono">
+                              <span className="flex items-center gap-0.5 text-[10px] text-cyan-600 font-mono">
                                 <Hash className="w-2.5 h-2.5" />
                                 {item.serialNumber}
                               </span>
@@ -334,13 +334,13 @@ export function MSReturnDialog({ sale, open, onClose, onReturnSuccess }: MSRetur
                                         className={cn(
                                           'p-2 rounded-lg border text-left transition-all',
                                           item.serialRestoredTo === opt.value
-                                            ? 'border-violet-300 bg-violet-50'
+                                            ? 'border-cyan-300 bg-cyan-50'
                                             : 'border-gray-200 bg-gray-50'
                                         )}
                                       >
                                         <p className={cn(
                                           'text-[11px] font-semibold',
-                                          item.serialRestoredTo === opt.value ? 'text-violet-700' : 'text-gray-600'
+                                          item.serialRestoredTo === opt.value ? 'text-cyan-700' : 'text-gray-600'
                                         )}>
                                           {opt.label}
                                         </p>

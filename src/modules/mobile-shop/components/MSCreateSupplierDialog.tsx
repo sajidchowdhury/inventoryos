@@ -155,7 +155,7 @@ export function MSCreateSupplierDialog({
               value={form.name}
               onChange={(e) => updateField('name', e.target.value)}
               placeholder="e.g. Hikvision Bangladesh"
-              className="w-full h-11 px-3.5 rounded-xl bg-gray-50 border border-gray-200 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-400/40 focus:border-violet-400 transition-all"
+              className="w-full h-11 px-3.5 rounded-xl bg-gray-50 border border-gray-200 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-400/40 focus:border-cyan-400 transition-all"
             />
           </div>
 
@@ -169,7 +169,7 @@ export function MSCreateSupplierDialog({
               value={form.code}
               onChange={(e) => updateField('code', e.target.value)}
               placeholder="Auto-generated if empty"
-              className="w-full h-11 px-3.5 rounded-xl bg-gray-50 border border-gray-200 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-400/40 focus:border-violet-400 transition-all"
+              className="w-full h-11 px-3.5 rounded-xl bg-gray-50 border border-gray-200 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-400/40 focus:border-cyan-400 transition-all"
             />
           </div>
 
@@ -183,7 +183,7 @@ export function MSCreateSupplierDialog({
               value={form.contactPerson}
               onChange={(e) => updateField('contactPerson', e.target.value)}
               placeholder="e.g. Md. Rahim"
-              className="w-full h-11 px-3.5 rounded-xl bg-gray-50 border border-gray-200 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-400/40 focus:border-violet-400 transition-all"
+              className="w-full h-11 px-3.5 rounded-xl bg-gray-50 border border-gray-200 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-400/40 focus:border-cyan-400 transition-all"
             />
           </div>
 
@@ -197,7 +197,7 @@ export function MSCreateSupplierDialog({
               value={form.phone}
               onChange={(e) => updateField('phone', e.target.value)}
               placeholder="e.g. 01712345678"
-              className="w-full h-11 px-3.5 rounded-xl bg-gray-50 border border-gray-200 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-400/40 focus:border-violet-400 transition-all"
+              className="w-full h-11 px-3.5 rounded-xl bg-gray-50 border border-gray-200 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-400/40 focus:border-cyan-400 transition-all"
             />
           </div>
 
@@ -211,7 +211,7 @@ export function MSCreateSupplierDialog({
               value={form.email}
               onChange={(e) => updateField('email', e.target.value)}
               placeholder="e.g. supplier@example.com"
-              className="w-full h-11 px-3.5 rounded-xl bg-gray-50 border border-gray-200 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-400/40 focus:border-violet-400 transition-all"
+              className="w-full h-11 px-3.5 rounded-xl bg-gray-50 border border-gray-200 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-400/40 focus:border-cyan-400 transition-all"
             />
           </div>
 
@@ -225,7 +225,7 @@ export function MSCreateSupplierDialog({
               onChange={(e) => updateField('address', e.target.value)}
               placeholder="e.g. 45 Elephant Road, Dhaka"
               rows={2}
-              className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50 border border-gray-200 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-400/40 focus:border-violet-400 transition-all resize-none"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50 border border-gray-200 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-400/40 focus:border-cyan-400 transition-all resize-none"
             />
           </div>
 
@@ -239,7 +239,7 @@ export function MSCreateSupplierDialog({
               onChange={(e) => updateField('notes', e.target.value)}
               placeholder="Any additional notes..."
               rows={2}
-              className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50 border border-gray-200 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-400/40 focus:border-violet-400 transition-all resize-none"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50 border border-gray-200 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-400/40 focus:border-cyan-400 transition-all resize-none"
             />
           </div>
 
@@ -262,7 +262,7 @@ export function MSCreateSupplierDialog({
           <button
             onClick={handleSave}
             disabled={saving}
-            className="flex-1 h-11 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 text-white text-sm font-semibold shadow-lg shadow-violet-500/20 active:opacity-90 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+            className="flex-1 h-11 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 text-white text-sm font-semibold shadow-lg shadow-cyan-500/20 active:opacity-90 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {saving ? (
               <Loader2 className="w-4 h-4 animate-spin" />

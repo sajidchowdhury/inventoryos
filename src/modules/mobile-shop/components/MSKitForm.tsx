@@ -529,7 +529,7 @@ export function MSKitForm() {
 
         {/* Product search */}
         <div className="relative" ref={searchInputRef}>
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-violet-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-cyan-400" />
           <Input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -571,7 +571,7 @@ export function MSKitForm() {
                       'w-full text-left px-3.5 py-2.5 border-b border-gray-50 last:border-0 transition-colors',
                       alreadyAdded
                         ? 'opacity-40 cursor-not-allowed'
-                        : 'hover:bg-violet-50 active:bg-violet-100'
+                        : 'hover:bg-cyan-50 active:bg-cyan-100'
                     )}
                   >
                     <div className="flex items-center justify-between gap-2">
@@ -594,7 +594,7 @@ export function MSKitForm() {
                       </div>
                     </div>
                     {alreadyAdded && (
-                      <p className="text-[10px] text-violet-500 font-medium mt-0.5">
+                      <p className="text-[10px] text-cyan-500 font-medium mt-0.5">
                         Already added
                       </p>
                     )}
@@ -739,7 +739,7 @@ export function MSKitForm() {
         transition={{ delay: 0.2 }}
         onClick={handleSave}
         disabled={saving || !name.trim()}
-        className="w-full py-3.5 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 text-white text-sm font-semibold shadow-lg shadow-violet-500/20 flex items-center justify-center gap-2 active:scale-[0.98] transition-transform disabled:opacity-40 disabled:active:scale-100"
+        className="w-full py-3.5 rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-600 text-white text-sm font-semibold shadow-lg shadow-cyan-500/20 flex items-center justify-center gap-2 active:scale-[0.98] transition-transform disabled:opacity-40 disabled:active:scale-100"
       >
         {saving ? (
           <Loader2 className="w-4 h-4 animate-spin" />

@@ -94,7 +94,7 @@ export function MSTransfersList() {
         <h1 className="text-lg font-bold text-gray-900 flex-1">Transfers</h1>
         <button
           onClick={() => navigate('create-transfer')}
-          className="h-8 px-3 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 text-white text-xs font-semibold shadow-sm active:scale-[0.97] transition-transform flex items-center gap-1.5"
+          className="h-8 px-3 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 text-white text-xs font-semibold shadow-sm active:scale-[0.97] transition-transform flex items-center gap-1.5"
         >
           <Plus className="w-3.5 h-3.5" />
           New
@@ -110,7 +110,7 @@ export function MSTransfersList() {
             className={cn(
               'px-3.5 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-all shrink-0',
               activeTab === tab.value
-                ? 'bg-gradient-to-r from-violet-500 to-purple-600 text-white shadow-sm'
+                ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-sm'
                 : 'bg-white text-gray-500 border border-gray-100 hover:bg-gray-50'
             )}
           >
@@ -150,7 +150,7 @@ export function MSTransfersList() {
           {activeTab === 'ALL' && (
             <button
               onClick={() => navigate('create-transfer')}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 text-white text-sm font-semibold shadow-sm active:scale-[0.98] transition-transform"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 text-white text-sm font-semibold shadow-sm active:scale-[0.98] transition-transform"
             >
               <Plus className="w-4 h-4" />
               New Transfer
@@ -198,8 +198,8 @@ export function MSTransfersList() {
                         {transfer.fromBranch?.name || 'Unknown'}
                       </p>
                     </div>
-                    <div className="w-7 h-7 rounded-lg bg-violet-50 flex items-center justify-center shrink-0">
-                      <ArrowRight className="w-3.5 h-3.5 text-violet-500" />
+                    <div className="w-7 h-7 rounded-lg bg-cyan-50 flex items-center justify-center shrink-0">
+                      <ArrowRight className="w-3.5 h-3.5 text-cyan-500" />
                     </div>
                     <div className="flex-1 min-w-0 text-right">
                       <p className="text-[10px] text-gray-400 mb-0.5">To</p>

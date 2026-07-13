@@ -304,7 +304,7 @@ export function MSCreatePurchase() {
       {/* Progress bar */}
       <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
         <motion.div
-          className="h-full bg-gradient-to-r from-violet-500 to-purple-600 rounded-full"
+          className="h-full bg-gradient-to-r from-cyan-500 to-blue-600 rounded-full"
           initial={{ width: 0 }}
           animate={{ width: `${progressPct}%` }}
           transition={{ duration: 0.3, ease: 'easeOut' }}
@@ -324,7 +324,7 @@ export function MSCreatePurchase() {
                   className={cn(
                     'w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold transition-colors',
                     active
-                      ? 'bg-gradient-to-br from-violet-500 to-purple-600 text-white'
+                      ? 'bg-gradient-to-br from-cyan-500 to-blue-600 text-white'
                       : 'bg-gray-100 text-gray-400'
                   )}
                 >
@@ -333,7 +333,7 @@ export function MSCreatePurchase() {
                 <span
                   className={cn(
                     'text-[11px] font-semibold transition-colors',
-                    current ? 'text-violet-600' : active ? 'text-gray-700' : 'text-gray-400'
+                    current ? 'text-cyan-600' : active ? 'text-gray-700' : 'text-gray-400'
                   )}
                 >
                   {label}
@@ -344,7 +344,7 @@ export function MSCreatePurchase() {
                   <div
                     className={cn(
                       'h-full transition-all duration-300',
-                      step > s ? 'bg-violet-500' : 'bg-transparent'
+                      step > s ? 'bg-cyan-500' : 'bg-transparent'
                     )}
                   />
                 </div>
@@ -393,8 +393,8 @@ export function MSCreatePurchase() {
               <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-violet-50 flex items-center justify-center">
-                      <Truck className="w-5 h-5 text-violet-600" />
+                    <div className="w-10 h-10 rounded-xl bg-cyan-50 flex items-center justify-center">
+                      <Truck className="w-5 h-5 text-cyan-600" />
                     </div>
                     <div>
                       <p className="text-sm font-semibold text-gray-900">{supplier.name}</p>
@@ -410,7 +410,7 @@ export function MSCreatePurchase() {
                   </div>
                   <button
                     onClick={() => { setSupplier(null); setShowSupplierSearch(true); setSupplierSearch(''); }}
-                    className="text-[11px] text-violet-600 font-semibold active:text-violet-700 transition-colors"
+                    className="text-[11px] text-cyan-600 font-semibold active:text-cyan-700 transition-colors"
                   >
                     Change
                   </button>
@@ -440,7 +440,7 @@ export function MSCreatePurchase() {
                     value={supplierSearch}
                     onChange={(e) => setSupplierSearch(e.target.value)}
                     onFocus={() => setShowSupplierSearch(true)}
-                    className="w-full h-11 pl-9 pr-3.5 rounded-xl bg-gray-50 border border-gray-200 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-400/40 focus:border-violet-400 transition-all"
+                    className="w-full h-11 pl-9 pr-3.5 rounded-xl bg-gray-50 border border-gray-200 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-400/40 focus:border-cyan-400 transition-all"
                   />
                 </div>
 
@@ -448,7 +448,7 @@ export function MSCreatePurchase() {
                   <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
                     {supplierLoading ? (
                       <div className="flex items-center justify-center py-8">
-                        <Loader2 className="w-5 h-5 text-violet-500 animate-spin" />
+                        <Loader2 className="w-5 h-5 text-cyan-500 animate-spin" />
                       </div>
                     ) : supplierResults.length > 0 ? (
                       <div className="max-h-64 overflow-y-auto divide-y divide-gray-50">
@@ -516,7 +516,7 @@ export function MSCreatePurchase() {
                 className={cn(
                   'flex-1 h-11 rounded-xl text-sm font-semibold transition-all',
                   supplier
-                    ? 'bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-lg shadow-violet-500/20'
+                    ? 'bg-gradient-to-br from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/20'
                     : 'bg-gray-100 text-gray-400'
                 )}
                 disabled={!supplier}
@@ -606,7 +606,7 @@ export function MSCreatePurchase() {
                           inputMode="decimal"
                           value={item.unitCost}
                           onChange={(e) => setItemCost(item._localId, e.target.value)}
-                          className="w-full h-9 px-2.5 rounded-lg bg-gray-50 border border-gray-200 text-sm font-semibold text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-400/40 focus:border-violet-400 transition-all"
+                          className="w-full h-9 px-2.5 rounded-lg bg-gray-50 border border-gray-200 text-sm font-semibold text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-400/40 focus:border-cyan-400 transition-all"
                         />
                       </div>
 
@@ -626,7 +626,7 @@ export function MSCreatePurchase() {
                           onClick={() => toggleSerialEntry(item._localId)}
                           className="flex items-center gap-2 w-full text-left group"
                         >
-                          <Shield className="w-3.5 h-3.5 text-violet-500" />
+                          <Shield className="w-3.5 h-3.5 text-cyan-500" />
                           <span className="text-xs font-semibold text-gray-700 flex-1">
                             Serial Numbers
                           </span>
@@ -672,9 +672,9 @@ export function MSCreatePurchase() {
                 ))}
 
                 {/* Running subtotal */}
-                <div className="bg-violet-50 rounded-xl p-3 flex items-center justify-between">
-                  <span className="text-xs text-violet-600 font-medium">Subtotal</span>
-                  <span className="text-sm font-bold text-violet-700">{formatBDT(subtotal)}</span>
+                <div className="bg-cyan-50 rounded-xl p-3 flex items-center justify-between">
+                  <span className="text-xs text-cyan-600 font-medium">Subtotal</span>
+                  <span className="text-sm font-bold text-cyan-700">{formatBDT(subtotal)}</span>
                 </div>
               </div>
             )}
@@ -695,7 +695,7 @@ export function MSCreatePurchase() {
                     setShowProductSearch(true);
                   }}
                   onFocus={() => setShowProductSearch(true)}
-                  className="w-full h-11 pl-9 pr-3.5 rounded-xl bg-gray-50 border border-gray-200 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-400/40 focus:border-violet-400 transition-all"
+                  className="w-full h-11 pl-9 pr-3.5 rounded-xl bg-gray-50 border border-gray-200 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-400/40 focus:border-cyan-400 transition-all"
                 />
               </div>
 
@@ -703,7 +703,7 @@ export function MSCreatePurchase() {
                 <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
                   {productLoading ? (
                     <div className="flex items-center justify-center py-8">
-                      <Loader2 className="w-5 h-5 text-violet-500 animate-spin" />
+                      <Loader2 className="w-5 h-5 text-cyan-500 animate-spin" />
                     </div>
                   ) : productResults.length > 0 ? (
                     <div className="max-h-72 overflow-y-auto divide-y divide-gray-50">
@@ -739,7 +739,7 @@ export function MSCreatePurchase() {
                               <div className="text-right shrink-0">
                                 <p className="text-xs font-bold text-gray-900">{formatBDT(p.costPrice)}</p>
                                 {added && (
-                                  <span className="text-[10px] text-violet-500 font-medium">Added</span>
+                                  <span className="text-[10px] text-cyan-500 font-medium">Added</span>
                                 )}
                               </div>
                             </div>
@@ -777,7 +777,7 @@ export function MSCreatePurchase() {
                 className={cn(
                   'flex-1 h-11 rounded-xl text-sm font-semibold transition-all',
                   items.length > 0
-                    ? 'bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-lg shadow-violet-500/20'
+                    ? 'bg-gradient-to-br from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/20'
                     : 'bg-gray-100 text-gray-400'
                 )}
               >
@@ -802,8 +802,8 @@ export function MSCreatePurchase() {
             {supplier && (
               <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-violet-50 flex items-center justify-center">
-                    <Truck className="w-4.5 h-4.5 text-violet-600" />
+                  <div className="w-9 h-9 rounded-xl bg-cyan-50 flex items-center justify-center">
+                    <Truck className="w-4.5 h-4.5 text-cyan-600" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wider">Supplier</p>
@@ -828,7 +828,7 @@ export function MSCreatePurchase() {
                 placeholder="Enter invoice number..."
                 value={invoiceNo}
                 onChange={(e) => setInvoiceNo(e.target.value)}
-                className="w-full h-11 px-3.5 rounded-xl bg-gray-50 border border-gray-200 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-400/40 focus:border-violet-400 transition-all"
+                className="w-full h-11 px-3.5 rounded-xl bg-gray-50 border border-gray-200 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-400/40 focus:border-cyan-400 transition-all"
               />
             </div>
 
@@ -844,7 +844,7 @@ export function MSCreatePurchase() {
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 rows={3}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50 border border-gray-200 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-400/40 focus:border-violet-400 transition-all resize-none"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50 border border-gray-200 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-400/40 focus:border-cyan-400 transition-all resize-none"
               />
             </div>
 
@@ -920,7 +920,7 @@ export function MSCreatePurchase() {
                     const n = parseFloat(e.target.value);
                     setDiscountAmount(isNaN(n) ? 0 : Math.max(0, n));
                   }}
-                  className="w-full h-11 pl-8 pr-3.5 rounded-xl bg-gray-50 border border-gray-200 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-400/40 focus:border-violet-400 transition-all"
+                  className="w-full h-11 pl-8 pr-3.5 rounded-xl bg-gray-50 border border-gray-200 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-400/40 focus:border-cyan-400 transition-all"
                 />
               </div>
             </div>
@@ -939,7 +939,7 @@ export function MSCreatePurchase() {
               )}
               <div className="border-t border-gray-100 pt-2.5 flex items-center justify-between">
                 <span className="text-sm font-bold text-gray-900">Grand Total</span>
-                <span className="text-base font-bold text-violet-600">{formatBDT(grandTotal)}</span>
+                <span className="text-base font-bold text-cyan-600">{formatBDT(grandTotal)}</span>
               </div>
             </div>
 
@@ -959,7 +959,7 @@ export function MSCreatePurchase() {
                 className={cn(
                   'flex-1 h-11 rounded-xl text-sm font-semibold transition-all flex items-center justify-center gap-2',
                   !submitting && items.length > 0
-                    ? 'bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-lg shadow-violet-500/20'
+                    ? 'bg-gradient-to-br from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/20'
                     : 'bg-gray-100 text-gray-400'
                 )}
               >

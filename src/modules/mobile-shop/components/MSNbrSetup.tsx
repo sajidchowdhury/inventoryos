@@ -255,7 +255,7 @@ export function MSNbrSetup() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <div className="w-6 h-6 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
+        <div className="w-6 h-6 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -288,7 +288,7 @@ export function MSNbrSetup() {
         <button
           onClick={handleSaveConfig}
           disabled={saving || !isDirty}
-          className="px-4 py-2 rounded-xl text-sm font-semibold bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-lg shadow-violet-500/20 disabled:opacity-40 disabled:shadow-none transition-all"
+          className="px-4 py-2 rounded-xl text-sm font-semibold bg-gradient-to-br from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/20 disabled:opacity-40 disabled:shadow-none transition-all"
         >
           {saving ? 'Saving...' : 'Save'}
         </button>
@@ -323,8 +323,8 @@ export function MSNbrSetup() {
       <motion.div variants={fadeUp} initial="initial" animate="animate" className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm mb-4">
         <button onClick={() => toggleSection('bin')} className="flex items-center justify-between w-full text-left">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-violet-100 flex items-center justify-center">
-              <Building className="w-4 h-4 text-violet-600" />
+            <div className="w-8 h-8 rounded-lg bg-cyan-100 flex items-center justify-center">
+              <Building className="w-4 h-4 text-cyan-600" />
             </div>
             <div>
               <p className="text-sm font-semibold text-gray-900">Business Identification</p>
@@ -353,11 +353,11 @@ export function MSNbrSetup() {
                         onClick={() => setTaxStatus(opt.value)}
                         className={`p-2.5 rounded-xl border-2 text-center transition-all ${
                           taxStatus === opt.value
-                            ? 'border-violet-500 bg-violet-50'
+                            ? 'border-cyan-500 bg-cyan-50'
                             : 'border-gray-100 bg-gray-50 hover:border-gray-200'
                         }`}
                       >
-                        <p className={`text-xs font-semibold ${taxStatus === opt.value ? 'text-violet-700' : 'text-gray-600'}`}>
+                        <p className={`text-xs font-semibold ${taxStatus === opt.value ? 'text-cyan-700' : 'text-gray-600'}`}>
                           {opt.label}
                         </p>
                         <p className="text-[10px] text-gray-400 mt-0.5 leading-tight">{opt.desc}</p>
@@ -376,7 +376,7 @@ export function MSNbrSetup() {
                       value={bin}
                       onChange={(e) => setBin(e.target.value)}
                       placeholder="e.g. 123456789"
-                      className="w-full pl-9 pr-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-400 transition-all"
+                      className="w-full pl-9 pr-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-400 transition-all"
                     />
                   </div>
                 </div>
@@ -389,7 +389,7 @@ export function MSNbrSetup() {
                     value={legalName}
                     onChange={(e) => setLegalName(e.target.value)}
                     placeholder="Legal name as on trade license"
-                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-400 transition-all"
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-400 transition-all"
                   />
                 </div>
 
@@ -401,7 +401,7 @@ export function MSNbrSetup() {
                     onChange={(e) => setLegalAddress(e.target.value)}
                     placeholder="Address as per NBR registration"
                     rows={2}
-                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-400 transition-all resize-none"
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-400 transition-all resize-none"
                   />
                 </div>
 
@@ -413,7 +413,7 @@ export function MSNbrSetup() {
                     value={tradeLicense}
                     onChange={(e) => setTradeLicense(e.target.value)}
                     placeholder="e.g. TRD-12345"
-                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-400 transition-all"
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-400 transition-all"
                   />
                 </div>
               </div>
@@ -457,7 +457,7 @@ export function MSNbrSetup() {
                       min="0"
                       max="100"
                       step="0.5"
-                      className="w-24 px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-center focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-400 transition-all"
+                      className="w-24 px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-center focus:outline-none focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-400 transition-all"
                     />
                     <span className="text-sm text-gray-500">%</span>
                     <span className="text-xs text-gray-400 ml-auto">NBR standard: 15%</span>
@@ -473,11 +473,11 @@ export function MSNbrSetup() {
                       value={invoicePrefix}
                       onChange={(e) => setInvoicePrefix(e.target.value)}
                       placeholder="MUSHAK"
-                      className="flex-1 px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-400 transition-all"
+                      className="flex-1 px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-400 transition-all"
                     />
                   </div>
                   <p className="text-xs text-gray-400 mt-1.5">
-                    Next invoice: <span className="font-mono font-semibold text-violet-600">{previewInvoice}</span>
+                    Next invoice: <span className="font-mono font-semibold text-cyan-600">{previewInvoice}</span>
                   </p>
                 </div>
               </div>
@@ -521,7 +521,7 @@ export function MSNbrSetup() {
                     className="shrink-0"
                   >
                     {vatEnabled ? (
-                      <ToggleRight className="w-10 h-10 text-violet-500" />
+                      <ToggleRight className="w-10 h-10 text-cyan-500" />
                     ) : (
                       <ToggleLeft className="w-10 h-10 text-gray-300" />
                     )}
@@ -539,7 +539,7 @@ export function MSNbrSetup() {
                     className="shrink-0"
                   >
                     {autoMushak ? (
-                      <ToggleRight className="w-10 h-10 text-violet-500" />
+                      <ToggleRight className="w-10 h-10 text-cyan-500" />
                     ) : (
                       <ToggleLeft className="w-10 h-10 text-gray-300" />
                     )}
@@ -585,7 +585,7 @@ export function MSNbrSetup() {
                     value={hsSearch}
                     onChange={(e) => setHsSearch(e.target.value)}
                     placeholder="Search category or HS code..."
-                    className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-400 transition-all"
+                    className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-400 transition-all"
                   />
                 </div>
 
@@ -593,7 +593,7 @@ export function MSNbrSetup() {
                 <div className="flex gap-2 mb-3">
                   <button
                     onClick={() => { setShowAddHs(true); setEditingHs(null); setHsForm({ category: '', hsCode: '', description: '', vatRate: '15' }); }}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-50 text-violet-700 text-xs font-semibold rounded-lg hover:bg-violet-100 transition-colors"
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-cyan-50 text-cyan-700 text-xs font-semibold rounded-lg hover:bg-cyan-100 transition-colors"
                   >
                     <Plus className="w-3.5 h-3.5" /> Add Custom
                   </button>
@@ -612,10 +612,10 @@ export function MSNbrSetup() {
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: 'auto' }}
                       exit={{ opacity: 0, height: 0 }}
-                      className="bg-violet-50 border border-violet-100 rounded-xl p-3 mb-3 space-y-2.5"
+                      className="bg-cyan-50 border border-cyan-100 rounded-xl p-3 mb-3 space-y-2.5"
                     >
                       <div className="flex items-center justify-between">
-                        <p className="text-xs font-semibold text-violet-700">
+                        <p className="text-xs font-semibold text-cyan-700">
                           {editingHs ? 'Edit HS Code' : 'New HS Code Mapping'}
                         </p>
                         <button onClick={cancelHsForm}><X className="w-4 h-4 text-gray-400" /></button>
@@ -628,7 +628,7 @@ export function MSNbrSetup() {
                             value={hsForm.category}
                             onChange={(e) => setHsForm((f) => ({ ...f, category: e.target.value }))}
                             placeholder="e.g. Cameras"
-                            className="w-full px-2.5 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-400 bg-white"
+                            className="w-full px-2.5 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-400 bg-white"
                           />
                         </div>
                         <div>
@@ -638,7 +638,7 @@ export function MSNbrSetup() {
                             value={hsForm.hsCode}
                             onChange={(e) => setHsForm((f) => ({ ...f, hsCode: e.target.value }))}
                             placeholder="e.g. 8525.89"
-                            className="w-full px-2.5 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-400 bg-white font-mono"
+                            className="w-full px-2.5 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-400 bg-white font-mono"
                           />
                         </div>
                       </div>
@@ -649,7 +649,7 @@ export function MSNbrSetup() {
                           value={hsForm.description}
                           onChange={(e) => setHsForm((f) => ({ ...f, description: e.target.value }))}
                           placeholder="Brief description of the product category"
-                          className="w-full px-2.5 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-400 bg-white"
+                          className="w-full px-2.5 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-400 bg-white"
                         />
                       </div>
                       <div className="flex items-center gap-3">
@@ -659,13 +659,13 @@ export function MSNbrSetup() {
                             type="number"
                             value={hsForm.vatRate}
                             onChange={(e) => setHsForm((f) => ({ ...f, vatRate: e.target.value }))}
-                            className="w-16 px-2.5 py-2 border border-gray-200 rounded-lg text-sm text-center focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-400 bg-white"
+                            className="w-16 px-2.5 py-2 border border-gray-200 rounded-lg text-sm text-center focus:outline-none focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-400 bg-white"
                           />
                         </div>
                         <div className="flex-1 flex justify-end pt-4">
                           <button
                             onClick={editingHs ? handleUpdateHs : handleAddHs}
-                            className="px-4 py-2 bg-gradient-to-br from-violet-500 to-purple-600 text-white text-xs font-semibold rounded-lg shadow-lg shadow-violet-500/20"
+                            className="px-4 py-2 bg-gradient-to-br from-cyan-500 to-blue-600 text-white text-xs font-semibold rounded-lg shadow-lg shadow-cyan-500/20"
                           >
                             {editingHs ? 'Update' : 'Add'}
                           </button>
@@ -689,11 +689,11 @@ export function MSNbrSetup() {
                         <div className="flex items-center gap-2">
                           <p className="text-sm font-semibold text-gray-900">{h.category}</p>
                           {h.isDefault && (
-                            <span className="px-1.5 py-0.5 text-[9px] font-medium bg-violet-100 text-violet-600 rounded-md">DEFAULT</span>
+                            <span className="px-1.5 py-0.5 text-[9px] font-medium bg-cyan-100 text-cyan-600 rounded-md">DEFAULT</span>
                           )}
                         </div>
                         <div className="flex items-center gap-2 mt-0.5">
-                          <span className="text-xs font-mono text-violet-600 font-semibold">{h.hsCode}</span>
+                          <span className="text-xs font-mono text-cyan-600 font-semibold">{h.hsCode}</span>
                           <span className="text-xs text-gray-400">{h.vatRate}%</span>
                         </div>
                         {h.description && (
@@ -724,12 +724,12 @@ export function MSNbrSetup() {
       </motion.div>
 
       {/* Info Card */}
-      <motion.div variants={fadeUp} initial="initial" animate="animate" className="bg-violet-50 border border-violet-100 rounded-2xl p-4">
+      <motion.div variants={fadeUp} initial="initial" animate="animate" className="bg-cyan-50 border border-cyan-100 rounded-2xl p-4">
         <div className="flex items-start gap-3">
-          <Sparkles className="w-5 h-5 text-violet-500 mt-0.5 shrink-0" />
+          <Sparkles className="w-5 h-5 text-cyan-500 mt-0.5 shrink-0" />
           <div>
-            <p className="text-sm font-semibold text-violet-800">About NBR Compliance</p>
-            <p className="text-xs text-violet-600 mt-1 leading-relaxed">
+            <p className="text-sm font-semibold text-cyan-800">About NBR Compliance</p>
+            <p className="text-xs text-cyan-600 mt-1 leading-relaxed">
               The BIN (Business Identification Number) is issued by the National Board of Revenue, Bangladesh.
               Setting up your NBR config here enables automatic VAT calculation, Mushak 6.3 tax invoice generation,
               and purchase/sales register maintenance. HS codes are pre-populated with common electronics categories

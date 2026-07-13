@@ -84,7 +84,7 @@ export function MSCreateProject() {
     setSaving(false);
   };
 
-  const inputClass = 'w-full px-3 py-2.5 rounded-xl bg-white border border-gray-100 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-300 shadow-sm';
+  const inputClass = 'w-full px-3 py-2.5 rounded-xl bg-white border border-gray-100 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-300 shadow-sm';
   const labelClass = 'text-xs font-semibold text-gray-500 mb-1.5 block';
 
   return (
@@ -103,7 +103,7 @@ export function MSCreateProject() {
       {/* Project Info */}
       <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm space-y-3">
         <h2 className="text-sm font-bold text-gray-800 flex items-center gap-2">
-          <Building2 className="w-4 h-4 text-violet-500" />
+          <Building2 className="w-4 h-4 text-cyan-500" />
           Project Info
         </h2>
 
@@ -127,7 +127,7 @@ export function MSCreateProject() {
                 onClick={() => update('projectType', pt.value)}
                 className={`px-3 py-2 rounded-xl text-xs font-semibold border transition-colors ${
                   form.projectType === pt.value
-                    ? 'bg-violet-50 border-violet-300 text-violet-700'
+                    ? 'bg-cyan-50 border-cyan-300 text-cyan-700'
                     : 'bg-white border-gray-100 text-gray-500'
                 }`}
               >
@@ -170,7 +170,7 @@ export function MSCreateProject() {
       {/* Client Info */}
       <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm space-y-3">
         <h2 className="text-sm font-bold text-gray-800 flex items-center gap-2">
-          <User className="w-4 h-4 text-violet-500" />
+          <User className="w-4 h-4 text-cyan-500" />
           Client Info
         </h2>
 
@@ -234,7 +234,7 @@ export function MSCreateProject() {
       {/* Timeline */}
       <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm space-y-3">
         <h2 className="text-sm font-bold text-gray-800 flex items-center gap-2">
-          <Calendar className="w-4 h-4 text-violet-500" />
+          <Calendar className="w-4 h-4 text-cyan-500" />
           Timeline
         </h2>
 
@@ -263,7 +263,7 @@ export function MSCreateProject() {
       {/* Site Info */}
       <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm space-y-3">
         <h2 className="text-sm font-bold text-gray-800 flex items-center gap-2">
-          <MapPin className="w-4 h-4 text-violet-500" />
+          <MapPin className="w-4 h-4 text-cyan-500" />
           Site Details
         </h2>
 
@@ -305,7 +305,7 @@ export function MSCreateProject() {
       {/* Notes */}
       <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm space-y-3">
         <h2 className="text-sm font-bold text-gray-800 flex items-center gap-2">
-          <FileText className="w-4 h-4 text-violet-500" />
+          <FileText className="w-4 h-4 text-cyan-500" />
           Notes
         </h2>
         <div>
@@ -334,7 +334,7 @@ export function MSCreateProject() {
       <button
         onClick={handleSave}
         disabled={saving || !form.projectName.trim() || !form.clientName.trim()}
-        className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 text-white font-semibold text-sm shadow-lg shadow-violet-500/25 active:scale-[0.98] transition-transform disabled:opacity-50 disabled:active:scale-100"
+        className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-600 text-white font-semibold text-sm shadow-lg shadow-cyan-500/25 active:scale-[0.98] transition-transform disabled:opacity-50 disabled:active:scale-100"
       >
         <Save className="w-4 h-4" />
         {saving ? 'Creating...' : 'Create Project'}

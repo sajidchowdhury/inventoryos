@@ -1,12 +1,12 @@
 'use client';
 
-// MSDesktopSidebar — left sidebar navigation for the CCTV module on desktop.
+// MSDesktopSidebar — left sidebar navigation for the MobileShop module on desktop.
 // Visible on md: and above (768px+). Mirrors the MSBottomNav items in a
-// vertical layout with violet accent color.
+// vertical layout with cyan accent color.
 // On mobile, this is hidden and MSBottomNav is shown instead.
 
 import {
-  Home, Package, ShoppingCart, Sparkles, MoreHorizontal, Camera,
+  Home, Package, ShoppingCart, Sparkles, MoreHorizontal, Smartphone,
 } from 'lucide-react';
 import { useMSNavStore } from '@/stores/ms-nav-store';
 import type { MSViewType } from '../types';
@@ -46,14 +46,14 @@ export function MSDesktopSidebar() {
   };
 
   return (
-    <aside className="hidden md:flex fixed inset-y-0 left-0 z-30 w-64 flex-col border-r border-violet-100 bg-white">
+    <aside className="hidden md:flex fixed inset-y-0 left-0 z-30 w-64 flex-col border-r border-cyan-100 bg-white">
       {/* Logo / Brand */}
-      <div className="flex items-center gap-3 px-5 py-5 border-b border-violet-50">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-md">
-          <Camera className="h-5 w-5" />
+      <div className="flex items-center gap-3 px-5 py-5 border-b border-cyan-50">
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 text-white shadow-md">
+          <Smartphone className="h-5 w-5" />
         </div>
         <div>
-          <div className="text-sm font-bold text-gray-900">CCTV Shop</div>
+          <div className="text-sm font-bold text-gray-900">Mobile Shop</div>
           <div className="text-xs text-gray-400">InventoryOS</div>
         </div>
       </div>
@@ -71,16 +71,16 @@ export function MSDesktopSidebar() {
               className={cn(
                 'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors w-full text-left',
                 isActive
-                  ? 'bg-gradient-to-r from-violet-500 to-purple-600 text-white shadow-md shadow-violet-500/20'
-                  : 'text-gray-600 hover:bg-violet-50 hover:text-violet-700'
+                  ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-md shadow-cyan-500/20'
+                  : 'text-gray-600 hover:bg-cyan-50 hover:text-cyan-700'
               )}
             >
-              <Icon className={cn('h-5 w-5 shrink-0', isActive ? 'text-white' : 'text-violet-400')} />
+              <Icon className={cn('h-5 w-5 shrink-0', isActive ? 'text-white' : 'text-cyan-400')} />
               <span className="flex-1">{item.label}</span>
               {item.isAI && (
                 <span className={cn(
                   'text-[10px] px-1.5 py-0.5 rounded-full font-semibold',
-                  isActive ? 'bg-white/20 text-white' : 'bg-violet-100 text-violet-600'
+                  isActive ? 'bg-white/20 text-white' : 'bg-cyan-100 text-cyan-600'
                 )}>
                   AI
                 </span>
@@ -91,9 +91,9 @@ export function MSDesktopSidebar() {
       </nav>
 
       {/* Footer */}
-      <div className="p-3 border-t border-violet-50">
+      <div className="p-3 border-t border-cyan-50">
         <div className="text-xs text-gray-400 px-3">
-          InventoryOS · CCTV Module
+          InventoryOS · MobileShop Module
         </div>
       </div>
     </aside>

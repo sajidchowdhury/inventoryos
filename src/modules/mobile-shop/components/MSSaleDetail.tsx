@@ -76,7 +76,7 @@ const PAYMENT_METHOD_CONFIG: Record<PaymentMethod, { label: string; badge: strin
   },
   ROCKET: {
     label: 'Rocket',
-    badge: 'bg-purple-50 text-purple-700 border-purple-200',
+    badge: 'bg-cyan-50 text-cyan-700 border-cyan-200',
     icon: <CreditCard className="w-3.5 h-3.5" />,
   },
 };
@@ -103,7 +103,7 @@ const METHOD_SELECTOR_STYLES: Record<PaymentMethod, { active: string; inactive: 
     icon: <span className="text-sm font-bold">N</span>,
   },
   ROCKET: {
-    active: 'bg-purple-100 border-purple-400 text-purple-700',
+    active: 'bg-cyan-100 border-cyan-400 text-cyan-700',
     inactive: 'border-gray-200 text-gray-500',
     icon: <span className="text-sm font-bold">R</span>,
   },
@@ -376,8 +376,8 @@ export function MSSaleDetail() {
         {/* ── Customer Card ── */}
         <motion.div {...fadeUp} className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-violet-100 flex items-center justify-center flex-shrink-0">
-              <User className="w-5 h-5 text-violet-600" />
+            <div className="w-10 h-10 rounded-full bg-cyan-100 flex items-center justify-center flex-shrink-0">
+              <User className="w-5 h-5 text-cyan-600" />
             </div>
             <div className="flex-1 min-w-0">
               <p className="font-semibold text-gray-900 truncate">
@@ -386,7 +386,7 @@ export function MSSaleDetail() {
               {sale.customerPhone ? (
                 <a
                   href={`tel:${sale.customerPhone}`}
-                  className="text-sm text-violet-600 hover:text-violet-700 flex items-center gap-1 mt-0.5"
+                  className="text-sm text-cyan-600 hover:text-cyan-700 flex items-center gap-1 mt-0.5"
                 >
                   <Phone className="w-3.5 h-3.5" />
                   {sale.customerPhone}
@@ -417,7 +417,7 @@ export function MSSaleDetail() {
                         <p className="font-medium text-gray-900 text-sm leading-snug">
                           {item.productName}
                           {(item as Record<string, unknown>).kit && (
-                            <span className="ml-1.5 text-[9px] font-bold px-1.5 py-0.5 rounded bg-violet-50 text-violet-600 border border-violet-200 align-middle">
+                            <span className="ml-1.5 text-[9px] font-bold px-1.5 py-0.5 rounded bg-cyan-50 text-cyan-600 border border-cyan-200 align-middle">
                               Kit
                             </span>
                           )}
@@ -428,7 +428,7 @@ export function MSSaleDetail() {
                         {item.serialItem && (
                           <div className="flex items-center gap-1 mt-1">
                             <Hash className="w-3 h-3 text-gray-400" />
-                            <span className="text-xs text-violet-600 font-mono">
+                            <span className="text-xs text-cyan-600 font-mono">
                               {item.serialItem.serialNumber}
                             </span>
                           </div>
@@ -544,9 +544,9 @@ export function MSSaleDetail() {
           <motion.div {...fadeUp}>
             <button
               onClick={() => setShowPaymentDialog(true)}
-              className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-violet-600 to-purple-600 text-white font-semibold
-                         flex items-center justify-center gap-2 hover:from-violet-700 hover:to-purple-700
-                         active:scale-[0.98] transition-all shadow-lg shadow-violet-200"
+              className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-cyan-600 to-blue-600 text-white font-semibold
+                         flex items-center justify-center gap-2 hover:from-cyan-700 hover:to-cyan-700
+                         active:scale-[0.98] transition-all shadow-lg shadow-cyan-200"
             >
               <Plus className="w-5 h-5" />
               Add Payment
@@ -587,8 +587,8 @@ export function MSSaleDetail() {
           <motion.div {...fadeUp}>
             <button
               onClick={() => { setMushakBuyerName(sale.customerName); setShowMushakDialog(true); }}
-              className="w-full py-3 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 text-white font-semibold
-                         flex items-center justify-center gap-2 shadow-lg shadow-violet-500/20 hover:shadow-violet-500/30 active:scale-[0.98] transition-all"
+              className="w-full py-3 rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-600 text-white font-semibold
+                         flex items-center justify-center gap-2 shadow-lg shadow-cyan-500/20 hover:shadow-cyan-500/30 active:scale-[0.98] transition-all"
             >
               <FileText className="w-4 h-4" />
               Generate Mushak 6.3
@@ -619,7 +619,7 @@ export function MSSaleDetail() {
         <AlertDialogContent className="max-w-md">
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
-              <Plus className="w-5 h-5 text-violet-600" />
+              <Plus className="w-5 h-5 text-cyan-600" />
               Add Payment
             </AlertDialogTitle>
             <AlertDialogDescription>
@@ -693,8 +693,8 @@ export function MSSaleDetail() {
             <button
               onClick={handleAddPayment}
               disabled={payLoading}
-              className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-purple-600 text-white font-semibold
-                         flex items-center gap-2 hover:from-violet-700 hover:to-purple-700
+              className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 text-white font-semibold
+                         flex items-center gap-2 hover:from-cyan-700 hover:to-cyan-700
                          disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             >
               {payLoading && <Loader2 className="w-4 h-4 animate-spin" />}
@@ -740,7 +740,7 @@ export function MSSaleDetail() {
         <AlertDialogContent className="max-w-md">
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
-              <FileText className="w-5 h-5 text-violet-600" />
+              <FileText className="w-5 h-5 text-cyan-600" />
               Generate Mushak 6.3
             </AlertDialogTitle>
             <AlertDialogDescription>
@@ -766,8 +766,8 @@ export function MSSaleDetail() {
             <button
               onClick={handleGenerateMushak}
               disabled={mushakLoading || !mushakBuyerName.trim()}
-              className="px-5 py-2.5 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 text-white font-semibold
-                         flex items-center gap-2 shadow-lg shadow-violet-500/20
+              className="px-5 py-2.5 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 text-white font-semibold
+                         flex items-center gap-2 shadow-lg shadow-cyan-500/20
                          disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             >
               {mushakLoading && <Loader2 className="w-4 h-4 animate-spin" />}

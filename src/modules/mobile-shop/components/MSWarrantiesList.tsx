@@ -233,12 +233,12 @@ export function MSWarrantiesList() {
 
       {/* Search */}
       <div className="relative">
-        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-violet-400" />
+        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-cyan-400" />
         <Input
           placeholder="Search by product, serial, customer..."
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
-          className="pl-10 pr-10 bg-gray-50 border-0 focus-visible:ring-2 focus-visible:ring-violet-500/30 rounded-2xl h-11"
+          className="pl-10 pr-10 bg-gray-50 border-0 focus-visible:ring-2 focus-visible:ring-cyan-500/30 rounded-2xl h-11"
         />
         {searchInput && (
           <button
@@ -259,7 +259,7 @@ export function MSWarrantiesList() {
             className={cn(
               'px-3 py-1.5 rounded-full text-[11px] font-semibold whitespace-nowrap transition-all shrink-0',
               activeFilter === tab.value
-                ? 'bg-gradient-to-r from-violet-500 to-purple-600 text-white shadow-sm'
+                ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-sm'
                 : 'bg-white text-gray-600 border border-gray-100 hover:bg-gray-50'
             )}
           >
@@ -352,7 +352,7 @@ export function MSWarrantiesList() {
                     {w._count.warrantyClaims > 0 && (
                       <Badge
                         variant="secondary"
-                        className="text-[9px] px-1.5 py-0 h-4 font-semibold bg-violet-50 text-violet-600"
+                        className="text-[9px] px-1.5 py-0 h-4 font-semibold bg-cyan-50 text-cyan-600"
                       >
                         {w._count.warrantyClaims} claim
                         {w._count.warrantyClaims > 1 ? 's' : ''}
@@ -394,7 +394,7 @@ export function MSWarrantiesList() {
                   <a
                     href={`tel:${w.customerPhone.replace(/[^0-9+]/g, '')}`}
                     onClick={(e) => e.stopPropagation()}
-                    className="flex items-center gap-1.5 text-[11px] text-violet-600 font-medium"
+                    className="flex items-center gap-1.5 text-[11px] text-cyan-600 font-medium"
                   >
                     <Shield className="w-3 h-3" />
                     {w.customerPhone}

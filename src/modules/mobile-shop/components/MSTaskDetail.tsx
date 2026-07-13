@@ -34,7 +34,7 @@ const PRIORITY_STYLES: Record<TaskPriority, string> = {
 
 const STATUS_STYLES: Record<TaskStatus, string> = {
   PENDING: 'bg-gray-100 text-gray-600',
-  IN_PROGRESS: 'bg-violet-100 text-violet-700',
+  IN_PROGRESS: 'bg-cyan-100 text-cyan-700',
   OVERDUE: 'bg-red-100 text-red-700',
   COMPLETED: 'bg-green-100 text-green-700',
   CANCELLED: 'bg-gray-100 text-gray-400 line-through',
@@ -213,7 +213,7 @@ export function MSTaskDetail() {
     return (
       <motion.div {...fadeUp} className="text-center py-16">
         <p className="text-sm text-gray-400">Task not found</p>
-        <button onClick={goBack} className="text-sm text-violet-600 mt-2">Go back</button>
+        <button onClick={goBack} className="text-sm text-cyan-600 mt-2">Go back</button>
       </motion.div>
     );
   }
@@ -270,8 +270,8 @@ export function MSTaskDetail() {
             className="flex items-center justify-between w-full"
           >
             <div className="flex items-center gap-2.5 min-w-0">
-              <div className="w-9 h-9 rounded-xl bg-violet-100 flex items-center justify-center shrink-0">
-                <Building2 className="w-4 h-4 text-violet-600" />
+              <div className="w-9 h-9 rounded-xl bg-cyan-100 flex items-center justify-center shrink-0">
+                <Building2 className="w-4 h-4 text-cyan-600" />
               </div>
               <div className="min-w-0 text-left">
                 <p className="text-sm font-semibold text-gray-900 truncate">{task.project.projectName}</p>
@@ -294,8 +294,8 @@ export function MSTaskDetail() {
         <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Scheduling</h3>
         <div className="grid gap-3">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-violet-50 flex items-center justify-center shrink-0">
-              <Clock className="w-4 h-4 text-violet-500" />
+            <div className="w-8 h-8 rounded-lg bg-cyan-50 flex items-center justify-center shrink-0">
+              <Clock className="w-4 h-4 text-cyan-500" />
             </div>
             <div>
               <p className="text-[10px] text-gray-400">Scheduled Date</p>
@@ -331,7 +331,7 @@ export function MSTaskDetail() {
       <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm space-y-3">
         <div className="flex items-center justify-between">
           <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Checklist</h3>
-          <span className="text-xs font-semibold text-violet-600">{completedItems} of {totalItems} completed</span>
+          <span className="text-xs font-semibold text-cyan-600">{completedItems} of {totalItems} completed</span>
         </div>
 
         {/* Progress bar */}
@@ -346,7 +346,7 @@ export function MSTaskDetail() {
                   'h-full rounded-full',
                   progressPercent === 100
                     ? 'bg-green-500'
-                    : 'bg-gradient-to-r from-violet-500 to-purple-500'
+                    : 'bg-gradient-to-r from-cyan-500 to-blue-600'
                 )}
               />
             </div>
@@ -377,7 +377,7 @@ export function MSTaskDetail() {
                 ) : item.isCompleted ? (
                   <CheckCircle2 className="w-5 h-5 text-green-500" />
                 ) : (
-                  <Circle className="w-5 h-5 text-gray-300 hover:text-violet-400 transition-colors" />
+                  <Circle className="w-5 h-5 text-gray-300 hover:text-cyan-400 transition-colors" />
                 )}
               </button>
               <div className="flex-1 min-w-0">
@@ -419,12 +419,12 @@ export function MSTaskDetail() {
                   }
                 }}
                 autoFocus
-                className="bg-gray-50 border-0 focus-visible:ring-2 focus-visible:ring-violet-500/30 flex-1 text-sm"
+                className="bg-gray-50 border-0 focus-visible:ring-2 focus-visible:ring-cyan-500/30 flex-1 text-sm"
               />
               <button
                 onClick={addChecklistItem}
                 disabled={addingItem || !newItemText.trim()}
-                className="w-9 h-9 rounded-xl bg-violet-100 text-violet-600 flex items-center justify-center shrink-0 hover:bg-violet-200 transition-colors disabled:opacity-50"
+                className="w-9 h-9 rounded-xl bg-cyan-100 text-cyan-600 flex items-center justify-center shrink-0 hover:bg-cyan-200 transition-colors disabled:opacity-50"
               >
                 {addingItem ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
               </button>
@@ -438,7 +438,7 @@ export function MSTaskDetail() {
           ) : (
             <button
               onClick={() => setShowAddItem(true)}
-              className="text-xs text-violet-600 font-medium flex items-center gap-1 hover:text-violet-700 transition-colors"
+              className="text-xs text-cyan-600 font-medium flex items-center gap-1 hover:text-cyan-700 transition-colors"
             >
               <Plus className="w-3.5 h-3.5" />
               Add Item
@@ -466,7 +466,7 @@ export function MSTaskDetail() {
               whileTap={{ scale: 0.97 }}
               onClick={() => changeStatus('IN_PROGRESS')}
               disabled={statusChanging}
-              className="flex-1 py-3 rounded-2xl font-semibold text-sm flex items-center justify-center gap-2 bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-lg shadow-violet-500/20 disabled:opacity-60"
+              className="flex-1 py-3 rounded-2xl font-semibold text-sm flex items-center justify-center gap-2 bg-gradient-to-br from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/20 disabled:opacity-60"
             >
               {statusChanging && <Loader2 className="w-4 h-4 animate-spin" />}
               <Play className="w-4 h-4" />

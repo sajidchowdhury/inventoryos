@@ -136,7 +136,7 @@ export function SerialNumberEntry({
       {/* Progress header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Shield className="w-4 h-4 text-violet-500" />
+          <Shield className="w-4 h-4 text-cyan-500" />
           <span className="text-xs font-semibold text-gray-700">
             Serial Numbers
           </span>
@@ -171,7 +171,7 @@ export function SerialNumberEntry({
                 ? 'bg-emerald-500'
                 : hasPartial
                   ? 'bg-amber-400'
-                  : 'bg-violet-500'
+                  : 'bg-cyan-500'
             )}
             animate={{ width: `${progressPct}%` }}
             transition={{ duration: 0.3, ease: 'easeOut' }}
@@ -201,7 +201,7 @@ export function SerialNumberEntry({
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={handleKeyDown}
-              className="w-full h-10 px-3 rounded-xl bg-gray-50 border border-gray-200 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-400/40 focus:border-violet-400 transition-all"
+              className="w-full h-10 px-3 rounded-xl bg-gray-50 border border-gray-200 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-400/40 focus:border-cyan-400 transition-all"
             />
           </div>
           <button
@@ -210,7 +210,7 @@ export function SerialNumberEntry({
             className={cn(
               'h-10 w-10 rounded-xl flex items-center justify-center transition-all shrink-0',
               inputValue.trim()
-                ? 'bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-sm active:scale-95'
+                ? 'bg-gradient-to-br from-cyan-500 to-blue-600 text-white shadow-sm active:scale-95'
                 : 'bg-gray-100 text-gray-300'
             )}
           >

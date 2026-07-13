@@ -63,7 +63,7 @@ const TIER_CONFIG: Record<string, { badge: string; avatar: string; label: string
   BRONZE: { badge: 'bg-amber-100 text-amber-700', avatar: 'bg-gradient-to-br from-amber-400 to-amber-600', label: 'Bronze' },
   SILVER: { badge: 'bg-gray-100 text-gray-600', avatar: 'bg-gradient-to-br from-gray-400 to-gray-600', label: 'Silver' },
   GOLD: { badge: 'bg-yellow-100 text-yellow-700', avatar: 'bg-gradient-to-br from-yellow-400 to-yellow-600', label: 'Gold' },
-  PLATINUM: { badge: 'bg-violet-100 text-violet-700', avatar: 'bg-gradient-to-br from-violet-400 to-violet-600', label: 'Platinum' },
+  PLATINUM: { badge: 'bg-cyan-100 text-cyan-700', avatar: 'bg-gradient-to-br from-cyan-400 to-cyan-600', label: 'Platinum' },
 };
 
 const SALE_STATUS_BADGE: Record<string, string> = {
@@ -75,7 +75,7 @@ const SALE_STATUS_BADGE: Record<string, string> = {
 const TX_TYPE_CONFIG: Record<string, { icon: typeof Star; color: string; sign: string; badge: string }> = {
   EARN: { icon: TrendingUp, color: 'text-emerald-600', sign: '+', badge: 'bg-emerald-100 text-emerald-700' },
   REDEEM: { icon: Gift, color: 'text-red-500', sign: '-', badge: 'bg-red-100 text-red-600' },
-  BONUS: { icon: Zap, color: 'text-violet-600', sign: '+', badge: 'bg-violet-100 text-violet-700' },
+  BONUS: { icon: Zap, color: 'text-cyan-600', sign: '+', badge: 'bg-cyan-100 text-cyan-700' },
   ADJUST: { icon: Plus, color: 'text-blue-600', sign: '+', badge: 'bg-blue-100 text-blue-600' },
 };
 
@@ -360,8 +360,8 @@ export function MSCustomerDetail() {
                 href={`tel:${customer.phone.replace(/[^0-9+]/g, '')}`}
                 className="flex items-center gap-1.5 mt-1 group"
               >
-                <Phone className="w-3.5 h-3.5 text-violet-500" />
-                <span className="text-sm text-violet-600 font-medium group-hover:underline">
+                <Phone className="w-3.5 h-3.5 text-cyan-500" />
+                <span className="text-sm text-cyan-600 font-medium group-hover:underline">
                   {customer.phone}
                 </span>
               </a>
@@ -385,7 +385,7 @@ export function MSCustomerDetail() {
       {/* ── Loyalty Points Card ── */}
       <motion.div
         {...fadeItem}
-        className="bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl p-4 text-white shadow-lg shadow-violet-500/20"
+        className="bg-gradient-to-br from-cyan-500 to-blue-600 rounded-2xl p-4 text-white shadow-lg shadow-cyan-500/20"
       >
         <div className="flex items-center justify-between mb-1">
           <p className="text-[10px] font-semibold uppercase tracking-wider text-white/60">
@@ -441,12 +441,12 @@ export function MSCustomerDetail() {
                 <DialogTitle className="text-center">Redeem Points</DialogTitle>
               </DialogHeader>
               <div className="space-y-4 pt-2">
-                <div className="bg-violet-50 rounded-xl p-3 text-center">
-                  <p className="text-xs text-violet-600 font-medium">You have</p>
-                  <p className="text-2xl font-extrabold text-violet-700">
+                <div className="bg-cyan-50 rounded-xl p-3 text-center">
+                  <p className="text-xs text-cyan-600 font-medium">You have</p>
+                  <p className="text-2xl font-extrabold text-cyan-700">
                     {customer.loyaltyPoints.toLocaleString()}
                   </p>
-                  <p className="text-xs text-violet-500">loyalty points</p>
+                  <p className="text-xs text-cyan-500">loyalty points</p>
                 </div>
                 {loyaltyConfig && (
                   <p className="text-xs text-gray-500 text-center">
@@ -481,7 +481,7 @@ export function MSCustomerDetail() {
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button
-                      className="w-full bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-lg shadow-violet-500/20 hover:shadow-xl hover:shadow-violet-500/30 transition-shadow"
+                      className="w-full bg-gradient-to-br from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/20 hover:shadow-xl hover:shadow-cyan-500/30 transition-shadow"
                       disabled={!redeemPoints || parseInt(redeemPoints) <= 0 || submitting}
                     >
                       {submitting ? (
@@ -502,7 +502,7 @@ export function MSCustomerDetail() {
                     <AlertDialogFooter>
                       <AlertDialogCancel>Cancel</AlertDialogCancel>
                       <AlertDialogAction
-                        className="bg-gradient-to-br from-violet-500 to-purple-600 text-white"
+                        className="bg-gradient-to-br from-cyan-500 to-blue-600 text-white"
                         onClick={handleRedeem}
                       >
                         Confirm
@@ -526,12 +526,12 @@ export function MSCustomerDetail() {
                 <DialogTitle className="text-center">Adjust Loyalty Points</DialogTitle>
               </DialogHeader>
               <div className="space-y-4 pt-2">
-                <div className="bg-violet-50 rounded-xl p-3 text-center">
-                  <p className="text-xs text-violet-600 font-medium">Current balance</p>
-                  <p className="text-2xl font-extrabold text-violet-700">
+                <div className="bg-cyan-50 rounded-xl p-3 text-center">
+                  <p className="text-xs text-cyan-600 font-medium">Current balance</p>
+                  <p className="text-2xl font-extrabold text-cyan-700">
                     {customer.loyaltyPoints.toLocaleString()}
                   </p>
-                  <p className="text-xs text-violet-500">points</p>
+                  <p className="text-xs text-cyan-500">points</p>
                 </div>
 
                 {/* Add / Deduct toggle */}
@@ -641,28 +641,28 @@ export function MSCustomerDetail() {
       >
         <div className="bg-white rounded-2xl border border-gray-100 p-3.5 shadow-sm">
           <div className="flex items-center gap-1.5 mb-1">
-            <IndianRupee className="w-3.5 h-3.5 text-violet-500" />
+            <IndianRupee className="w-3.5 h-3.5 text-cyan-500" />
             <p className="text-[10px] text-gray-400 font-medium">Total Spent</p>
           </div>
           <p className="text-sm font-bold text-gray-900">{formatBDT(customer.totalSpent)}</p>
         </div>
         <div className="bg-white rounded-2xl border border-gray-100 p-3.5 shadow-sm">
           <div className="flex items-center gap-1.5 mb-1">
-            <CalendarDays className="w-3.5 h-3.5 text-violet-500" />
+            <CalendarDays className="w-3.5 h-3.5 text-cyan-500" />
             <p className="text-[10px] text-gray-400 font-medium">Visits</p>
           </div>
           <p className="text-sm font-bold text-gray-900">{customer.visitCount}</p>
         </div>
         <div className="bg-white rounded-2xl border border-gray-100 p-3.5 shadow-sm">
           <div className="flex items-center gap-1.5 mb-1">
-            <CreditCard className="w-3.5 h-3.5 text-violet-500" />
+            <CreditCard className="w-3.5 h-3.5 text-cyan-500" />
             <p className="text-[10px] text-gray-400 font-medium">Active EMI</p>
           </div>
           <p className="text-sm font-bold text-gray-900">{customer.activeEmiCount}</p>
         </div>
         <div className="bg-white rounded-2xl border border-gray-100 p-3.5 shadow-sm">
           <div className="flex items-center gap-1.5 mb-1">
-            <Wallet className="w-3.5 h-3.5 text-violet-500" />
+            <Wallet className="w-3.5 h-3.5 text-cyan-500" />
             <p className="text-[10px] text-gray-400 font-medium">EMI Remaining</p>
           </div>
           <p className="text-sm font-bold text-gray-900">{formatBDT(customer.activeEmiRemaining)}</p>
@@ -675,21 +675,21 @@ export function MSCustomerDetail() {
           <TabsList className="w-full grid grid-cols-3 h-11 rounded-none border-b border-gray-100 bg-transparent p-0">
             <TabsTrigger
               value="purchases"
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-violet-500 data-[state=active]:bg-transparent data-[state=active]:shadow-none text-xs font-medium text-gray-500 data-[state=active]:text-violet-600"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-cyan-500 data-[state=active]:bg-transparent data-[state=active]:shadow-none text-xs font-medium text-gray-500 data-[state=active]:text-cyan-600"
             >
               <Receipt className="w-3.5 h-3.5 mr-1" />
               Purchases
             </TabsTrigger>
             <TabsTrigger
               value="emi"
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-violet-500 data-[state=active]:bg-transparent data-[state=active]:shadow-none text-xs font-medium text-gray-500 data-[state=active]:text-violet-600"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-cyan-500 data-[state=active]:bg-transparent data-[state=active]:shadow-none text-xs font-medium text-gray-500 data-[state=active]:text-cyan-600"
             >
               <CreditCard className="w-3.5 h-3.5 mr-1" />
               EMI Plans
             </TabsTrigger>
             <TabsTrigger
               value="points"
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-violet-500 data-[state=active]:bg-transparent data-[state=active]:shadow-none text-xs font-medium text-gray-500 data-[state=active]:text-violet-600"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-cyan-500 data-[state=active]:bg-transparent data-[state=active]:shadow-none text-xs font-medium text-gray-500 data-[state=active]:text-cyan-600"
             >
               <History className="w-3.5 h-3.5 mr-1" />
               Points
@@ -710,7 +710,7 @@ export function MSCustomerDetail() {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2.5 min-w-0">
                         <div className="w-8 h-8 rounded-lg bg-white border border-gray-100 flex items-center justify-center shrink-0">
-                          <Receipt className="w-4 h-4 text-violet-500" />
+                          <Receipt className="w-4 h-4 text-cyan-500" />
                         </div>
                         <div className="min-w-0">
                           <p className="text-xs font-semibold text-gray-900 truncate">
@@ -758,7 +758,7 @@ export function MSCustomerDetail() {
                   >
                     <div className="flex items-start gap-2.5">
                       <div className="w-8 h-8 rounded-lg bg-white border border-gray-100 flex items-center justify-center shrink-0 mt-0.5">
-                        <CreditCard className="w-4 h-4 text-violet-500" />
+                        <CreditCard className="w-4 h-4 text-cyan-500" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-semibold text-gray-900 truncate">

@@ -67,11 +67,11 @@ function formatCompact(n: number): string {
 const MENU_ITEMS = [
   { label: 'Suppliers', desc: 'Manage vendor contacts & orders', view: 'suppliers' as const, icon: Factory, gradient: 'from-emerald-400 to-teal-500', ring: 'ring-emerald-500/20' },
   { label: 'Products List', desc: 'Manage all CCTV products', view: 'products' as const, icon: Package, gradient: 'from-blue-400 to-indigo-500', ring: 'ring-blue-500/20' },
-  { label: 'Serial Products', desc: 'Track individual items by serial', view: 'serial-items' as const, icon: Fingerprint, gradient: 'from-violet-400 to-purple-500', ring: 'ring-violet-500/20' },
+  { label: 'Serial Products', desc: 'Track individual items by serial', view: 'serial-items' as const, icon: Fingerprint, gradient: 'from-cyan-400 to-blue-600', ring: 'ring-cyan-500/20' },
   { label: 'Category', desc: 'Organize products by type & brand', view: 'categories' as const, icon: Tags, gradient: 'from-amber-400 to-orange-500', ring: 'ring-amber-500/20' },
   { label: 'Kits & Bundle', desc: 'Pre-configured product packages', view: 'kits' as const, icon: Box, gradient: 'from-cyan-400 to-blue-500', ring: 'ring-cyan-500/20' },
   { label: 'Transfers', desc: 'Move stock between branches', view: 'transfers' as const, icon: ArrowLeftRight, gradient: 'from-pink-400 to-rose-500', ring: 'ring-pink-500/20' },
-  { label: 'Branches', desc: 'Multi-branch location management', view: 'branches' as const, icon: Building2, gradient: 'from-fuchsia-400 to-purple-500', ring: 'ring-fuchsia-500/20' },
+  { label: 'Branches', desc: 'Multi-branch location management', view: 'branches' as const, icon: Building2, gradient: 'from-fuchsia-400 to-blue-600', ring: 'ring-fuchsia-500/20' },
 ];
 
 // ── Component ──
@@ -164,7 +164,7 @@ export function MSInventoryHub() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
         onClick={() => navigate('serial-items')}
-        className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-violet-500 to-purple-600 p-4 mb-5 cursor-pointer active:scale-[0.98] transition-transform shadow-lg shadow-violet-500/20"
+        className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 p-4 mb-5 cursor-pointer active:scale-[0.98] transition-transform shadow-lg shadow-cyan-500/20"
       >
         <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full -translate-y-1/3 translate-x-1/3" />
         <div className="absolute bottom-0 left-8 w-16 h-16 bg-white/5 rounded-full translate-y-1/2" />
@@ -228,7 +228,7 @@ export function MSInventoryHub() {
                 value={searchQuery}
                 onChange={(e) => handleSearchChange(e.target.value)}
                 placeholder="Search products, serial numbers..."
-                className="pl-10 bg-gray-50 border-0 focus-visible:ring-2 focus-visible:ring-violet-500/30 pr-8"
+                className="pl-10 bg-gray-50 border-0 focus-visible:ring-2 focus-visible:ring-cyan-500/30 pr-8"
               />
               {searchQuery && (
                 <button
@@ -281,8 +281,8 @@ export function MSInventoryHub() {
                   onClick={() => navigate('product-detail', item.id)}
                   className="w-full flex items-center gap-3 p-3 rounded-xl bg-white border border-gray-100 text-left active:scale-[0.98] transition-transform"
                 >
-                  <div className="w-9 h-9 rounded-lg bg-violet-50 flex items-center justify-center shrink-0">
-                    <Package className="w-4 h-4 text-violet-600" />
+                  <div className="w-9 h-9 rounded-lg bg-cyan-50 flex items-center justify-center shrink-0">
+                    <Package className="w-4 h-4 text-cyan-600" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-semibold text-gray-900 truncate">{item.name}</p>
@@ -291,7 +291,7 @@ export function MSInventoryHub() {
                         <span className="text-[10px] text-gray-400">{item.brand}</span>
                       )}
                       {item.serialNumber && (
-                        <span className="text-[10px] font-mono text-violet-500 bg-violet-50 px-1.5 py-0.5 rounded">
+                        <span className="text-[10px] font-mono text-cyan-500 bg-cyan-50 px-1.5 py-0.5 rounded">
                           {item.serialNumber}
                         </span>
                       )}
@@ -330,7 +330,7 @@ export function MSInventoryHub() {
           animate="animate"
         >
           <div className="flex items-center gap-2.5 mb-3">
-            <div className="w-1 h-4 rounded-full bg-gradient-to-b from-violet-500 to-purple-600" />
+            <div className="w-1 h-4 rounded-full bg-gradient-to-b from-cyan-500 to-blue-600" />
             <h3 className="text-[13px] font-bold text-gray-900 tracking-tight">Stock Management</h3>
             <div className="flex-1 h-px bg-gray-100" />
           </div>

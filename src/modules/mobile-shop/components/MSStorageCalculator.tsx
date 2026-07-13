@@ -275,7 +275,7 @@ export function MSStorageCalculator() {
                     key={idx}
                     className="flex items-center gap-3 p-2.5 rounded-xl bg-gray-50 border border-gray-100"
                   >
-                    <HardDrive className="w-4 h-4 text-violet-500 shrink-0" />
+                    <HardDrive className="w-4 h-4 text-cyan-500 shrink-0" />
                     <button
                       onClick={() => handleLoadSaved(config)}
                       className="flex-1 text-left min-w-0"
@@ -304,8 +304,8 @@ export function MSStorageCalculator() {
       {/* ── Input Card ── */}
       <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm mb-4">
         <div className="flex items-center gap-2 mb-4">
-          <div className="w-8 h-8 rounded-lg bg-violet-100 flex items-center justify-center">
-            <Calculator className="w-4 h-4 text-violet-600" />
+          <div className="w-8 h-8 rounded-lg bg-cyan-100 flex items-center justify-center">
+            <Calculator className="w-4 h-4 text-cyan-600" />
           </div>
           <h2 className="text-sm font-bold text-gray-900">Configure System</h2>
         </div>
@@ -314,7 +314,7 @@ export function MSStorageCalculator() {
         <div className="mb-4">
           <div className="flex items-center justify-between mb-1.5">
             <label className="text-xs font-medium text-gray-600">Number of Cameras</label>
-            <span className="text-sm font-bold text-violet-600 bg-violet-50 px-2 py-0.5 rounded-lg">{cameras}</span>
+            <span className="text-sm font-bold text-cyan-600 bg-cyan-50 px-2 py-0.5 rounded-lg">{cameras}</span>
           </div>
           <input
             type="range"
@@ -322,7 +322,7 @@ export function MSStorageCalculator() {
             max={64}
             value={cameras}
             onChange={(e) => setCameras(parseInt(e.target.value))}
-            className="w-full h-2 bg-gray-100 rounded-lg appearance-none cursor-pointer accent-violet-500"
+            className="w-full h-2 bg-gray-100 rounded-lg appearance-none cursor-pointer accent-cyan-500"
           />
           <div className="flex justify-between mt-1">
             <span className="text-[10px] text-gray-300">1</span>
@@ -337,7 +337,7 @@ export function MSStorageCalculator() {
                 className={cn(
                   'px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all',
                   cameras === n
-                    ? 'bg-violet-500 text-white shadow-sm'
+                    ? 'bg-cyan-500 text-white shadow-sm'
                     : 'bg-gray-50 text-gray-500 hover:bg-gray-100'
                 )}
               >
@@ -358,7 +358,7 @@ export function MSStorageCalculator() {
                 className={cn(
                   'py-2 rounded-xl text-[11px] font-semibold transition-all',
                   resolution === res
-                    ? 'bg-violet-500 text-white shadow-sm shadow-violet-500/20'
+                    ? 'bg-cyan-500 text-white shadow-sm shadow-cyan-500/20'
                     : 'bg-gray-50 text-gray-500 hover:bg-gray-100'
                 )}
               >
@@ -372,7 +372,7 @@ export function MSStorageCalculator() {
         <div className="mb-4">
           <div className="flex items-center justify-between mb-1.5">
             <label className="text-xs font-medium text-gray-600">Frame Rate</label>
-            <span className="text-sm font-bold text-violet-600 bg-violet-50 px-2 py-0.5 rounded-lg">{fps} fps</span>
+            <span className="text-sm font-bold text-cyan-600 bg-cyan-50 px-2 py-0.5 rounded-lg">{fps} fps</span>
           </div>
           <input
             type="range"
@@ -381,7 +381,7 @@ export function MSStorageCalculator() {
             step={5}
             value={fps}
             onChange={(e) => setFps(parseInt(e.target.value))}
-            className="w-full h-2 bg-gray-100 rounded-lg appearance-none cursor-pointer accent-violet-500"
+            className="w-full h-2 bg-gray-100 rounded-lg appearance-none cursor-pointer accent-cyan-500"
           />
           <div className="flex justify-between mt-1">
             <span className="text-[10px] text-gray-300">10 fps</span>
@@ -395,7 +395,7 @@ export function MSStorageCalculator() {
                 className={cn(
                   'px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all',
                   fps === f
-                    ? 'bg-violet-500 text-white shadow-sm'
+                    ? 'bg-cyan-500 text-white shadow-sm'
                     : 'bg-gray-50 text-gray-500 hover:bg-gray-100'
                 )}
               >
@@ -416,7 +416,7 @@ export function MSStorageCalculator() {
                 className={cn(
                   'py-3 rounded-xl text-xs font-semibold transition-all relative overflow-hidden',
                   compression === comp
-                    ? 'bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-lg shadow-violet-500/20'
+                    ? 'bg-gradient-to-br from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/20'
                     : 'bg-gray-50 text-gray-500 hover:bg-gray-100 border border-gray-100'
                 )}
               >
@@ -441,7 +441,7 @@ export function MSStorageCalculator() {
         <div className="mb-4">
           <div className="flex items-center justify-between mb-1.5">
             <label className="text-xs font-medium text-gray-600">Retention Period</label>
-            <span className="text-sm font-bold text-violet-600 bg-violet-50 px-2 py-0.5 rounded-lg">{retentionDays} days</span>
+            <span className="text-sm font-bold text-cyan-600 bg-cyan-50 px-2 py-0.5 rounded-lg">{retentionDays} days</span>
           </div>
           <input
             type="range"
@@ -450,7 +450,7 @@ export function MSStorageCalculator() {
             step={1}
             value={retentionDays}
             onChange={(e) => setRetentionDays(parseInt(e.target.value))}
-            className="w-full h-2 bg-gray-100 rounded-lg appearance-none cursor-pointer accent-violet-500"
+            className="w-full h-2 bg-gray-100 rounded-lg appearance-none cursor-pointer accent-cyan-500"
           />
           <div className="flex justify-between mt-1">
             <span className="text-[10px] text-gray-300">7 days</span>
@@ -464,7 +464,7 @@ export function MSStorageCalculator() {
                 className={cn(
                   'px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all',
                   retentionDays === d
-                    ? 'bg-violet-500 text-white shadow-sm'
+                    ? 'bg-cyan-500 text-white shadow-sm'
                     : 'bg-gray-50 text-gray-500 hover:bg-gray-100'
                 )}
               >
@@ -503,7 +503,7 @@ export function MSStorageCalculator() {
                   max={24}
                   value={hoursPerDay}
                   onChange={(e) => setHoursPerDay(parseInt(e.target.value))}
-                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-violet-500"
+                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-cyan-500"
                 />
                 <div className="flex justify-between mt-1">
                   <span className="text-[10px] text-gray-300">8 hrs</span>
@@ -538,7 +538,7 @@ export function MSStorageCalculator() {
         </div>
 
         {/* Primary Result - HDD Recommendation */}
-        <div className="bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl p-5 text-white mb-4 relative overflow-hidden">
+        <div className="bg-gradient-to-br from-cyan-500 to-blue-600 rounded-2xl p-5 text-white mb-4 relative overflow-hidden">
           <div className="absolute -top-4 -right-4 w-24 h-24 bg-white/10 rounded-full" />
           <div className="absolute -bottom-6 -left-6 w-20 h-20 bg-white/5 rounded-full" />
           <div className="relative z-10">
@@ -600,10 +600,10 @@ export function MSStorageCalculator() {
 
           <div className="flex items-center justify-between py-2">
             <div className="flex items-center gap-2">
-              <HardDrive className="w-3.5 h-3.5 text-violet-400" />
+              <HardDrive className="w-3.5 h-3.5 text-cyan-400" />
               <span className="text-xs text-gray-500">+ 20% Safety Margin</span>
             </div>
-            <span className="text-xs font-bold text-violet-600">{formatSize(result.recommendedHDD - result.totalStorage)}</span>
+            <span className="text-xs font-bold text-cyan-600">{formatSize(result.recommendedHDD - result.totalStorage)}</span>
           </div>
         </div>
 
@@ -684,8 +684,8 @@ export function MSStorageCalculator() {
               </thead>
               <tbody>
                 {RESOLUTION_OPTIONS.map((res) => (
-                  <tr key={res} className={cn('border-b border-gray-50', resolution === res && 'bg-violet-50/50')}>
-                    <td className={cn('py-1.5 font-semibold', resolution === res ? 'text-violet-700' : 'text-gray-600')}>{res}</td>
+                  <tr key={res} className={cn('border-b border-gray-50', resolution === res && 'bg-cyan-50/50')}>
+                    <td className={cn('py-1.5 font-semibold', resolution === res ? 'text-cyan-700' : 'text-gray-600')}>{res}</td>
                     <td className="text-center py-1.5 text-gray-500">{BITRATE_TABLE['H264'][res]} Mbps</td>
                     <td className="text-center py-1.5 text-gray-500">{BITRATE_TABLE['H265'][res]} Mbps</td>
                   </tr>
@@ -708,7 +708,7 @@ export function MSStorageCalculator() {
         </button>
         <button
           onClick={() => setShowSaveModal(true)}
-          className="flex items-center justify-center gap-2 py-3 rounded-2xl bg-gradient-to-r from-violet-500 to-purple-600 text-white text-xs font-semibold active:scale-[0.97] transition-transform shadow-lg shadow-violet-500/20"
+          className="flex items-center justify-center gap-2 py-3 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white text-xs font-semibold active:scale-[0.97] transition-transform shadow-lg shadow-cyan-500/20"
         >
           <Save className="w-4 h-4" />
           Save Config
@@ -740,7 +740,7 @@ export function MSStorageCalculator() {
                 value={customName}
                 onChange={(e) => setCustomName(e.target.value)}
                 placeholder="e.g., Office Building 8-Cam Setup"
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-500"
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/30 focus:border-cyan-500"
                 autoFocus
               />
               <div className="grid grid-cols-2 gap-3 mt-4">
@@ -752,7 +752,7 @@ export function MSStorageCalculator() {
                 </button>
                 <button
                   onClick={handleSaveConfig}
-                  className="py-3 rounded-xl bg-gradient-to-r from-violet-500 to-purple-600 text-white text-xs font-semibold shadow-lg shadow-violet-500/20"
+                  className="py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white text-xs font-semibold shadow-lg shadow-cyan-500/20"
                 >
                   Save
                 </button>

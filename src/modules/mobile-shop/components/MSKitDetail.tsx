@@ -218,7 +218,7 @@ export function MSKitDetail() {
       {/* Kit Info Card */}
       <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
         <div className="flex items-center gap-2 mb-2">
-          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-violet-100 text-violet-700">
+          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-cyan-100 text-cyan-700">
             {componentCount} {componentCount === 1 ? 'component' : 'components'}
           </span>
           <span
@@ -244,7 +244,7 @@ export function MSKitDetail() {
           {hasKitPrice && (
             <>
               <div className="flex items-center gap-2">
-                <Tag className="w-3.5 h-3.5 text-violet-500 shrink-0" />
+                <Tag className="w-3.5 h-3.5 text-cyan-500 shrink-0" />
                 <span className="text-xs text-gray-500">Kit Price</span>
                 <span className="ml-auto text-base font-bold text-gray-900">
                   {formatBDT(kit.kitPrice!)}
@@ -308,7 +308,7 @@ export function MSKitDetail() {
             </p>
             <button
               onClick={handleAddComponent}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-violet-50 text-violet-700 text-xs font-semibold active:scale-[0.98] transition-transform"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-cyan-50 text-cyan-700 text-xs font-semibold active:scale-[0.98] transition-transform"
             >
               <Plus className="w-3.5 h-3.5" />
               Add Component
@@ -355,7 +355,7 @@ export function MSKitDetail() {
                       <p className="text-[11px] text-gray-400 mt-0.5 truncate">
                         {comp.product?.brand}
                         {comp.componentLabel && (
-                          <span className="text-violet-500 ml-1.5">
+                          <span className="text-cyan-500 ml-1.5">
                             · {comp.componentLabel}
                           </span>
                         )}
@@ -513,7 +513,7 @@ export function MSKitDetail() {
           availability.maxComplete === 0
         }
         onClick={() => navigate('sell-kit', kit.id)}
-        className="w-full py-3.5 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 text-white text-sm font-semibold shadow-lg shadow-violet-500/20 flex items-center justify-center gap-2 active:scale-[0.98] transition-transform disabled:opacity-40 disabled:active:scale-100"
+        className="w-full py-3.5 rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-600 text-white text-sm font-semibold shadow-lg shadow-cyan-500/20 flex items-center justify-center gap-2 active:scale-[0.98] transition-transform disabled:opacity-40 disabled:active:scale-100"
       >
         <ShoppingBag className="w-4 h-4" />
         Sell Kit

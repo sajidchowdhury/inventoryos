@@ -176,16 +176,16 @@ export function MSCreatEmi() {
 
         {/* Selected product display */}
         {selectedProductName && (
-          <div className="bg-violet-50 border border-violet-200 rounded-xl p-3 flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-violet-100 flex items-center justify-center shrink-0">
-              <Package className="w-4 h-4 text-violet-600" />
+          <div className="bg-cyan-50 border border-cyan-200 rounded-xl p-3 flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-cyan-100 flex items-center justify-center shrink-0">
+              <Package className="w-4 h-4 text-cyan-600" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-violet-800 truncate">{selectedProductName}</p>
-              <div className="flex items-center gap-2 text-[10px] text-violet-500">
+              <p className="text-sm font-semibold text-cyan-800 truncate">{selectedProductName}</p>
+              <div className="flex items-center gap-2 text-[10px] text-cyan-500">
                 {selectedProductBrand && <span>{selectedProductBrand}</span>}
                 {selectedProductStock !== null && (
-                  <span className="px-1.5 py-0.5 rounded-full bg-violet-100 text-violet-600 font-medium">
+                  <span className="px-1.5 py-0.5 rounded-full bg-cyan-100 text-cyan-600 font-medium">
                     Stock: {selectedProductStock}
                   </span>
                 )}
@@ -193,9 +193,9 @@ export function MSCreatEmi() {
             </div>
             <button
               onClick={() => { setSelectedProductId(''); setSelectedProductName(''); setSelectedProductBrand(''); }}
-              className="w-6 h-6 rounded-full bg-violet-200 flex items-center justify-center"
+              className="w-6 h-6 rounded-full bg-cyan-200 flex items-center justify-center"
             >
-              <X className="w-3 h-3 text-violet-600" />
+              <X className="w-3 h-3 text-cyan-600" />
             </button>
           </div>
         )}
@@ -211,7 +211,7 @@ export function MSCreatEmi() {
                 onChange={(e) => { setProductSearch(e.target.value); setShowProductDropdown(true); }}
                 onFocus={() => setShowProductDropdown(true)}
                 disabled={productsLoading}
-                className="pl-9 pr-10 bg-gray-50 border-0 focus-visible:ring-2 focus-visible:ring-violet-500/30"
+                className="pl-9 pr-10 bg-gray-50 border-0 focus-visible:ring-2 focus-visible:ring-cyan-500/30"
               />
               <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             </div>
@@ -290,7 +290,7 @@ export function MSCreatEmi() {
                 className={cn(
                   'px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all',
                   parseInt(months) === m
-                    ? 'bg-violet-500 text-white'
+                    ? 'bg-cyan-500 text-white'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 )}
               >
@@ -318,17 +318,17 @@ export function MSCreatEmi() {
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="bg-violet-50 rounded-2xl border-2 border-violet-200 p-4 space-y-2"
+          className="bg-cyan-50 rounded-2xl border-2 border-cyan-200 p-4 space-y-2"
         >
           <div className="flex items-center gap-2 mb-2">
-            <Calculator className="w-4 h-4 text-violet-600" />
-            <span className="text-sm font-semibold text-violet-900">EMI Calculation</span>
-            <Sparkles className="w-3.5 h-3.5 text-violet-400" />
+            <Calculator className="w-4 h-4 text-cyan-600" />
+            <span className="text-sm font-semibold text-cyan-900">EMI Calculation</span>
+            <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
             <span className="ml-auto text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-semibold">Interest-Free</span>
           </div>
           <div className="text-center py-2">
-            <p className="text-2xl font-bold text-violet-700">৳{computed.emi.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
-            <p className="text-xs text-violet-500">per month × {months} months</p>
+            <p className="text-2xl font-bold text-cyan-700">৳{computed.emi.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+            <p className="text-xs text-cyan-500">per month × {months} months</p>
           </div>
           <div className="grid grid-cols-2 gap-2 text-center">
             <div>
@@ -359,7 +359,7 @@ export function MSCreatEmi() {
       <button
         onClick={handleSubmit}
         disabled={submitting}
-        className="w-full h-12 rounded-2xl text-sm font-semibold text-white bg-gradient-to-br from-violet-500 to-purple-600 shadow-lg shadow-violet-500/20 disabled:opacity-50 flex items-center justify-center gap-2"
+        className="w-full h-12 rounded-2xl text-sm font-semibold text-white bg-gradient-to-br from-cyan-500 to-blue-600 shadow-lg shadow-cyan-500/20 disabled:opacity-50 flex items-center justify-center gap-2"
       >
         {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
         Create EMI Plan

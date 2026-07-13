@@ -110,7 +110,7 @@ function BulkEditPanel({
 
       <div className="px-5 pb-8">
         <div className="flex items-center gap-2 mb-5">
-          <Settings2 className="w-4 h-4 text-violet-500" />
+          <Settings2 className="w-4 h-4 text-cyan-500" />
           <h3 className="text-sm font-bold text-gray-900">Bulk Edit All Items</h3>
         </div>
 
@@ -188,7 +188,7 @@ function BulkEditPanel({
           </button>
           <button
             onClick={() => onApply(cost, sell, grade, notes)}
-            className="flex-1 h-11 rounded-2xl bg-gradient-to-r from-violet-500 to-purple-600 text-white text-sm font-semibold shadow-lg shadow-violet-500/20 flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
+            className="flex-1 h-11 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white text-sm font-semibold shadow-lg shadow-cyan-500/20 flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
           >
             <Check className="w-4 h-4" />
             Apply to All
@@ -479,7 +479,7 @@ export function MSStockInView() {
     return (
       <div className="flex flex-col h-full -m-4">
         {/* ── Batch Header ── */}
-        <div className="bg-gradient-to-b from-violet-600 to-violet-700 px-4 pt-3 pb-4">
+        <div className="bg-gradient-to-b from-cyan-600 to-cyan-700 px-4 pt-3 pb-4">
           <div className="flex items-center justify-between mb-3">
             <button
               onClick={handleGoBack}
@@ -590,7 +590,7 @@ export function MSStockInView() {
             : 'border-gray-200'
         )}>
           <div className="flex items-center gap-2">
-            <ScanBarcode className="w-5 h-5 text-violet-500 shrink-0" />
+            <ScanBarcode className="w-5 h-5 text-cyan-500 shrink-0" />
             <input
               ref={scannerInputRef}
               type="text"
@@ -603,7 +603,7 @@ export function MSStockInView() {
               spellCheck={false}
               onKeyDown={handleScannerKeyDown}
             />
-            <div className="w-1.5 h-5 bg-violet-500 rounded-full animate-pulse shrink-0" />
+            <div className="w-1.5 h-5 bg-cyan-500 rounded-full animate-pulse shrink-0" />
           </div>
           <p className="text-[10px] text-gray-400 mt-1.5 ml-7">
             Press Enter after each scan. Barcode guns auto-submit.
@@ -656,8 +656,8 @@ export function MSStockInView() {
             <AnimatePresence mode="popLayout">
               {rows.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-10 text-center px-4">
-                  <div className="w-12 h-12 rounded-2xl bg-violet-50 flex items-center justify-center mb-3">
-                    <Zap className="w-6 h-6 text-violet-300" />
+                  <div className="w-12 h-12 rounded-2xl bg-cyan-50 flex items-center justify-center mb-3">
+                    <Zap className="w-6 h-6 text-cyan-300" />
                   </div>
                   <p className="text-xs font-semibold text-gray-400">Start scanning</p>
                   <p className="text-[10px] text-gray-300 mt-1">Each scan adds a new item to the list</p>
@@ -752,7 +752,7 @@ export function MSStockInView() {
                       setMode('setup');
                       setTargetCount(0);
                     }}
-                    className="text-[11px] text-violet-600 font-medium px-3 py-1.5 rounded-xl bg-violet-50 active:scale-95 transition-transform"
+                    className="text-[11px] text-cyan-600 font-medium px-3 py-1.5 rounded-xl bg-cyan-50 active:scale-95 transition-transform"
                   >
                     New Batch
                   </button>
@@ -792,7 +792,7 @@ export function MSStockInView() {
               <button
                 onClick={handleCommit}
                 disabled={submitting || validRows.length === 0}
-                className="flex-1 h-12 rounded-2xl bg-gradient-to-r from-violet-500 to-purple-600 text-white font-semibold text-sm shadow-lg shadow-violet-500/20 flex items-center justify-center gap-2 active:scale-[0.98] transition-transform disabled:opacity-50"
+                className="flex-1 h-12 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-semibold text-sm shadow-lg shadow-cyan-500/20 flex items-center justify-center gap-2 active:scale-[0.98] transition-transform disabled:opacity-50"
               >
                 {submitting ? (
                   <Loader2 className="w-5 h-5 animate-spin" />
@@ -875,8 +875,8 @@ export function MSStockInView() {
       {/* ── Product Selection ── */}
       <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
         <div className="flex items-center gap-2 mb-3">
-          <div className="w-7 h-7 rounded-lg bg-violet-50 flex items-center justify-center">
-            <Package className="w-4 h-4 text-violet-500" />
+          <div className="w-7 h-7 rounded-lg bg-cyan-50 flex items-center justify-center">
+            <Package className="w-4 h-4 text-cyan-500" />
           </div>
           <h2 className="text-sm font-bold text-gray-800">Select Product</h2>
         </div>
@@ -894,7 +894,7 @@ export function MSStockInView() {
                 placeholder="Search products..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="h-10 rounded-xl pr-8 bg-gray-50 border-0 focus-visible:ring-2 focus-visible:ring-violet-500/30"
+                className="h-10 rounded-xl pr-8 bg-gray-50 border-0 focus-visible:ring-2 focus-visible:ring-cyan-500/30"
               />
               <button
                 onClick={() => { setShowProductPicker(false); setSearchQuery(''); }}
@@ -918,18 +918,18 @@ export function MSStockInView() {
                   className={cn(
                     'w-full flex items-center gap-3 p-3 rounded-xl text-left active:scale-[0.98] transition-all',
                     selectedProductId === p.id
-                      ? 'bg-violet-50 border border-violet-200'
+                      ? 'bg-cyan-50 border border-cyan-200'
                       : 'bg-gray-50 hover:bg-gray-100 border border-transparent'
                   )}
                 >
-                  <div className="w-9 h-9 rounded-lg bg-violet-100 flex items-center justify-center shrink-0">
-                    <Package className="w-4 h-4 text-violet-600" />
+                  <div className="w-9 h-9 rounded-lg bg-cyan-100 flex items-center justify-center shrink-0">
+                    <Package className="w-4 h-4 text-cyan-600" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-semibold text-gray-900 truncate">{p.name}</p>
                     <p className="text-[11px] text-gray-400">{p.brand} {p.sku ? `· ${p.sku}` : ''}</p>
                   </div>
-                  {selectedProductId === p.id && <Check className="w-4 h-4 text-violet-600 shrink-0" />}
+                  {selectedProductId === p.id && <Check className="w-4 h-4 text-cyan-600 shrink-0" />}
                 </button>
               ))}
             </div>
@@ -940,14 +940,14 @@ export function MSStockInView() {
             className={cn(
               'w-full flex items-center justify-between p-3 rounded-xl border transition-all',
               selectedProduct
-                ? 'bg-violet-50/50 border-violet-100'
+                ? 'bg-cyan-50/50 border-cyan-100'
                 : 'bg-gray-50 border-gray-200'
             )}
           >
             {selectedProduct ? (
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-lg bg-violet-100 flex items-center justify-center">
-                  <Package className="w-4 h-4 text-violet-600" />
+                <div className="w-9 h-9 rounded-lg bg-cyan-100 flex items-center justify-center">
+                  <Package className="w-4 h-4 text-cyan-600" />
                 </div>
                 <div className="text-left">
                   <p className="text-xs font-semibold text-gray-900">{selectedProduct.name}</p>
@@ -1011,7 +1011,7 @@ export function MSStockInView() {
                     placeholder="Search suppliers..."
                     value={supplierSearch}
                     onChange={(e) => setSupplierSearch(e.target.value)}
-                    className="h-10 rounded-xl pr-8 bg-gray-50 border-0 focus-visible:ring-2 focus-visible:ring-violet-500/30"
+                    className="h-10 rounded-xl pr-8 bg-gray-50 border-0 focus-visible:ring-2 focus-visible:ring-cyan-500/30"
                   />
                   <button
                     onClick={() => { setShowSupplierPicker(false); setSupplierSearch(''); }}
@@ -1111,7 +1111,7 @@ export function MSStockInView() {
                     placeholder="Search PO number..."
                     value={purchaseSearch}
                     onChange={(e) => setPurchaseSearch(e.target.value)}
-                    className="h-10 rounded-xl pr-8 bg-gray-50 border-0 focus-visible:ring-2 focus-visible:ring-violet-500/30"
+                    className="h-10 rounded-xl pr-8 bg-gray-50 border-0 focus-visible:ring-2 focus-visible:ring-cyan-500/30"
                   />
                   <button
                     onClick={() => { setShowPurchasePicker(false); setPurchaseSearch(''); }}
@@ -1148,12 +1148,12 @@ export function MSStockInView() {
                           className={cn(
                             'w-full flex items-center gap-2.5 p-2.5 rounded-xl text-left active:scale-[0.98] transition-all',
                             selectedPurchaseId === p.id
-                              ? 'bg-violet-50 border border-violet-200'
+                              ? 'bg-cyan-50 border border-cyan-200'
                               : 'bg-gray-50 hover:bg-gray-100 border border-transparent'
                           )}
                         >
-                          <div className="w-7 h-7 rounded-lg bg-violet-100 flex items-center justify-center shrink-0">
-                            <FileText className="w-3.5 h-3.5 text-violet-600" />
+                          <div className="w-7 h-7 rounded-lg bg-cyan-100 flex items-center justify-center shrink-0">
+                            <FileText className="w-3.5 h-3.5 text-cyan-600" />
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-xs font-semibold text-gray-900 truncate">{p.purchaseNo}</p>
@@ -1161,7 +1161,7 @@ export function MSStockInView() {
                               {p.supplierName ? `${p.supplierName} · ` : ''}৳{p.totalAmount.toLocaleString()}
                             </p>
                           </div>
-                          {selectedPurchaseId === p.id && <Check className="w-4 h-4 text-violet-600 shrink-0" />}
+                          {selectedPurchaseId === p.id && <Check className="w-4 h-4 text-cyan-600 shrink-0" />}
                         </button>
                       ))
                   )}
@@ -1185,14 +1185,14 @@ export function MSStockInView() {
                 className={cn(
                   'w-full flex items-center justify-between p-3 rounded-xl border transition-all',
                   selectedPurchaseId
-                    ? 'bg-violet-50/50 border-violet-100'
+                    ? 'bg-cyan-50/50 border-cyan-100'
                     : 'bg-gray-50 border-gray-200'
                 )}
               >
                 {selectedPurchaseId ? (
                   <div className="flex items-center gap-2.5">
-                    <div className="w-7 h-7 rounded-lg bg-violet-100 flex items-center justify-center">
-                      <FileText className="w-3.5 h-3.5 text-violet-600" />
+                    <div className="w-7 h-7 rounded-lg bg-cyan-100 flex items-center justify-center">
+                      <FileText className="w-3.5 h-3.5 text-cyan-600" />
                     </div>
                     <div className="text-left">
                       <p className="text-xs font-semibold text-gray-900 truncate">
@@ -1287,7 +1287,7 @@ export function MSStockInView() {
               onClick={() => setSoundEnabled((p) => !p)}
               className={cn(
                 'w-11 h-6 rounded-full transition-all relative',
-                soundEnabled ? 'bg-violet-500' : 'bg-gray-200'
+                soundEnabled ? 'bg-cyan-500' : 'bg-gray-200'
               )}
             >
               <div className={cn(
@@ -1309,7 +1309,7 @@ export function MSStockInView() {
           className={cn(
             'w-full h-14 rounded-2xl text-white font-bold text-sm shadow-lg flex items-center justify-center gap-3 active:scale-[0.98] transition-transform',
             isComplete || targetCount === 0
-              ? 'bg-gradient-to-r from-violet-500 to-purple-600 shadow-violet-500/20'
+              ? 'bg-gradient-to-r from-cyan-500 to-blue-600 shadow-cyan-500/20'
               : 'bg-gradient-to-r from-emerald-500 to-teal-600 shadow-emerald-500/20'
           )}
         >

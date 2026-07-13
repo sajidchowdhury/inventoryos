@@ -73,7 +73,7 @@ export function MSCommissionReport() {
           <ArrowLeft className="w-4 h-4 text-gray-600" />
         </button>
         <div className="flex items-center gap-2 flex-1">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg shadow-violet-500/20">
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
             <Award className="w-4 h-4 text-white" />
           </div>
           <div>
@@ -89,7 +89,7 @@ export function MSCommissionReport() {
           <select
             value={selectedMonth}
             onChange={(e) => setSelectedMonth(e.target.value)}
-            className="w-full h-9 text-sm rounded-xl border border-gray-200 bg-white px-3 appearance-none pr-8 focus:outline-none focus:ring-2 focus:ring-violet-500/30"
+            className="w-full h-9 text-sm rounded-xl border border-gray-200 bg-white px-3 appearance-none pr-8 focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
           >
             {report.availableMonths.map((m) => (
               <option key={m} value={m}>
@@ -118,7 +118,7 @@ export function MSCommissionReport() {
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl p-4 text-white shadow-lg shadow-violet-500/20"
+            className="bg-gradient-to-br from-cyan-500 to-blue-600 rounded-2xl p-4 text-white shadow-lg shadow-cyan-500/20"
           >
             <p className="text-[10px] text-white/70 uppercase tracking-wide font-medium">Total Commissions</p>
             <p className="text-2xl font-bold mt-1">{formatBDT(report.grandTotal)}</p>
@@ -136,8 +136,8 @@ export function MSCommissionReport() {
             >
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-violet-50 flex items-center justify-center">
-                    <User className="w-4 h-4 text-violet-500" />
+                  <div className="w-8 h-8 rounded-lg bg-cyan-50 flex items-center justify-center">
+                    <User className="w-4 h-4 text-cyan-500" />
                   </div>
                   <div>
                     <p className="text-sm font-bold text-gray-900">{group.technician.displayName}</p>

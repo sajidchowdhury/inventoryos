@@ -159,7 +159,7 @@ export function MSKitsList() {
         <h1 className="text-lg font-bold text-gray-900 flex-1">Kits &amp; Bundles</h1>
         <button
           onClick={() => navigate('create-kit')}
-          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-violet-500 to-purple-600 text-white text-xs font-semibold shadow-sm active:scale-[0.98] transition-transform"
+          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white text-xs font-semibold shadow-sm active:scale-[0.98] transition-transform"
         >
           <Plus className="w-3.5 h-3.5" />
           New Kit
@@ -168,12 +168,12 @@ export function MSKitsList() {
 
       {/* Stats banner */}
       {!loading && kits.length > 0 && (
-        <div className="flex items-center gap-3 bg-violet-50 rounded-2xl p-3.5">
+        <div className="flex items-center gap-3 bg-cyan-50 rounded-2xl p-3.5">
           <div className="flex-1">
-            <p className="text-xs text-violet-500 font-medium">Total Kits</p>
-            <p className="text-xl font-bold text-violet-900">{kits.length}</p>
+            <p className="text-xs text-cyan-500 font-medium">Total Kits</p>
+            <p className="text-xl font-bold text-cyan-900">{kits.length}</p>
           </div>
-          <div className="w-px h-8 bg-violet-200" />
+          <div className="w-px h-8 bg-cyan-200" />
           <div className="flex-1">
             <p className="text-xs text-emerald-600 font-medium">Ready to Build</p>
             <p className="text-xl font-bold text-emerald-700">{sufficientCount}</p>
@@ -207,8 +207,8 @@ export function MSKitsList() {
       {/* Empty state */}
       {!loading && kits.length === 0 && (
         <div className="text-center py-14">
-          <div className="w-16 h-16 rounded-2xl bg-violet-50 flex items-center justify-center mx-auto mb-4">
-            <Box className="w-8 h-8 text-violet-400" />
+          <div className="w-16 h-16 rounded-2xl bg-cyan-50 flex items-center justify-center mx-auto mb-4">
+            <Box className="w-8 h-8 text-cyan-400" />
           </div>
           <p className="text-sm font-semibold text-gray-700">No kits yet</p>
           <p className="text-xs text-gray-400 mt-1 mb-5 max-w-[240px] mx-auto">
@@ -216,7 +216,7 @@ export function MSKitsList() {
           </p>
           <button
             onClick={() => navigate('create-kit')}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-violet-500 to-purple-600 text-white text-sm font-semibold shadow-sm active:scale-[0.98] transition-transform"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white text-sm font-semibold shadow-sm active:scale-[0.98] transition-transform"
           >
             <Plus className="w-4 h-4" />
             Create your first kit
@@ -255,7 +255,7 @@ export function MSKitsList() {
                     <p className="text-sm font-semibold text-gray-900 truncate">
                       {kit.name}
                     </p>
-                    <span className="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full bg-violet-100 text-violet-700">
+                    <span className="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full bg-cyan-100 text-cyan-700">
                       {componentCount} {componentCount === 1 ? 'item' : 'items'}
                     </span>
                   </div>

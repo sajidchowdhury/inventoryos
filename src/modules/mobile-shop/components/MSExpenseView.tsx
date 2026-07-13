@@ -36,7 +36,7 @@ const fadeUp = {
 
 const CATEGORIES = [
   { key: 'RENT', label: 'Rent', icon: Home, color: 'bg-blue-50 text-blue-600 border-blue-200' },
-  { key: 'SALARY', label: 'Salary', icon: Users, color: 'bg-violet-50 text-violet-600 border-violet-200' },
+  { key: 'SALARY', label: 'Salary', icon: Users, color: 'bg-cyan-50 text-cyan-600 border-cyan-200' },
   { key: 'TRANSPORT', label: 'Transport', icon: Truck, color: 'bg-orange-50 text-orange-600 border-orange-200' },
   { key: 'UTILITY', label: 'Utility', icon: Zap, color: 'bg-amber-50 text-amber-600 border-amber-200' },
   { key: 'MISC', label: 'Misc', icon: MoreHorizontal, color: 'bg-gray-50 text-gray-600 border-gray-200' },
@@ -212,7 +212,7 @@ export function MSExpenseView() {
         <h1 className="text-lg font-bold text-gray-900 flex-1">Expenses</h1>
         <button
           onClick={() => setShowForm(true)}
-          className="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg shadow-violet-500/20 active:opacity-90 transition-all"
+          className="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20 active:opacity-90 transition-all"
         >
           <Plus className="w-5 h-5 text-white" />
         </button>
@@ -238,8 +238,8 @@ export function MSExpenseView() {
           </div>
           <div className="bg-white rounded-2xl border border-gray-100 p-3.5 shadow-sm">
             <div className="flex items-center gap-2 mb-1">
-              <div className="w-7 h-7 rounded-lg bg-violet-50 flex items-center justify-center">
-                <Banknote className="w-3.5 h-3.5 text-violet-500" />
+              <div className="w-7 h-7 rounded-lg bg-cyan-50 flex items-center justify-center">
+                <Banknote className="w-3.5 h-3.5 text-cyan-500" />
               </div>
               <p className="text-[10px] text-gray-400 font-medium">All Time</p>
             </div>
@@ -272,7 +272,7 @@ export function MSExpenseView() {
                       initial={{ height: 0 }}
                       animate={{ height: `${heightPct}%` }}
                       transition={{ duration: 0.4, delay: i * 0.05 }}
-                      className={`absolute bottom-0 w-full rounded-md ${isCurrentMonth ? 'bg-violet-500' : 'bg-violet-200'}`}
+                      className={`absolute bottom-0 w-full rounded-md ${isCurrentMonth ? 'bg-cyan-500' : 'bg-cyan-200'}`}
                     />
                   </div>
                   <span className="text-[8px] text-gray-400 font-medium whitespace-nowrap">{m.month}</span>
@@ -290,7 +290,7 @@ export function MSExpenseView() {
             onClick={() => setFilterCategory('')}
             className={`shrink-0 h-8 px-3 rounded-full text-[11px] font-semibold transition-all ${
               !filterCategory
-                ? 'bg-violet-100 text-violet-700 border border-violet-200'
+                ? 'bg-cyan-100 text-cyan-700 border border-cyan-200'
                 : 'bg-white text-gray-500 border border-gray-200'
             }`}
           >
@@ -437,7 +437,7 @@ export function MSExpenseView() {
                       type="date"
                       value={formDate}
                       onChange={(e) => setFormDate(e.target.value)}
-                      className="w-full h-11 pl-10 pr-3 rounded-xl bg-gray-50 border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400/40 focus:border-violet-400 transition-all"
+                      className="w-full h-11 pl-10 pr-3 rounded-xl bg-gray-50 border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400/40 focus:border-cyan-400 transition-all"
                     />
                   </div>
                 </div>
@@ -478,7 +478,7 @@ export function MSExpenseView() {
                       onChange={(e) => { setFormAmount(e.target.value); setFormError(''); }}
                       placeholder="0"
                       autoFocus
-                      className="w-full h-12 pl-9 pr-3 rounded-xl bg-gray-50 border border-gray-200 text-lg font-bold focus:outline-none focus:ring-2 focus:ring-violet-400/40 focus:border-violet-400 transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      className="w-full h-12 pl-9 pr-3 rounded-xl bg-gray-50 border border-gray-200 text-lg font-bold focus:outline-none focus:ring-2 focus:ring-cyan-400/40 focus:border-cyan-400 transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                     />
                   </div>
                 </div>
@@ -495,7 +495,7 @@ export function MSExpenseView() {
                         onClick={() => setFormMethod(m.key)}
                         className={`h-10 rounded-xl border-2 text-[11px] font-semibold transition-all flex items-center justify-center ${
                           formMethod === m.key
-                            ? 'border-violet-400 bg-violet-50 text-violet-700'
+                            ? 'border-cyan-400 bg-cyan-50 text-cyan-700'
                             : 'border-gray-100 bg-white text-gray-500'
                         }`}
                       >
@@ -515,7 +515,7 @@ export function MSExpenseView() {
                     value={formDescription}
                     onChange={(e) => setFormDescription(e.target.value)}
                     placeholder="e.g. Shop rent - March"
-                    className="w-full h-11 px-4 rounded-xl bg-gray-50 border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400/40 focus:border-violet-400 transition-all"
+                    className="w-full h-11 px-4 rounded-xl bg-gray-50 border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400/40 focus:border-cyan-400 transition-all"
                   />
                 </div>
 
@@ -529,7 +529,7 @@ export function MSExpenseView() {
                     value={formReference}
                     onChange={(e) => setFormReference(e.target.value)}
                     placeholder="Receipt / Txn No."
-                    className="w-full h-11 px-4 rounded-xl bg-gray-50 border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400/40 focus:border-violet-400 transition-all"
+                    className="w-full h-11 px-4 rounded-xl bg-gray-50 border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400/40 focus:border-cyan-400 transition-all"
                   />
                 </div>
 
@@ -545,7 +545,7 @@ export function MSExpenseView() {
                 <button
                   onClick={handleSubmit}
                   disabled={submitting}
-                  className="w-full h-12 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 text-white text-sm font-bold shadow-lg shadow-violet-500/20 active:opacity-90 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                  className="w-full h-12 rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-600 text-white text-sm font-bold shadow-lg shadow-cyan-500/20 active:opacity-90 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                 >
                   {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
                   Add Expense

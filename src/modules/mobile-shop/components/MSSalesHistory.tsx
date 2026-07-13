@@ -136,7 +136,7 @@ export function MSSalesHistory() {
         <motion.button
           whileTap={{ scale: 0.95 }}
           onClick={() => navigate('new-sale')}
-          className="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 text-white flex items-center justify-center shadow-lg shadow-violet-500/20"
+          className="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 text-white flex items-center justify-center shadow-lg shadow-cyan-500/20"
         >
           <Plus className="w-5 h-5" />
         </motion.button>
@@ -148,7 +148,7 @@ export function MSSalesHistory() {
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl p-4 text-white shadow-lg shadow-violet-500/20"
+          className="bg-gradient-to-br from-cyan-500 to-blue-600 rounded-2xl p-4 text-white shadow-lg shadow-cyan-500/20"
         >
           <div className="grid grid-cols-3 gap-3">
             <div>
@@ -178,7 +178,7 @@ export function MSSalesHistory() {
           placeholder="Search sale code, customer..."
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
-          className="pl-10 bg-gray-50 border-0 focus-visible:ring-2 focus-visible:ring-violet-500/30"
+          className="pl-10 bg-gray-50 border-0 focus-visible:ring-2 focus-visible:ring-cyan-500/30"
         />
       </div>
 
@@ -191,7 +191,7 @@ export function MSSalesHistory() {
             className={cn(
               'px-3 py-1.5 rounded-full text-[11px] font-semibold whitespace-nowrap transition-all shrink-0',
               activeFilter === tab.value
-                ? 'bg-gradient-to-r from-violet-500 to-purple-600 text-white shadow-sm'
+                ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-sm'
                 : 'bg-white text-gray-600 border border-gray-100 hover:bg-gray-50',
             )}
           >
@@ -224,7 +224,7 @@ export function MSSalesHistory() {
               <motion.button
                 whileTap={{ scale: 0.95 }}
                 onClick={() => navigate('new-sale')}
-                className="mt-3 px-4 py-2 rounded-xl bg-gradient-to-r from-violet-500 to-purple-600 text-white text-xs font-semibold shadow-lg shadow-violet-500/20"
+                className="mt-3 px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white text-xs font-semibold shadow-lg shadow-cyan-500/20"
               >
                 Make a Sale
               </motion.button>
@@ -246,7 +246,7 @@ export function MSSalesHistory() {
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-xs font-mono font-bold text-violet-600">{sale.saleCode}</span>
+                        <span className="text-xs font-mono font-bold text-cyan-600">{sale.saleCode}</span>
                         <span className={cn('text-[10px] px-2 py-0.5 rounded-full font-semibold', STATUS_COLORS[sale.status])}>
                           {sale.status === 'PARTIALLY_PAID' ? 'Partial' : sale.status}
                         </span>
@@ -299,7 +299,7 @@ export function MSSalesHistory() {
                 animate={{ opacity: 1 }}
                 onClick={handleLoadMore}
                 disabled={loadingMore}
-                className="w-full py-3 rounded-2xl bg-white border border-gray-200 text-sm font-semibold text-violet-600 flex items-center justify-center gap-2 active:bg-violet-50 transition-colors disabled:opacity-50"
+                className="w-full py-3 rounded-2xl bg-white border border-gray-200 text-sm font-semibold text-cyan-600 flex items-center justify-center gap-2 active:bg-cyan-50 transition-colors disabled:opacity-50"
               >
                 {loadingMore ? (
                   <Loader2 className="w-4 h-4 animate-spin" />

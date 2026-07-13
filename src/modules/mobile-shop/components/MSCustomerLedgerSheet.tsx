@@ -236,7 +236,7 @@ export function MSCustomerLedgerSheet({
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3 }}
-                    className="bg-gradient-to-r from-violet-50 to-purple-50 rounded-2xl border border-violet-200/60 p-3.5 mb-4"
+                    className="bg-gradient-to-r from-cyan-50 to-cyan-50 rounded-2xl border border-cyan-200/60 p-3.5 mb-4"
                   >
                     <div className="grid grid-cols-3 gap-3 text-center">
                       <div>

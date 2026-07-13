@@ -44,7 +44,7 @@ export function MSMushakInvoiceDetail() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <div className="w-6 h-6 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
+        <div className="w-6 h-6 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -53,7 +53,7 @@ export function MSMushakInvoiceDetail() {
     return (
       <div className="px-4 pt-4 text-center py-16">
         <p className="text-sm text-gray-500">Invoice not found</p>
-        <button onClick={goBack} className="mt-3 text-violet-600 text-sm font-semibold">Go Back</button>
+        <button onClick={goBack} className="mt-3 text-cyan-600 text-sm font-semibold">Go Back</button>
       </div>
     );
   }
@@ -73,7 +73,7 @@ export function MSMushakInvoiceDetail() {
           <button onClick={handlePrint} className="p-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 transition-colors">
             <Printer className="w-5 h-5 text-gray-600" />
           </button>
-          <button onClick={handleThermalPrint} className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl bg-violet-50 hover:bg-violet-100 text-violet-700 transition-colors">
+          <button onClick={handleThermalPrint} className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl bg-cyan-50 hover:bg-cyan-100 text-cyan-700 transition-colors">
             <Printer className="w-4 h-4" />
             <span className="text-xs font-semibold">Thermal</span>
           </button>
@@ -84,15 +84,15 @@ export function MSMushakInvoiceDetail() {
       <div id="mushak-invoice" className="print:m-0 print:p-0">
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden print:shadow-none print:border-none print:rounded-none">
           {/* ── Header ── */}
-          <div className="bg-gradient-to-r from-violet-600 to-purple-700 px-5 py-4 print:bg-white print:border-b-2 print:border-gray-800">
+          <div className="bg-gradient-to-r from-cyan-600 to-cyan-700 px-5 py-4 print:bg-white print:border-b-2 print:border-gray-800">
             <div className="flex items-start justify-between">
               <div>
                 <h1 className="text-base font-bold text-white print:text-black">MUSHAK 6.3</h1>
-                <p className="text-xs text-violet-200 print:text-gray-600 mt-0.5">Tax Invoice (VAT)</p>
+                <p className="text-xs text-cyan-200 print:text-gray-600 mt-0.5">Tax Invoice (VAT)</p>
               </div>
               <div className="text-right">
                 <p className="text-sm font-mono font-bold text-white print:text-black">{invoice.invoiceNumber}</p>
-                <p className="text-[10px] text-violet-200 print:text-gray-500 mt-0.5">
+                <p className="text-[10px] text-cyan-200 print:text-gray-500 mt-0.5">
                   {new Date(invoice.issueDate).toLocaleDateString('en-BD', { day: '2-digit', month: 'long', year: 'numeric' })}
                 </p>
               </div>
@@ -150,7 +150,7 @@ export function MSMushakInvoiceDetail() {
                   <span className="text-right text-gray-500 font-mono text-[10px]">{item.hsCode || '-'}</span>
                   <span className="text-right text-gray-700 font-mono">{item.quantity}</span>
                   <span className="text-right text-gray-700 font-mono">{item.unitPrice.toFixed(0)}</span>
-                  <span className="text-right text-violet-600 font-mono font-medium">{item.vatAmount.toFixed(0)}</span>
+                  <span className="text-right text-cyan-600 font-mono font-medium">{item.vatAmount.toFixed(0)}</span>
                   <span className="text-right text-gray-900 font-mono font-semibold">{item.totalPrice.toFixed(0)}</span>
                 </div>
               ))}
@@ -170,7 +170,7 @@ export function MSMushakInvoiceDetail() {
               </div>
               <div className="flex items-center justify-end gap-3">
                 <span className="text-xs text-gray-500">VAT</span>
-                <span className="text-sm font-mono text-violet-600 font-semibold">৳{invoice.totalVat.toLocaleString()}</span>
+                <span className="text-sm font-mono text-cyan-600 font-semibold">৳{invoice.totalVat.toLocaleString()}</span>
               </div>
               <div className="flex items-center justify-end gap-3 pt-1.5 border-t border-gray-200">
                 <span className="text-sm font-semibold text-gray-700">Grand Total</span>

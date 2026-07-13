@@ -15,7 +15,7 @@ const fadeUp = {
 };
 
 const menuItems = [
-  { icon: Building2, label: 'Business Info', desc: 'Shop details & address', grad: 'from-violet-500 to-purple-600' },
+  { icon: Building2, label: 'Business Info', desc: 'Shop details & address', grad: 'from-cyan-500 to-blue-600' },
   { icon: Lock, label: 'Change Password', desc: 'Update your password', grad: 'from-amber-500 to-orange-500' },
   { icon: Users, label: 'Staff Management', desc: 'Team roles & access', grad: 'from-emerald-500 to-teal-500' },
   { icon: CreditCard, label: 'Subscription Status', desc: 'Plan & billing info', grad: 'from-sky-500 to-cyan-500' },
@@ -47,11 +47,11 @@ export function MSProfileView() {
 
       {/* Profile card */}
       <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm overflow-hidden relative">
-        <div className="absolute -top-8 -right-8 h-28 w-28 rounded-full bg-violet-50" />
-        <div className="absolute -bottom-10 -left-6 h-24 w-24 rounded-full bg-purple-50" />
+        <div className="absolute -top-8 -right-8 h-28 w-28 rounded-full bg-cyan-50" />
+        <div className="absolute -bottom-10 -left-6 h-24 w-24 rounded-full bg-cyan-50" />
         <div className="relative z-10">
           <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shrink-0 shadow-lg shadow-violet-500/20">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shrink-0 shadow-lg shadow-cyan-500/20">
               <span className="text-white text-2xl font-bold">{firstLetter}</span>
             </div>
             <div className="flex-1 min-w-0">
@@ -74,8 +74,8 @@ export function MSProfileView() {
         <p className="text-sm font-semibold text-gray-900 mb-3">Business Details</p>
         <div className="space-y-3">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-violet-50 flex items-center justify-center shrink-0">
-              <Building2 className="w-4 h-4 text-violet-500" />
+            <div className="w-8 h-8 rounded-lg bg-cyan-50 flex items-center justify-center shrink-0">
+              <Building2 className="w-4 h-4 text-cyan-500" />
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-[10px] text-gray-400 uppercase tracking-wide">Business Name</p>
@@ -83,8 +83,8 @@ export function MSProfileView() {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-violet-50 flex items-center justify-center shrink-0">
-              <Sparkles className="w-4 h-4 text-violet-500" />
+            <div className="w-8 h-8 rounded-lg bg-cyan-50 flex items-center justify-center shrink-0">
+              <Sparkles className="w-4 h-4 text-cyan-500" />
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-[10px] text-gray-400 uppercase tracking-wide">Shop Code</p>
@@ -92,8 +92,8 @@ export function MSProfileView() {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-violet-50 flex items-center justify-center shrink-0">
-              <User className="w-4 h-4 text-violet-500" />
+            <div className="w-8 h-8 rounded-lg bg-cyan-50 flex items-center justify-center shrink-0">
+              <User className="w-4 h-4 text-cyan-500" />
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-[10px] text-gray-400 uppercase tracking-wide">Owner</p>
@@ -101,8 +101,8 @@ export function MSProfileView() {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-violet-50 flex items-center justify-center shrink-0">
-              <Shield className="w-4 h-4 text-violet-500" />
+            <div className="w-8 h-8 rounded-lg bg-cyan-50 flex items-center justify-center shrink-0">
+              <Shield className="w-4 h-4 text-cyan-500" />
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-[10px] text-gray-400 uppercase tracking-wide">Phone</p>

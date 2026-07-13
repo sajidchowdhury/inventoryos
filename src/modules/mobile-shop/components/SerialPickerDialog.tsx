@@ -157,13 +157,13 @@ export function SerialPickerDialog({
         {/* ── Search ── */}
         <div className="px-5 pt-3 shrink-0">
           <div className="relative">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-violet-400" />
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-cyan-400" />
             <input
               type="text"
               placeholder="Search serial number or IMEI..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full h-10 pl-10 pr-10 rounded-xl bg-gray-50 border border-gray-200 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-400/40 focus:border-violet-400 transition-all"
+              className="w-full h-10 pl-10 pr-10 rounded-xl bg-gray-50 border border-gray-200 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-400/40 focus:border-cyan-400 transition-all"
               autoFocus
             />
             {search && (
@@ -209,12 +209,12 @@ export function SerialPickerDialog({
                   animate={{ opacity: 1, y: 0, transition: { duration: 0.2, delay: i * 0.03 } }}
                   exit={{ opacity: 0, x: -20 }}
                   onClick={() => onSelect(serial)}
-                  className="w-full bg-white rounded-xl border border-gray-100 p-3.5 text-left active:scale-[0.98] transition-transform hover:border-violet-200 shadow-sm"
+                  className="w-full bg-white rounded-xl border border-gray-100 p-3.5 text-left active:scale-[0.98] transition-transform hover:border-cyan-200 shadow-sm"
                 >
                   {/* Top row: serial + grade + select icon */}
                   <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-lg bg-violet-50 flex items-center justify-center shrink-0">
-                      <Hash className="w-4 h-4 text-violet-500" />
+                    <div className="w-9 h-9 rounded-lg bg-cyan-50 flex items-center justify-center shrink-0">
+                      <Hash className="w-4 h-4 text-cyan-500" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-gray-900 truncate font-mono">

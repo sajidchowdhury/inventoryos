@@ -37,7 +37,7 @@ const STATUS_COLORS: Record<string, string> = {
   RECEIVED: 'bg-slate-100 text-slate-700',
   DIAGNOSING: 'bg-blue-100 text-blue-700',
   AWAITING_PARTS: 'bg-amber-100 text-amber-700',
-  IN_PROGRESS: 'bg-violet-100 text-violet-700',
+  IN_PROGRESS: 'bg-cyan-100 text-cyan-700',
   TESTING: 'bg-cyan-100 text-cyan-700',
   READY_FOR_DELIVERY: 'bg-emerald-100 text-emerald-700',
   DELIVERED: 'bg-green-100 text-green-700',
@@ -49,7 +49,7 @@ const STATUS_BG: Record<string, string> = {
   RECEIVED: 'bg-slate-500',
   DIAGNOSING: 'bg-blue-500',
   AWAITING_PARTS: 'bg-amber-500',
-  IN_PROGRESS: 'bg-violet-500',
+  IN_PROGRESS: 'bg-cyan-500',
   TESTING: 'bg-cyan-500',
   READY_FOR_DELIVERY: 'bg-emerald-500',
   DELIVERED: 'bg-green-600',
@@ -64,12 +64,12 @@ const VALID_TRANSITIONS: Record<string, { status: string; label: string; color: 
   ],
   DIAGNOSING: [
     { status: 'AWAITING_PARTS', label: 'Await Parts', color: 'bg-amber-500 hover:bg-amber-600' },
-    { status: 'IN_PROGRESS', label: 'Start Repair', color: 'bg-violet-500 hover:bg-violet-600' },
+    { status: 'IN_PROGRESS', label: 'Start Repair', color: 'bg-cyan-500 hover:bg-cyan-600' },
     { status: 'OUTSOURCED', label: 'Outsource', color: 'bg-orange-500 hover:bg-orange-600' },
     { status: 'CANCELLED', label: 'Cancel Job', color: 'bg-red-500 hover:bg-red-600' },
   ],
   AWAITING_PARTS: [
-    { status: 'IN_PROGRESS', label: 'Start Repair', color: 'bg-violet-500 hover:bg-violet-600' },
+    { status: 'IN_PROGRESS', label: 'Start Repair', color: 'bg-cyan-500 hover:bg-cyan-600' },
     { status: 'CANCELLED', label: 'Cancel Job', color: 'bg-red-500 hover:bg-red-600' },
   ],
   IN_PROGRESS: [
@@ -78,12 +78,12 @@ const VALID_TRANSITIONS: Record<string, { status: string; label: string; color: 
   ],
   TESTING: [
     { status: 'READY_FOR_DELIVERY', label: 'Ready for Pickup', color: 'bg-emerald-500 hover:bg-emerald-600' },
-    { status: 'IN_PROGRESS', label: 'Back to Repair', color: 'bg-violet-500 hover:bg-violet-600' },
+    { status: 'IN_PROGRESS', label: 'Back to Repair', color: 'bg-cyan-500 hover:bg-cyan-600' },
   ],
   READY_FOR_DELIVERY: [], // 2D: DELIVERED is now handled via OTP flow, not direct transition
   OUTSOURCED: [
     { status: 'TESTING', label: 'Start Testing', color: 'bg-cyan-500 hover:bg-cyan-600' },
-    { status: 'IN_PROGRESS', label: 'Start Repair', color: 'bg-violet-500 hover:bg-violet-600' },
+    { status: 'IN_PROGRESS', label: 'Start Repair', color: 'bg-cyan-500 hover:bg-cyan-600' },
   ],
 };
 
@@ -682,7 +682,7 @@ export function MSJobCardDetail() {
                             <button
                               type="button"
                               onClick={() => { setShowVendorPicker(false); setShowNewVendorForm(true); }}
-                              className="w-full flex items-center gap-2 px-3 py-2.5 text-xs text-violet-600 font-semibold hover:bg-violet-50 transition-colors"
+                              className="w-full flex items-center gap-2 px-3 py-2.5 text-xs text-cyan-600 font-semibold hover:bg-cyan-50 transition-colors"
                             >
                               <Plus className="w-3.5 h-3.5" /> Add New Vendor
                             </button>
@@ -691,9 +691,9 @@ export function MSJobCardDetail() {
 
                         {/* New vendor inline form */}
                         {showNewVendorForm && (
-                          <div className="space-y-2 p-3 rounded-xl bg-violet-50 border border-violet-100">
+                          <div className="space-y-2 p-3 rounded-xl bg-cyan-50 border border-cyan-100">
                             <div className="flex items-center justify-between">
-                              <p className="text-[11px] font-semibold text-violet-700">New Vendor</p>
+                              <p className="text-[11px] font-semibold text-cyan-700">New Vendor</p>
                               <button type="button" onClick={() => setShowNewVendorForm(false)} className="text-gray-400 hover:text-gray-600">
                                 <X className="w-3.5 h-3.5" />
                               </button>
@@ -742,7 +742,7 @@ export function MSJobCardDetail() {
                                 } catch { /* silent */ }
                                 finally { setNewVendorSaving(false); }
                               }}
-                              className="w-full text-[11px] font-semibold text-white bg-violet-500 rounded-lg py-1.5 disabled:opacity-50"
+                              className="w-full text-[11px] font-semibold text-white bg-cyan-500 rounded-lg py-1.5 disabled:opacity-50"
                             >
                               {newVendorSaving ? <Loader2 className="w-3 h-3 animate-spin mx-auto" /> : 'Save Vendor'}
                             </button>
@@ -772,7 +772,7 @@ export function MSJobCardDetail() {
                           <button
                             type="button"
                             onClick={() => setShowNewVendorForm(true)}
-                            className="text-[11px] text-violet-600 font-semibold flex items-center gap-1"
+                            className="text-[11px] text-cyan-600 font-semibold flex items-center gap-1"
                           >
                             <Plus className="w-3 h-3" /> Add new vendor
                           </button>
@@ -819,20 +819,20 @@ export function MSJobCardDetail() {
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="flex items-center gap-2 bg-violet-50 border border-violet-100 rounded-2xl p-3"
+            className="flex items-center gap-2 bg-cyan-50 border border-cyan-100 rounded-2xl p-3"
           >
-            <Pencil className="w-4 h-4 text-violet-500 shrink-0" />
-            <p className="text-xs text-violet-700 font-medium flex-1">Editing job card details</p>
+            <Pencil className="w-4 h-4 text-cyan-500 shrink-0" />
+            <p className="text-xs text-cyan-700 font-medium flex-1">Editing job card details</p>
             <button
               onClick={exitEditMode}
-              className="text-[11px] text-violet-500 font-semibold px-3 py-1.5 rounded-xl bg-white border border-violet-200 active:bg-violet-50 transition-colors"
+              className="text-[11px] text-cyan-500 font-semibold px-3 py-1.5 rounded-xl bg-white border border-cyan-200 active:bg-cyan-50 transition-colors"
             >
               Cancel
             </button>
             <button
               onClick={handleSaveEdit}
               disabled={saving}
-              className="text-[11px] text-white font-semibold px-3 py-1.5 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 shadow-sm flex items-center gap-1 disabled:opacity-50"
+              className="text-[11px] text-white font-semibold px-3 py-1.5 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 shadow-sm flex items-center gap-1 disabled:opacity-50"
             >
               {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
               Save
@@ -859,7 +859,7 @@ export function MSJobCardDetail() {
             {job.customerPhone && (
               <a
                 href={`tel:${job.customerPhone}`}
-                className="text-xs text-violet-600 font-medium flex items-center gap-1 mt-1.5 active:text-violet-700"
+                className="text-xs text-cyan-600 font-medium flex items-center gap-1 mt-1.5 active:text-cyan-700"
               >
                 <Phone className="w-3 h-3" />
                 {job.customerPhone}
@@ -875,8 +875,8 @@ export function MSJobCardDetail() {
             className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm"
           >
             <div className="flex items-center gap-2 mb-3">
-              <div className="w-7 h-7 rounded-lg bg-violet-50 flex items-center justify-center">
-                <Package className="w-4 h-4 text-violet-500" />
+              <div className="w-7 h-7 rounded-lg bg-cyan-50 flex items-center justify-center">
+                <Package className="w-4 h-4 text-cyan-500" />
               </div>
               <h3 className="text-sm font-bold text-gray-800">Device</h3>
             </div>
@@ -900,7 +900,7 @@ export function MSJobCardDetail() {
             {job.serialItem?.product && (
               <button
                 onClick={() => navigate('serial-items')}
-                className="text-[11px] text-violet-600 font-medium flex items-center gap-0.5 mt-1.5 active:text-violet-700"
+                className="text-[11px] text-cyan-600 font-medium flex items-center gap-0.5 mt-1.5 active:text-cyan-700"
               >
                 {job.serialItem.product.brand} {job.serialItem.product.name}
                 <ExternalLink className="w-3 h-3" />
@@ -956,7 +956,7 @@ export function MSJobCardDetail() {
                         href={url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-[10px] text-violet-600 bg-violet-50 px-2.5 py-1 rounded-lg font-medium hover:bg-violet-100 transition-colors truncate max-w-[200px] flex items-center gap-1"
+                        className="text-[10px] text-cyan-600 bg-cyan-50 px-2.5 py-1 rounded-lg font-medium hover:bg-cyan-100 transition-colors truncate max-w-[200px] flex items-center gap-1"
                       >
                         <Camera className="w-3 h-3 shrink-0" />
                         Photo {i + 1}
@@ -1041,12 +1041,12 @@ export function MSJobCardDetail() {
         >
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg bg-violet-50 flex items-center justify-center">
-                <Package className="w-4 h-4 text-violet-500" />
+              <div className="w-7 h-7 rounded-lg bg-cyan-50 flex items-center justify-center">
+                <Package className="w-4 h-4 text-cyan-500" />
               </div>
               <h3 className="text-sm font-bold text-gray-800">Spare Parts</h3>
               {parts.length > 0 && (
-                <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-5 bg-violet-100 text-violet-700">
+                <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-5 bg-cyan-100 text-cyan-700">
                   {parts.length}
                 </Badge>
               )}
@@ -1054,7 +1054,7 @@ export function MSJobCardDetail() {
             {(job.status === 'DIAGNOSING' || job.status === 'AWAITING_PARTS' || job.status === 'IN_PROGRESS') && (
               <button
                 onClick={() => { setShowPartSearch(true); setPartSearch(''); setPartResults([]); }}
-                className="flex items-center gap-1 text-[11px] font-semibold text-violet-600 hover:text-violet-700 transition-colors"
+                className="flex items-center gap-1 text-[11px] font-semibold text-cyan-600 hover:text-cyan-700 transition-colors"
               >
                 <Plus className="w-3.5 h-3.5" /> Add
               </button>
@@ -1088,7 +1088,7 @@ export function MSJobCardDetail() {
                     }, 300);
                   }}
                   placeholder="Search by product name or serial..."
-                  className="w-full h-9 pl-8 pr-8 text-sm rounded-xl border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-violet-500/30"
+                  className="w-full h-9 pl-8 pr-8 text-sm rounded-xl border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
                 />
                 <button
                   onClick={() => { setShowPartSearch(false); setPartSearch(''); setPartResults([]); }}
@@ -1103,7 +1103,7 @@ export function MSJobCardDetail() {
                 <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-white rounded-xl border border-gray-200 shadow-lg max-h-48 overflow-y-auto">
                   {partSearchLoading ? (
                     <div className="flex items-center justify-center py-4">
-                      <Loader2 className="w-4 h-4 animate-spin text-violet-500" />
+                      <Loader2 className="w-4 h-4 animate-spin text-cyan-500" />
                     </div>
                   ) : partResults.length === 0 ? (
                     <div className="px-3 py-3 text-xs text-gray-400 text-center">No spare parts found in stock</div>
@@ -1142,16 +1142,16 @@ export function MSJobCardDetail() {
                               setPartAdding(null);
                             }
                           }}
-                          className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-violet-50 transition-colors text-left"
+                          className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-cyan-50 transition-colors text-left"
                         >
                           <div className="min-w-0 flex-1">
                             <p className="text-xs font-semibold text-gray-800 truncate">{label}</p>
                             <p className="text-[10px] text-gray-400">SN: {item.serialNumber}{item.costPrice != null ? ` · ৳${item.costPrice.toLocaleString()}` : ''}</p>
                           </div>
                           {isAdding ? (
-                            <Loader2 className="w-3.5 h-3.5 animate-spin text-violet-500 shrink-0" />
+                            <Loader2 className="w-3.5 h-3.5 animate-spin text-cyan-500 shrink-0" />
                           ) : (
-                            <Plus className="w-3.5 h-3.5 text-violet-400 shrink-0" />
+                            <Plus className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
                           )}
                         </button>
                       );
@@ -1228,7 +1228,7 @@ export function MSJobCardDetail() {
               {/* Parts Total */}
               <div className="flex items-center justify-between pt-2 border-t border-gray-100 mt-1">
                 <span className="text-[10px] text-gray-400 uppercase tracking-wide font-medium">Parts Total</span>
-                <span className="text-sm font-bold text-violet-600">
+                <span className="text-sm font-bold text-cyan-600">
                   {formatBDT(parts.reduce((sum, p) => sum + (p.unitCost ?? 0) * p.quantity, 0))}
                 </span>
               </div>
@@ -1326,8 +1326,8 @@ export function MSJobCardDetail() {
             {otpStep === 'otp-input' && (
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-xl bg-violet-100 flex items-center justify-center">
-                    <KeyRound className="w-4 h-4 text-violet-600" />
+                  <div className="w-8 h-8 rounded-xl bg-cyan-100 flex items-center justify-center">
+                    <KeyRound className="w-4 h-4 text-cyan-600" />
                   </div>
                   <div>
                     <p className="text-xs font-semibold text-gray-800">Enter OTP Code</p>
@@ -1351,7 +1351,7 @@ export function MSJobCardDetail() {
                         otpCode.length > i
                           ? 'border-emerald-400 bg-emerald-50 text-emerald-700'
                           : 'border-gray-200 bg-gray-50 text-gray-300',
-                        otpCode.length === i && 'border-violet-400 ring-2 ring-violet-100',
+                        otpCode.length === i && 'border-cyan-400 ring-2 ring-cyan-100',
                       )}
                     >
                       {otpCode[i] || '·'}
@@ -1397,7 +1397,7 @@ export function MSJobCardDetail() {
                   <button
                     onClick={handleVerifyOtp}
                     disabled={otpLoading || otpCode.length !== 6}
-                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 text-white text-xs font-semibold shadow-sm disabled:opacity-50 active:scale-[0.98] transition-transform"
+                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 text-white text-xs font-semibold shadow-sm disabled:opacity-50 active:scale-[0.98] transition-transform"
                   >
                     {otpLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ShieldCheck className="w-3.5 h-3.5" />}
                     Verify OTP
@@ -1523,8 +1523,8 @@ export function MSJobCardDetail() {
             className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm space-y-3"
           >
             <div className="flex items-center gap-2 mb-1">
-              <div className="w-7 h-7 rounded-lg bg-violet-50 flex items-center justify-center">
-                <Wrench className="w-4 h-4 text-violet-500" />
+              <div className="w-7 h-7 rounded-lg bg-cyan-50 flex items-center justify-center">
+                <Wrench className="w-4 h-4 text-cyan-500" />
               </div>
               <h3 className="text-sm font-bold text-gray-800">Assignment &amp; More</h3>
             </div>
@@ -1544,7 +1544,7 @@ export function MSJobCardDetail() {
                 <select
                   value={(editForm.priority as string) || 'NORMAL'}
                   onChange={(e) => setEditForm((f) => ({ ...f, priority: e.target.value }))}
-                  className="w-full h-9 text-sm rounded-xl border border-gray-200 bg-white px-3 focus:outline-none focus:ring-2 focus:ring-violet-500/30"
+                  className="w-full h-9 text-sm rounded-xl border border-gray-200 bg-white px-3 focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
                 >
                   <option value="LOW">Low</option>
                   <option value="NORMAL">Normal</option>
@@ -1575,8 +1575,8 @@ export function MSJobCardDetail() {
             className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm"
           >
             <div className="flex items-center gap-2 mb-3">
-              <div className="w-7 h-7 rounded-lg bg-violet-50 flex items-center justify-center">
-                <Wrench className="w-4 h-4 text-violet-500" />
+              <div className="w-7 h-7 rounded-lg bg-cyan-50 flex items-center justify-center">
+                <Wrench className="w-4 h-4 text-cyan-500" />
               </div>
               <h3 className="text-sm font-bold text-gray-800">Details</h3>
             </div>

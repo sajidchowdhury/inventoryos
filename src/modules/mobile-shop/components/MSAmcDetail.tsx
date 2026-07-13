@@ -63,7 +63,7 @@ const STATUS_CONFIG: Record<AmcStatus, { badge: string; label: string }> = {
 
 const COVERAGE_CONFIG: Record<AmcCoverageType, { badge: string; label: string }> = {
   Basic: { badge: 'bg-gray-100 text-gray-600', label: 'Basic' },
-  Standard: { badge: 'bg-violet-100 text-violet-700', label: 'Standard' },
+  Standard: { badge: 'bg-cyan-100 text-cyan-700', label: 'Standard' },
   Premium: { badge: 'bg-amber-100 text-amber-700', label: 'Premium' },
 };
 
@@ -74,7 +74,7 @@ const FREQ_LABELS: Record<AmcPaymentFrequency, string> = {
 };
 
 const VISIT_TYPE_CONFIG: Record<AmcVisitType, { badge: string; label: string }> = {
-  SCHEDULED: { badge: 'bg-violet-100 text-violet-700', label: 'Scheduled' },
+  SCHEDULED: { badge: 'bg-cyan-100 text-cyan-700', label: 'Scheduled' },
   EMERGENCY: { badge: 'bg-red-100 text-red-700', label: 'Emergency' },
   RENEWAL: { badge: 'bg-emerald-100 text-emerald-700', label: 'Renewal' },
 };
@@ -90,7 +90,7 @@ const COVERAGE_BENEFITS: Record<AmcCoverageType, { items: string[]; color: strin
     ],
   },
   Standard: {
-    color: 'text-violet-600',
+    color: 'text-cyan-600',
     items: [
       'All Basic benefits',
       'Priority response time SLA',
@@ -236,7 +236,7 @@ export function MSAmcDetail() {
       <motion.div {...fadeUp} className="text-center py-16">
         <XCircle className="w-12 h-12 text-gray-300 mx-auto mb-3" />
         <p className="text-sm text-gray-400">Contract not found</p>
-        <button onClick={goBack} className="text-violet-600 text-sm font-semibold mt-3">Go Back</button>
+        <button onClick={goBack} className="text-cyan-600 text-sm font-semibold mt-3">Go Back</button>
       </motion.div>
     );
   }
@@ -324,7 +324,7 @@ export function MSAmcDetail() {
               className={cn(
                 'flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold transition-all',
                 activeTab === tab.key
-                  ? 'bg-white text-violet-700 shadow-sm'
+                  ? 'bg-white text-cyan-700 shadow-sm'
                   : 'text-gray-500',
               )}
             >
@@ -344,7 +344,7 @@ export function MSAmcDetail() {
               <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Client Information</h3>
               <button
                 onClick={() => navigate('create-amc', contract.id)}
-                className="text-violet-600 active:scale-95 transition-transform"
+                className="text-cyan-600 active:scale-95 transition-transform"
               >
                 <Edit3 className="w-4 h-4" />
               </button>
@@ -359,7 +359,7 @@ export function MSAmcDetail() {
                   href={`tel:${contract.clientPhone.replace(/[^0-9+]/g, '')}`}
                   className="flex items-center gap-2.5"
                 >
-                  <Phone className="w-4 h-4 text-violet-400 shrink-0" />
+                  <Phone className="w-4 h-4 text-cyan-400 shrink-0" />
                   <span className="text-sm text-gray-700">{contract.clientPhone}</span>
                 </a>
               )}
@@ -368,7 +368,7 @@ export function MSAmcDetail() {
                   href={`mailto:${contract.clientEmail}`}
                   className="flex items-center gap-2.5"
                 >
-                  <Mail className="w-4 h-4 text-violet-400 shrink-0" />
+                  <Mail className="w-4 h-4 text-cyan-400 shrink-0" />
                   <span className="text-sm text-gray-700 truncate">{contract.clientEmail}</span>
                 </a>
               )}
@@ -409,7 +409,7 @@ export function MSAmcDetail() {
               </div>
               <div>
                 <p className="text-[10px] text-gray-400">Payment Amount</p>
-                <p className="text-sm font-bold text-violet-700 mt-0.5">{formatBDT(contract.paymentAmount)}</p>
+                <p className="text-sm font-bold text-cyan-700 mt-0.5">{formatBDT(contract.paymentAmount)}</p>
               </div>
               <div>
                 <p className="text-[10px] text-gray-400">Response Time</p>
@@ -439,7 +439,7 @@ export function MSAmcDetail() {
               <motion.div
                 initial={{ width: 0 }}
                 animate={{ width: `${revenuePercent}%`, transition: { duration: 0.6, ease: 'easeOut' as const } }}
-                className="h-full bg-gradient-to-r from-violet-500 to-purple-500 rounded-full"
+                className="h-full bg-gradient-to-r from-cyan-500 to-blue-600 rounded-full"
               />
             </div>
             <div className="flex items-center justify-between mt-1.5">
@@ -453,8 +453,8 @@ export function MSAmcDetail() {
             onClick={() => navigate('create-amc', contract.id)}
             className={cn(
               'w-full h-11 rounded-2xl text-sm font-bold shadow-lg transition-all',
-              'bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-violet-500/20',
-              'hover:shadow-violet-500/30 active:scale-[0.98]',
+              'bg-gradient-to-br from-cyan-500 to-blue-600 text-white shadow-cyan-500/20',
+              'hover:shadow-cyan-500/30 active:scale-[0.98]',
             )}
           >
             <Edit3 className="w-4 h-4 mr-2" />
@@ -469,7 +469,7 @@ export function MSAmcDetail() {
           {/* Visits summary */}
           <motion.div {...fadeChild} className="grid grid-cols-2 gap-2.5">
             <div className="bg-white rounded-2xl border border-gray-100 p-3 shadow-sm text-center">
-              <Wrench className="w-4 h-4 text-violet-500 mx-auto mb-1" />
+              <Wrench className="w-4 h-4 text-cyan-500 mx-auto mb-1" />
               <p className="text-lg font-bold text-gray-900">{visits.length}</p>
               <p className="text-[10px] text-gray-400 font-medium">Total Visits</p>
             </div>
@@ -540,7 +540,7 @@ export function MSAmcDetail() {
               <motion.button
                 initial={{ scale: 0, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1, transition: { delay: 0.2, duration: 0.3, ease: 'easeOut' as const } }}
-                className="fixed bottom-24 right-4 w-14 h-14 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-lg shadow-violet-500/20 flex items-center justify-center active:scale-95 transition-transform z-40"
+                className="fixed bottom-24 right-4 w-14 h-14 rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/20 flex items-center justify-center active:scale-95 transition-transform z-40"
               >
                 <Plus className="w-6 h-6" />
               </motion.button>
@@ -649,8 +649,8 @@ export function MSAmcDetail() {
                   disabled={submittingVisit || !visitDate}
                   className={cn(
                     'w-full h-12 rounded-2xl text-sm font-bold shadow-lg transition-all',
-                    'bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-violet-500/20',
-                    'hover:shadow-violet-500/30 active:scale-[0.98]',
+                    'bg-gradient-to-br from-cyan-500 to-blue-600 text-white shadow-cyan-500/20',
+                    'hover:shadow-cyan-500/30 active:scale-[0.98]',
                     (submittingVisit || !visitDate) && 'opacity-60 pointer-events-none',
                   )}
                 >
@@ -675,13 +675,13 @@ export function MSAmcDetail() {
           {/* Response time */}
           <motion.div {...fadeChild} className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
             <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-xl bg-violet-100 flex items-center justify-center shrink-0">
-                <Timer className="w-5 h-5 text-violet-600" />
+              <div className="w-11 h-11 rounded-xl bg-cyan-100 flex items-center justify-center shrink-0">
+                <Timer className="w-5 h-5 text-cyan-600" />
               </div>
               <div>
                 <p className="text-sm font-semibold text-gray-900">Response Time SLA</p>
                 <p className="text-xs text-gray-500 mt-0.5">
-                  Maximum <span className="font-bold text-violet-600">{contract.responseHours} hours</span> response time
+                  Maximum <span className="font-bold text-cyan-600">{contract.responseHours} hours</span> response time
                 </p>
               </div>
             </div>
@@ -754,7 +754,7 @@ export function MSAmcDetail() {
                   <Banknote className="w-4 h-4 text-gray-400" />
                   <span className="text-sm text-gray-600">Payment amount</span>
                 </div>
-                <span className="text-sm font-bold text-violet-700">{formatBDT(contract.paymentAmount)}</span>
+                <span className="text-sm font-bold text-cyan-700">{formatBDT(contract.paymentAmount)}</span>
               </div>
             </div>
           </motion.div>

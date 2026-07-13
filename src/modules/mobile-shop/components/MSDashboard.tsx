@@ -94,7 +94,7 @@ export function MSDashboard() {
   /* ── Data ── */
 
   const reports = [
-    { label: 'Sales Report', icon: TrendingUp, gradient: 'from-violet-500 to-purple-600', view: 'sales-history' as const },
+    { label: 'Sales Report', icon: TrendingUp, gradient: 'from-cyan-500 to-blue-600', view: 'sales-history' as const },
     { label: 'Due Book', icon: BookOpen, gradient: 'from-rose-500 to-pink-600', view: 'due-book' as const },
     { label: 'Purchase Report', icon: Receipt, gradient: 'from-amber-500 to-orange-600', view: 'purchase-orders' as const },
   ];
@@ -103,7 +103,7 @@ export function MSDashboard() {
     { label: 'Job Cards', icon: ClipboardCheck, view: 'job-cards' as const, gradient: 'from-amber-400 to-orange-500', ring: 'ring-amber-500/20' },
     { label: 'AMC', icon: ShieldCheck, view: 'amc' as const, gradient: 'from-teal-400 to-emerald-500', ring: 'ring-teal-500/20' },
     { label: 'Projects', icon: Building2, view: 'projects' as const, gradient: 'from-cyan-400 to-blue-500', ring: 'ring-cyan-500/20' },
-    { label: 'Tasks', icon: Calculator, view: 'installation-tasks' as const, gradient: 'from-fuchsia-400 to-purple-500', ring: 'ring-fuchsia-500/20' },
+    { label: 'Tasks', icon: Calculator, view: 'installation-tasks' as const, gradient: 'from-fuchsia-400 to-blue-600', ring: 'ring-fuchsia-500/20' },
   ];
 
   const row2 = [
@@ -154,8 +154,8 @@ export function MSDashboard() {
       title: 'AMC Renewals',
       description: 'Upcoming contract renewals & visits',
       icon: ClipboardCheck,
-      gradient: 'from-violet-500 to-purple-600',
-      shadow: 'shadow-violet-500/20',
+      gradient: 'from-cyan-500 to-blue-600',
+      shadow: 'shadow-cyan-500/20',
       view: 'amc' as const,
       tag: 'Renew',
     },
@@ -201,10 +201,10 @@ export function MSDashboard() {
         {/* ── Quick Reports ── */}
         <motion.div variants={fadeUp}>
           <div className="flex items-center gap-2.5 mb-3">
-            <div className="w-1 h-4 rounded-full bg-gradient-to-b from-violet-500 to-purple-600" />
+            <div className="w-1 h-4 rounded-full bg-gradient-to-b from-cyan-500 to-blue-600" />
             <h2 className="text-[13px] font-bold text-gray-900 tracking-tight">Quick Reports</h2>
             <div className="flex-1 h-px bg-gray-100" />
-            <button onClick={() => navigate('reports')} className="text-[11px] text-violet-600 font-semibold flex items-center gap-0.5">
+            <button onClick={() => navigate('reports')} className="text-[11px] text-cyan-600 font-semibold flex items-center gap-0.5">
               All <ArrowUpRight className="w-3 h-3" />
             </button>
           </div>
@@ -384,7 +384,7 @@ export function MSDashboard() {
                   onClick={() => setOverviewIndex(i)}
                   className={cn(
                     'w-1.5 h-1.5 rounded-full transition-all',
-                    i === overviewIndex ? 'bg-violet-500 w-4' : 'bg-gray-300 hover:bg-gray-400'
+                    i === overviewIndex ? 'bg-cyan-500 w-4' : 'bg-gray-300 hover:bg-gray-400'
                   )}
                 />
               ))}
@@ -460,14 +460,14 @@ export function MSDashboard() {
             <div className="w-1 h-4 rounded-full bg-gradient-to-b from-blue-500 to-indigo-600" />
             <h2 className="text-[13px] font-bold text-gray-900 tracking-tight">Inventory</h2>
             <div className="flex-1 h-px bg-gray-100" />
-            <button onClick={() => navigate('inventory-hub')} className="text-[11px] text-violet-600 font-semibold flex items-center gap-0.5">
+            <button onClick={() => navigate('inventory-hub')} className="text-[11px] text-cyan-600 font-semibold flex items-center gap-0.5">
               All <ArrowUpRight className="w-3 h-3" />
             </button>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5">
             {[
               { label: 'Products', desc: 'Manage catalog', icon: Package, gradient: 'from-blue-500 to-indigo-600', view: 'products' as const },
-              { label: 'Serial Items', desc: 'Track by serial', icon: Sparkles, gradient: 'from-violet-500 to-purple-600', view: 'serial-items' as const },
+              { label: 'Serial Items', desc: 'Track by serial', icon: Sparkles, gradient: 'from-cyan-500 to-blue-600', view: 'serial-items' as const },
               { label: 'Suppliers', desc: 'Vendor management', icon: Truck, gradient: 'from-amber-500 to-orange-600', view: 'suppliers' as const },
               { label: 'Categories', desc: 'Organize items', icon: BarChart3, gradient: 'from-emerald-500 to-teal-600', view: 'inventory-hub' as const },
             ].map((item) => {

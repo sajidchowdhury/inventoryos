@@ -33,21 +33,21 @@ const fadeUp = {
 const statusConfig: Record<string, { label: string; color: string }> = {
   'in-stock': { label: 'In Stock', color: 'bg-emerald-50 text-emerald-700' },
   'sold': { label: 'Sold', color: 'bg-blue-50 text-blue-700' },
-  'installed': { label: 'Installed', color: 'bg-violet-50 text-violet-700' },
+  'installed': { label: 'Installed', color: 'bg-cyan-50 text-cyan-700' },
   'in-repair': { label: 'In Repair', color: 'bg-amber-50 text-amber-700' },
   'warranty-claim': { label: 'Warranty Claim', color: 'bg-red-50 text-red-600' },
   'defective': { label: 'Defective', color: 'bg-gray-100 text-gray-600' },
 };
 
 const categoryColor: Record<string, string> = {
-  Cameras: 'bg-violet-100 text-violet-700',
+  Cameras: 'bg-cyan-100 text-cyan-700',
   'DVR/NVR': 'bg-amber-100 text-amber-700',
   Accessories: 'bg-emerald-100 text-emerald-700',
   Cables: 'bg-sky-100 text-sky-700',
 };
 
 function getCategoryColor(name: string): string {
-  return categoryColor[name] || 'bg-purple-100 text-purple-700';
+  return categoryColor[name] || 'bg-cyan-100 text-cyan-700';
 }
 
 function formatDate(dateStr?: string): string {
@@ -262,7 +262,7 @@ export function MSProductDetail() {
             {categoryName}
           </span>
           {product.masterProductId && (
-            <span className="text-[11px] px-2.5 py-1 rounded-full font-medium bg-violet-100 text-violet-700 flex items-center gap-1">
+            <span className="text-[11px] px-2.5 py-1 rounded-full font-medium bg-cyan-100 text-cyan-700 flex items-center gap-1">
               <Sparkles className="w-3 h-3" /> Master Catalog
             </span>
           )}
@@ -294,8 +294,8 @@ export function MSProductDetail() {
       {/* Pricing Card */}
       <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
         <div className="flex items-center gap-2 mb-4">
-          <div className="w-7 h-7 rounded-lg bg-violet-50 flex items-center justify-center">
-            <Tag className="w-4 h-4 text-violet-500" />
+          <div className="w-7 h-7 rounded-lg bg-cyan-50 flex items-center justify-center">
+            <Tag className="w-4 h-4 text-cyan-500" />
           </div>
           <h2 className="text-sm font-bold text-gray-800">Pricing</h2>
         </div>
@@ -307,7 +307,7 @@ export function MSProductDetail() {
           </div>
           <div>
             <p className="text-[10px] text-gray-400 uppercase tracking-wide font-medium">Sell Price</p>
-            <p className="text-sm font-bold text-violet-600 mt-0.5">৳{product.sellPrice.toLocaleString()}</p>
+            <p className="text-sm font-bold text-cyan-600 mt-0.5">৳{product.sellPrice.toLocaleString()}</p>
           </div>
           <div>
             <p className="text-[10px] text-gray-400 uppercase tracking-wide font-medium">MRP</p>
@@ -339,8 +339,8 @@ export function MSProductDetail() {
       {/* Stock & Tracking Card */}
       <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
         <div className="flex items-center gap-2 mb-4">
-          <div className="w-7 h-7 rounded-lg bg-violet-50 flex items-center justify-center">
-            <BarChart3 className="w-4 h-4 text-violet-500" />
+          <div className="w-7 h-7 rounded-lg bg-cyan-50 flex items-center justify-center">
+            <BarChart3 className="w-4 h-4 text-cyan-500" />
           </div>
           <h2 className="text-sm font-bold text-gray-800">Stock & Tracking</h2>
         </div>
@@ -423,8 +423,8 @@ export function MSProductDetail() {
         <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg bg-violet-50 flex items-center justify-center">
-                <Hash className="w-4 h-4 text-violet-500" />
+              <div className="w-7 h-7 rounded-lg bg-cyan-50 flex items-center justify-center">
+                <Hash className="w-4 h-4 text-cyan-500" />
               </div>
               <h2 className="text-sm font-bold text-gray-800">Serial Items</h2>
               <span className="text-[10px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 font-medium">
@@ -433,7 +433,7 @@ export function MSProductDetail() {
             </div>
             <button
               onClick={() => setShowAddSerialsDialog(true)}
-              className="flex items-center gap-1 text-xs font-semibold text-violet-600 active:scale-[0.98] transition-transform"
+              className="flex items-center gap-1 text-xs font-semibold text-cyan-600 active:scale-[0.98] transition-transform"
             >
               <Plus className="w-3.5 h-3.5" />
               Add Serials
@@ -490,7 +490,7 @@ export function MSProductDetail() {
                           });
                           setShowStatusDialog(true);
                         }}
-                        className="w-7 h-7 rounded-lg bg-white border border-gray-200 flex items-center justify-center active:bg-violet-50 active:border-violet-200 transition-colors"
+                        className="w-7 h-7 rounded-lg bg-white border border-gray-200 flex items-center justify-center active:bg-cyan-50 active:border-cyan-200 transition-colors"
                       >
                         <RefreshCw className="w-3 h-3 text-gray-400" />
                       </button>
@@ -505,7 +505,7 @@ export function MSProductDetail() {
           {totalSerials > 10 && (
             <button
               onClick={() => navigate('serial-items', contextId)}
-              className="w-full mt-3 py-2 text-xs font-semibold text-violet-600 flex items-center justify-center gap-1 active:scale-[0.98] transition-transform"
+              className="w-full mt-3 py-2 text-xs font-semibold text-cyan-600 flex items-center justify-center gap-1 active:scale-[0.98] transition-transform"
             >
               View All {totalSerials} Serial Items
               <ChevronRight className="w-3.5 h-3.5" />
@@ -519,7 +519,7 @@ export function MSProductDetail() {
         <div className="flex gap-3">
           <button
             onClick={() => navigate('edit-product', contextId)}
-            className="flex-1 h-11 rounded-2xl bg-gradient-to-r from-violet-500 to-purple-600 text-white font-semibold text-sm shadow-lg shadow-violet-500/20 flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
+            className="flex-1 h-11 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-semibold text-sm shadow-lg shadow-cyan-500/20 flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
           >
             <Edit3 className="w-4 h-4" />
             Edit Product
@@ -600,7 +600,7 @@ export function MSProductDetail() {
               <button
                 onClick={handleAddSerials}
                 disabled={newSerials.length === 0 || addingSerials}
-                className="flex-1 h-11 rounded-xl bg-gradient-to-r from-violet-500 to-purple-600 text-white font-semibold text-sm disabled:opacity-50 flex items-center justify-center gap-2"
+                className="flex-1 h-11 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-semibold text-sm disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {addingSerials ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
                 {addingSerials ? 'Adding...' : `Add ${newSerials.length} Serial${newSerials.length !== 1 ? 's' : ''}`}

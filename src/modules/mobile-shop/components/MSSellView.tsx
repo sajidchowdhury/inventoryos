@@ -82,7 +82,7 @@ const PAYMENT_METHODS: {
   { method: 'CARD', label: 'Card', icon: CreditCard, bg: 'bg-blue-50', border: 'border-blue-200', iconColor: 'text-blue-600', needsRef: true, refLabel: 'Card Terminal Reference', refPlaceholder: 'e.g. TID-001234' },
   { method: 'BKASH', label: 'bKash', icon: Smartphone, bg: 'bg-pink-50', border: 'border-pink-200', iconColor: 'text-pink-600', needsRef: true, refLabel: 'Transaction ID', refPlaceholder: 'e.g. TXN123ABC' },
   { method: 'NAGAD', label: 'Nagad', icon: Smartphone, bg: 'bg-orange-50', border: 'border-orange-200', iconColor: 'text-orange-600', needsRef: true, refLabel: 'Transaction ID', refPlaceholder: 'e.g. TXN456DEF' },
-  { method: 'ROCKET', label: 'Rocket', icon: Smartphone, bg: 'bg-purple-50', border: 'border-purple-200', iconColor: 'text-purple-600', needsRef: true, refLabel: 'Transaction ID', refPlaceholder: 'e.g. TXN789GHI' },
+  { method: 'ROCKET', label: 'Rocket', icon: Smartphone, bg: 'bg-cyan-50', border: 'border-cyan-200', iconColor: 'text-cyan-600', needsRef: true, refLabel: 'Transaction ID', refPlaceholder: 'e.g. TXN789GHI' },
 ];
 
 const METHOD_BADGE_COLORS: Record<PaymentMethod, string> = {
@@ -90,7 +90,7 @@ const METHOD_BADGE_COLORS: Record<PaymentMethod, string> = {
   CARD: 'bg-blue-100 text-blue-700',
   BKASH: 'bg-pink-100 text-pink-700',
   NAGAD: 'bg-orange-100 text-orange-700',
-  ROCKET: 'bg-purple-100 text-purple-700',
+  ROCKET: 'bg-cyan-100 text-cyan-700',
 };
 
 export function MSSellView() {
@@ -383,26 +383,26 @@ export function MSSellView() {
         <label className="text-xs font-semibold text-gray-900 block mb-2.5">Customer</label>
         <div className="space-y-2.5">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-violet-50 flex items-center justify-center shrink-0">
-              <User className="w-4 h-4 text-violet-500" />
+            <div className="w-8 h-8 rounded-lg bg-cyan-50 flex items-center justify-center shrink-0">
+              <User className="w-4 h-4 text-cyan-500" />
             </div>
             <Input
               placeholder="Customer name (optional)"
               value={customerName}
               onChange={(e) => setCustomerName(e.target.value)}
-              className="h-9 rounded-xl bg-gray-50 border-gray-100 text-sm focus:ring-violet-400/40 focus:border-violet-400"
+              className="h-9 rounded-xl bg-gray-50 border-gray-100 text-sm focus:ring-cyan-400/40 focus:border-cyan-400"
             />
           </div>
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-violet-50 flex items-center justify-center shrink-0">
-              <Phone className="w-4 h-4 text-violet-500" />
+            <div className="w-8 h-8 rounded-lg bg-cyan-50 flex items-center justify-center shrink-0">
+              <Phone className="w-4 h-4 text-cyan-500" />
             </div>
             <Input
               placeholder="Phone number (optional)"
               value={customerPhone}
               onChange={(e) => setCustomerPhone(e.target.value)}
               type="tel"
-              className="h-9 rounded-xl bg-gray-50 border-gray-100 text-sm focus:ring-violet-400/40 focus:border-violet-400"
+              className="h-9 rounded-xl bg-gray-50 border-gray-100 text-sm focus:ring-cyan-400/40 focus:border-cyan-400"
             />
           </div>
         </div>
@@ -417,12 +417,12 @@ export function MSSellView() {
       <div>
         <span className="text-sm font-semibold text-gray-900 px-0.5 block mb-2">Add Products</span>
         <div className="relative mb-3">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-violet-400" />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-cyan-400" />
           <Input
             placeholder="Search products by name or brand..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full h-10 pl-10 pr-10 rounded-xl bg-white border-gray-200 text-sm placeholder:text-gray-400 focus:ring-violet-400/40 focus:border-violet-400"
+            className="w-full h-10 pl-10 pr-10 rounded-xl bg-white border-gray-200 text-sm placeholder:text-gray-400 focus:ring-cyan-400/40 focus:border-cyan-400"
           />
           {searchQuery && (
             <button
@@ -452,11 +452,11 @@ export function MSSellView() {
                 <div
                   key={product.id}
                   onClick={() => addToCart(product)}
-                  className="bg-white rounded-xl border border-gray-100 p-3 flex items-center justify-between active:scale-[0.98] transition-transform cursor-pointer hover:border-violet-200"
+                  className="bg-white rounded-xl border border-gray-100 p-3 flex items-center justify-between active:scale-[0.98] transition-transform cursor-pointer hover:border-cyan-200"
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="w-8 h-8 rounded-lg bg-violet-50 flex items-center justify-center shrink-0">
-                      <Package className="w-4 h-4 text-violet-500" />
+                    <div className="w-8 h-8 rounded-lg bg-cyan-50 flex items-center justify-center shrink-0">
+                      <Package className="w-4 h-4 text-cyan-500" />
                     </div>
                     <div className="min-w-0">
                       <p className="text-xs font-semibold text-gray-900 truncate">{product.name}</p>
@@ -468,8 +468,8 @@ export function MSSellView() {
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <span className="text-xs font-bold text-gray-900">{formatBDT(product.sellPrice)}</span>
-                    <div className="w-6 h-6 rounded-full bg-violet-100 flex items-center justify-center">
-                      <Plus className="w-3.5 h-3.5 text-violet-600" />
+                    <div className="w-6 h-6 rounded-full bg-cyan-100 flex items-center justify-center">
+                      <Plus className="w-3.5 h-3.5 text-cyan-600" />
                     </div>
                   </div>
                 </div>
@@ -525,7 +525,7 @@ export function MSSellView() {
                         )}
                       </p>
                       {item.serialTracked && item.serialNumber && (
-                        <p className="text-[10px] text-violet-600 font-mono mt-0.5 truncate">
+                        <p className="text-[10px] text-cyan-600 font-mono mt-0.5 truncate">
                           {item.serialNumber}
                         </p>
                       )}
@@ -553,9 +553,9 @@ export function MSSellView() {
                       <button
                         onClick={() => updateQty(item.productId, 1)}
                         disabled={item.serialTracked || item.quantity >= item.maxStock}
-                        className="w-7 h-7 rounded-lg bg-violet-100 flex items-center justify-center active:bg-violet-200 transition-colors disabled:opacity-40"
+                        className="w-7 h-7 rounded-lg bg-cyan-100 flex items-center justify-center active:bg-cyan-200 transition-colors disabled:opacity-40"
                       >
-                        <Plus className="w-3.5 h-3.5 text-violet-600" />
+                        <Plus className="w-3.5 h-3.5 text-cyan-600" />
                       </button>
                       <button
                         onClick={() => removeItem(item.productId)}
@@ -585,7 +585,7 @@ export function MSSellView() {
               placeholder="0"
               value={discountStr}
               onChange={(e) => setDiscountStr(e.target.value)}
-              className="pl-7 h-9 rounded-xl bg-gray-50 border-gray-100 text-sm focus:ring-violet-400/40 focus:border-violet-400"
+              className="pl-7 h-9 rounded-xl bg-gray-50 border-gray-100 text-sm focus:ring-cyan-400/40 focus:border-cyan-400"
             />
           </div>
         </div>
@@ -622,7 +622,7 @@ export function MSSellView() {
     return (
       <div className="space-y-4 pb-36">
         {/* Total due hero */}
-        <div className="bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl p-5 text-white shadow-lg shadow-violet-500/20">
+        <div className="bg-gradient-to-br from-cyan-500 to-blue-600 rounded-2xl p-5 text-white shadow-lg shadow-cyan-500/20">
           <p className="text-xs font-medium text-white/70 mb-1">Total Due</p>
           <p className="text-3xl font-bold">{formatBDT(totalDue)}</p>
           <div className="mt-3">
@@ -659,7 +659,7 @@ export function MSSellView() {
                   className={cn(
                     'flex flex-col items-center gap-1.5 p-2.5 rounded-xl border-2 transition-all active:scale-95',
                     isSelected
-                      ? `${pm.bg} ${pm.border} ring-2 ring-offset-1 ring-violet-400`
+                      ? `${pm.bg} ${pm.border} ring-2 ring-offset-1 ring-cyan-400`
                       : 'bg-white border-gray-100 hover:border-gray-200'
                   )}
                 >
@@ -701,7 +701,7 @@ export function MSSellView() {
                 placeholder="Enter amount"
                 value={paymentAmountStr}
                 onChange={(e) => setPaymentAmountStr(e.target.value)}
-                className="h-10 rounded-xl bg-gray-50 border-gray-100 text-base font-semibold focus:ring-violet-400/40 focus:border-violet-400"
+                className="h-10 rounded-xl bg-gray-50 border-gray-100 text-base font-semibold focus:ring-cyan-400/40 focus:border-cyan-400"
               />
             </div>
             {(() => {
@@ -715,7 +715,7 @@ export function MSSellView() {
                       placeholder={pm.refPlaceholder}
                       value={paymentRefStr}
                       onChange={(e) => setPaymentRefStr(e.target.value)}
-                      className="h-10 rounded-xl bg-gray-50 border-gray-100 text-sm focus:ring-violet-400/40 focus:border-violet-400"
+                      className="h-10 rounded-xl bg-gray-50 border-gray-100 text-sm focus:ring-cyan-400/40 focus:border-cyan-400"
                     />
                   </div>
                 );
@@ -724,7 +724,7 @@ export function MSSellView() {
             })()}
             <button
               onClick={addPayment}
-              className="w-full h-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 text-white text-sm font-semibold shadow-md shadow-violet-500/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+              className="w-full h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 text-white text-sm font-semibold shadow-md shadow-cyan-500/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
             >
               <Plus className="w-4 h-4" />
               Add Payment
@@ -812,7 +812,7 @@ export function MSSellView() {
           {step === 'cart' ? 'New Sale' : 'Collect Payment'}
         </h1>
         {step === 'cart' && cartItemCount > 0 && (
-          <span className="text-xs text-violet-600 font-semibold bg-violet-50 px-2.5 py-1 rounded-full">
+          <span className="text-xs text-cyan-600 font-semibold bg-cyan-50 px-2.5 py-1 rounded-full">
             {cartItemCount} item{cartItemCount !== 1 ? 's' : ''}
           </span>
         )}
@@ -849,7 +849,7 @@ export function MSSellView() {
                 className={cn(
                   'w-full h-12 rounded-2xl text-sm font-semibold text-white transition-all flex items-center justify-center gap-2',
                   cart.length > 0
-                    ? 'bg-gradient-to-br from-violet-500 to-purple-600 shadow-lg shadow-violet-500/20 active:scale-[0.98]'
+                    ? 'bg-gradient-to-br from-cyan-500 to-blue-600 shadow-lg shadow-cyan-500/20 active:scale-[0.98]'
                     : 'bg-gray-200 text-gray-400 cursor-not-allowed'
                 )}
               >

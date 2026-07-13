@@ -110,7 +110,7 @@ const CLAIM_STATUS_CONFIG: Record<
 > = {
   PENDING: { badge: 'bg-amber-100 text-amber-700', label: 'Pending' },
   APPROVED: { badge: 'bg-blue-100 text-blue-700', label: 'Approved' },
-  IN_PROGRESS: { badge: 'bg-violet-100 text-violet-700', label: 'In Progress' },
+  IN_PROGRESS: { badge: 'bg-cyan-100 text-cyan-700', label: 'In Progress' },
   COMPLETED: { badge: 'bg-emerald-100 text-emerald-700', label: 'Completed' },
   REJECTED: { badge: 'bg-red-100 text-red-700', label: 'Rejected' },
   CANCELLED: { badge: 'bg-gray-100 text-gray-600', label: 'Cancelled' },
@@ -454,7 +454,7 @@ export function MSWarrantyDetail() {
         className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm"
       >
         <div className="flex items-center gap-2 mb-3">
-          <Package className="w-4 h-4 text-violet-500" />
+          <Package className="w-4 h-4 text-cyan-500" />
           <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
             Product Info
           </h3>
@@ -506,7 +506,7 @@ export function MSWarrantyDetail() {
         className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm"
       >
         <div className="flex items-center gap-2 mb-3">
-          <User className="w-4 h-4 text-violet-500" />
+          <User className="w-4 h-4 text-cyan-500" />
           <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
             Customer
           </h3>
@@ -519,7 +519,7 @@ export function MSWarrantyDetail() {
             {item.customerPhone && (
               <a
                 href={`tel:${item.customerPhone.replace(/[^0-9+]/g, '')}`}
-                className="flex items-center gap-2 text-sm text-violet-600 font-medium"
+                className="flex items-center gap-2 text-sm text-cyan-600 font-medium"
               >
                 <Phone className="w-3.5 h-3.5" />
                 {item.customerPhone}
@@ -528,7 +528,7 @@ export function MSWarrantyDetail() {
             {item.saleId && (
               <button
                 onClick={() => navigate('sale-detail', item.saleId!)}
-                className="flex items-center gap-1.5 text-xs text-violet-600 font-medium mt-1"
+                className="flex items-center gap-1.5 text-xs text-cyan-600 font-medium mt-1"
               >
                 <ExternalLink className="w-3 h-3" />
                 View Sale
@@ -550,7 +550,7 @@ export function MSWarrantyDetail() {
         >
           <Dialog open={claimDialogOpen} onOpenChange={setClaimDialogOpen}>
             <DialogTrigger asChild>
-              <Button className="w-full bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-lg shadow-violet-500/20 rounded-2xl h-11 text-sm font-semibold">
+              <Button className="w-full bg-gradient-to-br from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/20 rounded-2xl h-11 text-sm font-semibold">
                 <Plus className="w-4 h-4 mr-2" />
                 New Warranty Claim
               </Button>
@@ -597,7 +597,7 @@ export function MSWarrantyDetail() {
                   disabled={
                     !claimDescription.trim() || submittingClaim
                   }
-                  className="w-full bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-lg shadow-violet-500/20 rounded-2xl h-11 text-sm font-semibold"
+                  className="w-full bg-gradient-to-br from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/20 rounded-2xl h-11 text-sm font-semibold"
                 >
                   {submittingClaim ? (
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -621,7 +621,7 @@ export function MSWarrantyDetail() {
       >
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <FileText className="w-4 h-4 text-violet-500" />
+            <FileText className="w-4 h-4 text-cyan-500" />
             <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
               Claims History
             </h3>
@@ -629,7 +629,7 @@ export function MSWarrantyDetail() {
           {claims.length > 0 && (
             <Badge
               variant="secondary"
-              className="text-[10px] font-semibold bg-violet-50 text-violet-600"
+              className="text-[10px] font-semibold bg-cyan-50 text-cyan-600"
             >
               {claims.length}
             </Badge>
@@ -765,7 +765,7 @@ export function MSWarrantyDetail() {
                     {claim.status === 'APPROVED' && (
                       <Button
                         size="sm"
-                        className="h-7 text-[10px] rounded-lg font-semibold bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-sm px-2.5"
+                        className="h-7 text-[10px] rounded-lg font-semibold bg-gradient-to-br from-cyan-500 to-blue-600 text-white shadow-sm px-2.5"
                         disabled={actionLoading === claim.id}
                         onClick={() =>
                           updateClaimStatus(claim.id, 'IN_PROGRESS')
@@ -857,7 +857,7 @@ export function MSWarrantyDetail() {
           className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm"
         >
           <div className="flex items-center gap-2 mb-3">
-            <Clock className="w-4 h-4 text-violet-500" />
+            <Clock className="w-4 h-4 text-cyan-500" />
             <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
               Timeline
             </h3>
@@ -871,7 +871,7 @@ export function MSWarrantyDetail() {
                     className={cn(
                       'w-2.5 h-2.5 rounded-full shrink-0 mt-1.5',
                       i === 0
-                        ? 'bg-violet-500 ring-2 ring-violet-100'
+                        ? 'bg-cyan-500 ring-2 ring-cyan-100'
                         : 'bg-gray-300'
                     )}
                   />

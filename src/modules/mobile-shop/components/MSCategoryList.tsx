@@ -95,14 +95,14 @@ export function MSCategoryList() {
         <h1 className="text-lg font-bold text-gray-900 flex-1">
           Categories
           {!loading && categories.length > 0 && (
-            <span className="ml-2 text-xs font-semibold px-2 py-0.5 rounded-full bg-violet-100 text-violet-700">
+            <span className="ml-2 text-xs font-semibold px-2 py-0.5 rounded-full bg-cyan-100 text-cyan-700">
               {categories.length}
             </span>
           )}
         </h1>
         <button
           onClick={() => navigate('create-category')}
-          className="h-8 px-3 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 text-white text-xs font-semibold shadow-sm active:scale-[0.97] transition-transform flex items-center gap-1.5"
+          className="h-8 px-3 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 text-white text-xs font-semibold shadow-sm active:scale-[0.97] transition-transform flex items-center gap-1.5"
         >
           <Plus className="w-3.5 h-3.5" />
           Create
@@ -118,7 +118,7 @@ export function MSCategoryList() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search categories..."
-            className="w-full h-10 pl-9 pr-9 rounded-xl bg-white border border-gray-100 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-300 shadow-sm transition-shadow"
+            className="w-full h-10 pl-9 pr-9 rounded-xl bg-white border border-gray-100 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-300 shadow-sm transition-shadow"
           />
           {search && (
             <button
@@ -151,8 +151,8 @@ export function MSCategoryList() {
       {/* Empty state */}
       {!loading && categories.length === 0 && (
         <div className="text-center py-16">
-          <div className="w-16 h-16 rounded-2xl bg-violet-50 flex items-center justify-center mx-auto mb-4">
-            <Tag className="w-8 h-8 text-violet-400" />
+          <div className="w-16 h-16 rounded-2xl bg-cyan-50 flex items-center justify-center mx-auto mb-4">
+            <Tag className="w-8 h-8 text-cyan-400" />
           </div>
           <p className="text-sm font-semibold text-gray-700">No categories yet</p>
           <p className="text-xs text-gray-400 mt-1 mb-5 max-w-[240px] mx-auto">
@@ -160,7 +160,7 @@ export function MSCategoryList() {
           </p>
           <button
             onClick={() => navigate('create-category')}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 text-white text-sm font-semibold shadow-sm active:scale-[0.98] transition-transform"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 text-white text-sm font-semibold shadow-sm active:scale-[0.98] transition-transform"
           >
             <Plus className="w-4 h-4" />
             Create your first category
@@ -215,7 +215,7 @@ export function MSCategoryList() {
                   <div className="flex items-center gap-1 shrink-0">
                     <button
                       onClick={() => navigate('edit-category', cat.id)}
-                      className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-violet-500 hover:bg-violet-50 active:scale-[0.95] transition-all"
+                      className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-cyan-500 hover:bg-cyan-50 active:scale-[0.95] transition-all"
                       title="Edit"
                     >
                       <Pencil className="w-4 h-4" />

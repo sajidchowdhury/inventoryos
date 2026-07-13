@@ -122,7 +122,7 @@ export function MSBranchesList() {
         <h1 className="text-lg font-bold text-gray-900 flex-1">Branches</h1>
         <button
           onClick={() => setDialogOpen(true)}
-          className="h-8 px-3 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 text-white text-xs font-semibold shadow-sm active:scale-[0.97] transition-transform flex items-center gap-1.5"
+          className="h-8 px-3 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 text-white text-xs font-semibold shadow-sm active:scale-[0.97] transition-transform flex items-center gap-1.5"
         >
           <Plus className="w-3.5 h-3.5" />
           Add
@@ -150,8 +150,8 @@ export function MSBranchesList() {
       {/* Empty state */}
       {!loading && branches.length === 0 && (
         <div className="text-center py-16">
-          <div className="w-16 h-16 rounded-2xl bg-violet-50 flex items-center justify-center mx-auto mb-4">
-            <Building2 className="w-8 h-8 text-violet-400" />
+          <div className="w-16 h-16 rounded-2xl bg-cyan-50 flex items-center justify-center mx-auto mb-4">
+            <Building2 className="w-8 h-8 text-cyan-400" />
           </div>
           <p className="text-sm font-semibold text-gray-700">No branches yet</p>
           <p className="text-xs text-gray-400 mt-1 mb-5 max-w-[220px] mx-auto">
@@ -159,7 +159,7 @@ export function MSBranchesList() {
           </p>
           <button
             onClick={() => setDialogOpen(true)}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 text-white text-sm font-semibold shadow-sm active:scale-[0.98] transition-transform"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 text-white text-sm font-semibold shadow-sm active:scale-[0.98] transition-transform"
           >
             <Plus className="w-4 h-4" />
             Create your first branch
@@ -183,14 +183,14 @@ export function MSBranchesList() {
                 className="w-full bg-white rounded-2xl border border-gray-100 p-4 shadow-sm text-left active:scale-[0.98] transition-transform"
               >
                 <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-violet-50 flex items-center justify-center shrink-0">
-                    <Building2 className="w-5 h-5 text-violet-500" />
+                  <div className="w-10 h-10 rounded-xl bg-cyan-50 flex items-center justify-center shrink-0">
+                    <Building2 className="w-5 h-5 text-cyan-500" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <p className="text-sm font-semibold text-gray-900 truncate">{branch.name}</p>
                       {branch.isDefault && (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-violet-100 text-violet-700 shrink-0">
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-cyan-100 text-cyan-700 shrink-0">
                           Default
                         </span>
                       )}
@@ -303,7 +303,7 @@ export function MSBranchesList() {
             <Button
               onClick={handleCreate}
               disabled={!name.trim() || !code.trim() || code.trim().length < 2 || creating}
-              className="h-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 text-white text-sm font-semibold shadow-sm"
+              className="h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 text-white text-sm font-semibold shadow-sm"
             >
               {creating && <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />}
               Create Branch

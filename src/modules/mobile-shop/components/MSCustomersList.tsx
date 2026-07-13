@@ -55,14 +55,14 @@ const TIER_BADGE_COLORS: Record<string, string> = {
   BRONZE: 'bg-amber-100 text-amber-700',
   SILVER: 'bg-gray-100 text-gray-600',
   GOLD: 'bg-yellow-100 text-yellow-700',
-  PLATINUM: 'bg-violet-100 text-violet-700',
+  PLATINUM: 'bg-cyan-100 text-cyan-700',
 };
 
 const TIER_AVATAR_COLORS: Record<string, string> = {
   BRONZE: 'bg-amber-500',
   SILVER: 'bg-gray-500',
   GOLD: 'bg-yellow-500',
-  PLATINUM: 'bg-violet-500',
+  PLATINUM: 'bg-cyan-500',
 };
 
 // ── Helpers ──
@@ -160,7 +160,7 @@ export function MSCustomersList() {
         <h1 className="text-lg font-bold text-gray-900 flex-1">Customers</h1>
         <button
           onClick={() => setShowCreateDialog(true)}
-          className="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center active:opacity-90 transition-opacity shadow-lg shadow-violet-500/20"
+          className="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center active:opacity-90 transition-opacity shadow-lg shadow-cyan-500/20"
         >
           <Plus className="w-5 h-5 text-white" />
         </button>
@@ -177,7 +177,7 @@ export function MSCustomersList() {
             {stats.totalCustomers} Customers
           </span>
           <span className="text-gray-300">·</span>
-          <span className="text-violet-600 font-medium">
+          <span className="text-cyan-600 font-medium">
             {customersWithBalance} with balance
           </span>
           <span className="text-gray-300">·</span>
@@ -189,13 +189,13 @@ export function MSCustomersList() {
 
       {/* ── Search input ── */}
       <div className="relative">
-        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-violet-400" />
+        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-cyan-400" />
         <input
           type="text"
           placeholder="Search by name or phone..."
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
-          className="w-full h-11 pl-10 pr-10 rounded-2xl bg-white border border-gray-200 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-400/40 focus:border-violet-400 transition-all"
+          className="w-full h-11 pl-10 pr-10 rounded-2xl bg-white border border-gray-200 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-400/40 focus:border-cyan-400 transition-all"
         />
         {searchInput && (
           <button
@@ -219,7 +219,7 @@ export function MSCustomersList() {
             className={cn(
               'px-3 py-1.5 rounded-full text-[11px] font-semibold whitespace-nowrap transition-all shrink-0',
               activeTier === tab.value
-                ? 'bg-gradient-to-r from-violet-500 to-purple-600 text-white shadow-sm'
+                ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-sm'
                 : 'bg-white text-gray-600 border border-gray-100 hover:bg-gray-50',
             )}
           >
@@ -345,7 +345,7 @@ export function MSCustomersList() {
                       <p className="text-[10px] text-gray-400 flex items-center gap-0.5">
                         <Shield className="w-2.5 h-2.5" /> Points
                       </p>
-                      <p className="text-xs font-semibold text-violet-600 mt-0.5">
+                      <p className="text-xs font-semibold text-cyan-600 mt-0.5">
                         {customer.loyaltyPoints.toLocaleString()}
                       </p>
                     </div>
@@ -363,7 +363,7 @@ export function MSCustomersList() {
         animate={{ scale: 1, opacity: 1 }}
         transition={{ delay: 0.4, type: 'spring', stiffness: 300, damping: 20 }}
         onClick={() => setShowCreateDialog(true)}
-        className="fixed bottom-20 right-4 z-40 w-14 h-14 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-xl shadow-violet-500/30 flex items-center justify-center active:scale-95 transition-transform"
+        className="fixed bottom-20 right-4 z-40 w-14 h-14 rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-600 text-white shadow-xl shadow-cyan-500/30 flex items-center justify-center active:scale-95 transition-transform"
       >
         <Plus className="w-6 h-6" />
       </motion.button>

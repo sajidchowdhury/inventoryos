@@ -33,7 +33,7 @@ const INST_STATUS: Record<string, { color: string; icon: typeof CheckCircle2; la
 };
 
 const PLAN_STATUS_BG: Record<string, string> = {
-  ACTIVE: 'bg-gradient-to-br from-violet-500 to-purple-600',
+  ACTIVE: 'bg-gradient-to-br from-cyan-500 to-blue-600',
   COMPLETED: 'bg-gradient-to-br from-green-500 to-emerald-600',
   DEFAULTED: 'bg-gradient-to-br from-red-500 to-rose-600',
   CANCELLED: 'bg-gradient-to-br from-slate-400 to-slate-500',
@@ -188,7 +188,7 @@ export function MSEmiDetail() {
           </div>
           <div className="flex items-center gap-1.5">
             <Phone className="w-3.5 h-3.5 text-gray-400" />
-            <a href={`tel:${plan.customerPhone}`} className="text-violet-600 font-medium">{plan.customerPhone}</a>
+            <a href={`tel:${plan.customerPhone}`} className="text-cyan-600 font-medium">{plan.customerPhone}</a>
           </div>
           {plan.interestRate > 0 && (
             <div className="flex items-center gap-1.5">
@@ -246,8 +246,8 @@ export function MSEmiDetail() {
                   layout
                   className={cn(
                     'rounded-xl border p-3 transition-colors',
-                    isCollectible ? 'border-violet-100 bg-violet-50/30' : 'border-gray-50 bg-gray-50/50',
-                    collectingId === inst.id && 'ring-2 ring-violet-400'
+                    isCollectible ? 'border-cyan-100 bg-cyan-50/30' : 'border-gray-50 bg-gray-50/50',
+                    collectingId === inst.id && 'ring-2 ring-cyan-400'
                   )}
                 >
                   {collectingId === inst.id ? (
@@ -264,7 +264,7 @@ export function MSEmiDetail() {
                         <button
                           onClick={submitCollect}
                           disabled={collecting}
-                          className="h-8 px-3 rounded-lg bg-gradient-to-r from-violet-500 to-purple-600 text-white text-xs font-semibold shrink-0 disabled:opacity-50"
+                          className="h-8 px-3 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 text-white text-xs font-semibold shrink-0 disabled:opacity-50"
                         >
                           {collecting ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Collect'}
                         </button>
@@ -304,7 +304,7 @@ export function MSEmiDetail() {
                         {isCollectible && (
                           <button
                             onClick={() => handleCollect(inst)}
-                            className="px-2 py-1 rounded-lg bg-violet-100 text-violet-700 text-[10px] font-semibold hover:bg-violet-200 transition-colors"
+                            className="px-2 py-1 rounded-lg bg-cyan-100 text-cyan-700 text-[10px] font-semibold hover:bg-cyan-200 transition-colors"
                           >
                             Collect
                           </button>

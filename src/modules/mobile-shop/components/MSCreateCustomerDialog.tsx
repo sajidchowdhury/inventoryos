@@ -115,7 +115,7 @@ export function MSCreateCustomerDialog({
         {/* Header */}
         <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-gray-100 shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center">
               <UserPlus className="w-4 h-4 text-white" />
             </div>
             <h2 className="text-base font-bold text-gray-900">New Customer</h2>
@@ -143,7 +143,7 @@ export function MSCreateCustomerDialog({
                 onChange={(e) => updateField('name', e.target.value)}
                 placeholder="e.g. Md. Karim"
                 autoFocus
-                className="w-full h-11 pl-10 pr-3.5 rounded-xl bg-gray-50 border border-gray-200 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-400/40 focus:border-violet-400 transition-all"
+                className="w-full h-11 pl-10 pr-3.5 rounded-xl bg-gray-50 border border-gray-200 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-400/40 focus:border-cyan-400 transition-all"
               />
             </div>
           </div>
@@ -160,7 +160,7 @@ export function MSCreateCustomerDialog({
                 value={form.phone}
                 onChange={(e) => updateField('phone', e.target.value)}
                 placeholder="e.g. 01712345678"
-                className="w-full h-11 pl-10 pr-3.5 rounded-xl bg-gray-50 border border-gray-200 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-400/40 focus:border-violet-400 transition-all"
+                className="w-full h-11 pl-10 pr-3.5 rounded-xl bg-gray-50 border border-gray-200 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-400/40 focus:border-cyan-400 transition-all"
               />
             </div>
           </div>
@@ -177,7 +177,7 @@ export function MSCreateCustomerDialog({
                 value={form.email}
                 onChange={(e) => updateField('email', e.target.value)}
                 placeholder="e.g. customer@example.com"
-                className="w-full h-11 pl-10 pr-3.5 rounded-xl bg-gray-50 border border-gray-200 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-400/40 focus:border-violet-400 transition-all"
+                className="w-full h-11 pl-10 pr-3.5 rounded-xl bg-gray-50 border border-gray-200 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-400/40 focus:border-cyan-400 transition-all"
               />
             </div>
           </div>
@@ -194,7 +194,7 @@ export function MSCreateCustomerDialog({
                 onChange={(e) => updateField('address', e.target.value)}
                 placeholder="e.g. House 12, Road 5, Dhanmondi, Dhaka"
                 rows={2}
-                className="w-full pl-10 pr-3.5 py-2.5 rounded-xl bg-gray-50 border border-gray-200 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-400/40 focus:border-violet-400 transition-all resize-none"
+                className="w-full pl-10 pr-3.5 py-2.5 rounded-xl bg-gray-50 border border-gray-200 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-400/40 focus:border-cyan-400 transition-all resize-none"
               />
             </div>
           </div>
@@ -226,7 +226,7 @@ export function MSCreateCustomerDialog({
           <button
             onClick={handleSave}
             disabled={saving || !isValid}
-            className="flex-1 h-11 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 text-white text-sm font-semibold shadow-lg shadow-violet-500/20 active:opacity-90 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+            className="flex-1 h-11 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 text-white text-sm font-semibold shadow-lg shadow-cyan-500/20 active:opacity-90 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {saving ? (
               <Loader2 className="w-4 h-4 animate-spin" />
