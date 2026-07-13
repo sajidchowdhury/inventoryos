@@ -210,6 +210,15 @@ model Business {
   cctvPurchases           MSPurchase[]
   cctvPurchaseItems       MSPurchaseItem[]
 
+  // ── NEW CCTV Module (Simple, Clean) ──
+  newCctvCategories       CCTVCategory[]
+  newCctvProducts         CCTVProduct[]
+  newCctvCustomers        CCTVCustomer[]
+  newCctvSuppliers        CCTVSupplier[]
+  newCctvPurchases        CCTVPurchase[]
+  newCctvSales            CCTVSale[]
+  newCctvExpenses         CCTVExpense[]
+
   @@index([userId])
   @@index([businessTypeId])
   @@index([subscriptionStage])  // P1: fast filtering by lifecycle stage
@@ -3355,4 +3364,320 @@ model MSExpense {
   @@index([businessId, date])
   @@index([businessId, category])
   @@map("mobile_shop_expenses")
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// CCTV MODULE — Clean, Simple Schema (14 tables)
+// Designed for Bangladeshi CCTV shops. Desktop-first. Simple.
+// Separate from MobileShop module. No shared tables.
+// ════════════════════════════════════════════════════════════════════════════
+
+// ── 1. CCTV Categories ──
+model CCTVCategory {
+  id         String   @id @default(cuid())
+  businessId String
+  name       String
+  slug       String
+  icon       String   @default("Package")
+  color      String   @default("#7c3aed")
+  sortOrder  Int      @default(0)
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  business Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  products CCTVProduct[]
+
+  @@unique([businessId, slug])
+  @@index([businessId])
+  @@map("cctv_categories")
+}
+
+// ── 2. CCTV Products ──
+model CCTVProduct {
+  id              String   @id @default(cuid())
+  businessId      String
+  categoryId      String?
+  name            String
+  brand           String
+  model           String?
+  sku             String?
+  description     String?
+  costPrice       Float    @default(0)
+  sellPrice       Float    @default(0)
+  stock           Int      @default(0)
+  unit            String   @default("piece")
+  minStock        Int      @default(0)
+  serialTracked   Boolean  @default(false)
+  warrantyMonths  Int      @default(0)
+  imageUrl        String?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  business    Business         @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  category    CCTVCategory?    @relation(fields: [categoryId], references: [id])
+  serialItems CCTVSerialItem[]
+  purchaseItems CCTVPurchaseItem[]
+  saleItems   CCTVSaleItem[]
+
+  @@index([businessId])
+  @@index([categoryId])
+  @@index([brand])
+  @@index([name])
+  @@map("cctv_products")
+}
+
+// ── 3. CCTV Serial Items ──
+model CCTVSerialItem {
+  id            String   @id @default(cuid())
+  businessId    String
+  productId     String
+  serialNumber  String
+  status        String   @default("IN_STOCK") // IN_STOCK, SOLD, RETURNED
+  costPrice     Float    @default(0)
+  sellPrice     Float?
+  purchaseDate  DateTime?
+  saleDate      DateTime?
+  warrantyEnd   DateTime?
+  customerId    String?
+  customerName  String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  product CCTVProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@index([productId])
+  @@index([serialNumber])
+  @@index([status])
+  @@map("cctv_serial_items")
+}
+
+// ── 4. CCTV Customers ──
+model CCTVCustomer {
+  id             String   @id @default(cuid())
+  businessId     String
+  name           String
+  phone          String
+  address        String?
+  openingBalance Float    @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  business Business     @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  sales    CCTVSale[]
+
+  @@index([businessId])
+  @@index([phone])
+  @@map("cctv_customers")
+}
+
+// ── 5. CCTV Suppliers ──
+model CCTVSupplier {
+  id             String   @id @default(cuid())
+  businessId     String
+  name           String
+  phone          String
+  address        String?
+  openingBalance Float    @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  business  Business         @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  purchases CCTVPurchase[]
+
+  @@index([businessId])
+  @@index([phone])
+  @@map("cctv_suppliers")
+}
+
+// ── 6. CCTV Purchases ──
+model CCTVPurchase {
+  id           String   @id @default(cuid())
+  businessId   String
+  supplierId   String?
+  supplierName String?
+  invoiceNo    String?
+  totalAmount  Float    @default(0)
+  paidAmount   Float    @default(0)
+  dueAmount    Float    @default(0)
+  purchaseDate DateTime @default(now())
+  notes        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  business  Business           @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  supplier CCTVSupplier?       @relation(fields: [supplierId], references: [id])
+  items    CCTVPurchaseItem[]
+
+  @@index([businessId])
+  @@index([supplierId])
+  @@index([purchaseDate])
+  @@map("cctv_purchases")
+}
+
+// ── 7. CCTV Purchase Items ──
+model CCTVPurchaseItem {
+  id          String   @id @default(cuid())
+  purchaseId  String
+  businessId  String
+  productId   String
+  productName String
+  quantity    Int      @default(1)
+  costPrice   Float    @default(0)
+  serialNumbers String? // comma-separated or newline-separated serials
+  createdAt   DateTime @default(now())
+
+  purchase CCTVPurchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  product  CCTVProduct  @relation(fields: [productId], references: [id])
+
+  @@index([purchaseId])
+  @@index([productId])
+  @@map("cctv_purchase_items")
+}
+
+// ── 8. CCTV Sales ──
+model CCTVSale {
+  id           String   @id @default(cuid())
+  businessId   String
+  customerId   String?
+  customerName String?
+  invoiceNo    String?
+  totalAmount  Float    @default(0)
+  paidAmount   Float    @default(0)
+  dueAmount    Float    @default(0)
+  paymentType  String   @default("cash") // cash, credit
+  saleDate     DateTime @default(now())
+  notes        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  business Business     @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  customer CCTVCustomer? @relation(fields: [customerId], references: [id])
+  items    CCTVSaleItem[]
+
+  @@index([businessId])
+  @@index([customerId])
+  @@index([saleDate])
+  @@map("cctv_sales")
+}
+
+// ── 9. CCTV Sale Items ──
+model CCTVSaleItem {
+  id           String   @id @default(cuid())
+  saleId       String
+  businessId   String
+  productId    String
+  productName  String
+  quantity     Int      @default(1)
+  sellPrice    Float    @default(0)
+  costPrice    Float    @default(0)
+  serialNumber String?
+  createdAt    DateTime @default(now())
+
+  sale    CCTVSale    @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  product CCTVProduct @relation(fields: [productId], references: [id])
+
+  @@index([saleId])
+  @@index([productId])
+  @@map("cctv_sale_items")
+}
+
+// ── 10. CCTV Payments ──
+model CCTVPayment {
+  id          String   @id @default(cuid())
+  businessId  String
+  type        String   // sale, purchase, customer_payment, supplier_payment
+  referenceId String?  // sale or purchase ID
+  customerId  String?
+  supplierId  String?
+  amount      Float    @default(0)
+  paymentMethod String @default("cash") // cash, bank, mobile
+  paymentDate DateTime @default(now())
+  notes       String?
+  createdAt   DateTime @default(now())
+
+  @@index([businessId])
+  @@index([type])
+  @@index([paymentDate])
+  @@map("cctv_payments")
+}
+
+// ── 11. CCTV Expenses ──
+model CCTVExpense {
+  id          String   @id @default(cuid())
+  businessId  String
+  category    String   // rent, electricity, transport, tea, other
+  description String?
+  amount      Float    @default(0)
+  expenseDate DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@index([expenseDate])
+  @@index([businessId, expenseDate])
+  @@index([businessId, category])
+  @@map("cctv_expenses")
+}
+
+// ── 12. CCTV Returns ──
+model CCTVReturn {
+  id          String   @id @default(cuid())
+  businessId  String
+  saleId      String?
+  customerName String?
+  totalAmount Float    @default(0)
+  reason      String?
+  returnDate  DateTime @default(now())
+  createdAt   DateTime @default(now())
+
+  items CCTVReturnItem[]
+
+  @@index([businessId])
+  @@index([saleId])
+  @@index([returnDate])
+  @@map("cctv_returns")
+}
+
+// ── 13. CCTV Return Items ──
+model CCTVReturnItem {
+  id          String   @id @default(cuid())
+  returnId    String
+  productId   String
+  productName String
+  quantity    Int      @default(1)
+  sellPrice   Float    @default(0)
+  serialNumber String?
+  createdAt   DateTime @default(now())
+
+  return CCTVReturn @relation(fields: [returnId], references: [id], onDelete: Cascade)
+
+  @@index([returnId])
+  @@map("cctv_return_items")
+}
+
+// ── 14. CCTV Warranty Claims (Simplified) ──
+model CCTVWarrantyClaim {
+  id            String   @id @default(cuid())
+  businessId    String
+  serialNumber  String
+  productId     String?
+  productName   String?
+  customerName  String?
+  customerPhone String?
+  issue         String?
+  status        String   @default("pending") // pending, in_repair, resolved, rejected
+  claimDate     DateTime @default(now())
+  resolvedDate  DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([businessId])
+  @@index([serialNumber])
+  @@index([status])
+  @@map("cctv_warranty_claims")
 }

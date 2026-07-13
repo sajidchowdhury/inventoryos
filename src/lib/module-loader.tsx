@@ -22,6 +22,13 @@ const PharmacyDashboard = dynamic(
   { loading: () => <ModuleLoadingSkeleton />, ssr: false }
 );
 
+const CCTVDashboard = dynamic(
+  () => import('@/modules/cctv-shop/components/CCTVShell').then((mod) => ({
+    default: mod.CCTVShell ?? mod.default,
+  })),
+  { loading: () => <ModuleLoadingSkeleton />, ssr: false }
+);
+
 /* ─── Module Shell Renderer ───
  * Renders the correct module shell based on business type slug.
  * Add new modules here as they are built.
@@ -36,6 +43,8 @@ export function ModuleShellRenderer() {
       return <MSDashboard />;
     case 'pharmacy':
       return <PharmacyDashboard />;
+    case 'cctv-shop':
+      return <CCTVDashboard />;
     default: {
       const mod = moduleRegistry.find((m) => m.slug === slug);
       return (
