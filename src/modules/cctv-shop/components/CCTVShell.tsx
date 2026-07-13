@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { CCTVPurchase } from './CCTVPurchase';
 import { CCTVProductsList } from './CCTVProductsList';
 import { CCTVProductForm } from './CCTVProductForm';
+import { CCTVSales } from './CCTVSales';
 import {
   Home, Package, ShoppingCart, Users, Building2, Receipt,
   BarChart3, Settings, Camera, Plus, TrendingUp, AlertTriangle,
@@ -107,7 +108,7 @@ export function CCTVShell() {
           {activeView === 'add-product' && <CCTVProductForm />}
           {activeView === 'edit-product' && <CCTVProductForm />}
           {activeView === 'purchase' && <CCTVPurchase />}
-          {activeView === 'sales' && <PlaceholderView title="Sell Products" desc="Simplified sales flow — coming in Phase 3" />}
+          {activeView === 'sales' && <CCTVSales />}
           {activeView === 'customers' && <PlaceholderView title="Customers" desc="Customer management with ledger — coming in Phase 5" />}
           {activeView === 'suppliers' && <PlaceholderView title="Suppliers" desc="Supplier management with ledger — coming in Phase 5" />}
           {activeView === 'expenses' && <PlaceholderView title="Expenses" desc="Daily expense tracking — coming soon" />}
