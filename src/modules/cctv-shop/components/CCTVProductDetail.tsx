@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import {
   ArrowLeft, Package, Edit3, Trash2, Shield, Hash, Plus,
-  ChevronRight, AlertCircle, Loader2, Copy, BarChart3, Tag, RefreshCw, Sparkles,
+  ChevronRight, AlertCircle, Loader2, Copy, BarChart3, Tag, RefreshCw, Sparkles, X,
 } from 'lucide-react';
 import { useCCTVNavStore } from '@/stores/cctv-nav-store';
 import { useAuthStore } from '@/stores/auth-store';
@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import type { CCTVSerialItem } from '@/modules/cctv-shop/types';
 import { SerialStatusChangeDialog } from './SerialStatusChangeDialog';
+import { SerialNumberEntry } from './SerialNumberEntry';
 
 const fadeUp = {
   initial: { opacity: 0, y: 16 },
@@ -99,6 +100,11 @@ export function CCTVProductDetail() {
   const [statusItem, setStatusItem] = useState<{ id: string; serialNumber: string; status: string; productName?: string; brand?: string | null } | null>(null);
   const [showStatusDialog, setShowStatusDialog] = useState(false);
 
+  // Bulk serial addition state
+  const [showAddSerialsDialog, setShowAddSerialsDialog] = useState(false);
+  const [newSerials, setNewSerials] = useState<string[]>([]);
+  const [addingSerials, setAddingSerials] = useState(false);
+
   // Fetch product detail
   useEffect(() => {
     if (!businessId || !contextId) return;
@@ -117,12 +123,13 @@ export function CCTVProductDetail() {
       .finally(() => setLoading(false));
   }, [businessId, contextId]);
 
-  const fetchSerials = async () => {
+  const fetchSerials = useCallback(async () => {
     if (!businessId || !contextId) return;
     setSerialsLoading(true);
     try {
+      // Only fetch IN_STOCK serials — sold/installed items are archived and not shown here
       const res = await fetch(
-        `/api/businesses/${businessId}/cctv/products/${contextId}/serials?limit=10`
+        `/api/businesses/${businessId}/cctv/products/${contextId}/serials?status=IN_STOCK&limit=50`
       );
       const data = await res.json();
       setSerials(data.items || data.serialItems || data.serials || []);
@@ -130,6 +137,35 @@ export function CCTVProductDetail() {
       // ignore
     } finally {
       setSerialsLoading(false);
+    }
+  }, [businessId, contextId]);
+
+  const handleAddSerials = async () => {
+    if (newSerials.length === 0) {
+      setShowAddSerialsDialog(false);
+      return;
+    }
+    setAddingSerials(true);
+    try {
+      const res = await fetch(
+        `/api/businesses/${businessId}/cctv/products/${contextId}/serials`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            items: newSerials.map((s) => ({ serialNumber: s })),
+          }),
+        }
+      );
+      if (res.ok) {
+        setShowAddSerialsDialog(false);
+        setNewSerials([]);
+        fetchSerials();
+      }
+    } catch {
+      // ignore
+    } finally {
+      setAddingSerials(false);
     }
   };
 
@@ -399,7 +435,7 @@ export function CCTVProductDetail() {
               </span>
             </div>
             <button
-              onClick={handleAddSerials}
+              onClick={() => setShowAddSerialsDialog(true)}
               className="flex items-center gap-1 text-xs font-semibold text-violet-600 active:scale-[0.98] transition-transform"
             >
               <Plus className="w-3.5 h-3.5" />
@@ -482,8 +518,8 @@ export function CCTVProductDetail() {
       )}
 
       {/* Action Buttons */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-lg border-t border-gray-100 px-4 py-3 z-40">
-        <div className="max-w-[480px] mx-auto flex gap-3">
+      <div className="sticky bottom-0 bg-white/80 backdrop-blur-lg border-t border-gray-100 px-4 py-3 z-40 -mx-4">
+        <div className="flex gap-3">
           <button
             onClick={() => navigate('edit-product', contextId)}
             className="flex-1 h-11 rounded-2xl bg-gradient-to-r from-violet-500 to-purple-600 text-white font-semibold text-sm shadow-lg shadow-violet-500/20 flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
@@ -531,6 +567,51 @@ export function CCTVProductDetail() {
         onSaved={() => fetchSerials()}
         item={statusItem}
       />
+
+      {/* Bulk Add Serials Dialog */}
+      {showAddSerialsDialog && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm">
+          <motion.div
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-white rounded-t-3xl sm:rounded-3xl w-full sm:max-w-lg max-h-[85vh] overflow-y-auto p-5"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-base font-bold text-gray-900">Add Serial Numbers</h3>
+              <button
+                onClick={() => { setShowAddSerialsDialog(false); setNewSerials([]); }}
+                className="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center"
+              >
+                <X className="w-4 h-4 text-gray-400" />
+              </button>
+            </div>
+            <p className="text-xs text-gray-500 mb-4">
+              Type or scan serial numbers for <strong>{product?.name}</strong>. Press Enter after each one.
+            </p>
+            <SerialNumberEntry
+              targetQty={999}
+              productName={product?.name}
+              onChange={setNewSerials}
+            />
+            <div className="flex gap-2 mt-5">
+              <button
+                onClick={() => { setShowAddSerialsDialog(false); setNewSerials([]); }}
+                className="flex-1 h-11 rounded-xl border border-gray-200 text-gray-600 font-semibold text-sm"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAddSerials}
+                disabled={newSerials.length === 0 || addingSerials}
+                className="flex-1 h-11 rounded-xl bg-gradient-to-r from-violet-500 to-purple-600 text-white font-semibold text-sm disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {addingSerials ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                {addingSerials ? 'Adding...' : `Add ${newSerials.length} Serial${newSerials.length !== 1 ? 's' : ''}`}
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </motion.div>
   );
 }
