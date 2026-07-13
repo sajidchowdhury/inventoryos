@@ -3,10 +3,14 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
-  ArrowLeft, Loader2, Printer, Users, Building2, Phone,
+  ArrowLeft, Loader2, Printer, Users, Building2, Phone, Plus, X,
 } from 'lucide-react';
 import { useCCTVNavStore } from '@/stores/cctv-nav-store-simple';
 import { useAuthStore } from '@/stores/auth-store';
+import { useToast } from '@/hooks/use-toast';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 
 interface Party {
@@ -53,12 +57,21 @@ export function CCTVLedger({ type }: { type: 'customer' | 'supplier' }) {
   const { goBack } = useCCTVNavStore();
   const businessId = useAuthStore((s) => s.session?.business?.id);
   const businessName = useAuthStore((s) => s.session?.business?.name || 'CCTV Shop');
+  const { toast } = useToast();
 
   const [parties, setParties] = useState<Party[]>([]);
   const [selectedId, setSelectedId] = useState('');
   const [ledger, setLedger] = useState<LedgerData | null>(null);
   const [loading, setLoading] = useState(true);
   const [ledgerLoading, setLedgerLoading] = useState(false);
+
+  // Payment dialog state
+  const [showPayment, setShowPayment] = useState(false);
+  const [paymentAmount, setPaymentAmount] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('cash');
+  const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
+  const [paymentNotes, setPaymentNotes] = useState('');
+  const [savingPayment, setSavingPayment] = useState(false);
 
   const isCustomer = type === 'customer';
   const label = isCustomer ? 'Customer' : 'Supplier';
@@ -88,6 +101,56 @@ export function CCTVLedger({ type }: { type: 'customer' | 'supplier' }) {
 
   const handlePrint = () => window.print();
 
+  const reloadLedger = () => {
+    if (!selectedId || !businessId) return;
+    fetch(`/api/businesses/${businessId}/cctv/reports/${apiPath}?${isCustomer ? 'customerId' : 'supplierId'}=${selectedId}`)
+      .then((r) => r.json())
+      .then((data) => setLedger(data))
+      .catch(() => {});
+  };
+
+  const handlePayment = async () => {
+    if (!paymentAmount || parseFloat(paymentAmount) <= 0) {
+      toast({ title: 'Error', description: 'Amount must be greater than 0', variant: 'destructive' });
+      return;
+    }
+    setSavingPayment(true);
+    try {
+      const res = await fetch(`/api/businesses/${businessId}/cctv/payments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: isCustomer ? 'customer_payment' : 'supplier_payment',
+          customerId: isCustomer ? selectedId : null,
+          supplierId: !isCustomer ? selectedId : null,
+          amount: paymentAmount,
+          paymentMethod,
+          paymentDate,
+          notes: paymentNotes || null,
+        }),
+      });
+      if (res.ok) {
+        toast({ title: 'Payment recorded', description: `৳${paymentAmount} ${paymentMethod}` });
+        setShowPayment(false);
+        setPaymentAmount('');
+        setPaymentNotes('');
+        reloadLedger();
+        // Also reload party list to update balances
+        fetch(`/api/businesses/${businessId}/cctv/reports/${apiPath}`)
+          .then((r) => r.json())
+          .then((data) => setParties(data.customers || data.suppliers || []))
+          .catch(() => {});
+      } else {
+        const data = await res.json();
+        toast({ title: data.error || 'Failed', variant: 'destructive' });
+      }
+    } catch {
+      toast({ title: 'Network error', variant: 'destructive' });
+    } finally {
+      setSavingPayment(false);
+    }
+  };
+
   return (
     <motion.div {...fadeUp} className="space-y-4 pb-4">
       {/* Header */}
@@ -97,10 +160,16 @@ export function CCTVLedger({ type }: { type: 'customer' | 'supplier' }) {
         </button>
         <h1 className="text-lg font-bold text-gray-900 flex-1">{label} Ledger</h1>
         {ledger && (
-          <button onClick={handlePrint}
-            className="h-9 px-4 rounded-xl bg-white border border-gray-200 text-xs font-semibold flex items-center gap-1.5">
-            <Printer className="w-4 h-4" /> Print
-          </button>
+          <>
+            <button onClick={() => setShowPayment(true)}
+              className="h-9 px-4 rounded-xl bg-emerald-500 text-white text-xs font-semibold flex items-center gap-1.5 active:scale-95 transition-transform">
+              <Plus className="w-4 h-4" /> Payment
+            </button>
+            <button onClick={handlePrint}
+              className="h-9 px-4 rounded-xl bg-white border border-gray-200 text-xs font-semibold flex items-center gap-1.5">
+              <Printer className="w-4 h-4" /> Print
+            </button>
+          </>
         )}
       </div>
 
@@ -265,6 +334,83 @@ export function CCTVLedger({ type }: { type: 'customer' | 'supplier' }) {
             </div>
           ) : null}
         </>
+      )}
+
+      {/* Payment Dialog */}
+      {showPayment && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm">
+          <motion.div
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-white rounded-t-3xl sm:rounded-3xl w-full sm:max-w-md p-5"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-base font-bold text-gray-900">
+                {isCustomer ? 'Receive Payment' : 'Pay Supplier'}
+              </h3>
+              <button onClick={() => setShowPayment(false)}
+                className="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center">
+                <X className="w-4 h-4 text-gray-400" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div className="bg-gray-50 rounded-xl p-3 text-sm text-gray-600">
+                {isCustomer ? ledger?.customer?.name : ledger?.supplier?.name}
+                {ledger && ledger.summary.balance > 0 && (
+                  <span className="text-red-600 font-semibold ml-2">
+                    Balance due: {formatBDT(ledger.summary.balance)}
+                  </span>
+                )}
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs text-gray-600">Amount (৳) *</Label>
+                <Input type="number" value={paymentAmount}
+                  onChange={(e) => setPaymentAmount(e.target.value)}
+                  placeholder="0" className="h-10 rounded-xl" min="0" step="0.01" autoFocus />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-gray-600">Method</Label>
+                  <select value={paymentMethod}
+                    onChange={(e) => setPaymentMethod(e.target.value)}
+                    className="w-full h-10 rounded-xl border border-gray-200 px-3 text-sm bg-white">
+                    <option value="cash">Cash</option>
+                    <option value="bank">Bank Transfer</option>
+                    <option value="mobile">Mobile (bKash/Nagad)</option>
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-gray-600">Date</Label>
+                  <Input type="date" value={paymentDate}
+                    onChange={(e) => setPaymentDate(e.target.value)}
+                    className="h-10 rounded-xl" />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs text-gray-600">Notes (optional)</Label>
+                <Textarea value={paymentNotes}
+                  onChange={(e) => setPaymentNotes(e.target.value)}
+                  placeholder="Any notes..." className="rounded-xl resize-none" rows={2} />
+              </div>
+            </div>
+
+            <div className="flex gap-2 mt-5">
+              <button onClick={() => setShowPayment(false)}
+                className="flex-1 h-11 rounded-xl border border-gray-200 text-gray-600 font-semibold text-sm">
+                Cancel
+              </button>
+              <button onClick={handlePayment} disabled={savingPayment}
+                className="flex-1 h-11 rounded-xl bg-emerald-500 text-white font-semibold text-sm disabled:opacity-50 flex items-center justify-center gap-2">
+                {savingPayment ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                {savingPayment ? 'Saving...' : 'Record Payment'}
+              </button>
+            </div>
+          </motion.div>
+        </div>
       )}
     </motion.div>
   );
