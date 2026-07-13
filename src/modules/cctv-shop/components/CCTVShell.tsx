@@ -2,6 +2,9 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
+import { CCTVPurchase } from './CCTVPurchase';
+import { CCTVProductsList } from './CCTVProductsList';
+import { CCTVProductForm } from './CCTVProductForm';
 import {
   Home, Package, ShoppingCart, Users, Building2, Receipt,
   BarChart3, Settings, Camera, Plus, TrendingUp, AlertTriangle,
@@ -100,9 +103,10 @@ export function CCTVShell() {
       <div className="flex flex-col min-h-0 flex-1 md:pl-64">
         <div className="flex-1 pb-20 md:pb-4 px-4 pt-4 max-w-[1200px] mx-auto w-full">
           {activeView === 'dashboard' && <CCTVDashboard />}
-          {activeView === 'products' && <PlaceholderView title="Products" desc="Product list and management — coming in Phase 2" />}
-          {activeView === 'add-product' && <PlaceholderView title="Add Product" desc="Coming in Phase 2" />}
-          {activeView === 'purchase' && <PlaceholderView title="Buy Products" desc="Simplified purchase flow — coming in Phase 2" />}
+          {activeView === 'products' && <CCTVProductsList />}
+          {activeView === 'add-product' && <CCTVProductForm />}
+          {activeView === 'edit-product' && <CCTVProductForm />}
+          {activeView === 'purchase' && <CCTVPurchase />}
           {activeView === 'sales' && <PlaceholderView title="Sell Products" desc="Simplified sales flow — coming in Phase 3" />}
           {activeView === 'customers' && <PlaceholderView title="Customers" desc="Customer management with ledger — coming in Phase 5" />}
           {activeView === 'suppliers' && <PlaceholderView title="Suppliers" desc="Supplier management with ledger — coming in Phase 5" />}
