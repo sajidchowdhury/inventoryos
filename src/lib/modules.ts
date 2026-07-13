@@ -46,15 +46,15 @@ export const moduleRegistry: ModuleRegistryItem[] = [
   },
   {
     slug: 'mobile-shop',
-    name: 'CCTV Shop',
+    name: 'Mobile Shop',
     icon: '📹',
     color: 'violet',
     gradient: 'from-violet-500 to-purple-600',
     bgColor: 'bg-violet-50',
     borderColor: 'border-violet-200',
     isActive: true,
-    tagline: 'Smart CCTV Business Suite',
-    description: 'End-to-end management for CCTV businesses — products, serial tracking, job cards, AMC, and more.',
+    tagline: 'Smart Mobile Shop Suite',
+    description: 'End-to-end management for mobile shop businesses — products, serial tracking, job cards, AMC, and more.',
     features: [
       { name: 'Serial Tracking', icon: '🔢', description: 'Track every item by unique serial number' },
       { name: 'Job Cards', icon: '🔧', description: 'Installation & maintenance job management' },

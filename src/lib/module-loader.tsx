@@ -6,10 +6,10 @@ import { useAuthStore } from '@/stores/auth-store';
 import { moduleRegistry } from '@/lib/modules';
 
 /* ─── Lazy-loaded module shells ─── */
-const CCTVDashboard = dynamic(
-  () => import('@/modules/cctv-shop/components/CCTVShell').then((mod) => {
-    const Comp = mod.CCTVShell ?? mod.default;
-    if (!Comp) console.error('[module-loader] CCTVShell export not found. Available:', Object.keys(mod));
+const MSDashboard = dynamic(
+  () => import('@/modules/mobile-shop/components/MSShell').then((mod) => {
+    const Comp = mod.MSShell ?? mod.default;
+    if (!Comp) console.error('[module-loader] MSShell export not found. Available:', Object.keys(mod));
     return { default: Comp };
   }),
   { loading: () => <ModuleLoadingSkeleton />, ssr: false }
@@ -33,7 +33,7 @@ export function ModuleShellRenderer() {
 
   switch (slug) {
     case 'mobile-shop':
-      return <CCTVDashboard />;
+      return <MSDashboard />;
     case 'pharmacy':
       return <PharmacyDashboard />;
     default: {

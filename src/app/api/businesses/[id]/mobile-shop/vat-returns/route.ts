@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { numberToWords } from '@/modules/cctv-shop/types';
+import { numberToWords } from '@/modules/mobile-shop/types';
 
 // GET /api/businesses/[id]/mobile-shop/vat-returns?year=X&month=Y
 // - Without year/month: list all saved returns (latest first)

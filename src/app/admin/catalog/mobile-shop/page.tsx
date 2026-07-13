@@ -50,7 +50,7 @@ const EMPTY_FORM = {
   manufacturer: "",
 };
 
-export default function CCTVCatalogPage() {
+export default function MSCatalogPage() {
   const { apiFetch, notify } = useAdmin();
   const [products, setProducts] = useState<MSMasterProduct[]>([]);
   const [total, setTotal] = useState(0);

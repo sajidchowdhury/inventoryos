@@ -121,7 +121,7 @@
   }
 }
 
-/* ─── CCTV Module Styles ─── */
+/* ─── MobileShop Module Styles ─── */
 .cctv-bg {
   background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 30%, #5b21b6 60%, #4c1d95 100%);
   position: relative;
@@ -307,8 +307,8 @@
   }
 }
 
-/* CCTV responsive container */
-.cctv-shell-wrap {
+/* MobileShop responsive container */
+.ms-shell-wrap {
   width: 100%;
   max-width: 480px;
   margin: 0 auto;
@@ -318,7 +318,7 @@
 }
 
 @media (min-width: 768px) {
-  .cctv-shell-wrap {
+  .ms-shell-wrap {
     max-width: 100%;
     box-shadow: none;
     border-left: none;

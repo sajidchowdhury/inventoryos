@@ -27,7 +27,7 @@ import {
 } from 'lucide-react';
 import { useAuthStore, type AuthSession } from '@/stores/auth-store';
 import { moduleRegistry, type ModuleRegistryItem } from '@/lib/modules';
-import { CCTVShell } from '@/modules/cctv-shop/components';
+import { MSShell } from '@/modules/mobile-shop/components';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -233,7 +233,7 @@ function DashboardView() {
   return (
     <div className="min-h-screen flex flex-col">
       <div className="flex-1">
-        {slug === 'mobile-shop' && <CCTVShell />}
+        {slug === 'mobile-shop' && <MSShell />}
         {slug === 'pharmacy' && <PharmacyShell />}
         {!['mobile-shop', 'pharmacy'].includes(slug) && (
           <div className="min-h-screen flex flex-col items-center justify-center gap-6 bg-gray-50 px-4">

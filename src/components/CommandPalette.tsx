@@ -232,9 +232,9 @@ export function CommandPalette({ commands, isOpen, onOpenChange }: CommandPalett
 
 // ── Default command sets for each module ──
 
-export function useCCTVCommands(navigate: (view: string, contextId?: string) => void): Command[] {
+export function useMSCommands(navigate: (view: string, contextId?: string) => void): Command[] {
   return [
-    { id: 'home', label: 'Dashboard', description: 'Go to CCTV dashboard', icon: Home, action: () => navigate('dashboard') },
+    { id: 'home', label: 'Dashboard', description: 'Go to Mobile Shop dashboard', icon: Home, action: () => navigate('dashboard') },
     { id: 'inventory', label: 'Inventory Hub', description: 'Manage products & stock', icon: Package, action: () => navigate('inventory-hub') },
     { id: 'products', label: 'Products List', description: 'Browse all products', icon: Package, action: () => navigate('products'), keywords: ['items', 'catalog'] },
     { id: 'add-product', label: 'Add Product', description: 'Create a new product', icon: Plus, shortcut: 'N', action: () => navigate('add-product') },

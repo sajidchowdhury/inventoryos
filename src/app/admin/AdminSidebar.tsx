@@ -31,10 +31,10 @@ const NAV_ITEMS = [
     description: "Pharmacy master product catalog (14K+)",
   },
   {
-    label: "CCTV Catalog",
+    label: "MobileShop Catalog",
     href: "/admin/catalog/mobile-shop",
     icon: Camera,
-    description: "CCTV master product catalog",
+    description: "MobileShop master product catalog",
   },
   {
     label: "System Config",
