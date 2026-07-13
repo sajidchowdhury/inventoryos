@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { CCTVPurchase } from './CCTVPurchase';
 import { CCTVProductsList } from './CCTVProductsList';
@@ -10,6 +10,7 @@ import { CCTVCashBook } from './CCTVCashBook';
 import { CCTVLedger } from './CCTVLedger';
 import { CCTVStockReport } from './CCTVStockReport';
 import { CCTVProductMovement } from './CCTVProductMovement';
+import { CCTVExpenses } from './CCTVExpenses';
 import {
   Home, Package, ShoppingCart, Users, Building2, Receipt,
   BarChart3, Settings, Camera, Plus, TrendingUp, AlertTriangle, Boxes, ArrowLeftRight,
@@ -29,7 +30,7 @@ export function CCTVShell() {
   const businessName = session?.business?.name || 'CCTV Shop';
 
   return (
-    <div className="ms-shell-wrap min-h-screen bg-gray-50">
+    <div className="cctv-shell-wrap min-h-screen bg-gray-50">
       {/* Desktop Sidebar */}
       <aside className="hidden md:flex fixed inset-y-0 left-0 z-30 w-64 flex-col border-r border-violet-100 bg-white">
         <div className="flex items-center gap-3 px-5 py-5 border-b border-violet-50">
@@ -117,7 +118,7 @@ export function CCTVShell() {
           {activeView === 'sales' && <CCTVSales />}
           {activeView === 'customers' && <CCTVLedger type="customer" />}
           {activeView === 'suppliers' && <CCTVLedger type="supplier" />}
-          {activeView === 'expenses' && <PlaceholderView title="Expenses" desc="Daily expense tracking — coming soon" />}
+          {activeView === 'expenses' && <CCTVExpenses />}
           {activeView === 'reports' && <CCTVCashBook />}
           {activeView === 'stock-report' && <CCTVStockReport />}
           {activeView === 'product-movement' && <CCTVProductMovement />}
@@ -132,13 +133,32 @@ function CCTVDashboard() {
   const { navigate } = useCCTVNavStore();
   const session = useAuthStore((s) => s.session);
   const businessName = session?.business?.name || 'CCTV Shop';
+  const [stats, setStats] = useState<any>(null);
+  const [recentSales, setRecentSales] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!session?.business?.id) return;
+    fetch(`/api/businesses/${session.business.id}/cctv/dashboard`)
+      .then((r) => r.json())
+      .then((data) => {
+        setStats(data.stats || null);
+        setRecentSales(data.recentSales || []);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, [session?.business?.id]);
+
+  const formatBDT = (n: number) => `\u09F3${n.toLocaleString('en-BD', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
 
   return (
     <motion.div {...fadeUp} className="space-y-6">
       {/* Welcome Header */}
       <div className="bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl p-6 text-white shadow-lg shadow-violet-500/20">
         <h1 className="text-xl font-bold">{businessName}</h1>
-        <p className="text-sm text-white/80 mt-1">Welcome back! Here's your business overview.</p>
+        <p className="text-sm text-white/80 mt-1">
+          {new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}
+        </p>
       </div>
 
       {/* Quick Actions */}
@@ -147,7 +167,7 @@ function CCTVDashboard() {
           { label: 'Buy Products', icon: ShoppingCart, view: 'purchase' as const, gradient: 'from-blue-500 to-indigo-600' },
           { label: 'Sell Products', icon: TrendingUp, view: 'sales' as const, gradient: 'from-emerald-500 to-teal-600' },
           { label: 'Add Product', icon: Plus, view: 'add-product' as const, gradient: 'from-violet-500 to-purple-600' },
-          { label: 'Reports', icon: BarChart3, view: 'reports' as const, gradient: 'from-amber-500 to-orange-600' },
+          { label: 'Cash Book', icon: BarChart3, view: 'reports' as const, gradient: 'from-amber-500 to-orange-600' },
         ].map((action) => (
           <button
             key={action.label}
@@ -163,45 +183,93 @@ function CCTVDashboard() {
         ))}
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
+      {/* Stats Cards — Real Data */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs text-gray-500 font-medium">Total Products</span>
+            <span className="text-[11px] text-gray-500 font-medium">Products</span>
             <Package className="w-4 h-4 text-violet-400" />
           </div>
-          <p className="text-2xl font-bold text-gray-900">0</p>
-          <p className="text-xs text-gray-400 mt-1">No products yet</p>
+          <p className="text-xl font-bold text-gray-900">{loading ? '...' : stats?.totalProducts || 0}</p>
+          <p className="text-[10px] text-gray-400 mt-1">
+            Stock value: {loading ? '...' : formatBDT(stats?.totalStockValue || 0)}
+          </p>
         </div>
-        <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
+        <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs text-gray-500 font-medium">Today's Sales</span>
+            <span className="text-[11px] text-gray-500 font-medium">Today's Sales</span>
             <TrendingUp className="w-4 h-4 text-emerald-400" />
           </div>
-          <p className="text-2xl font-bold text-gray-900">৳0</p>
-          <p className="text-xs text-gray-400 mt-1">No sales today</p>
+          <p className="text-xl font-bold text-emerald-600">{loading ? '...' : formatBDT(stats?.todaySalesTotal || 0)}</p>
+          <p className="text-[10px] text-gray-400 mt-1">
+            {loading ? '...' : `${stats?.todaySaleCount || 0} sale(s) today`}
+          </p>
         </div>
-        <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
+        <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs text-gray-500 font-medium">Low Stock Alerts</span>
+            <span className="text-[11px] text-gray-500 font-medium">Low Stock</span>
             <AlertTriangle className="w-4 h-4 text-amber-400" />
           </div>
-          <p className="text-2xl font-bold text-gray-900">0</p>
-          <p className="text-xs text-gray-400 mt-1">All stock levels OK</p>
+          <p className="text-xl font-bold text-amber-600">{loading ? '...' : stats?.lowStockCount || 0}</p>
+          <p className="text-[10px] text-gray-400 mt-1">
+            {(stats?.lowStockCount || 0) === 0 ? 'All OK' : 'Need restock'}
+          </p>
+        </div>
+        <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[11px] text-gray-500 font-medium">Today's Expenses</span>
+            <Receipt className="w-4 h-4 text-red-400" />
+          </div>
+          <p className="text-xl font-bold text-red-600">{loading ? '...' : formatBDT(stats?.todayExpensesTotal || 0)}</p>
+          <p className="text-[10px] text-gray-400 mt-1">Spent today</p>
         </div>
       </div>
 
-      {/* Coming Soon Notice */}
-      <div className="bg-violet-50 rounded-2xl border border-violet-100 p-4">
-        <div className="flex items-center gap-2 mb-2">
-          <Camera className="w-4 h-4 text-violet-500" />
-          <h3 className="text-sm font-bold text-gray-900">CCTV Module — Under Construction</h3>
+      {/* Recent Sales */}
+      {!loading && recentSales.length > 0 && (
+        <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-bold text-gray-800">Recent Sales</h3>
+            <button onClick={() => navigate('sales')} className="text-xs text-violet-600 font-semibold">
+              View All
+            </button>
+          </div>
+          <div className="space-y-2">
+            {recentSales.map((sale) => (
+              <div key={sale.id} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
+                <div>
+                  <p className="text-sm font-medium text-gray-900">{sale.customerName || 'Walk-in Customer'}</p>
+                  <p className="text-[10px] text-gray-400">
+                    {new Date(sale.saleDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
+                    {sale.paymentType === 'credit' && ' · Credit'}
+                  </p>
+                </div>
+                <span className="text-sm font-bold text-emerald-600">{formatBDT(sale.totalAmount)}</span>
+              </div>
+            ))}
+          </div>
         </div>
-        <p className="text-xs text-gray-500">
-          This is a clean, simple CCTV module being built specifically for Bangladeshi CCTV shops.
-          Features will be added in phases: Products → Purchase → Sales → Reports → Customer/Supplier Ledger.
-          Designed desktop-first with mobile responsive support.
-        </p>
+      )}
+
+      {/* Quick Links */}
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+        {[
+          { label: 'Customers', icon: Users, view: 'customers' as const },
+          { label: 'Suppliers', icon: Building2, view: 'suppliers' as const },
+          { label: 'Stock Report', icon: Boxes, view: 'stock-report' as const },
+          { label: 'Expenses', icon: Receipt, view: 'expenses' as const },
+          { label: 'Product Movement', icon: ArrowLeftRight, view: 'product-movement' as const },
+          { label: 'Settings', icon: Settings, view: 'settings' as const },
+        ].map((item) => (
+          <button
+            key={item.label}
+            onClick={() => navigate(item.view)}
+            className="flex items-center gap-2 p-3 rounded-xl bg-white border border-gray-100 shadow-sm hover:bg-violet-50 transition-colors text-left"
+          >
+            <item.icon className="w-4 h-4 text-violet-400" />
+            <span className="text-xs font-medium text-gray-700">{item.label}</span>
+          </button>
+        ))}
       </div>
     </motion.div>
   );

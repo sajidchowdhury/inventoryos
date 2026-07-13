@@ -325,3 +325,17 @@
     border-right: none;
   }
 }
+
+/* CCTV module responsive container */
+.cctv-shell-wrap {
+  width: 100%;
+  min-height: 100vh;
+  position: relative;
+  background: #f9fafb;
+}
+
+@media (min-width: 768px) {
+  .cctv-shell-wrap {
+    max-width: 100%;
+  }
+}
