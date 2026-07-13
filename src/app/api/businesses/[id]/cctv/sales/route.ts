@@ -69,21 +69,40 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         ? new Date(Date.now() + warrantyMonths * 30 * 24 * 60 * 60 * 1000)
         : null;
 
-      await db.cCTVSerialItem.updateMany({
-        where: {
-          businessId,
-          serialNumber: item.serialNumber,
-          status: "IN_STOCK",
-        },
-        data: {
-          status: "SOLD",
-          sellPrice: item.sellPrice || 0,
-          saleDate: new Date(),
-          warrantyEnd,
-          customerId: body.customerId || null,
-          customerName: body.customerName || null,
-        },
+      // Find the serial item first (to get its ID for history)
+      const serialItem = await db.cCTVSerialItem.findFirst({
+        where: { businessId, serialNumber: item.serialNumber, status: "IN_STOCK" },
       });
+
+      if (serialItem) {
+        await db.cCTVSerialItem.update({
+          where: { id: serialItem.id },
+          data: {
+            status: "SOLD",
+            sellPrice: item.sellPrice || 0,
+            saleDate: new Date(),
+            warrantyEnd,
+            customerId: body.customerId || null,
+            customerName: body.customerName || null,
+          },
+        });
+
+        // Create history entry
+        await db.cCTVSerialHistory.create({
+          data: {
+            businessId,
+            serialItemId: serialItem.id,
+            serialNumber: item.serialNumber,
+            productId: item.productId,
+            productName: item.productName,
+            eventType: "SOLD",
+            description: `Sold to ${body.customerName || "walk-in customer"}${warrantyMonths > 0 ? ` · ${warrantyMonths}m warranty` : ""}`,
+            referenceId: sale.id,
+            referenceType: "sale",
+            eventDate: new Date(),
+          },
+        });
+      }
     } else {
       // Non-serial product: decrement stock
       await db.cCTVProduct.update({

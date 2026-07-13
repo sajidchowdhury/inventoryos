@@ -3434,7 +3434,8 @@ model CCTVSerialItem {
   businessId    String
   productId     String
   serialNumber  String
-  status        String   @default("IN_STOCK") // IN_STOCK, SOLD, RETURNED
+  status        String   @default("IN_STOCK") // IN_STOCK, SOLD, RETURNED, IN_REPAIR,
+                                                // SENT_TO_SUPPLIER, REPLACED, RETURNED_TO_CUSTOMER
   costPrice     Float    @default(0)
   sellPrice     Float?
   purchaseDate  DateTime?
@@ -3442,10 +3443,12 @@ model CCTVSerialItem {
   warrantyEnd   DateTime?
   customerId    String?
   customerName  String?
+  replacesSerialId String? // if this is a replacement, points to the original serial item
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
   product CCTVProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+  history CCTVSerialHistory[]
 
   @@index([businessId])
   @@index([productId])
@@ -3680,4 +3683,95 @@ model CCTVWarrantyClaim {
   @@index([serialNumber])
   @@index([status])
   @@map("cctv_warranty_claims")
+}
+
+// ── 15. CCTV Serial History (audit log for every serial event) ──
+// Foundation for warranty tracking: search by serial → see full timeline
+model CCTVSerialHistory {
+  id            String   @id @default(cuid())
+  businessId    String
+  serialItemId  String?
+  serialNumber  String
+  productId     String?
+  productName   String?
+  eventType     String   // PURCHASED, SOLD, REPAIR_RECEIVED, REPAIR_DONE, RETURNED_TO_CUSTOMER,
+                         // SENT_TO_SUPPLIER, REPLACEMENT_RECEIVED, REPLACED, NOTE
+  description   String?
+  performedBy   String?
+  referenceId   String?  // repair ID, sale ID, purchase ID, replacement ID
+  referenceType String?  // repair, sale, purchase, replacement
+  notes         String?
+  eventDate     DateTime @default(now())
+  createdAt     DateTime @default(now())
+
+  serialItem CCTVSerialItem? @relation(fields: [serialItemId], references: [id], onDelete: SetNull)
+
+  @@index([businessId])
+  @@index([serialItemId])
+  @@index([serialNumber])
+  @@index([eventType])
+  @@index([businessId, serialNumber])
+  @@map("cctv_serial_history")
+}
+
+// ── 16. CCTV Repairs ──
+// Receive product from customer → repair in-house → return to customer
+// OR → send to supplier → get replacement → give new serial to customer
+model CCTVRepair {
+  id              String   @id @default(cuid())
+  businessId      String
+  serialNumber    String
+  serialItemId    String?
+  productId       String?
+  productName     String?
+  customerId      String?
+  customerName    String?
+  customerPhone   String?
+  issue           String
+  status          String   @default("received") // received, in_repair, ready, returned,
+                                                   // sent_to_supplier, replaced, closed
+  receivedDate    DateTime @default(now())
+  repairStartDate DateTime?
+  readyDate       DateTime?
+  returnedDate    DateTime?
+  repairNotes     String?
+  repairCost      Float    @default(0)
+  replacementId   String?  // links to CCTVSupplierReplacement if sent to supplier
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([businessId])
+  @@index([serialNumber])
+  @@index([customerId])
+  @@index([status])
+  @@map("cctv_repairs")
+}
+
+// ── 17. CCTV Supplier Replacements ──
+// Send defective product to supplier → receive replacement with new serial
+// → link old serial to new → give new serial to customer
+model CCTVSupplierReplacement {
+  id                   String   @id @default(cuid())
+  businessId           String
+  repairId             String?
+  supplierId           String?
+  supplierName         String?
+  originalSerialNumber String
+  originalSerialItemId String?
+  newSerialNumber      String?
+  newSerialItemId      String?
+  productId            String?
+  productName          String?
+  status               String   @default("sent") // sent, received, cancelled
+  sentDate             DateTime @default(now())
+  receivedDate         DateTime?
+  notes                String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@index([businessId])
+  @@index([repairId])
+  @@index([originalSerialNumber])
+  @@index([newSerialNumber])
+  @@map("cctv_supplier_replacements")
 }

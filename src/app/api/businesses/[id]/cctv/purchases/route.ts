@@ -65,9 +65,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         .map((s: string) => s.trim())
         .filter((s: string) => s.length > 0);
 
-      // Create serial items
+      // Get product name for history
+      const product = await db.cCTVProduct.findUnique({
+        where: { id: item.productId },
+        select: { name: true },
+      });
+
+      // Create serial items + history entries
       for (const serial of serials) {
-        await db.cCTVSerialItem.create({
+        const serialItem = await db.cCTVSerialItem.create({
           data: {
             businessId,
             productId: item.productId,
@@ -75,6 +81,22 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
             status: "IN_STOCK",
             costPrice: item.costPrice || 0,
             purchaseDate: new Date(),
+          },
+        });
+
+        // Create history entry
+        await db.cCTVSerialHistory.create({
+          data: {
+            businessId,
+            serialItemId: serialItem.id,
+            serialNumber: serial,
+            productId: item.productId,
+            productName: product?.name || null,
+            eventType: "PURCHASED",
+            description: `Purchased from ${body.supplierName || "unknown supplier"}${body.invoiceNo ? ` (Invoice: ${body.invoiceNo})` : ""}`,
+            referenceId: purchase.id,
+            referenceType: "purchase",
+            eventDate: new Date(),
           },
         });
       }

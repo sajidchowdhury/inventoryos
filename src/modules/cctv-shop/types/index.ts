@@ -15,6 +15,10 @@ export type CCTVViewType =
   | 'reports'
   | 'stock-report'
   | 'product-movement'
+  | 'serial-search'
+  | 'repairs'
+  | 'repair-detail'
+  | 'replacements'
   | 'settings';
 
 export interface CCTVProduct {
