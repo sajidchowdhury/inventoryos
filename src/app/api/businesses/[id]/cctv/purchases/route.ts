@@ -22,6 +22,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: "At least one product is required" }, { status: 400 });
   }
 
+  try {
+
   // Calculate total
   let totalAmount = 0;
   for (const item of body.items) {
@@ -84,21 +86,25 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           },
         });
 
-        // Create history entry
-        await db.cCTVSerialHistory.create({
-          data: {
-            businessId,
-            serialItemId: serialItem.id,
-            serialNumber: serial,
-            productId: item.productId,
-            productName: product?.name || null,
-            eventType: "PURCHASED",
-            description: `Purchased from ${body.supplierName || "unknown supplier"}${body.invoiceNo ? ` (Invoice: ${body.invoiceNo})` : ""}`,
-            referenceId: purchase.id,
-            referenceType: "purchase",
-            eventDate: new Date(),
-          },
-        });
+        // Create history entry (best-effort — don't block purchase if history table missing)
+        try {
+          await db.cCTVSerialHistory.create({
+            data: {
+              businessId,
+              serialItemId: serialItem.id,
+              serialNumber: serial,
+              productId: item.productId,
+              productName: product?.name || null,
+              eventType: "PURCHASED",
+              description: `Purchased from ${body.supplierName || "unknown supplier"}${body.invoiceNo ? ` (Invoice: ${body.invoiceNo})` : ""}`,
+              referenceId: purchase.id,
+              referenceType: "purchase",
+              eventDate: new Date(),
+            },
+          });
+        } catch (historyErr) {
+          console.error("[cctv/purchases] History write failed (run `bunx prisma db push` to create cctv_serial_history table):", historyErr);
+        }
       }
 
       // Update product stock by serial count
@@ -135,4 +141,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   }
 
   return NextResponse.json({ success: true, purchase }, { status: 201 });
+  } catch (err: any) {
+    console.error("[cctv/purchases] POST error:", err);
+    const msg = err?.message || "Failed to save purchase";
+    // Prisma table-not-found error → helpful hint
+    if (msg.includes("does not exist") || msg.includes("relation") || err?.code === "P2021") {
+      return NextResponse.json({
+        error: "Database table missing. Run `bunx prisma db push` on the server to create the new tables (cctv_serial_history, cctv_repairs, cctv_supplier_replacements).",
+        detail: msg,
+      }, { status: 500 });
+    }
+    return NextResponse.json({ error: msg }, { status: 500 });
+  }
 }

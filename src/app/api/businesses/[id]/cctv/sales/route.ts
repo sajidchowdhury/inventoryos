@@ -87,21 +87,25 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           },
         });
 
-        // Create history entry
-        await db.cCTVSerialHistory.create({
-          data: {
-            businessId,
-            serialItemId: serialItem.id,
-            serialNumber: item.serialNumber,
-            productId: item.productId,
-            productName: item.productName,
-            eventType: "SOLD",
-            description: `Sold to ${body.customerName || "walk-in customer"}${warrantyMonths > 0 ? ` · ${warrantyMonths}m warranty` : ""}`,
-            referenceId: sale.id,
-            referenceType: "sale",
-            eventDate: new Date(),
-          },
-        });
+        // Create history entry (best-effort — don't block sale if history table missing)
+        try {
+          await db.cCTVSerialHistory.create({
+            data: {
+              businessId,
+              serialItemId: serialItem.id,
+              serialNumber: item.serialNumber,
+              productId: item.productId,
+              productName: item.productName,
+              eventType: "SOLD",
+              description: `Sold to ${body.customerName || "walk-in customer"}${warrantyMonths > 0 ? ` · ${warrantyMonths}m warranty` : ""}`,
+              referenceId: sale.id,
+              referenceType: "sale",
+              eventDate: new Date(),
+            },
+          });
+        } catch (historyErr) {
+          console.error("[cctv/sales] History write failed (run `bunx prisma db push` to create cctv_serial_history table):", historyErr);
+        }
       }
     } else {
       // Non-serial product: decrement stock
