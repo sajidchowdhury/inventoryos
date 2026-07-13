@@ -13,6 +13,8 @@ export type CCTVViewType =
   | 'suppliers'
   | 'expenses'
   | 'reports'
+  | 'stock-report'
+  | 'product-movement'
   | 'settings';
 
 export interface CCTVProduct {

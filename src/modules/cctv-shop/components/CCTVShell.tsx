@@ -8,9 +8,11 @@ import { CCTVProductForm } from './CCTVProductForm';
 import { CCTVSales } from './CCTVSales';
 import { CCTVCashBook } from './CCTVCashBook';
 import { CCTVLedger } from './CCTVLedger';
+import { CCTVStockReport } from './CCTVStockReport';
+import { CCTVProductMovement } from './CCTVProductMovement';
 import {
   Home, Package, ShoppingCart, Users, Building2, Receipt,
-  BarChart3, Settings, Camera, Plus, TrendingUp, AlertTriangle,
+  BarChart3, Settings, Camera, Plus, TrendingUp, AlertTriangle, Boxes, ArrowLeftRight,
 } from 'lucide-react';
 import { useCCTVNavStore } from '@/stores/cctv-nav-store-simple';
 import { useAuthStore } from '@/stores/auth-store';
@@ -49,6 +51,8 @@ export function CCTVShell() {
             { view: 'suppliers' as const, label: 'Suppliers', icon: Building2 },
             { view: 'expenses' as const, label: 'Expenses', icon: Receipt },
             { view: 'reports' as const, label: 'Cash Book', icon: BarChart3 },
+            { view: 'stock-report' as const, label: 'Stock Report', icon: Boxes },
+            { view: 'product-movement' as const, label: 'Product Movement', icon: ArrowLeftRight },
             { view: 'settings' as const, label: 'Settings', icon: Settings },
           ].map((item) => {
             const isActive = activeView === item.view;
@@ -115,6 +119,8 @@ export function CCTVShell() {
           {activeView === 'suppliers' && <CCTVLedger type="supplier" />}
           {activeView === 'expenses' && <PlaceholderView title="Expenses" desc="Daily expense tracking — coming soon" />}
           {activeView === 'reports' && <CCTVCashBook />}
+          {activeView === 'stock-report' && <CCTVStockReport />}
+          {activeView === 'product-movement' && <CCTVProductMovement />}
           {activeView === 'settings' && <PlaceholderView title="Settings" desc="Business settings — coming soon" />}
         </div>
       </div>
