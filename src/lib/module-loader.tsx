@@ -32,7 +32,7 @@ export function ModuleShellRenderer() {
   const slug = session.business.businessType.slug;
 
   switch (slug) {
-    case 'cctv-shop':
+    case 'mobile-shop':
       return <CCTVDashboard />;
     case 'pharmacy':
       return <PharmacyDashboard />;

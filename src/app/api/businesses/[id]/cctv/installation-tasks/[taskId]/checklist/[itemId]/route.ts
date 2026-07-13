@@ -15,7 +15,7 @@ export async function PUT(
     const { itemText, isCompleted, notes } = body;
 
     // Verify checklist item exists and belongs to task/business
-    const existing = await db.cCTVTaskChecklist.findFirst({
+    const existing = await db.mSTaskChecklist.findFirst({
       where: { id: itemId, taskId, businessId, isActive: true },
     });
 
@@ -36,7 +36,7 @@ export async function PUT(
         // false → true
         updateData.completedAt = new Date();
         // Increment parent completedChecklist
-        await db.cCTVInstallationTask.update({
+        await db.mSInstallationTask.update({
           where: { id: taskId },
           data: { completedChecklist: { increment: 1 } },
         });
@@ -44,19 +44,19 @@ export async function PUT(
         // true → false
         updateData.completedAt = null;
         // Decrement parent completedChecklist (floor 0)
-        const parent = await db.cCTVInstallationTask.findUnique({
+        const parent = await db.mSInstallationTask.findUnique({
           where: { id: taskId },
           select: { completedChecklist: true },
         });
         const newCompleted = Math.max(0, (parent?.completedChecklist ?? 0) - 1);
-        await db.cCTVInstallationTask.update({
+        await db.mSInstallationTask.update({
           where: { id: taskId },
           data: { completedChecklist: newCompleted },
         });
       }
     }
 
-    const updated = await db.cCTVTaskChecklist.update({
+    const updated = await db.mSTaskChecklist.update({
       where: { id: itemId },
       data: updateData,
     });
@@ -77,7 +77,7 @@ export async function DELETE(
     const { id: businessId, taskId, itemId } = await params;
 
     // Verify checklist item exists
-    const existing = await db.cCTVTaskChecklist.findFirst({
+    const existing = await db.mSTaskChecklist.findFirst({
       where: { id: itemId, taskId, businessId, isActive: true },
     });
 
@@ -86,13 +86,13 @@ export async function DELETE(
     }
 
     // Soft-delete the item
-    await db.cCTVTaskChecklist.update({
+    await db.mSTaskChecklist.update({
       where: { id: itemId },
       data: { isActive: false },
     });
 
     // Decrement parent totalChecklist
-    const parent = await db.cCTVInstallationTask.findUnique({
+    const parent = await db.mSInstallationTask.findUnique({
       where: { id: taskId },
       select: { totalChecklist: true, completedChecklist: true },
     });
@@ -105,7 +105,7 @@ export async function DELETE(
       newCompleted = Math.max(0, newCompleted - 1);
     }
 
-    await db.cCTVInstallationTask.update({
+    await db.mSInstallationTask.update({
       where: { id: taskId },
       data: {
         totalChecklist: newTotal,

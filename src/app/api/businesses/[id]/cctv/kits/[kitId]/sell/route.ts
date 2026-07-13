@@ -34,7 +34,7 @@ export async function POST(
     };
 
     // ── Validate kit ──
-    const kit = await db.cCTVKitDefinition.findFirst({
+    const kit = await db.mSKitDefinition.findFirst({
       where: { id: kitId, businessId, isActive: true },
       include: {
         components: {
@@ -67,7 +67,7 @@ export async function POST(
 
       if (prod.serialTracked) {
         // For serial-tracked, count IN_STOCK items
-        const inStockCount = await db.cCTVSerialItem.count({
+        const inStockCount = await db.mSSerialItem.count({
           where: { productId: prod.id, businessId, status: "IN_STOCK", isActive: true },
         });
         if (inStockCount < comp.quantity) {
@@ -102,7 +102,7 @@ export async function POST(
         const comp = kit.components[idx];
         if (!comp.product.serialTracked) continue;
 
-        const si = await db.cCTVSerialItem.findFirst({
+        const si = await db.mSSerialItem.findFirst({
           where: { id: serialItemId, businessId, productId: comp.product.id, status: "IN_STOCK", isActive: true },
         });
         if (!si) {
@@ -128,7 +128,7 @@ export async function POST(
 
     // ── Generate sale code ──
     const year = new Date().getFullYear();
-    const lastSale = await db.cCTVSale.findFirst({
+    const lastSale = await db.mSSale.findFirst({
       where: { businessId, saleCode: { startsWith: `SAL-${year}-` } },
       orderBy: { saleCode: "desc" },
       select: { saleCode: true },
@@ -405,7 +405,7 @@ export async function POST(
     });
 
     // Fetch complete sale
-    const fullSale = await db.cCTVSale.findUnique({
+    const fullSale = await db.mSSale.findUnique({
       where: { id: sale.id },
       include: {
         items: {

@@ -15,7 +15,7 @@ export async function GET(
     const status = url.searchParams.get("status")?.trim() || "";
 
     // Verify branch exists
-    const branch = await db.cCTVBranch.findFirst({
+    const branch = await db.mSBranch.findFirst({
       where: { id: branchId, businessId, isActive: true },
       select: { id: true, name: true },
     });
@@ -43,14 +43,14 @@ export async function GET(
     }
 
     const [items, total] = await Promise.all([
-      db.cCTVSerialItem.findMany({
+      db.mSSerialItem.findMany({
         where,
         include: { product: { select: { id: true, name: true, brand: true, imageUrl: true } } },
         orderBy: { createdAt: "desc" },
         skip: (page - 1) * limit,
         take: limit,
       }),
-      db.cCTVSerialItem.count({ where }),
+      db.mSSerialItem.count({ where }),
     ]);
 
     return NextResponse.json({

@@ -17,7 +17,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const offset = parseInt(searchParams.get("offset") || "0", 10);
 
   try {
-    // Build search query on CCTVMasterProduct
+    // Build search query on MSMasterProduct
     const where: Record<string, unknown> = { isActive: true, isApproved: true };
     if (q) {
       where.OR = [
@@ -33,7 +33,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
     // Get master products
     const [products, total] = await Promise.all([
-      db.cCTVMasterProduct.findMany({
+      db.mSMasterProduct.findMany({
         where,
         orderBy: { name: "asc" },
         take: limit,
@@ -42,11 +42,11 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
           manufacturer: { select: { id: true, name: true } },
         },
       }),
-      db.cCTVMasterProduct.count({ where }),
+      db.mSMasterProduct.count({ where }),
     ]);
 
-    // Get this shop's existing CCTVProduct masterProductId list
-    const existingProducts = await db.cCTVProduct.findMany({
+    // Get this shop's existing MSProduct masterProductId list
+    const existingProducts = await db.mSProduct.findMany({
       where: { businessId, masterProductId: { not: null } },
       select: { masterProductId: true, isActive: true },
     });

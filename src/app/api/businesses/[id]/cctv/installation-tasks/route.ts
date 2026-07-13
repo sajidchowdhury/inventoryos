@@ -17,7 +17,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
     // Auto-update overdue: scheduledDate < now AND status is PENDING or IN_PROGRESS → OVERDUE
     const now = new Date();
-    await db.cCTVInstallationTask.updateMany({
+    await db.mSInstallationTask.updateMany({
       where: {
         businessId,
         isActive: true,
@@ -44,7 +44,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       where.scheduledDate = dateFilter;
     }
 
-    const tasks = await db.cCTVInstallationTask.findMany({
+    const tasks = await db.mSInstallationTask.findMany({
       where,
       include: {
         project: {
@@ -104,7 +104,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const checklistItemsArray: string[] = Array.isArray(checklistItems) ? checklistItems : [];
 
     // Create the task
-    const task = await db.cCTVInstallationTask.create({
+    const task = await db.mSInstallationTask.create({
       data: {
         businessId,
         projectId,
@@ -125,7 +125,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     // Create checklist items if provided
     if (checklistItemsArray.length > 0) {
-      await db.cCTVTaskChecklist.createMany({
+      await db.mSTaskChecklist.createMany({
         data: checklistItemsArray.map((item: string, index: number) => ({
           businessId,
           taskId: task.id,
@@ -137,7 +137,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
 
     // Return the created task with full data
-    const created = await db.cCTVInstallationTask.findUnique({
+    const created = await db.mSInstallationTask.findUnique({
       where: { id: task.id },
       include: {
         project: {

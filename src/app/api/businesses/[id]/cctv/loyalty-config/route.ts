@@ -20,7 +20,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   try {
     const { id: businessId } = await params;
 
-    let config = await db.cCTVLoyaltyConfig.findUnique({
+    let config = await db.mSLoyaltyConfig.findUnique({
       where: { businessId },
       include: {
         _count: {
@@ -31,7 +31,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
     // Auto-initialize if not found
     if (!config) {
-      config = await db.cCTVLoyaltyConfig.create({
+      config = await db.mSLoyaltyConfig.create({
         data: {
           businessId,
           ...DEFAULT_CONFIG,
@@ -103,7 +103,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     }
 
     // Find existing config by businessId
-    const existing = await db.cCTVLoyaltyConfig.findUnique({
+    const existing = await db.mSLoyaltyConfig.findUnique({
       where: { businessId },
     });
 
@@ -123,7 +123,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     if (tierPlatinum !== undefined) updateData.tierPlatinum = tierPlatinum;
     if (isActive !== undefined) updateData.isActive = isActive;
 
-    const updatedConfig = await db.cCTVLoyaltyConfig.update({
+    const updatedConfig = await db.mSLoyaltyConfig.update({
       where: { businessId },
       data: updateData,
       include: {

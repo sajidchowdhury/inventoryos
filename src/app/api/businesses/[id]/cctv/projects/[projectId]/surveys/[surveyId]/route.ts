@@ -10,7 +10,7 @@ export async function GET(
   try {
     const { id: businessId, surveyId } = await params;
 
-    const survey = await db.cCTVSiteSurvey.findFirst({
+    const survey = await db.mSSiteSurvey.findFirst({
       where: { id: surveyId, businessId, isActive: true },
       include: {
         cameraPositions: {
@@ -41,7 +41,7 @@ export async function PUT(
   try {
     const { id: businessId, surveyId } = await params;
 
-    const existing = await db.cCTVSiteSurvey.findFirst({
+    const existing = await db.mSSiteSurvey.findFirst({
       where: { id: surveyId, businessId, isActive: true },
     });
 
@@ -63,7 +63,7 @@ export async function PUT(
       notes?: string;
     };
 
-    const survey = await db.cCTVSiteSurvey.update({
+    const survey = await db.mSSiteSurvey.update({
       where: { id: surveyId },
       data: {
         ...(floorPlanData !== undefined && { floorPlanData }),
@@ -96,7 +96,7 @@ export async function DELETE(
   try {
     const { id: businessId, surveyId } = await params;
 
-    const existing = await db.cCTVSiteSurvey.findFirst({
+    const existing = await db.mSSiteSurvey.findFirst({
       where: { id: surveyId, businessId, isActive: true },
     });
 
@@ -104,7 +104,7 @@ export async function DELETE(
       return NextResponse.json({ error: "Survey not found" }, { status: 404 });
     }
 
-    await db.cCTVSiteSurvey.update({
+    await db.mSSiteSurvey.update({
       where: { id: surveyId },
       data: { isActive: false },
     });

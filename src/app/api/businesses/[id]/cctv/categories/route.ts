@@ -8,7 +8,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   try {
     const { id: businessId } = await params;
 
-    const categories = await db.cCTVCategory.findMany({
+    const categories = await db.mSCategory.findMany({
       where: { businessId, isActive: true },
       include: {
         _count: { select: { products: true } },
@@ -35,7 +35,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     // Case-insensitive unique name check (in-memory comparison).
     // TODO (Phase 2B): simplify using mode:"insensitive" once PostgreSQL-only is confirmed.
-    const allCats = await db.cCTVCategory.findMany({
+    const allCats = await db.mSCategory.findMany({
       where: { businessId, isActive: true },
       select: { name: true },
     });
@@ -52,7 +52,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       .replace(/-+/g, "-")
       .replace(/^-|-$/g, "");
 
-    const category = await db.cCTVCategory.create({
+    const category = await db.mSCategory.create({
       data: {
         businessId,
         name,

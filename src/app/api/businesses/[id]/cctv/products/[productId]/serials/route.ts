@@ -27,13 +27,13 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     }
 
     const [items, total] = await Promise.all([
-      db.cCTVSerialItem.findMany({
+      db.mSSerialItem.findMany({
         where,
         orderBy: { createdAt: "desc" },
         skip,
         take: limit,
       }),
-      db.cCTVSerialItem.count({ where }),
+      db.mSSerialItem.count({ where }),
     ]);
 
     return NextResponse.json({
@@ -59,7 +59,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
 
     // Verify product exists
-    const product = await db.cCTVProduct.findFirst({
+    const product = await db.mSProduct.findFirst({
       where: { id: productId, businessId, isActive: true },
     });
     if (!product) {
@@ -90,16 +90,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     );
 
     // Bulk create all serial items
-    const created = await db.cCTVSerialItem.createMany({
+    const created = await db.mSSerialItem.createMany({
       data: serialItems,
     });
 
     // Sync stock: count of in-stock serial items for this product
-    const inStockCount = await db.cCTVSerialItem.count({
+    const inStockCount = await db.mSSerialItem.count({
       where: { productId, businessId, status: "IN_STOCK", isActive: true },
     });
 
-    await db.cCTVProduct.update({
+    await db.mSProduct.update({
       where: { id: productId },
       data: { stock: inStockCount },
     });

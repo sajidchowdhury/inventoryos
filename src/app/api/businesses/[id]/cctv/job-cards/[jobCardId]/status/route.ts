@@ -36,7 +36,7 @@ export async function POST(
       return NextResponse.json({ error: "New status is required" }, { status: 400 });
     }
 
-    const jobCard = await db.cCTVJobCard.findFirst({
+    const jobCard = await db.mSJobCard.findFirst({
       where: { id: jobCardId, businessId, isActive: true },
     });
     if (!jobCard) {
@@ -70,11 +70,11 @@ export async function POST(
     if (newStatus === "DELIVERED") {
       updateData.deliveredAt = new Date();
       if (jobCard.serialItemId) {
-        await db.cCTVSerialItem.update({
+        await db.mSSerialItem.update({
           where: { id: jobCard.serialItemId },
           data: { status: "RETURNED" },
         });
-        await db.cCTVSerialItemHistory.create({
+        await db.mSSerialItemHistory.create({
           data: {
             businessId,
             serialItemId: jobCard.serialItemId,
@@ -90,17 +90,17 @@ export async function POST(
 
       // Auto-calculate commission (Phase 2C)
       if (jobCard.assignedToName) {
-        const technician = await db.cCTVTechnician.findFirst({
+        const technician = await db.mSTechnician.findFirst({
           where: { businessId, displayName: jobCard.assignedToName, isActive: true },
         });
         if (technician) {
           // Check if commission already exists for this job
-          const existingComm = await db.cCTVCommissionRecord.findFirst({
+          const existingComm = await db.mSCommissionRecord.findFirst({
             where: { jobCardId, businessId },
           });
           if (!existingComm) {
             // Calculate parts cost
-            const parts = await db.cCTVJobCardPart.findMany({
+            const parts = await db.mSJobCardPart.findMany({
               where: { jobCardId, businessId, isActive: true },
               select: { unitCost: true, quantity: true },
             });
@@ -108,7 +108,7 @@ export async function POST(
             const profitMargin = (jobCard.finalCost ?? 0) - partsCost - (jobCard.laborCharge ?? 0);
 
             // Find matching commission rule
-            const rules = await db.cCTVCommissionRule.findMany({
+            const rules = await db.mSCommissionRule.findMany({
               where: { businessId, isActive: true },
               orderBy: { sortOrder: "asc" },
             });
@@ -139,7 +139,7 @@ export async function POST(
 
             if (commissionAmount > 0) {
               const month = new Date().toISOString().slice(0, 7);
-              await db.cCTVCommissionRecord.create({
+              await db.mSCommissionRecord.create({
                 data: {
                   businessId,
                   technicianId: technician.id,
@@ -167,15 +167,15 @@ export async function POST(
 
     // If CANCELLED, return serial item to IN_STOCK
     if (newStatus === "CANCELLED" && jobCard.serialItemId) {
-      const item = await db.cCTVSerialItem.findFirst({
+      const item = await db.mSSerialItem.findFirst({
         where: { id: jobCard.serialItemId, businessId, status: "IN_REPAIR" },
       });
       if (item) {
-        await db.cCTVSerialItem.update({
+        await db.mSSerialItem.update({
           where: { id: jobCard.serialItemId },
           data: { status: "IN_STOCK" },
         });
-        await db.cCTVSerialItemHistory.create({
+        await db.mSSerialItemHistory.create({
           data: {
             businessId,
             serialItemId: jobCard.serialItemId,
@@ -190,7 +190,7 @@ export async function POST(
       }
     }
 
-    const updated = await db.cCTVJobCard.update({
+    const updated = await db.mSJobCard.update({
       where: { id: jobCardId },
       data: updateData,
       include: {

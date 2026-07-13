@@ -9,7 +9,7 @@ export async function GET(
   try {
     const { id: businessId, branchId } = await params;
 
-    const branch = await db.cCTVBranch.findFirst({
+    const branch = await db.mSBranch.findFirst({
       where: { id: branchId, businessId, isActive: true },
       include: {
         _count: {
@@ -27,18 +27,18 @@ export async function GET(
     }
 
     // Compute inventory breakdown
-    const inStock = await db.cCTVSerialItem.count({
+    const inStock = await db.mSSerialItem.count({
       where: { branchId, businessId, status: "IN_STOCK", isActive: true },
     });
-    const inTransit = await db.cCTVSerialItem.count({
+    const inTransit = await db.mSSerialItem.count({
       where: { branchId, businessId, status: "IN_TRANSIT", isActive: true },
     });
-    const total = await db.cCTVSerialItem.count({
+    const total = await db.mSSerialItem.count({
       where: { branchId, businessId, isActive: true },
     });
 
     // Recent transfers (both directions, last 5)
-    const recentTransfers = await db.cCTVTransfer.findMany({
+    const recentTransfers = await db.mSTransfer.findMany({
       where: {
         businessId,
         OR: [{ fromBranchId: branchId }, { toBranchId: branchId }],
@@ -68,7 +68,7 @@ export async function PUT(
     const body = await req.json();
     const { name, code, address, phone, isDefault } = body;
 
-    const existing = await db.cCTVBranch.findFirst({
+    const existing = await db.mSBranch.findFirst({
       where: { id: branchId, businessId, isActive: true },
     });
     if (!existing) {
@@ -77,7 +77,7 @@ export async function PUT(
 
     // If setting as default, unset all others first
     if (isDefault === true && !existing.isDefault) {
-      await db.cCTVBranch.updateMany({
+      await db.mSBranch.updateMany({
         where: { businessId, isActive: true, isDefault: true },
         data: { isDefault: false },
       });
@@ -86,7 +86,7 @@ export async function PUT(
     // Check code uniqueness if changed
     if (code && code.trim().toUpperCase() !== existing.code) {
       const codeUpper = code.trim().toUpperCase();
-      const dup = await db.cCTVBranch.findFirst({
+      const dup = await db.mSBranch.findFirst({
         where: { businessId, code: codeUpper, isActive: true, id: { not: branchId } },
       });
       if (dup) {
@@ -94,7 +94,7 @@ export async function PUT(
       }
     }
 
-    const updated = await db.cCTVBranch.update({
+    const updated = await db.mSBranch.update({
       where: { id: branchId },
       data: {
         name: name?.trim() || undefined,
@@ -119,7 +119,7 @@ export async function DELETE(
   try {
     const { id: businessId, branchId } = await params;
 
-    const branch = await db.cCTVBranch.findFirst({
+    const branch = await db.mSBranch.findFirst({
       where: { id: branchId, businessId, isActive: true },
     });
     if (!branch) {
@@ -130,7 +130,7 @@ export async function DELETE(
     }
 
     // Check for IN_STOCK or IN_TRANSIT items
-    const activeItems = await db.cCTVSerialItem.count({
+    const activeItems = await db.mSSerialItem.count({
       where: {
         branchId,
         businessId,
@@ -145,7 +145,7 @@ export async function DELETE(
       );
     }
 
-    await db.cCTVBranch.update({
+    await db.mSBranch.update({
       where: { id: branchId },
       data: { isActive: false },
     });

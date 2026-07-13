@@ -14,13 +14,13 @@ export async function GET(
 
     const [todaySalesResult, pendingJobs, activeAmc] = await Promise.all([
       // Today's sales revenue (sum of totalDue for sales created today)
-      db.cCTVSale.aggregate({
+      db.mSSale.aggregate({
         where: { businessId, isActive: true, createdAt: { gte: todayStart } },
         _sum: { totalDue: true },
         _count: true,
       }),
       // Pending job cards (non-terminal statuses)
-      db.cCTVJobCard.count({
+      db.mSJobCard.count({
         where: {
           businessId,
           isActive: true,
@@ -37,7 +37,7 @@ export async function GET(
         },
       }),
       // Active AMC contracts
-      db.cCTVAmcContract.count({
+      db.mSAmcContract.count({
         where: { businessId, isActive: true, status: 'ACTIVE' },
       }),
     ]);

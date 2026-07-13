@@ -38,7 +38,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     }
 
     const [sales, total] = await Promise.all([
-      db.cCTVSale.findMany({
+      db.mSSale.findMany({
         where,
         include: {
           _count: {
@@ -49,7 +49,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         take: limit,
         skip: offset,
       }),
-      db.cCTVSale.count({ where }),
+      db.mSSale.count({ where }),
     ]);
 
     return NextResponse.json({ sales, total, limit, offset });
@@ -117,7 +117,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     // Auto-generate saleCode: SAL-YYYY-NNN
     const year = new Date().getFullYear();
-    const lastSale = await db.cCTVSale.findFirst({
+    const lastSale = await db.mSSale.findFirst({
       where: { businessId, saleCode: { startsWith: `SAL-${year}-` } },
       orderBy: { saleCode: "desc" },
       select: { saleCode: true },
@@ -133,7 +133,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     // Look up all products to get name/brand/serialTracked
     const productIds = items.map((it) => it.productId);
     const productMap = new Map<string, { name: string; brand: string; serialTracked: boolean }>();
-    const products = await db.cCTVProduct.findMany({
+    const products = await db.mSProduct.findMany({
       where: { id: { in: productIds }, businessId },
       select: { id: true, name: true, brand: true, serialTracked: true, stock: true },
     });
@@ -151,7 +151,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     // Validate serial items if provided
     if (items.some((it) => it.serialItemId)) {
       const serialItemIds = items.filter((it) => it.serialItemId).map((it) => it.serialItemId!);
-      const serialItems = await db.cCTVSerialItem.findMany({
+      const serialItems = await db.mSSerialItem.findMany({
         where: { id: { in: serialItemIds }, businessId, isActive: true, status: "IN_STOCK" },
         select: { id: true, productId: true, status: true },
       });
@@ -456,7 +456,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     });
 
     // Fetch the complete sale with items and payments
-    const fullSale = await db.cCTVSale.findUnique({
+    const fullSale = await db.mSSale.findUnique({
       where: { id: sale.id },
       include: {
         items: {

@@ -184,9 +184,6 @@ export function CCTVProductDetail() {
     }
   };
 
-  const handleAddSerials = () => {
-    alert('Coming soon — bulk serial number addition will be available in a future update.');
-  };
 
   if (loading) {
     return (

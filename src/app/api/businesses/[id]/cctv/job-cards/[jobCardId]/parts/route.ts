@@ -6,7 +6,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   try {
     const { id: businessId, jobCardId } = await params;
 
-    const parts = await db.cCTVJobCardPart.findMany({
+    const parts = await db.mSJobCardPart.findMany({
       where: { jobCardId, businessId, isActive: true },
       include: {
         serialItem: {
@@ -41,7 +41,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
 
     // Validate job card exists
-    const jobCard = await db.cCTVJobCard.findFirst({
+    const jobCard = await db.mSJobCard.findFirst({
       where: { id: jobCardId, businessId, isActive: true },
     });
     if (!jobCard) {
@@ -49,7 +49,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
 
     // Validate serial item: exists, belongs to business, is IN_STOCK
-    const serialItem = await db.cCTVSerialItem.findFirst({
+    const serialItem = await db.mSSerialItem.findFirst({
       where: { id: serialItemId, businessId, isActive: true },
       include: { product: { select: { name: true, brand: true } } },
     });
@@ -64,7 +64,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
 
     // Check duplicate (same serial item already on this job card)
-    const existing = await db.cCTVJobCardPart.findFirst({
+    const existing = await db.mSJobCardPart.findFirst({
       where: { jobCardId, serialItemId, isActive: true },
     });
     if (existing) {

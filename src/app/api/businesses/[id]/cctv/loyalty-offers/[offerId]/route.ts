@@ -12,7 +12,7 @@ export async function GET(
   try {
     const { id: businessId, offerId } = await params;
 
-    const offer = await db.cCTVLoyaltyOffer.findFirst({
+    const offer = await db.mSLoyaltyOffer.findFirst({
       where: { id: offerId, businessId },
       include: {
         config: { select: { id: true } },
@@ -100,7 +100,7 @@ export async function PUT(
     }
 
     // Check offer exists
-    const existing = await db.cCTVLoyaltyOffer.findFirst({
+    const existing = await db.mSLoyaltyOffer.findFirst({
       where: { id: offerId, businessId },
     });
 
@@ -127,7 +127,7 @@ export async function PUT(
     if (description !== undefined) updateData.description = description?.trim() || null;
     if (isActive !== undefined) updateData.isActive = isActive;
 
-    const updatedOffer = await db.cCTVLoyaltyOffer.update({
+    const updatedOffer = await db.mSLoyaltyOffer.update({
       where: { id: offerId },
       data: updateData,
       include: {
@@ -151,7 +151,7 @@ export async function DELETE(
     const { id: businessId, offerId } = await params;
 
     // Check offer exists
-    const existing = await db.cCTVLoyaltyOffer.findFirst({
+    const existing = await db.mSLoyaltyOffer.findFirst({
       where: { id: offerId, businessId },
     });
 
@@ -159,7 +159,7 @@ export async function DELETE(
       return NextResponse.json({ error: "Offer not found" }, { status: 404 });
     }
 
-    await db.cCTVLoyaltyOffer.update({
+    await db.mSLoyaltyOffer.update({
       where: { id: offerId },
       data: { isActive: false },
     });

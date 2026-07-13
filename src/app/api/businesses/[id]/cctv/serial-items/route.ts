@@ -36,7 +36,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     }
 
     const [items, total] = await Promise.all([
-      db.cCTVSerialItem.findMany({
+      db.mSSerialItem.findMany({
         where,
         select: {
           id: true,
@@ -63,7 +63,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         skip,
         take: limit,
       }),
-      db.cCTVSerialItem.count({ where }),
+      db.mSSerialItem.count({ where }),
     ]);
 
     return NextResponse.json({

@@ -1,7 +1,7 @@
 // POST /api/businesses/[id]/catalog/cctv/suggest
 // Allows a CCTV shop owner to submit a new product for inclusion in the master catalog.
-// Creates a CCTVMasterProduct with isApproved: false (pending admin review).
-// Returns the new masterProductId so the caller can link the CCTVProduct to it.
+// Creates a MSMasterProduct with isApproved: false (pending admin review).
+// Returns the new masterProductId so the caller can link the MSProduct to it.
 //
 // Body: {
 //   name: "DS-2CD2143G2-I 4MP Bullet Camera",
@@ -43,13 +43,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
 
     // Check if a master product with this (brand, model) already exists
-    const existing = await db.cCTVMasterProduct.findUnique({
+    const existing = await db.mSMasterProduct.findUnique({
       where: { brand_model: { brand, model } },
     });
 
     if (existing) {
       // Already in the catalog — return the existing masterProductId
-      // The caller should link their CCTVProduct to this existing entry
+      // The caller should link their MSProduct to this existing entry
       return NextResponse.json({
         success: true,
         masterProductId: existing.id,
@@ -61,7 +61,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
 
     // Create a new master product with isApproved: false (pending admin review)
-    const masterProduct = await db.cCTVMasterProduct.create({
+    const masterProduct = await db.mSMasterProduct.create({
       data: {
         name,
         brand,

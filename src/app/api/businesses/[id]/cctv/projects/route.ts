@@ -35,7 +35,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       orderBy.createdAt = "desc";
     }
 
-    const projects = await db.cCTVProject.findMany({
+    const projects = await db.mSProject.findMany({
       where,
       include: {
         _count: {
@@ -100,12 +100,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
 
     // Auto-generate projectCode: PRJ-001, PRJ-002, etc.
-    const projectCount = await db.cCTVProject.count({
+    const projectCount = await db.mSProject.count({
       where: { businessId, isActive: true },
     });
     const projectCode = `PRJ-${String(projectCount + 1).padStart(3, "0")}`;
 
-    const project = await db.cCTVProject.create({
+    const project = await db.mSProject.create({
       data: {
         businessId,
         projectName: projectName.trim(),

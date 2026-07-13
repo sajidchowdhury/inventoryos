@@ -30,7 +30,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     // Validate purchaseId if provided
     if (purchaseId) {
-      const purchase = await db.cCTVPurchase.findFirst({
+      const purchase = await db.mSPurchase.findFirst({
         where: { id: purchaseId, businessId },
       });
       if (!purchase) {
@@ -49,7 +49,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
 
     // Verify product exists and belongs to this business
-    const product = await db.cCTVProduct.findFirst({
+    const product = await db.mSProduct.findFirst({
       where: { id: productId, businessId, isActive: true },
     });
 
@@ -82,14 +82,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     // Check for duplicates against existing database records
     const existingSerials = serialNumbers.length > 0
-      ? await db.cCTVSerialItem.findMany({
+      ? await db.mSSerialItem.findMany({
           where: { businessId, serialNumber: { in: serialNumbers } },
           select: { serialNumber: true },
         })
       : [];
 
     const existingImeis = imeiNumbers.length > 0
-      ? await db.cCTVSerialItem.findMany({
+      ? await db.mSSerialItem.findMany({
           where: { businessId, imei: { in: imeiNumbers }, isActive: true },
           select: { imei: true, serialNumber: true },
         })
@@ -144,7 +144,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         ? Math.max(0, (product.warrantyMonths || 0) - 3) // Refurbished/used get reduced warranty
         : (product.warrantyMonths || 0);
 
-      const serialItem = await db.cCTVSerialItem.create({
+      const serialItem = await db.mSSerialItem.create({
         data: {
           businessId,
           productId,
@@ -167,7 +167,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       });
 
       // Create history entry
-      await db.cCTVSerialItemHistory.create({
+      await db.mSSerialItemHistory.create({
         data: {
           businessId,
           serialItemId: serialItem.id,
@@ -186,11 +186,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
 
     // ── Sync stock count on the product ──
-    const inStockCount = await db.cCTVSerialItem.count({
+    const inStockCount = await db.mSSerialItem.count({
       where: { productId, businessId, status: "IN_STOCK", isActive: true },
     });
 
-    await db.cCTVProduct.update({
+    await db.mSProduct.update({
       where: { id: productId },
       data: { stock: inStockCount },
     });

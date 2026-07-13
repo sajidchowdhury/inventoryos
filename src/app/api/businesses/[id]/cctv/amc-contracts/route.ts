@@ -34,7 +34,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       ];
     }
 
-    const contracts = await db.cCTVAmcContract.findMany({
+    const contracts = await db.mSAmcContract.findMany({
       where,
       include: {
         _count: { select: { visits: true } },
@@ -52,7 +52,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
         // Update status in DB if it drifted
         if (computedStatus !== c.status && c.status !== "CANCELLED") {
-          db.cCTVAmcContract.update({
+          db.mSAmcContract.update({
             where: { id: c.id },
             data: { status: computedStatus },
           }).catch(() => {});
@@ -119,7 +119,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
 
     // Generate contract code
-    const count = await db.cCTVAmcContract.count({ where: { businessId } });
+    const count = await db.mSAmcContract.count({ where: { businessId } });
     const contractCode = `AMC-${String(count + 1).padStart(3, "0")}`;
 
     // Compute initial status
@@ -132,7 +132,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     if (endMs <= nowMs) status = "EXPIRED";
     else if (endMs <= expiringThreshold) status = "EXPIRING_SOON";
 
-    const contract = await db.cCTVAmcContract.create({
+    const contract = await db.mSAmcContract.create({
       data: {
         businessId,
         contractCode,

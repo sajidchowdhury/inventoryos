@@ -11,7 +11,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     const search = (url.searchParams.get("search") || "").trim();
 
     // Fetch all PARTIALLY_PAID sales with payments
-    const sales = await db.cCTVSale.findMany({
+    const sales = await db.mSSale.findMany({
       where: {
         businessId,
         isActive: true,

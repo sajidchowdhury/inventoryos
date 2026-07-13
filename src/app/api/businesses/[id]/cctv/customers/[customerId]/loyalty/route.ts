@@ -49,7 +49,7 @@ export async function GET(
       where.type = type;
     }
 
-    const transactions = await db.cCTVLoyaltyTransaction.findMany({
+    const transactions = await db.mSLoyaltyTransaction.findMany({
       where,
       orderBy: { createdAt: "desc" },
       take: limit,

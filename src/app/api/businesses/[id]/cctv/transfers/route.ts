@@ -13,7 +13,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       where.status = status;
     }
 
-    const transfers = await db.cCTVTransfer.findMany({
+    const transfers = await db.mSTransfer.findMany({
       where,
       include: {
         fromBranch: { select: { id: true, name: true, code: true } },
@@ -48,14 +48,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     // Validate branches
     const [fromBranch, toBranch] = await Promise.all([
-      db.cCTVBranch.findFirst({ where: { id: fromBranchId, businessId, isActive: true } }),
-      db.cCTVBranch.findFirst({ where: { id: toBranchId, businessId, isActive: true } }),
+      db.mSBranch.findFirst({ where: { id: fromBranchId, businessId, isActive: true } }),
+      db.mSBranch.findFirst({ where: { id: toBranchId, businessId, isActive: true } }),
     ]);
     if (!fromBranch) return NextResponse.json({ error: "Source branch not found" }, { status: 404 });
     if (!toBranch) return NextResponse.json({ error: "Destination branch not found" }, { status: 404 });
 
     // Validate serial items: must be IN_STOCK at the fromBranch
-    const serialItems = await db.cCTVSerialItem.findMany({
+    const serialItems = await db.mSSerialItem.findMany({
       where: {
         id: { in: serialItemIds },
         businessId,
@@ -80,7 +80,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     // Auto-generate transfer code
     const year = new Date().getFullYear();
-    const lastTransfer = await db.cCTVTransfer.findFirst({
+    const lastTransfer = await db.mSTransfer.findFirst({
       where: {
         businessId,
         transferCode: { startsWith: `TRF-${year}-` },
@@ -98,7 +98,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const transferCode = `TRF-${year}-${String(seq).padStart(3, "0")}`;
 
     // Create transfer + items (status stays DRAFT, serial items unchanged)
-    const transfer = await db.cCTVTransfer.create({
+    const transfer = await db.mSTransfer.create({
       data: {
         businessId,
         transferCode,

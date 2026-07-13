@@ -9,8 +9,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const { id: _businessId } = await params; // businessId not used for query, but kept for auth consistency
 
   try {
-    // Query distinct brands from the CCTVMasterProduct table
-    const brands = await db.cCTVMasterProduct.findMany({
+    // Query distinct brands from the MSMasterProduct table
+    const brands = await db.mSMasterProduct.findMany({
       where: { isActive: true, isApproved: true },
       select: { brand: true },
       distinct: ["brand"],

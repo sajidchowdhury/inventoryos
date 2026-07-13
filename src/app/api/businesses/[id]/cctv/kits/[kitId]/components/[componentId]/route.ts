@@ -11,14 +11,14 @@ export async function PUT(
     const body = await req.json();
     const { quantity, componentLabel, isRequired, sortOrder } = body;
 
-    const component = await db.cCTVKitComponent.findFirst({
+    const component = await db.mSKitComponent.findFirst({
       where: { id: componentId, kitId, businessId },
     });
     if (!component) {
       return NextResponse.json({ error: "Component not found" }, { status: 404 });
     }
 
-    const updated = await db.cCTVKitComponent.update({
+    const updated = await db.mSKitComponent.update({
       where: { id: componentId },
       data: {
         quantity: quantity !== undefined ? quantity : undefined,
@@ -45,14 +45,14 @@ export async function DELETE(
   try {
     const { id: businessId, kitId, componentId } = await params;
 
-    const component = await db.cCTVKitComponent.findFirst({
+    const component = await db.mSKitComponent.findFirst({
       where: { id: componentId, kitId, businessId },
     });
     if (!component) {
       return NextResponse.json({ error: "Component not found" }, { status: 404 });
     }
 
-    await db.cCTVKitComponent.delete({ where: { id: componentId } });
+    await db.mSKitComponent.delete({ where: { id: componentId } });
 
     return NextResponse.json({ success: true });
   } catch (error) {

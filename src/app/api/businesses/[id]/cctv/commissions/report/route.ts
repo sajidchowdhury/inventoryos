@@ -8,7 +8,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     const url = new URL(req.url);
     const month = url.searchParams.get("month") || new Date().toISOString().slice(0, 7); // YYYY-MM
 
-    const records = await db.cCTVCommissionRecord.findMany({
+    const records = await db.mSCommissionRecord.findMany({
       where: { businessId, month },
       include: {
         technician: { select: { id: true, displayName: true } },
@@ -39,7 +39,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     }
 
     // Available months (for month picker)
-    const months = await db.cCTVCommissionRecord.findMany({
+    const months = await db.mSCommissionRecord.findMany({
       where: { businessId },
       distinct: ["month"],
       select: { month: true },

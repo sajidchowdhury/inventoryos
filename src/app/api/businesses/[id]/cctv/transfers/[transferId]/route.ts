@@ -9,7 +9,7 @@ export async function GET(
   try {
     const { id: businessId, transferId } = await params;
 
-    const transfer = await db.cCTVTransfer.findFirst({
+    const transfer = await db.mSTransfer.findFirst({
       where: { id: transferId, businessId },
       include: {
         fromBranch: { select: { id: true, name: true, code: true, address: true, phone: true } },

@@ -10,7 +10,7 @@ export async function POST(
   try {
     const { id: businessId, transferId } = await params;
 
-    const transfer = await db.cCTVTransfer.findFirst({
+    const transfer = await db.mSTransfer.findFirst({
       where: { id: transferId, businessId, status: "IN_TRANSIT" },
       include: {
         items: true,
@@ -26,7 +26,7 @@ export async function POST(
 
     for (const item of transfer.items) {
       // Move serial item to IN_STOCK at destination branch
-      await db.cCTVSerialItem.update({
+      await db.mSSerialItem.update({
         where: { id: item.serialItemId },
         data: {
           status: "IN_STOCK",
@@ -35,7 +35,7 @@ export async function POST(
       });
 
       // Create history entry
-      await db.cCTVSerialItemHistory.create({
+      await db.mSSerialItemHistory.create({
         data: {
           businessId,
           serialItemId: item.serialItemId,
@@ -49,14 +49,14 @@ export async function POST(
       });
 
       // Update transfer item status
-      await db.cCTVTransferItem.update({
+      await db.mSTransferItem.update({
         where: { id: item.id },
         data: { status: "RECEIVED" },
       });
     }
 
     // Update transfer
-    const updated = await db.cCTVTransfer.update({
+    const updated = await db.mSTransfer.update({
       where: { id: transferId },
       data: {
         status: "RECEIVED",
@@ -70,17 +70,17 @@ export async function POST(
     });
 
     // Sync product stock counts
-    const serialItems = await db.cCTVSerialItem.findMany({
+    const serialItems = await db.mSSerialItem.findMany({
       where: { id: { in: transfer.items.map((i) => i.serialItemId) } },
       select: { productId: true },
     });
     const uniqueProductIds = [...new Set(serialItems.map((si) => si.productId))];
 
     for (const productId of uniqueProductIds) {
-      const inStockCount = await db.cCTVSerialItem.count({
+      const inStockCount = await db.mSSerialItem.count({
         where: { productId, businessId, status: "IN_STOCK", isActive: true },
       });
-      await db.cCTVProduct.update({
+      await db.mSProduct.update({
         where: { id: productId },
         data: { stock: inStockCount },
       });

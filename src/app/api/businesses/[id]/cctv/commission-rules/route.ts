@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id: businessId } = await params;
-    const rules = await db.cCTVCommissionRule.findMany({
+    const rules = await db.mSCommissionRule.findMany({
       where: { businessId, isActive: true },
       orderBy: { sortOrder: "asc" },
     });
@@ -35,7 +35,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       return NextResponse.json({ error: "Percent rate must be 0-100" }, { status: 400 });
     }
 
-    const rule = await db.cCTVCommissionRule.create({
+    const rule = await db.mSCommissionRule.create({
       data: {
         businessId,
         name: name.trim(),

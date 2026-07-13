@@ -10,7 +10,7 @@ export async function GET(
   try {
     const { id: businessId, kitId } = await params;
 
-    const kit = await db.cCTVKitDefinition.findFirst({
+    const kit = await db.mSKitDefinition.findFirst({
       where: { id: kitId, businessId, isActive: true },
       include: {
         components: {
@@ -45,7 +45,7 @@ export async function GET(
       // For non-serial, use the product.stock field
       let available: number;
       if (product.serialTracked) {
-        available = await db.cCTVSerialItem.count({
+        available = await db.mSSerialItem.count({
           where: { productId: product.id, businessId, status: "IN_STOCK", isActive: true },
         });
       } else {

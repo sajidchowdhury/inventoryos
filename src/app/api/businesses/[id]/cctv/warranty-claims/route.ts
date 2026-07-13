@@ -25,7 +25,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       ];
     }
 
-    const claims = await db.cCTVWarrantyClaim.findMany({
+    const claims = await db.mSWarrantyClaim.findMany({
       where,
       include: {
         serialItem: {
@@ -68,7 +68,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
 
     // Validate serial item exists, belongs to business, is active
-    const serialItem = await db.cCTVSerialItem.findFirst({
+    const serialItem = await db.mSSerialItem.findFirst({
       where: { id: serialItemId, businessId, isActive: true },
     });
 
@@ -92,7 +92,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
 
     // Create the claim
-    const claim = await db.cCTVWarrantyClaim.create({
+    const claim = await db.mSWarrantyClaim.create({
       data: {
         businessId,
         serialItemId,

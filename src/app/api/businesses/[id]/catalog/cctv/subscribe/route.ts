@@ -1,6 +1,6 @@
 // POST /api/businesses/[id]/catalog/cctv/subscribe
-// Subscribe to products from the CCTV master catalog. Creates CCTVProduct rows
-// linked to CCTVMasterProducts with initial cost/sell price + stock.
+// Subscribe to products from the CCTV master catalog. Creates MSProduct rows
+// linked to MSMasterProducts with initial cost/sell price + stock.
 //
 // Body: {
 //   items: [
@@ -52,7 +52,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         if (!masterProductId) { skipped++; continue; }
 
         // Check if already subscribed
-        const existing = await db.cCTVProduct.findFirst({
+        const existing = await db.mSProduct.findFirst({
           where: { businessId, masterProductId },
         });
 
@@ -69,7 +69,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           });
           // Reactivate if was inactive
           if (!existing.isActive) {
-            await db.cCTVProduct.update({ where: { id: existing.id }, data: { isActive: true } });
+            await db.mSProduct.update({ where: { id: existing.id }, data: { isActive: true } });
             created++;
           } else {
             skipped++;
@@ -78,7 +78,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         }
 
         // Fetch master product for metadata
-        const masterProduct = await db.cCTVMasterProduct.findUnique({
+        const masterProduct = await db.mSMasterProduct.findUnique({
           where: { id: masterProductId },
         });
 
@@ -97,11 +97,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
             .replace(/\s+/g, "-")
             .replace(/-+/g, "-")
             .replace(/^-|-$/g, "");
-          let category = await db.cCTVCategory.findFirst({
+          let category = await db.mSCategory.findFirst({
             where: { businessId, slug },
           });
           if (!category) {
-            category = await db.cCTVCategory.create({
+            category = await db.mSCategory.create({
               data: {
                 businessId,
                 name: masterProduct.defaultCategoryName,
@@ -115,8 +115,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           categoryId = category.id;
         }
 
-        // Create the CCTVProduct row linked to CCTVMasterProduct
-        const product = await db.cCTVProduct.create({
+        // Create the MSProduct row linked to MSMasterProduct
+        const product = await db.mSProduct.create({
           data: {
             businessId,
             categoryId,

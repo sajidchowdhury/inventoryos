@@ -10,7 +10,7 @@ export async function DELETE(
     const { id: businessId, jobCardId, partId } = await params;
 
     // Validate part exists
-    const part = await db.cCTVJobCardPart.findFirst({
+    const part = await db.mSJobCardPart.findFirst({
       where: { id: partId, jobCardId, businessId, isActive: true },
     });
     if (!part) {
@@ -18,7 +18,7 @@ export async function DELETE(
     }
 
     // Validate job card exists (for the code in history note)
-    const jobCard = await db.cCTVJobCard.findFirst({
+    const jobCard = await db.mSJobCard.findFirst({
       where: { id: jobCardId, businessId, isActive: true },
       select: { jobCode: true },
     });

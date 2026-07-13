@@ -47,13 +47,13 @@ export async function GET(
     }
 
     const [expenses, total] = await Promise.all([
-      db.cCTVExpense.findMany({
+      db.mSExpense.findMany({
         where,
         orderBy: { date: "desc" },
         skip,
         take: limit,
       }),
-      db.cCTVExpense.count({ where }),
+      db.mSExpense.count({ where }),
     ]);
 
     // Aggregate stats
@@ -67,7 +67,7 @@ export async function GET(
       const mEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0, 23, 59, 59, 999);
       const mLabel = mStart.toLocaleDateString("en-GB", { month: "short", year: "2-digit" });
 
-      const agg = await db.cCTVExpense.aggregate({
+      const agg = await db.mSExpense.aggregate({
         where: { ...statsWhere, date: { gte: mStart, lte: mEnd } },
         _sum: { amount: true },
         _count: true,
@@ -81,7 +81,7 @@ export async function GET(
 
     // Category breakdown (current month)
     const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    const categoryBreakdown = await db.cCTVExpense.groupBy({
+    const categoryBreakdown = await db.mSExpense.groupBy({
       by: ["category"],
       where: { ...statsWhere, date: { gte: currentMonthStart } },
       _sum: { amount: true },
@@ -90,14 +90,14 @@ export async function GET(
     });
 
     // Overall totals
-    const overall = await db.cCTVExpense.aggregate({
+    const overall = await db.mSExpense.aggregate({
       where: statsWhere,
       _sum: { amount: true },
       _count: true,
     });
 
     // This month total
-    const thisMonth = await db.cCTVExpense.aggregate({
+    const thisMonth = await db.mSExpense.aggregate({
       where: { ...statsWhere, date: { gte: currentMonthStart } },
       _sum: { amount: true },
       _count: true,
@@ -158,7 +158,7 @@ export async function POST(
       );
     }
 
-    const expense = await db.cCTVExpense.create({
+    const expense = await db.mSExpense.create({
       data: {
         businessId,
         date: new Date(body.date),
@@ -191,7 +191,7 @@ export async function DELETE(
       return NextResponse.json({ error: "Expense ID is required" }, { status: 400 });
     }
 
-    const expense = await db.cCTVExpense.findFirst({
+    const expense = await db.mSExpense.findFirst({
       where: { id: expenseId, businessId, isActive: true },
     });
 
@@ -199,7 +199,7 @@ export async function DELETE(
       return NextResponse.json({ error: "Expense not found" }, { status: 404 });
     }
 
-    await db.cCTVExpense.update({
+    await db.mSExpense.update({
       where: { id: expenseId },
       data: { isActive: false },
     });

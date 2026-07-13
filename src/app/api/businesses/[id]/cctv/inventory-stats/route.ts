@@ -18,7 +18,7 @@ export async function GET(
     const searchQuery = url.searchParams.get("q")?.trim() || "";
 
     // ── 1. Total serial items (active, in-stock statuses) ──
-    const serialCounts = await db.cCTVSerialItem.groupBy({
+    const serialCounts = await db.mSSerialItem.groupBy({
       by: ["productId"],
       where: {
         businessId,
@@ -43,7 +43,7 @@ export async function GET(
     }
 
     // ── 2. Category breakdown ──
-    const categories = await db.cCTVCategory.findMany({
+    const categories = await db.mSCategory.findMany({
       where: { businessId, isActive: true },
       select: {
         id: true,
@@ -106,7 +106,7 @@ export async function GET(
     });
 
     // Also count products without a category
-    const uncatProducts = await db.cCTVProduct.findMany({
+    const uncatProducts = await db.mSProduct.findMany({
       where: { businessId, isActive: true, categoryId: null },
       select: { id: true, stock: true, costPrice: true, serialTracked: true },
     });
@@ -121,7 +121,7 @@ export async function GET(
     }
 
     // ── 3. Low stock products ──
-    const lowStockProducts = await db.cCTVProduct.findMany({
+    const lowStockProducts = await db.mSProduct.findMany({
       where: {
         businessId,
         isActive: true,
@@ -170,7 +170,7 @@ export async function GET(
     }> | null = null;
 
     if (searchQuery.length >= 2) {
-      const productHits = await db.cCTVProduct.findMany({
+      const productHits = await db.mSProduct.findMany({
         where: {
           businessId,
           isActive: true,
@@ -192,7 +192,7 @@ export async function GET(
         take: 15,
       });
 
-      const serialHits = await db.cCTVSerialItem.findMany({
+      const serialHits = await db.mSSerialItem.findMany({
         where: {
           businessId,
           isActive: true,

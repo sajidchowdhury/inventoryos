@@ -12,7 +12,7 @@ export async function GET(
   try {
     const { id: businessId, contractId } = await params;
 
-    const contract = await db.cCTVAmcContract.findFirst({
+    const contract = await db.mSAmcContract.findFirst({
       where: { id: contractId, businessId, isActive: true },
       include: {
         visits: {
@@ -47,7 +47,7 @@ export async function PUT(
     const { id: businessId, contractId } = await params;
     const body = await req.json();
 
-    const existing = await db.cCTVAmcContract.findFirst({
+    const existing = await db.mSAmcContract.findFirst({
       where: { id: contractId, businessId, isActive: true },
     });
 
@@ -109,7 +109,7 @@ export async function PUT(
       else updateData.status = "ACTIVE";
     }
 
-    const updated = await db.cCTVAmcContract.update({
+    const updated = await db.mSAmcContract.update({
       where: { id: contractId },
       data: updateData,
       include: { _count: { select: { visits: true } } },

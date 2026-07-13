@@ -8,7 +8,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const session = await verifySuperAdmin(req);
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { id } = await params;
-  const product = await db.cCTVMasterProduct.findUnique({
+  const product = await db.mSMasterProduct.findUnique({
     where: { id },
     include: {
       manufacturer: { select: { id: true, name: true } },
@@ -47,7 +47,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       }
     }
 
-    const product = await db.cCTVMasterProduct.update({
+    const product = await db.mSMasterProduct.update({
       where: { id },
       data,
       include: { manufacturer: { select: { id: true, name: true } } },
@@ -64,7 +64,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { id } = await params;
   // Soft delete — set isActive to false
-  await db.cCTVMasterProduct.update({
+  await db.mSMasterProduct.update({
     where: { id },
     data: { isActive: false },
   });

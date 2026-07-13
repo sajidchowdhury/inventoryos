@@ -6,7 +6,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   try {
     const { id: businessId, emiPlanId } = await params;
 
-    const plan = await db.cCTVEmiPlan.findFirst({
+    const plan = await db.mSEmiPlan.findFirst({
       where: { id: emiPlanId, businessId, isActive: true },
       include: {
         installments: {

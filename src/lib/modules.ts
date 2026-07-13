@@ -45,7 +45,7 @@ export const moduleRegistry: ModuleRegistryItem[] = [
     ],
   },
   {
-    slug: 'cctv-shop',
+    slug: 'mobile-shop',
     name: 'CCTV Shop',
     icon: '📹',
     color: 'violet',

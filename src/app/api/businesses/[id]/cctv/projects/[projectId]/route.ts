@@ -10,7 +10,7 @@ export async function GET(
   try {
     const { id: businessId, projectId } = await params;
 
-    const project = await db.cCTVProject.findFirst({
+    const project = await db.mSProject.findFirst({
       where: { id: projectId, businessId, isActive: true },
       include: {
         _count: {
@@ -39,7 +39,7 @@ export async function PUT(
     const { id: businessId, projectId } = await params;
     const body = await req.json();
 
-    const existing = await db.cCTVProject.findFirst({
+    const existing = await db.mSProject.findFirst({
       where: { id: projectId, businessId, isActive: true },
     });
 
@@ -93,7 +93,7 @@ export async function PUT(
       completedAt = null;
     }
 
-    const project = await db.cCTVProject.update({
+    const project = await db.mSProject.update({
       where: { id: projectId },
       data: {
         ...(projectName !== undefined && { projectName: projectName.trim() }),
@@ -137,7 +137,7 @@ export async function DELETE(
   try {
     const { id: businessId, projectId } = await params;
 
-    const existing = await db.cCTVProject.findFirst({
+    const existing = await db.mSProject.findFirst({
       where: { id: projectId, businessId, isActive: true },
     });
 
@@ -145,7 +145,7 @@ export async function DELETE(
       return NextResponse.json({ error: "Project not found" }, { status: 404 });
     }
 
-    await db.cCTVProject.update({
+    await db.mSProject.update({
       where: { id: projectId },
       data: { isActive: false },
     });

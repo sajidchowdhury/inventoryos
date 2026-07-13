@@ -1,5 +1,5 @@
 // GET/POST /api/businesses/[id]/suppliers/[supplierId]/payments
-// GET: List payments made to this supplier (both Purchase + CCTVPurchase)
+// GET: List payments made to this supplier (both Purchase + MSPurchase)
 // POST: Record a payment to supplier with FIFO allocation across both models
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
@@ -28,7 +28,7 @@ export async function GET(
         },
         orderBy: { createdAt: "desc" },
       }),
-      db.cCTVPurchase.findMany({
+      db.mSPurchase.findMany({
         where: { businessId, supplierId, status: { not: "cancelled" } },
         select: {
           id: true, purchaseNo: true, totalAmount: true, paidAmount: true,
@@ -40,7 +40,7 @@ export async function GET(
 
     const allPurchases = [
       ...generalPurchases.map((p) => ({ ...p, source: "purchase" as const })),
-      ...cctvPurchases.map((p) => ({ ...p, source: "cctv" as const })),
+      ...cctvPurchases.map((p) => ({ ...p, source: "mobile-shop" as const })),
     ].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 
     // Summary
@@ -103,13 +103,13 @@ export async function POST(
         let purchase = await tx.purchase.findFirst({
           where: { id: body.purchaseId, businessId, supplierId, status: { not: "cancelled" } },
         });
-        let source: "purchase" | "cctv" = "purchase";
+        let source: "purchase" | "mobile-shop" = "purchase";
 
         if (!purchase) {
           purchase = await tx.cCTVPurchase.findFirst({
             where: { id: body.purchaseId, businessId, supplierId, status: { not: "cancelled" } },
           }) as any;
-          if (purchase) source = "cctv";
+          if (purchase) source = "mobile-shop";
         }
 
         if (!purchase) {
@@ -152,7 +152,7 @@ export async function POST(
         ]);
 
         // Merge and sort by creation order (need createdAt for sorting)
-        type OutstandingItem = { id: string; paidAmount: number; totalAmount: number; createdAt: Date; source: "purchase" | "cctv" };
+        type OutstandingItem = { id: string; paidAmount: number; totalAmount: number; createdAt: Date; source: "purchase" | "mobile-shop" };
         const generalWithDate = await tx.purchase.findMany({
           where: { id: { in: generalOutstanding.map((p) => p.id) } },
           select: { id: true, createdAt: true },
@@ -167,7 +167,7 @@ export async function POST(
 
         const allOutstanding: OutstandingItem[] = [
           ...generalOutstanding.map((p) => ({ ...p, createdAt: generalMap.get(p.id)!, source: "purchase" as const })),
-          ...cctvOutstanding.map((p) => ({ ...p, createdAt: cctvMap.get(p.id)!, source: "cctv" as const })),
+          ...cctvOutstanding.map((p) => ({ ...p, createdAt: cctvMap.get(p.id)!, source: "mobile-shop" as const })),
         ].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
 
         let remaining = amount;

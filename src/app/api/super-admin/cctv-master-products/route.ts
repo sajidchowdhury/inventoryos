@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
     else if (approved === "false") where.isApproved = false;
 
     const [products, total] = await Promise.all([
-      db.cCTVMasterProduct.findMany({
+      db.mSMasterProduct.findMany({
         where,
         orderBy: { name: "asc" },
         take: limit,
@@ -43,7 +43,7 @@ export async function GET(req: NextRequest) {
           manufacturer: { select: { id: true, name: true } },
         },
       }),
-      db.cCTVMasterProduct.count({ where }),
+      db.mSMasterProduct.count({ where }),
     ]);
 
     return NextResponse.json({ success: true, products, total, limit, offset });
@@ -74,7 +74,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Check for duplicate (brand, model) — the unique constraint
-    const existing = await db.cCTVMasterProduct.findUnique({
+    const existing = await db.mSMasterProduct.findUnique({
       where: { brand_model: { brand, model } },
     });
     if (existing) {
@@ -95,7 +95,7 @@ export async function POST(req: NextRequest) {
       manufacturerId = mfr.id;
     }
 
-    const product = await db.cCTVMasterProduct.create({
+    const product = await db.mSMasterProduct.create({
       data: {
         name,
         brand,

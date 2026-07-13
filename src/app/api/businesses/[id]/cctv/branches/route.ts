@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id: businessId } = await params;
-    const branches = await db.cCTVBranch.findMany({
+    const branches = await db.mSBranch.findMany({
       where: { businessId, isActive: true },
       include: {
         _count: { select: { serialItems: { where: { status: "IN_STOCK" } } } },
@@ -40,7 +40,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
 
     // Check uniqueness
-    const existing = await db.cCTVBranch.findFirst({
+    const existing = await db.mSBranch.findFirst({
       where: { businessId, code, isActive: true },
     });
     if (existing) {
@@ -48,10 +48,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
 
     // Check if this is the first branch
-    const branchCount = await db.cCTVBranch.count({ where: { businessId } });
+    const branchCount = await db.mSBranch.count({ where: { businessId } });
     const isDefault = branchCount === 0;
 
-    const branch = await db.cCTVBranch.create({
+    const branch = await db.mSBranch.create({
       data: {
         businessId,
         name: name.trim(),

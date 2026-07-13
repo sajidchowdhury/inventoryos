@@ -16,7 +16,7 @@ export async function GET(
 
   // ── List all saved returns ──
   if (!yearParam || !monthParam) {
-    const returns = await db.cCTVVatReturn.findMany({
+    const returns = await db.mSVatReturn.findMany({
       where: { businessId, isActive: true },
       orderBy: [{ taxYear: 'desc' }, { taxMonth: 'desc' }],
     });
@@ -37,7 +37,7 @@ export async function GET(
   const prevMonthEnd = new Date(taxYear, taxMonth - 1, 0, 23, 59, 59, 999);
 
   // Section E: Output tax from Mushak 6.3 invoices (sales)
-  const salesInvoices = await db.cCTVMushakInvoice.findMany({
+  const salesInvoices = await db.mSMushakInvoice.findMany({
     where: {
       businessId,
       isActive: true,
@@ -50,11 +50,11 @@ export async function GET(
   const salesCount = salesInvoices.length;
 
   // Section B: Input tax credit from local purchases
-  // We aggregate from CCTVSaleItems linked to completed sales in the period.
+  // We aggregate from MSSaleItems linked to completed sales in the period.
   // For purchases, we look at serial items stocked in during the period (costPrice × qty).
-  // Since there is no CCTVPurchase model yet, we use CCTVMushakInvoice for supplier-side
+  // Since there is no MSPurchase model yet, we use MSMushakInvoice for supplier-side
   // and fall back to cost-based calculation from serial items.
-  const serialItemsInPeriod = await db.cCTVSerialItem.findMany({
+  const serialItemsInPeriod = await db.mSSerialItem.findMany({
     where: {
       businessId,
       purchaseDate: { gte: monthStart, lte: monthEnd },
@@ -67,7 +67,7 @@ export async function GET(
   const localPurchaseCount = new Set(serialItemsInPeriod.map((item) => item.purchaseId || item.id)).size;
 
   // Use the NBR config VAT rate for purchase credit calculation
-  const nbrConfig = await db.cCTVNbrConfig.findUnique({
+  const nbrConfig = await db.mSNbrConfig.findUnique({
     where: { businessId },
   });
   const vatRate = nbrConfig?.applicableVatRate || 15;
@@ -81,7 +81,7 @@ export async function GET(
   // Section A: Opening credit = adjustedNetVat from previous month's return (if negative = refundable = credit)
   // If no previous return, opening credit = 0
   let openingCredit = 0;
-  const prevReturn = await db.cCTVVatReturn.findFirst({
+  const prevReturn = await db.mSVatReturn.findFirst({
     where: { businessId, isActive: true, taxYear, taxMonth: taxMonth - 1 },
   });
   if (prevReturn) {
@@ -96,7 +96,7 @@ export async function GET(
   const netVatPayable = outputTax - totalInputCredit;
 
   // Check if a saved return already exists for this month
-  const existingReturn = await db.cCTVVatReturn.findUnique({
+  const existingReturn = await db.mSVatReturn.findUnique({
     where: { businessId_taxYear_taxMonth: { businessId, taxYear, taxMonth } },
   });
 
@@ -145,7 +145,7 @@ export async function POST(
   const adjustedNetVat = netVatPayable + (adjustmentAmount || 0);
   const amountInWords = numberToWords(Math.abs(adjustedNetVat));
 
-  const vatReturn = await db.cCTVVatReturn.upsert({
+  const vatReturn = await db.mSVatReturn.upsert({
     where: { businessId_taxYear_taxMonth: { businessId, taxYear, taxMonth } },
     create: {
       businessId,

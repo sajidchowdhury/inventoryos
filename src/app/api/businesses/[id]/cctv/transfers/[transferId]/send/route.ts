@@ -10,7 +10,7 @@ export async function POST(
   try {
     const { id: businessId, transferId } = await params;
 
-    const transfer = await db.cCTVTransfer.findFirst({
+    const transfer = await db.mSTransfer.findFirst({
       where: { id: transferId, businessId, status: "DRAFT" },
       include: { items: true },
     });
@@ -21,13 +21,13 @@ export async function POST(
 
     // Move all serial items to IN_TRANSIT
     for (const item of transfer.items) {
-      await db.cCTVSerialItem.update({
+      await db.mSSerialItem.update({
         where: { id: item.serialItemId },
         data: { status: "IN_TRANSIT" },
       });
 
       // Create history entry
-      await db.cCTVSerialItemHistory.create({
+      await db.mSSerialItemHistory.create({
         data: {
           businessId,
           serialItemId: item.serialItemId,
@@ -42,7 +42,7 @@ export async function POST(
     }
 
     // Update transfer status
-    const updated = await db.cCTVTransfer.update({
+    const updated = await db.mSTransfer.update({
       where: { id: transferId },
       data: { status: "IN_TRANSIT" },
       include: {
@@ -54,17 +54,17 @@ export async function POST(
 
     // Sync product stock counts
     const affectedProductIds = transfer.items.map((i) => i.serialItemId);
-    const serialItems = await db.cCTVSerialItem.findMany({
+    const serialItems = await db.mSSerialItem.findMany({
       where: { id: { in: affectedProductIds } },
       select: { productId: true },
     });
     const uniqueProductIds = [...new Set(serialItems.map((si) => si.productId))];
 
     for (const productId of uniqueProductIds) {
-      const inStockCount = await db.cCTVSerialItem.count({
+      const inStockCount = await db.mSSerialItem.count({
         where: { productId, businessId, status: "IN_STOCK", isActive: true },
       });
-      await db.cCTVProduct.update({
+      await db.mSProduct.update({
         where: { id: productId },
         data: { stock: inStockCount },
       });

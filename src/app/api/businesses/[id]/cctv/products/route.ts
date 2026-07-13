@@ -35,7 +35,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     }
 
     const [products, total] = await Promise.all([
-      db.cCTVProduct.findMany({
+      db.mSProduct.findMany({
         where,
         include: {
           category: { select: { id: true, name: true, color: true, icon: true, slug: true } },
@@ -45,7 +45,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         skip,
         take: limit,
       }),
-      db.cCTVProduct.count({ where }),
+      db.mSProduct.count({ where }),
     ]);
 
     return NextResponse.json({
@@ -70,7 +70,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       return NextResponse.json({ error: "Product name and brand are required" }, { status: 400 });
     }
 
-    const product = await db.cCTVProduct.create({
+    const product = await db.mSProduct.create({
       data: {
         businessId,
         categoryId: body.categoryId || null,

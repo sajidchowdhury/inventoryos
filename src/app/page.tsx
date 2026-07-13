@@ -233,9 +233,9 @@ function DashboardView() {
   return (
     <div className="min-h-screen flex flex-col">
       <div className="flex-1">
-        {slug === 'cctv-shop' && <CCTVShell />}
+        {slug === 'mobile-shop' && <CCTVShell />}
         {slug === 'pharmacy' && <PharmacyShell />}
-        {!['cctv-shop', 'pharmacy'].includes(slug) && (
+        {!['mobile-shop', 'pharmacy'].includes(slug) && (
           <div className="min-h-screen flex flex-col items-center justify-center gap-6 bg-gray-50 px-4">
             <div className="text-6xl">{session.business.businessType.icon}</div>
             <h2 className="text-2xl font-bold text-gray-900">{session.business.businessType.name}</h2>
@@ -1368,7 +1368,7 @@ function AdminLoginView({
                   <div>
                     <Label className="mb-2">Business / Shop Name</Label>
                     <Input
-                      placeholder={regBusinessTypeId === 'pharmacy' ? 'e.g. My Creative Code' : regBusinessTypeId === 'cctv-shop' ? 'e.g. My Creative CC' : 'e.g. MedPlus Pharmacy'}
+                      placeholder={regBusinessTypeId === 'pharmacy' ? 'e.g. My Creative Code' : regBusinessTypeId === 'mobile-shop' ? 'e.g. My Creative CC' : 'e.g. MedPlus Pharmacy'}
                       value={regBusinessName}
                       onChange={(e) => {
                         setRegBusinessName(e.target.value);

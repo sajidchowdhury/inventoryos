@@ -12,7 +12,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     const limit = parseInt(searchParams.get('limit') || '20', 10);
     const search = searchParams.get('search') || '';
 
-    const where: Prisma.CCTVMushakInvoiceWhereInput = {
+    const where: Prisma.MSMushakInvoiceWhereInput = {
       businessId: BUSINESS_ID,
       isActive: true,
       ...(search && {
@@ -25,7 +25,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     };
 
     const [invoices, total] = await Promise.all([
-      db.cCTVMushakInvoice.findMany({
+      db.mSMushakInvoice.findMany({
         where,
         include: {
           lineItems: { where: { isActive: true }, orderBy: { slNo: 'asc' } },
@@ -34,7 +34,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
         skip: (page - 1) * limit,
         take: limit,
       }),
-      db.cCTVMushakInvoice.count({ where }),
+      db.mSMushakInvoice.count({ where }),
     ]);
 
     return NextResponse.json({
@@ -59,7 +59,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
 
     // Fetch the sale with items
-    const sale = await db.cCTVSale.findFirst({
+    const sale = await db.mSSale.findFirst({
       where: { id: saleId, businessId: BUSINESS_ID, isActive: true },
       include: { items: { where: { isActive: true } } },
     });
@@ -68,7 +68,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
 
     // Check for existing invoice for this sale
-    const existing = await db.cCTVMushakInvoice.findFirst({
+    const existing = await db.mSMushakInvoice.findFirst({
       where: { saleId, businessId: BUSINESS_ID, isActive: true },
     });
     if (existing) {
@@ -76,9 +76,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
 
     // Get NBR config for seller details + HS codes
-    const nbrConfig = await db.cCTVNbrConfig.findUnique({ where: { businessId: BUSINESS_ID } });
+    const nbrConfig = await db.mSNbrConfig.findUnique({ where: { businessId: BUSINESS_ID } });
     const hsMappings = nbrConfig
-      ? await db.cCTVHsCodeMapping.findMany({ where: { configId: nbrConfig.id, isActive: true } })
+      ? await db.mSHsCodeMapping.findMany({ where: { configId: nbrConfig.id, isActive: true } })
       : [];
 
     const sellerName = nbrConfig?.legalName || 'N/A';

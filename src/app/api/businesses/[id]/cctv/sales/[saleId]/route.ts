@@ -10,7 +10,7 @@ export async function GET(
   try {
     const { id: businessId, saleId } = await params;
 
-    const sale = await db.cCTVSale.findFirst({
+    const sale = await db.mSSale.findFirst({
       where: { id: saleId, businessId, isActive: true },
       include: {
         items: {
@@ -48,7 +48,7 @@ export async function DELETE(
   try {
     const { id: businessId, saleId } = await params;
 
-    const sale = await db.cCTVSale.findFirst({
+    const sale = await db.mSSale.findFirst({
       where: { id: saleId, businessId, isActive: true },
       include: {
         items: {

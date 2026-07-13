@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import { useAdmin } from "../../AdminContext";
 
-interface CCTVMasterProduct {
+interface MSMasterProduct {
   id: string;
   name: string;
   brand: string;
@@ -52,7 +52,7 @@ const EMPTY_FORM = {
 
 export default function CCTVCatalogPage() {
   const { apiFetch, notify } = useAdmin();
-  const [products, setProducts] = useState<CCTVMasterProduct[]>([]);
+  const [products, setProducts] = useState<MSMasterProduct[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
@@ -106,7 +106,7 @@ export default function CCTVCatalogPage() {
     setShowForm(true);
   };
 
-  const openEdit = (p: CCTVMasterProduct) => {
+  const openEdit = (p: MSMasterProduct) => {
     setForm({
       name: p.name, brand: p.brand, model: p.model, sku: p.sku || "",
       description: p.description || "", hsnCode: p.hsnCode || "",

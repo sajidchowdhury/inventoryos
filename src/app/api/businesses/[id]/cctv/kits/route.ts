@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id: businessId } = await params;
-    const kits = await db.cCTVKitDefinition.findMany({
+    const kits = await db.mSKitDefinition.findMany({
       where: { businessId, isActive: true },
       include: {
         _count: { select: { components: true } },
@@ -40,14 +40,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
 
     // Check uniqueness
-    const existing = await db.cCTVKitDefinition.findFirst({
+    const existing = await db.mSKitDefinition.findFirst({
       where: { businessId, slug, isActive: true },
     });
     if (existing) {
       return NextResponse.json({ error: `Kit slug "${slug}" is already in use` }, { status: 409 });
     }
 
-    const kit = await db.cCTVKitDefinition.create({
+    const kit = await db.mSKitDefinition.create({
       data: {
         businessId,
         name: name.trim(),

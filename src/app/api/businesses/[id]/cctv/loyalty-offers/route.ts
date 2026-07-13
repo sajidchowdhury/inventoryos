@@ -39,7 +39,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       where.endDate = { gte: new Date() };
     }
 
-    const offers = await db.cCTVLoyaltyOffer.findMany({
+    const offers = await db.mSLoyaltyOffer.findMany({
       where,
       include: {
         config: { select: { id: true } },
@@ -123,12 +123,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
 
     // Find or create loyalty config (auto-init if missing)
-    let config = await db.cCTVLoyaltyConfig.findUnique({
+    let config = await db.mSLoyaltyConfig.findUnique({
       where: { businessId },
     });
 
     if (!config) {
-      config = await db.cCTVLoyaltyConfig.create({
+      config = await db.mSLoyaltyConfig.create({
         data: {
           businessId,
           ...DEFAULT_CONFIG,
@@ -137,7 +137,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
 
     // Create offer
-    const offer = await db.cCTVLoyaltyOffer.create({
+    const offer = await db.mSLoyaltyOffer.create({
       data: {
         businessId,
         configId: config.id,

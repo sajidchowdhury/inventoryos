@@ -9,7 +9,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   try {
     const { id: businessId, taskId } = await params;
 
-    const task = await db.cCTVInstallationTask.findFirst({
+    const task = await db.mSInstallationTask.findFirst({
       where: { id: taskId, businessId, isActive: true },
       include: {
         project: {
@@ -45,7 +45,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     const { id: businessId, taskId } = await params;
     const body = await req.json();
 
-    const existing = await db.cCTVInstallationTask.findFirst({
+    const existing = await db.mSInstallationTask.findFirst({
       where: { id: taskId, businessId, isActive: true },
     });
 
@@ -91,7 +91,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       }
     }
 
-    const updated = await db.cCTVInstallationTask.update({
+    const updated = await db.mSInstallationTask.update({
       where: { id: taskId },
       data,
     });
@@ -108,7 +108,7 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
   try {
     const { id: businessId, taskId } = await params;
 
-    const existing = await db.cCTVInstallationTask.findFirst({
+    const existing = await db.mSInstallationTask.findFirst({
       where: { id: taskId, businessId, isActive: true },
     });
 
@@ -116,7 +116,7 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
       return NextResponse.json({ error: "Installation task not found" }, { status: 404 });
     }
 
-    await db.cCTVInstallationTask.update({
+    await db.mSInstallationTask.update({
       where: { id: taskId },
       data: { isActive: false },
     });

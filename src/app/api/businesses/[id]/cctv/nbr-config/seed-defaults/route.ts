@@ -21,19 +21,19 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     const { id: _businessId } = await params;
 
     // Ensure config exists
-    let config = await db.cCTVNbrConfig.findUnique({ where: { businessId: BUSINESS_ID } });
+    let config = await db.mSNbrConfig.findUnique({ where: { businessId: BUSINESS_ID } });
     if (!config) {
-      config = await db.cCTVNbrConfig.create({ data: { businessId: BUSINESS_ID } });
+      config = await db.mSNbrConfig.create({ data: { businessId: BUSINESS_ID } });
     }
 
     // Soft-delete existing non-default mappings
-    await db.cCTVHsCodeMapping.updateMany({
+    await db.mSHsCodeMapping.updateMany({
       where: { businessId: BUSINESS_ID, isDefault: true, isActive: true },
       data: { isActive: false },
     });
 
     // Re-seed defaults
-    const created = await db.cCTVHsCodeMapping.createMany({
+    const created = await db.mSHsCodeMapping.createMany({
       data: SEED_HS_CODES.map((h) => ({
         businessId: BUSINESS_ID,
         configId: config.id,

@@ -12,7 +12,7 @@ export async function PUT(
     const body = await req.json();
 
     // Verify visit belongs to contract and business
-    const existing = await db.cCTVAmcVisit.findFirst({
+    const existing = await db.mSAmcVisit.findFirst({
       where: { id: visitId, contractId, businessId, isActive: true },
     });
 
@@ -66,7 +66,7 @@ export async function PUT(
     if (visitNotes !== undefined) updateData.visitNotes = visitNotes?.trim() || null;
     if (customerSignOff !== undefined) updateData.customerSignOff = customerSignOff;
 
-    const updated = await db.cCTVAmcVisit.update({
+    const updated = await db.mSAmcVisit.update({
       where: { id: visitId },
       data: updateData,
     });
@@ -87,7 +87,7 @@ export async function DELETE(
     const { id: businessId, contractId, visitId } = await params;
 
     // Verify visit belongs to contract and business
-    const existing = await db.cCTVAmcVisit.findFirst({
+    const existing = await db.mSAmcVisit.findFirst({
       where: { id: visitId, contractId, businessId, isActive: true },
     });
 

@@ -16,7 +16,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     const to = toParam ? new Date(toParam) : new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
 
     // Fetch all active sales within date range
-    const sales = await db.cCTVSale.findMany({
+    const sales = await db.mSSale.findMany({
       where: {
         businessId,
         isActive: true,

@@ -27,7 +27,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       ];
     }
 
-    const jobCards = await db.cCTVJobCard.findMany({
+    const jobCards = await db.mSJobCard.findMany({
       where,
       include: {
         serialItem: {
@@ -72,7 +72,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     // If serialItemId provided, validate it exists and auto-fill device info
     let deviceInfo = { deviceName: deviceName || null, serialNumber: serialNumber || null, imei: imei || null };
     if (serialItemId) {
-      const serialItem = await db.cCTVSerialItem.findFirst({
+      const serialItem = await db.mSSerialItem.findFirst({
         where: { id: serialItemId, businessId, isActive: true },
         include: { product: { select: { name: true, brand: true } } },
       });
@@ -88,7 +88,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     // Auto-generate job code
     const year = new Date().getFullYear();
-    const lastJob = await db.cCTVJobCard.findFirst({
+    const lastJob = await db.mSJobCard.findFirst({
       where: { businessId, jobCode: { startsWith: `JC-${year}-` } },
       orderBy: { jobCode: "desc" },
       select: { jobCode: true },
@@ -103,15 +103,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     // If a serial item is linked and it's IN_STOCK, change to IN_REPAIR
     if (serialItemId) {
-      const item = await db.cCTVSerialItem.findFirst({
+      const item = await db.mSSerialItem.findFirst({
         where: { id: serialItemId, businessId, status: "IN_STOCK", isActive: true },
       });
       if (item) {
-        await db.cCTVSerialItem.update({
+        await db.mSSerialItem.update({
           where: { id: serialItemId },
           data: { status: "IN_REPAIR" },
         });
-        await db.cCTVSerialItemHistory.create({
+        await db.mSSerialItemHistory.create({
           data: {
             businessId,
             serialItemId,
@@ -124,7 +124,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       }
     }
 
-    const jobCard = await db.cCTVJobCard.create({
+    const jobCard = await db.mSJobCard.create({
       data: {
         businessId,
         jobCode,

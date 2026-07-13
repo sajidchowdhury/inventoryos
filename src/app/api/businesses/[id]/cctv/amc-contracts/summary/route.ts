@@ -15,7 +15,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     const sixtyDaysMs = nowMs + 60 * MS_PER_DAY;
 
     // Fetch all active contracts to compute statuses in memory
-    const allContracts = await db.cCTVAmcContract.findMany({
+    const allContracts = await db.mSAmcContract.findMany({
       where: { businessId, isActive: true },
       select: {
         id: true,
@@ -55,7 +55,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
       // If the stored status differs, fire-and-forget update
       if (computedStatus !== contract.status && contract.status !== "CANCELLED") {
-        db.cCTVAmcContract
+        db.mSAmcContract
           .update({ where: { id: contract.id }, data: { status: computedStatus } })
           .catch(() => {});
       }
@@ -103,7 +103,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     // Fetch details for upcoming renewals (30-60 day window)
     if (upcomingRenewals.length > 0) {
       const renewalIds = upcomingRenewals.map((r) => r.id);
-      const renewalDetails = await db.cCTVAmcContract.findMany({
+      const renewalDetails = await db.mSAmcContract.findMany({
         where: { id: { in: renewalIds }, businessId, isActive: true },
         select: {
           id: true,

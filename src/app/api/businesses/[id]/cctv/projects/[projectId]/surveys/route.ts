@@ -11,7 +11,7 @@ export async function GET(
     const { id: businessId, projectId } = await params;
 
     // Verify project exists
-    const project = await db.cCTVProject.findFirst({
+    const project = await db.mSProject.findFirst({
       where: { id: projectId, businessId, isActive: true },
     });
 
@@ -19,7 +19,7 @@ export async function GET(
       return NextResponse.json({ error: "Project not found" }, { status: 404 });
     }
 
-    const surveys = await db.cCTVSiteSurvey.findMany({
+    const surveys = await db.mSSiteSurvey.findMany({
       where: { projectId, businessId, isActive: true },
       include: {
         cameraPositions: {
@@ -48,7 +48,7 @@ export async function POST(
     const { id: businessId, projectId } = await params;
 
     // Verify project exists
-    const project = await db.cCTVProject.findFirst({
+    const project = await db.mSProject.findFirst({
       where: { id: projectId, businessId, isActive: true },
     });
 
@@ -70,7 +70,7 @@ export async function POST(
       notes?: string;
     };
 
-    const survey = await db.cCTVSiteSurvey.create({
+    const survey = await db.mSSiteSurvey.create({
       data: {
         businessId,
         projectId,

@@ -36,7 +36,7 @@ export async function GET(
   try {
     const { id: businessId, serialItemId } = await params;
 
-    const item = await db.cCTVSerialItem.findFirst({
+    const item = await db.mSSerialItem.findFirst({
       where: { id: serialItemId, businessId, isActive: true },
       include: {
         product: {
@@ -75,7 +75,7 @@ export async function PUT(
     }
 
     // Fetch current item
-    const item = await db.cCTVSerialItem.findFirst({
+    const item = await db.mSSerialItem.findFirst({
       where: { id: serialItemId, businessId, isActive: true },
     });
 
@@ -95,11 +95,11 @@ export async function PUT(
 
     // Update serial item status + create history entry in a transaction
     const [updated] = await db.$transaction([
-      db.cCTVSerialItem.update({
+      db.mSSerialItem.update({
         where: { id: serialItemId },
         data: { status: toStatus },
       }),
-      db.cCTVSerialItemHistory.create({
+      db.mSSerialItemHistory.create({
         data: {
           businessId,
           serialItemId,

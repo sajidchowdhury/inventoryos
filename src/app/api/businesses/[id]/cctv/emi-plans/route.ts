@@ -24,7 +24,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       ];
     }
 
-    const plans = await db.cCTVEmiPlan.findMany({
+    const plans = await db.mSEmiPlan.findMany({
       where,
       include: {
         _count: {
@@ -209,7 +209,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     });
 
     // Fetch the created plan with all installments
-    const fullPlan = await db.cCTVEmiPlan.findUnique({
+    const fullPlan = await db.mSEmiPlan.findUnique({
       where: { id: plan.id },
       include: {
         installments: {

@@ -10,7 +10,7 @@ export async function GET(
   try {
     const { id: businessId, contractId } = await params;
 
-    const visits = await db.cCTVAmcVisit.findMany({
+    const visits = await db.mSAmcVisit.findMany({
       where: { contractId, businessId, isActive: true },
       orderBy: { visitDate: "desc" },
     });
@@ -46,7 +46,7 @@ export async function POST(
       return NextResponse.json({ error: "Visit date is required" }, { status: 400 });
     }
 
-    const visit = await db.cCTVAmcVisit.create({
+    const visit = await db.mSAmcVisit.create({
       data: {
         businessId,
         contractId,
@@ -63,7 +63,7 @@ export async function POST(
     });
 
     // Increment totalVisitsUsed on the contract
-    await db.cCTVAmcContract.update({
+    await db.mSAmcContract.update({
       where: { id: contractId },
       data: { totalVisitsUsed: { increment: 1 } },
     });

@@ -10,7 +10,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     const { id: businessId, taskId } = await params;
 
     // Verify task exists
-    const task = await db.cCTVInstallationTask.findFirst({
+    const task = await db.mSInstallationTask.findFirst({
       where: { id: taskId, businessId, isActive: true },
     });
 
@@ -18,7 +18,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       return NextResponse.json({ error: "Installation task not found" }, { status: 404 });
     }
 
-    const items = await db.cCTVTaskChecklist.findMany({
+    const items = await db.mSTaskChecklist.findMany({
       where: { taskId, businessId, isActive: true },
       orderBy: { sortOrder: "asc" },
     });
@@ -43,7 +43,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
 
     // Verify task exists
-    const task = await db.cCTVInstallationTask.findFirst({
+    const task = await db.mSInstallationTask.findFirst({
       where: { id: taskId, businessId, isActive: true },
     });
 
@@ -52,7 +52,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
 
     // Determine sort order
-    const maxSort = await db.cCTVTaskChecklist.findFirst({
+    const maxSort = await db.mSTaskChecklist.findFirst({
       where: { taskId, businessId, isActive: true },
       orderBy: { sortOrder: "desc" },
       select: { sortOrder: true },
@@ -63,7 +63,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const completedAt = completed ? new Date() : null;
 
     // Create checklist item
-    const item = await db.cCTVTaskChecklist.create({
+    const item = await db.mSTaskChecklist.create({
       data: {
         businessId,
         taskId,
@@ -84,7 +84,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       updateData.completedChecklist = { increment: 1 };
     }
 
-    await db.cCTVInstallationTask.update({
+    await db.mSInstallationTask.update({
       where: { id: taskId },
       data: updateData,
     });
@@ -109,7 +109,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     }
 
     // Verify task exists
-    const task = await db.cCTVInstallationTask.findFirst({
+    const task = await db.mSInstallationTask.findFirst({
       where: { id: taskId, businessId, isActive: true },
     });
 
@@ -119,7 +119,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
     // Process each item
     for (const item of items) {
-      const existing = await db.cCTVTaskChecklist.findFirst({
+      const existing = await db.mSTaskChecklist.findFirst({
         where: { id: item.id, taskId, businessId, isActive: true },
       });
 
@@ -142,7 +142,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
         updateData.completedAt = null;
       }
 
-      await db.cCTVTaskChecklist.update({
+      await db.mSTaskChecklist.update({
         where: { id: item.id },
         data: updateData,
       });
@@ -150,15 +150,15 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
     // Recount totals on parent task
     const [totalCount, completedCount] = await Promise.all([
-      db.cCTVTaskChecklist.count({
+      db.mSTaskChecklist.count({
         where: { taskId, businessId, isActive: true },
       }),
-      db.cCTVTaskChecklist.count({
+      db.mSTaskChecklist.count({
         where: { taskId, businessId, isActive: true, isCompleted: true },
       }),
     ]);
 
-    await db.cCTVInstallationTask.update({
+    await db.mSInstallationTask.update({
       where: { id: taskId },
       data: {
         totalChecklist: totalCount,

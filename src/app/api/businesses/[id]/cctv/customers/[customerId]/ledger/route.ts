@@ -45,7 +45,7 @@ export async function GET(
     }
 
     // ── 1. Sales (DEBIT — customer owes) ──
-    const sales = await db.cCTVSale.findMany({
+    const sales = await db.mSSale.findMany({
       where: { businessId, customerId, isActive: true },
       select: {
         id: true,
@@ -59,7 +59,7 @@ export async function GET(
     });
 
     // ── 2. Payments (CREDIT — customer pays) ──
-    const payments = await db.cCTVPayment.findMany({
+    const payments = await db.mSPayment.findMany({
       where: {
         businessId,
         isActive: true,
@@ -77,7 +77,7 @@ export async function GET(
     });
 
     // ── 3. Returns (CREDIT — customer gets money back) ──
-    const returns = await db.cCTVReturn.findMany({
+    const returns = await db.mSReturn.findMany({
       where: {
         businessId,
         sale: { customerId, businessId },

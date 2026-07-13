@@ -7,7 +7,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   try {
     const { invoiceId } = await params;
 
-    const invoice = await db.cCTVMushakInvoice.findFirst({
+    const invoice = await db.mSMushakInvoice.findFirst({
       where: { id: invoiceId, businessId: BUSINESS_ID, isActive: true },
       include: {
         lineItems: { where: { isActive: true }, orderBy: { slNo: 'asc' } },

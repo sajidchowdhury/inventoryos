@@ -9,13 +9,13 @@ export async function GET(
   try {
     const { id: businessId, techId } = await params;
 
-    const tech = await db.cCTVTechnician.findFirst({
+    const tech = await db.mSTechnician.findFirst({
       where: { id: techId, businessId, isActive: true },
     });
     if (!tech) return NextResponse.json({ error: "Technician not found" }, { status: 404 });
 
     // All job cards assigned to this technician
-    const jobCards = await db.cCTVJobCard.findMany({
+    const jobCards = await db.mSJobCard.findMany({
       where: { businessId, assignedToName: tech.displayName, isActive: true },
       select: {
         id: true, status: true, jobType: true,
@@ -42,7 +42,7 @@ export async function GET(
         : `${(avgTatHours / 24).toFixed(1)}d`;
 
     // Total commission
-    const commissions = await db.cCTVCommissionRecord.findMany({
+    const commissions = await db.mSCommissionRecord.findMany({
       where: { businessId, technicianId: techId },
       select: { commissionAmount: true },
     });

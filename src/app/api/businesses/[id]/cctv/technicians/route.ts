@@ -11,7 +11,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     const where: Record<string, unknown> = { businessId };
     if (activeOnly) where.isActive = true;
 
-    const technicians = await db.cCTVTechnician.findMany({
+    const technicians = await db.mSTechnician.findMany({
       where,
       include: {
         _count: { select: { commissionRecords: true } },
@@ -36,7 +36,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       return NextResponse.json({ error: "Display name is required" }, { status: 400 });
     }
 
-    const technician = await db.cCTVTechnician.create({
+    const technician = await db.mSTechnician.create({
       data: {
         businessId,
         displayName: displayName.trim(),

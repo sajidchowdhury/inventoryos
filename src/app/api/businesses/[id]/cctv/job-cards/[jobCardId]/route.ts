@@ -9,7 +9,7 @@ export async function GET(
   try {
     const { id: businessId, jobCardId } = await params;
 
-    const jobCard = await db.cCTVJobCard.findFirst({
+    const jobCard = await db.mSJobCard.findFirst({
       where: { id: jobCardId, businessId, isActive: true },
       include: {
         serialItem: {
@@ -42,7 +42,7 @@ export async function GET(
     // Get status history from serial item history (if linked)
     let statusHistory: { status: string; date: string; notes?: string }[] = [];
     if (jobCard.serialItemId) {
-      const history = await db.cCTVSerialItemHistory.findMany({
+      const history = await db.mSSerialItemHistory.findMany({
         where: { serialItemId: jobCard.serialItemId, businessId },
         orderBy: { createdAt: "asc" },
         select: { toStatus: true, event: true, notes: true, createdAt: true },
@@ -69,7 +69,7 @@ export async function PUT(
     const { id: businessId, jobCardId } = await params;
     const body = await req.json();
 
-    const existing = await db.cCTVJobCard.findFirst({
+    const existing = await db.mSJobCard.findFirst({
       where: { id: jobCardId, businessId, isActive: true },
     });
     if (!existing) {
@@ -91,7 +91,7 @@ export async function PUT(
       }
     }
 
-    const updated = await db.cCTVJobCard.update({
+    const updated = await db.mSJobCard.update({
       where: { id: jobCardId },
       data,
       include: {

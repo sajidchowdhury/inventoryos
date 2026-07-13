@@ -24,7 +24,7 @@ export async function POST(
       );
     }
 
-    const jobCard = await db.cCTVJobCard.findFirst({
+    const jobCard = await db.mSJobCard.findFirst({
       where: { id: jobCardId, businessId, isActive: true },
     });
 
@@ -53,7 +53,7 @@ export async function POST(
       if (body.collectorPhone) updateData.collectorPhone = body.collectorPhone;
       if (body.collectorNid) updateData.collectorNid = body.collectorNid;
 
-      const updated = await db.cCTVJobCard.update({
+      const updated = await db.mSJobCard.update({
         where: { id: jobCardId },
         data: updateData,
       });
@@ -115,7 +115,7 @@ export async function POST(
       }
 
       // Mark as verified
-      const updated = await db.cCTVJobCard.update({
+      const updated = await db.mSJobCard.update({
         where: { id: jobCardId },
         data: {
           otpVerified: true,

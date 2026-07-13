@@ -46,7 +46,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     let cctvStatsMap: Record<string, { cctvSalesCount: number; cctvTotalSpent: number }> = {};
 
     if (customerIds.length > 0) {
-      const cctvStats = await db.cCTVSale.groupBy({
+      const cctvStats = await db.mSSale.groupBy({
         by: ["customerId"],
         where: { businessId, customerId: { in: customerIds }, isActive: true },
         _sum: { totalDue: true },
@@ -75,7 +75,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     let customersWithBalance = 0;
     if (customerIds.length > 0) {
       // Get all sales with payments for these customers
-      const salesWithPayments = await db.cCTVSale.findMany({
+      const salesWithPayments = await db.mSSale.findMany({
         where: { businessId, isActive: true, customerId: { in: customerIds } },
         select: {
           customerId: true,

@@ -8,7 +8,7 @@ export async function GET(
 ) {
   try {
     const { id: businessId, vendorId } = await params;
-    const vendor = await db.cCTVOutsourcedVendor.findFirst({
+    const vendor = await db.mSOutsourcedVendor.findFirst({
       where: { id: vendorId, businessId },
       include: {
         _count: { select: { jobCards: true } },
@@ -41,7 +41,7 @@ export async function PUT(
     const body = await req.json();
     const { name, phone, address, specialization, notes, isActive } = body;
 
-    const existing = await db.cCTVOutsourcedVendor.findFirst({
+    const existing = await db.mSOutsourcedVendor.findFirst({
       where: { id: vendorId, businessId },
     });
     if (!existing) {
@@ -50,7 +50,7 @@ export async function PUT(
 
     // Check duplicate name if changing
     if (name?.trim() && name.trim() !== existing.name) {
-      const dup = await db.cCTVOutsourcedVendor.findFirst({
+      const dup = await db.mSOutsourcedVendor.findFirst({
         where: { businessId, name: name.trim(), isActive: true, id: { not: vendorId } },
       });
       if (dup) {
@@ -58,7 +58,7 @@ export async function PUT(
       }
     }
 
-    const updated = await db.cCTVOutsourcedVendor.update({
+    const updated = await db.mSOutsourcedVendor.update({
       where: { id: vendorId },
       data: {
         ...(name?.trim() ? { name: name.trim() } : {}),
@@ -85,7 +85,7 @@ export async function DELETE(
   try {
     const { id: businessId, vendorId } = await params;
 
-    const vendor = await db.cCTVOutsourcedVendor.findFirst({
+    const vendor = await db.mSOutsourcedVendor.findFirst({
       where: { id: vendorId, businessId },
     });
     if (!vendor) {
@@ -93,7 +93,7 @@ export async function DELETE(
     }
 
     // Check for active outsourced jobs
-    const activeJobs = await db.cCTVJobCard.count({
+    const activeJobs = await db.mSJobCard.count({
       where: { vendorId, status: "OUTSOURCED", isActive: true },
     });
     if (activeJobs > 0) {
@@ -103,7 +103,7 @@ export async function DELETE(
     }
 
     // Soft delete
-    await db.cCTVOutsourcedVendor.update({
+    await db.mSOutsourcedVendor.update({
       where: { id: vendorId },
       data: { isActive: false },
     });

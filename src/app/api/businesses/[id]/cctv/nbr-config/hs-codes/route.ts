@@ -10,7 +10,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     const { searchParams } = new URL(_req.url);
     const search = searchParams.get('search') || '';
 
-    const where: Prisma.CCTVHsCodeMappingWhereInput = {
+    const where: Prisma.MSHsCodeMappingWhereInput = {
       businessId: BUSINESS_ID,
       isActive: true,
       ...(search && {
@@ -23,11 +23,11 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     };
 
     const [mappings, total] = await Promise.all([
-      db.cCTVHsCodeMapping.findMany({
+      db.mSHsCodeMapping.findMany({
         where,
         orderBy: [{ isDefault: 'desc' }, { category: 'asc' }],
       }),
-      db.cCTVHsCodeMapping.count({ where }),
+      db.mSHsCodeMapping.count({ where }),
     ]);
 
     return NextResponse.json({ success: true, data: mappings, total });
@@ -48,12 +48,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
 
     // Ensure config exists
-    let config = await db.cCTVNbrConfig.findUnique({ where: { businessId: BUSINESS_ID } });
+    let config = await db.mSNbrConfig.findUnique({ where: { businessId: BUSINESS_ID } });
     if (!config) {
-      config = await db.cCTVNbrConfig.create({ data: { businessId: BUSINESS_ID } });
+      config = await db.mSNbrConfig.create({ data: { businessId: BUSINESS_ID } });
     }
 
-    const mapping = await db.cCTVHsCodeMapping.create({
+    const mapping = await db.mSHsCodeMapping.create({
       data: {
         businessId: BUSINESS_ID,
         configId: config.id,

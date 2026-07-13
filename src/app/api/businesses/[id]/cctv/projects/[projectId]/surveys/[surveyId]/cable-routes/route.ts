@@ -10,7 +10,7 @@ export async function GET(
   try {
     const { id: businessId, surveyId } = await params;
 
-    const routes = await db.cCTVCableRoute.findMany({
+    const routes = await db.mSCableRoute.findMany({
       where: { surveyId, businessId },
       orderBy: { sortOrder: "asc" },
     });
@@ -31,7 +31,7 @@ export async function POST(
     const { id: businessId, surveyId } = await params;
 
     // Verify survey exists
-    const survey = await db.cCTVSiteSurvey.findFirst({
+    const survey = await db.mSSiteSurvey.findFirst({
       where: { id: surveyId, businessId, isActive: true },
     });
 
@@ -75,7 +75,7 @@ export async function POST(
       return NextResponse.json({ error: "points must be valid JSON" }, { status: 400 });
     }
 
-    const route = await db.cCTVCableRoute.create({
+    const route = await db.mSCableRoute.create({
       data: {
         businessId,
         surveyId,
@@ -118,7 +118,7 @@ export async function PUT(
       return NextResponse.json({ error: "id is required in request body" }, { status: 400 });
     }
 
-    const existing = await db.cCTVCableRoute.findFirst({
+    const existing = await db.mSCableRoute.findFirst({
       where: { id, surveyId, businessId },
     });
 
@@ -138,7 +138,7 @@ export async function PUT(
       }
     }
 
-    const route = await db.cCTVCableRoute.update({
+    const route = await db.mSCableRoute.update({
       where: { id },
       data: {
         ...(label !== undefined && { label: label.trim() }),
@@ -172,7 +172,7 @@ export async function DELETE(
       return NextResponse.json({ error: "id is required in request body" }, { status: 400 });
     }
 
-    const existing = await db.cCTVCableRoute.findFirst({
+    const existing = await db.mSCableRoute.findFirst({
       where: { id, surveyId, businessId },
     });
 
@@ -180,7 +180,7 @@ export async function DELETE(
       return NextResponse.json({ error: "Cable route not found" }, { status: 404 });
     }
 
-    await db.cCTVCableRoute.delete({
+    await db.mSCableRoute.delete({
       where: { id },
     });
 

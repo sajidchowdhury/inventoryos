@@ -1,9 +1,9 @@
 // GET /api/businesses/[id]/cctv/reports/profit-loss?from=X&to=Y
 // CCTV-specific P&L Report
-// Revenue = sum of paid amounts from CCTVPayment
+// Revenue = sum of paid amounts from MSPayment
 // COGS   = cost price of sold items (serial item costPrice or product costPrice × qty)
 // Gross Profit = Revenue - COGS
-// Operating Expenses = from CCTVExpense
+// Operating Expenses = from MSExpense
 // Net Profit = Gross Profit - OpEx
 // Supports monthly breakdown within the date range.
 import { NextRequest, NextResponse } from "next/server";
@@ -90,9 +90,9 @@ export async function GET(
         })()
       : new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
 
-    // ── 1. Revenue: sum of CCTVPayment amounts ──
+    // ── 1. Revenue: sum of MSPayment amounts ──
     // Group by month for monthly comparison
-    const payments = await db.cCTVPayment.findMany({
+    const payments = await db.mSPayment.findMany({
       where: {
         businessId,
         isActive: true,
@@ -130,7 +130,7 @@ export async function GET(
     });
 
     // ── 2. Operating Expenses ──
-    const expenses = await db.cCTVExpense.findMany({
+    const expenses = await db.mSExpense.findMany({
       where: {
         businessId,
         isActive: true,

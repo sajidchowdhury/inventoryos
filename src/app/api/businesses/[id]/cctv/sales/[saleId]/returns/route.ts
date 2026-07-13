@@ -37,7 +37,7 @@ export async function POST(
     }
 
     // Fetch sale with active items and product info
-    const sale = await db.cCTVSale.findFirst({
+    const sale = await db.mSSale.findFirst({
       where: { id: saleId, businessId, isActive: true },
       include: {
         items: {
@@ -102,7 +102,7 @@ export async function POST(
     // ── Generate return code ──
     const year = new Date().getFullYear();
     const prefix = `RET-${year}-`;
-    const lastReturn = await db.cCTVReturn.findFirst({
+    const lastReturn = await db.mSReturn.findFirst({
       where: {
         businessId,
         returnCode: { startsWith: prefix },

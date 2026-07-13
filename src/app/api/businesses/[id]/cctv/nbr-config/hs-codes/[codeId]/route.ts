@@ -10,14 +10,14 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     const { category, hsCode, description, vatRate } = body;
 
     // Verify ownership
-    const existing = await db.cCTVHsCodeMapping.findFirst({
+    const existing = await db.mSHsCodeMapping.findFirst({
       where: { id: codeId, businessId: BUSINESS_ID, isActive: true },
     });
     if (!existing) {
       return NextResponse.json({ success: false, error: 'HS code not found' }, { status: 404 });
     }
 
-    const updated = await db.cCTVHsCodeMapping.update({
+    const updated = await db.mSHsCodeMapping.update({
       where: { id: codeId },
       data: {
         ...(category !== undefined && { category: category.trim() }),
@@ -38,14 +38,14 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   try {
     const { codeId } = await params;
 
-    const existing = await db.cCTVHsCodeMapping.findFirst({
+    const existing = await db.mSHsCodeMapping.findFirst({
       where: { id: codeId, businessId: BUSINESS_ID, isActive: true },
     });
     if (!existing) {
       return NextResponse.json({ success: false, error: 'HS code not found' }, { status: 404 });
     }
 
-    await db.cCTVHsCodeMapping.update({
+    await db.mSHsCodeMapping.update({
       where: { id: codeId },
       data: { isActive: false },
     });

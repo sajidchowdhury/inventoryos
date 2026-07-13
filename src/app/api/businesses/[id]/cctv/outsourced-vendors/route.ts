@@ -22,7 +22,7 @@ export async function GET(
       ];
     }
 
-    const vendors = await db.cCTVOutsourcedVendor.findMany({
+    const vendors = await db.mSOutsourcedVendor.findMany({
       where,
       orderBy: { createdAt: "desc" },
       include: {
@@ -51,14 +51,14 @@ export async function POST(
     }
 
     // Check duplicate name
-    const existing = await db.cCTVOutsourcedVendor.findFirst({
+    const existing = await db.mSOutsourcedVendor.findFirst({
       where: { businessId, name: name.trim(), isActive: true },
     });
     if (existing) {
       return NextResponse.json({ error: "A vendor with this name already exists" }, { status: 409 });
     }
 
-    const vendor = await db.cCTVOutsourcedVendor.create({
+    const vendor = await db.mSOutsourcedVendor.create({
       data: {
         businessId,
         name: name.trim(),

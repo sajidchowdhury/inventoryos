@@ -9,7 +9,7 @@ export async function GET(
 ) {
   const { id: businessId, returnId } = await params;
 
-  const vatReturn = await db.cCTVVatReturn.findFirst({
+  const vatReturn = await db.mSVatReturn.findFirst({
     where: { id: returnId, businessId, isActive: true },
   });
 
@@ -28,7 +28,7 @@ export async function PUT(
   const { id: businessId, returnId } = await params;
   const body = await request.json();
 
-  const existing = await db.cCTVVatReturn.findFirst({
+  const existing = await db.mSVatReturn.findFirst({
     where: { id: returnId, businessId, isActive: true },
   });
   if (!existing) {
@@ -46,7 +46,7 @@ export async function PUT(
   const newNet = (netVatPayable !== undefined ? netVatPayable : existing.netVatPayable) + adjAmount;
   const amountInWords = numberToWords(Math.abs(newNet));
 
-  const updated = await db.cCTVVatReturn.update({
+  const updated = await db.mSVatReturn.update({
     where: { id: returnId },
     data: {
       ...(openingCredit !== undefined && { openingCredit }),
@@ -84,7 +84,7 @@ export async function DELETE(
 ) {
   const { id: businessId, returnId } = await params;
 
-  const existing = await db.cCTVVatReturn.findFirst({
+  const existing = await db.mSVatReturn.findFirst({
     where: { id: returnId, businessId, isActive: true },
   });
   if (!existing) {
@@ -98,7 +98,7 @@ export async function DELETE(
     );
   }
 
-  await db.cCTVVatReturn.update({
+  await db.mSVatReturn.update({
     where: { id: returnId },
     data: { isActive: false },
   });

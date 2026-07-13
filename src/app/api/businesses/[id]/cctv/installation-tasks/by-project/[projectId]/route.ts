@@ -8,7 +8,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 
     // Auto-update overdue before fetching
     const now = new Date();
-    await db.cCTVInstallationTask.updateMany({
+    await db.mSInstallationTask.updateMany({
       where: {
         businessId,
         projectId,
@@ -19,7 +19,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       data: { status: "OVERDUE" },
     });
 
-    const tasks = await db.cCTVInstallationTask.findMany({
+    const tasks = await db.mSInstallationTask.findMany({
       where: {
         businessId,
         projectId,

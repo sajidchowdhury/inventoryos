@@ -17,7 +17,7 @@ export async function POST(
     }
 
     // Verify kit exists
-    const kit = await db.cCTVKitDefinition.findFirst({
+    const kit = await db.mSKitDefinition.findFirst({
       where: { id: kitId, businessId, isActive: true },
     });
     if (!kit) {
@@ -25,7 +25,7 @@ export async function POST(
     }
 
     // Verify product exists and belongs to business
-    const product = await db.cCTVProduct.findFirst({
+    const product = await db.mSProduct.findFirst({
       where: { id: productId, businessId, isActive: true },
     });
     if (!product) {
@@ -33,7 +33,7 @@ export async function POST(
     }
 
     // Check for duplicate product in this kit
-    const existing = await db.cCTVKitComponent.findFirst({
+    const existing = await db.mSKitComponent.findFirst({
       where: { kitId, productId },
     });
     if (existing) {
@@ -41,14 +41,14 @@ export async function POST(
     }
 
     // Determine sort order
-    const maxSort = await db.cCTVKitComponent.findFirst({
+    const maxSort = await db.mSKitComponent.findFirst({
       where: { kitId },
       orderBy: { sortOrder: "desc" },
       select: { sortOrder: true },
     });
     const nextSort = (maxSort?.sortOrder ?? -1) + 1;
 
-    const component = await db.cCTVKitComponent.create({
+    const component = await db.mSKitComponent.create({
       data: {
         kitId,
         businessId,

@@ -10,7 +10,7 @@ export async function PUT(
     const { id: businessId, ruleId } = await params;
     const body = await req.json();
 
-    const existing = await db.cCTVCommissionRule.findFirst({
+    const existing = await db.mSCommissionRule.findFirst({
       where: { id: ruleId, businessId },
     });
     if (!existing) return NextResponse.json({ error: "Rule not found" }, { status: 404 });
@@ -24,7 +24,7 @@ export async function PUT(
     if (body.sortOrder !== undefined) data.sortOrder = Number(body.sortOrder);
     if (body.isActive !== undefined) data.isActive = Boolean(body.isActive);
 
-    const updated = await db.cCTVCommissionRule.update({
+    const updated = await db.mSCommissionRule.update({
       where: { id: ruleId },
       data,
     });
@@ -42,12 +42,12 @@ export async function DELETE(
 ) {
   try {
     const { id: businessId, ruleId } = await params;
-    const existing = await db.cCTVCommissionRule.findFirst({
+    const existing = await db.mSCommissionRule.findFirst({
       where: { id: ruleId, businessId },
     });
     if (!existing) return NextResponse.json({ error: "Rule not found" }, { status: 404 });
 
-    await db.cCTVCommissionRule.update({
+    await db.mSCommissionRule.update({
       where: { id: ruleId },
       data: { isActive: false },
     });

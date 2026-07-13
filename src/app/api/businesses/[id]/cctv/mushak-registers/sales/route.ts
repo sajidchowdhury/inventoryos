@@ -15,7 +15,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     if (fromDate) dateFilter.gte = new Date(fromDate);
     if (toDate) dateFilter.lte = new Date(toDate + 'T23:59:59');
 
-    const invoices = await db.cCTVMushakInvoice.findMany({
+    const invoices = await db.mSMushakInvoice.findMany({
       where: {
         businessId: BUSINESS_ID,
         isActive: true,

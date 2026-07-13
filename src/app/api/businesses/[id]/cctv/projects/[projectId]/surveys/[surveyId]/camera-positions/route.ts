@@ -10,7 +10,7 @@ export async function GET(
   try {
     const { id: businessId, surveyId } = await params;
 
-    const positions = await db.cCTVCameraPosition.findMany({
+    const positions = await db.mSCameraPosition.findMany({
       where: { surveyId, businessId },
       orderBy: { sortOrder: "asc" },
     });
@@ -31,7 +31,7 @@ export async function POST(
     const { id: businessId, surveyId } = await params;
 
     // Verify survey exists
-    const survey = await db.cCTVSiteSurvey.findFirst({
+    const survey = await db.mSSiteSurvey.findFirst({
       where: { id: surveyId, businessId, isActive: true },
     });
 
@@ -71,7 +71,7 @@ export async function POST(
       return NextResponse.json({ error: "label is required" }, { status: 400 });
     }
 
-    const position = await db.cCTVCameraPosition.create({
+    const position = await db.mSCameraPosition.create({
       data: {
         businessId,
         surveyId,
@@ -116,7 +116,7 @@ export async function PUT(
       return NextResponse.json({ error: "id is required in request body" }, { status: 400 });
     }
 
-    const existing = await db.cCTVCameraPosition.findFirst({
+    const existing = await db.mSCameraPosition.findFirst({
       where: { id, surveyId, businessId },
     });
 
@@ -132,7 +132,7 @@ export async function PUT(
       return NextResponse.json({ error: "posY must be between 0 and 100" }, { status: 400 });
     }
 
-    const position = await db.cCTVCameraPosition.update({
+    const position = await db.mSCameraPosition.update({
       where: { id },
       data: {
         ...(posX !== undefined && { posX }),
@@ -167,7 +167,7 @@ export async function DELETE(
       return NextResponse.json({ error: "id is required in request body" }, { status: 400 });
     }
 
-    const existing = await db.cCTVCameraPosition.findFirst({
+    const existing = await db.mSCameraPosition.findFirst({
       where: { id, surveyId, businessId },
     });
 
@@ -175,7 +175,7 @@ export async function DELETE(
       return NextResponse.json({ error: "Camera position not found" }, { status: 404 });
     }
 
-    await db.cCTVCameraPosition.delete({
+    await db.mSCameraPosition.delete({
       where: { id },
     });
 

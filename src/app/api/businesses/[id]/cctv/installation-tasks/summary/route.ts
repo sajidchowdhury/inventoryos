@@ -8,7 +8,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     const now = new Date();
 
     // Auto-update overdue before computing
-    await db.cCTVInstallationTask.updateMany({
+    await db.mSInstallationTask.updateMany({
       where: {
         businessId,
         isActive: true,
@@ -21,24 +21,24 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     const baseWhere = { businessId, isActive: true };
 
     // Count pending
-    const totalPending = await db.cCTVInstallationTask.count({
+    const totalPending = await db.mSInstallationTask.count({
       where: { ...baseWhere, status: "PENDING" },
     });
 
     // Count in progress
-    const totalInProgress = await db.cCTVInstallationTask.count({
+    const totalInProgress = await db.mSInstallationTask.count({
       where: { ...baseWhere, status: "IN_PROGRESS" },
     });
 
     // Count overdue
-    const totalOverdue = await db.cCTVInstallationTask.count({
+    const totalOverdue = await db.mSInstallationTask.count({
       where: { ...baseWhere, status: "OVERDUE" },
     });
 
     // Count completed today
     const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const endOfDay = new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000);
-    const totalCompletedToday = await db.cCTVInstallationTask.count({
+    const totalCompletedToday = await db.mSInstallationTask.count({
       where: {
         ...baseWhere,
         status: "COMPLETED",
@@ -48,7 +48,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 
     // Upcoming this week (next 7 days, not completed/cancelled/overdue)
     const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-    const upcomingThisWeek = await db.cCTVInstallationTask.findMany({
+    const upcomingThisWeek = await db.mSInstallationTask.findMany({
       where: {
         ...baseWhere,
         status: { in: ["PENDING", "IN_PROGRESS"] },
@@ -69,7 +69,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     });
 
     // Technician workload: for each assignedToName, count active tasks (PENDING + IN_PROGRESS + OVERDUE)
-    const activeTasks = await db.cCTVInstallationTask.findMany({
+    const activeTasks = await db.mSInstallationTask.findMany({
       where: {
         ...baseWhere,
         status: { in: ["PENDING", "IN_PROGRESS", "OVERDUE"] },

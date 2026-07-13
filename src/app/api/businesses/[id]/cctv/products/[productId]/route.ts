@@ -9,7 +9,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   try {
     const { id: businessId, productId } = await params;
 
-    const product = await db.cCTVProduct.findFirst({
+    const product = await db.mSProduct.findFirst({
       where: { id: productId, businessId, isActive: true },
       include: {
         category: { select: { id: true, name: true, color: true, icon: true, slug: true } },
@@ -34,7 +34,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     const { id: businessId, productId } = await params;
     const body = await req.json();
 
-    const existing = await db.cCTVProduct.findFirst({
+    const existing = await db.mSProduct.findFirst({
       where: { id: productId, businessId, isActive: true },
     });
     if (!existing) {
@@ -78,7 +78,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     if (body.serialTracked !== undefined) updateData.serialTracked = Boolean(body.serialTracked);
     if (body.isActive !== undefined) updateData.isActive = Boolean(body.isActive);
 
-    const product = await db.cCTVProduct.update({
+    const product = await db.mSProduct.update({
       where: { id: productId },
       data: updateData,
       include: {
@@ -98,14 +98,14 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   try {
     const { id: businessId, productId } = await params;
 
-    const existing = await db.cCTVProduct.findFirst({
+    const existing = await db.mSProduct.findFirst({
       where: { id: productId, businessId, isActive: true },
     });
     if (!existing) {
       return NextResponse.json({ error: "Product not found" }, { status: 404 });
     }
 
-    await db.cCTVProduct.update({
+    await db.mSProduct.update({
       where: { id: productId },
       data: { isActive: false },
     });

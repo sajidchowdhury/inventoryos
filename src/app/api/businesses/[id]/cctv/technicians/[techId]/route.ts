@@ -8,7 +8,7 @@ export async function GET(
 ) {
   try {
     const { id: businessId, techId } = await params;
-    const tech = await db.cCTVTechnician.findFirst({
+    const tech = await db.mSTechnician.findFirst({
       where: { id: techId, businessId },
       include: { _count: { select: { commissionRecords: true } } },
     });
@@ -28,7 +28,7 @@ export async function PUT(
     const { id: businessId, techId } = await params;
     const body = await req.json();
 
-    const existing = await db.cCTVTechnician.findFirst({
+    const existing = await db.mSTechnician.findFirst({
       where: { id: techId, businessId },
     });
     if (!existing) return NextResponse.json({ error: "Technician not found" }, { status: 404 });
@@ -39,7 +39,7 @@ export async function PUT(
     if (body.specialization !== undefined) data.specialization = body.specialization ? String(body.specialization).trim() : null;
     if (body.isActive !== undefined) data.isActive = Boolean(body.isActive);
 
-    const updated = await db.cCTVTechnician.update({
+    const updated = await db.mSTechnician.update({
       where: { id: techId },
       data,
       include: { _count: { select: { commissionRecords: true } } },
@@ -58,12 +58,12 @@ export async function DELETE(
 ) {
   try {
     const { id: businessId, techId } = await params;
-    const existing = await db.cCTVTechnician.findFirst({
+    const existing = await db.mSTechnician.findFirst({
       where: { id: techId, businessId },
     });
     if (!existing) return NextResponse.json({ error: "Technician not found" }, { status: 404 });
 
-    await db.cCTVTechnician.update({
+    await db.mSTechnician.update({
       where: { id: techId },
       data: { isActive: false },
     });

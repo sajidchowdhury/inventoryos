@@ -9,7 +9,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   try {
     const { id: businessId, categoryId } = await params;
 
-    const category = await db.cCTVCategory.findFirst({
+    const category = await db.mSCategory.findFirst({
       where: { id: categoryId, businessId, isActive: true },
       include: {
         _count: { select: { products: true } },
@@ -32,7 +32,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     const { id: businessId, categoryId } = await params;
     const body = await req.json();
 
-    const existing = await db.cCTVCategory.findFirst({
+    const existing = await db.mSCategory.findFirst({
       where: { id: categoryId, businessId, isActive: true },
     });
     if (!existing) {
@@ -48,7 +48,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
       // Case-insensitive unique name check (in-memory comparison, excludes current).
       // TODO (Phase 2B): simplify using mode:"insensitive" once PostgreSQL-only is confirmed.
-      const allCats = await db.cCTVCategory.findMany({
+      const allCats = await db.mSCategory.findMany({
         where: { businessId, isActive: true, id: { not: categoryId } },
         select: { name: true },
       });
@@ -70,7 +70,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     if (body.sortOrder !== undefined) updateData.sortOrder = body.sortOrder;
     if (body.isActive !== undefined) updateData.isActive = body.isActive;
 
-    const category = await db.cCTVCategory.update({
+    const category = await db.mSCategory.update({
       where: { id: categoryId },
       data: updateData,
     });
@@ -86,14 +86,14 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   try {
     const { id: businessId, categoryId } = await params;
 
-    const existing = await db.cCTVCategory.findFirst({
+    const existing = await db.mSCategory.findFirst({
       where: { id: categoryId, businessId, isActive: true },
     });
     if (!existing) {
       return NextResponse.json({ error: "Category not found" }, { status: 404 });
     }
 
-    await db.cCTVCategory.update({
+    await db.mSCategory.update({
       where: { id: categoryId },
       data: { isActive: false },
     });

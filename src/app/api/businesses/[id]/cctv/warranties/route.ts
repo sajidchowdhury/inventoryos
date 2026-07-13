@@ -46,7 +46,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     }
 
     // Fetch matching items with product relation and claim count
-    const items = await db.cCTVSerialItem.findMany({
+    const items = await db.mSSerialItem.findMany({
       where,
       include: {
         product: {

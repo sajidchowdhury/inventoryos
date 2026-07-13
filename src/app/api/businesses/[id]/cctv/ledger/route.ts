@@ -42,7 +42,7 @@ export async function GET(
                      : new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
 
     // ── 1. Customer Payments (CREDIT — money in) ──
-    const customerPayments = await db.cCTVPayment.findMany({
+    const customerPayments = await db.mSPayment.findMany({
       where: { businessId, isActive: true, createdAt: { gte: from, lte: to } },
       include: {
         sale: { select: { saleCode: true, customerName: true } },
@@ -51,13 +51,13 @@ export async function GET(
     });
 
     // ── 2. Expenses (DEBIT — money out) ──
-    const expenses = await db.cCTVExpense.findMany({
+    const expenses = await db.mSExpense.findMany({
       where: { businessId, isActive: true, date: { gte: from, lte: to } },
       orderBy: { date: "asc" },
     });
 
     // ── 3. Returns / Refunds (DEBIT — money out) ──
-    const returns = await db.cCTVReturn.findMany({
+    const returns = await db.mSReturn.findMany({
       where: { businessId, refundAmount: { gt: 0 }, createdAt: { gte: from, lte: to } },
       select: {
         id: true, returnCode: true, refundAmount: true, refundMethod: true,
@@ -67,9 +67,9 @@ export async function GET(
     });
 
     // ── 4. Purchase Payments (DEBIT — money out to suppliers) ──
-    // Since we don't have individual purchase payment records, we show CCTVPurchase
+    // Since we don't have individual purchase payment records, we show MSPurchase
     // entries where paidAmount > 0. The createdAt approximates when payment was made.
-    const purchases = await db.cCTVPurchase.findMany({
+    const purchases = await db.mSPurchase.findMany({
       where: {
         businessId,
         status: { not: "cancelled" },
@@ -186,19 +186,19 @@ export async function GET(
     // ── Compute running balance ──
     // Opening balance = sum of all credits - debits BEFORE the from date
     const [priorPayments, priorExpenses, priorReturns, priorPurchases] = await Promise.all([
-      db.cCTVPayment.aggregate({
+      db.mSPayment.aggregate({
         where: { businessId, isActive: true, createdAt: { lt: from } },
         _sum: { amount: true },
       }),
-      db.cCTVExpense.aggregate({
+      db.mSExpense.aggregate({
         where: { businessId, isActive: true, date: { lt: from } },
         _sum: { amount: true },
       }),
-      db.cCTVReturn.aggregate({
+      db.mSReturn.aggregate({
         where: { businessId, refundAmount: { gt: 0 }, createdAt: { lt: from } },
         _sum: { refundAmount: true },
       }),
-      db.cCTVPurchase.aggregate({
+      db.mSPurchase.aggregate({
         where: { businessId, status: { not: "cancelled" }, paidAmount: { gt: 0 }, createdAt: { lt: from } },
         _sum: { paidAmount: true },
       }),

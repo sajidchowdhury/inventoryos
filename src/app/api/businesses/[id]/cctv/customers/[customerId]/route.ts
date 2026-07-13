@@ -21,24 +21,24 @@ export async function GET(
     // Run all stat queries in parallel
     const [cctvSalesCount, cctvTotalSpentResult, emiPlansResult, recentSales, activeEmiPlans, loyaltyConfig] =
       await Promise.all([
-        // Count of CCTVSale for this customer
-        db.cCTVSale.count({
+        // Count of MSSale for this customer
+        db.mSSale.count({
           where: { businessId, customerId, isActive: true },
         }),
 
-        // Sum of CCTVSale.totalDue for this customer
-        db.cCTVSale.aggregate({
+        // Sum of MSSale.totalDue for this customer
+        db.mSSale.aggregate({
           where: { businessId, customerId, isActive: true },
           _sum: { totalDue: true },
         }),
 
-        // Count of CCTVEmiPlan matching customerPhone
-        db.cCTVEmiPlan.count({
+        // Count of MSEmiPlan matching customerPhone
+        db.mSEmiPlan.count({
           where: { businessId, customerPhone: customer.phone || "", isActive: true },
         }),
 
-        // Last 5 CCTVSale records
-        db.cCTVSale.findMany({
+        // Last 5 MSSale records
+        db.mSSale.findMany({
           where: { businessId, customerId, isActive: true },
           select: {
             id: true,
@@ -51,8 +51,8 @@ export async function GET(
           take: 5,
         }),
 
-        // Active CCTVEmiPlan records with summary
-        db.cCTVEmiPlan.findMany({
+        // Active MSEmiPlan records with summary
+        db.mSEmiPlan.findMany({
           where: {
             businessId,
             customerPhone: customer.phone || "",
@@ -71,7 +71,7 @@ export async function GET(
         }),
 
         // Latest loyalty config for tier calculation
-        db.cCTVLoyaltyConfig.findFirst({
+        db.mSLoyaltyConfig.findFirst({
           where: { businessId, isActive: true },
         }),
       ]);

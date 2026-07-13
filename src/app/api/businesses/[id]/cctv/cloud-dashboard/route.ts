@@ -33,33 +33,33 @@ export async function GET(
     salesLastMonthRev,
     categories,
   ] = await Promise.all([
-    db.cCTVProduct.count({ where: { businessId, isActive: true } }),
-    db.cCTVSerialItem.count({ where: { businessId, isActive: true, status: 'IN_STOCK' } }),
-    db.cCTVProduct.count({ where: { businessId, isActive: true, stock: { lt: 3 } } }),
-    db.cCTVSale.count({ where: { businessId, isActive: true, createdAt: { gte: monthStart } } }),
-    db.cCTVSale.count({ where: { businessId, isActive: true, createdAt: { gte: lastMonthStart, lte: lastMonthEnd } } }),
-    db.cCTVJobCard.count({
+    db.mSProduct.count({ where: { businessId, isActive: true } }),
+    db.mSSerialItem.count({ where: { businessId, isActive: true, status: 'IN_STOCK' } }),
+    db.mSProduct.count({ where: { businessId, isActive: true, stock: { lt: 3 } } }),
+    db.mSSale.count({ where: { businessId, isActive: true, createdAt: { gte: monthStart } } }),
+    db.mSSale.count({ where: { businessId, isActive: true, createdAt: { gte: lastMonthStart, lte: lastMonthEnd } } }),
+    db.mSJobCard.count({
       where: { businessId, isActive: true, status: { in: ['RECEIVED', 'DIAGNOSING', 'AWAITING_PARTS', 'IN_PROGRESS', 'TESTING'] } },
     }),
-    db.cCTVJobCard.count({ where: { businessId, isActive: true, status: 'OUTSOURCED', expectedReturn: { lt: now } } }),
-    db.cCTVEmiPlan.count({ where: { businessId, isActive: true, status: 'ACTIVE' } }),
-    db.cCTVEmiInstallment.aggregate({
+    db.mSJobCard.count({ where: { businessId, isActive: true, status: 'OUTSOURCED', expectedReturn: { lt: now } } }),
+    db.mSEmiPlan.count({ where: { businessId, isActive: true, status: 'ACTIVE' } }),
+    db.mSEmiInstallment.aggregate({
       where: { businessId, isActive: true, status: 'PAID', paidAt: { gte: monthStart } },
       _sum: { amount: true },
     }),
-    db.cCTVAmcContract.count({ where: { businessId, isActive: true, status: 'ACTIVE' } }),
-    db.cCTVAmcContract.count({ where: { businessId, isActive: true, status: 'ACTIVE', endDate: { lte: thirtyDays } } }),
+    db.mSAmcContract.count({ where: { businessId, isActive: true, status: 'ACTIVE' } }),
+    db.mSAmcContract.count({ where: { businessId, isActive: true, status: 'ACTIVE', endDate: { lte: thirtyDays } } }),
     db.customer.count({ where: { businessId } }),
-    db.cCTVMushakInvoice.count({ where: { businessId, isActive: true, issueDate: { gte: monthStart } } }),
-    db.cCTVSale.aggregate({
+    db.mSMushakInvoice.count({ where: { businessId, isActive: true, issueDate: { gte: monthStart } } }),
+    db.mSSale.aggregate({
       where: { businessId, isActive: true, createdAt: { gte: monthStart } },
       _sum: { totalDue: true },
     }),
-    db.cCTVSale.aggregate({
+    db.mSSale.aggregate({
       where: { businessId, isActive: true, createdAt: { gte: lastMonthStart, lte: lastMonthEnd } },
       _sum: { totalDue: true },
     }),
-    db.cCTVCategory.findMany({
+    db.mSCategory.findMany({
       where: { businessId, isActive: true },
       include: { _count: { select: { cctvProducts: { where: { isActive: true } } } } },
       orderBy: { name: 'asc' },
@@ -73,8 +73,8 @@ export async function GET(
     const mEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0, 23, 59, 59, 999);
     const mLabel = mStart.toLocaleString('en', { month: 'short' });
     const [count, rev] = await Promise.all([
-      db.cCTVSale.count({ where: { businessId, isActive: true, createdAt: { gte: mStart, lte: mEnd } } }),
-      db.cCTVSale.aggregate({
+      db.mSSale.count({ where: { businessId, isActive: true, createdAt: { gte: mStart, lte: mEnd } } }),
+      db.mSSale.aggregate({
         where: { businessId, isActive: true, createdAt: { gte: mStart, lte: mEnd } },
         _sum: { totalDue: true },
       }),

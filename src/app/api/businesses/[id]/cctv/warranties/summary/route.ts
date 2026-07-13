@@ -17,7 +17,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     // Count warranty serial items by computed status
     const [active, expiringSoon, expired, total] = await Promise.all([
       // ACTIVE: warrantyEnd > now + days
-      db.cCTVSerialItem.count({
+      db.mSSerialItem.count({
         where: {
           businessId,
           isActive: true,
@@ -26,7 +26,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         },
       }),
       // EXPIRING_SOON: warrantyEnd > now AND warrantyEnd <= now + days
-      db.cCTVSerialItem.count({
+      db.mSSerialItem.count({
         where: {
           businessId,
           isActive: true,
@@ -35,7 +35,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         },
       }),
       // EXPIRED: warrantyEnd <= now
-      db.cCTVSerialItem.count({
+      db.mSSerialItem.count({
         where: {
           businessId,
           isActive: true,
@@ -44,7 +44,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         },
       }),
       // Total (any sold/installed with warrantyEnd set)
-      db.cCTVSerialItem.count({
+      db.mSSerialItem.count({
         where: {
           businessId,
           isActive: true,
@@ -56,11 +56,11 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
     // Count warranty claims by status
     const [pending, approved, inProgress, completed, rejected] = await Promise.all([
-      db.cCTVWarrantyClaim.count({ where: { businessId, isActive: true, status: "PENDING" } }),
-      db.cCTVWarrantyClaim.count({ where: { businessId, isActive: true, status: "APPROVED" } }),
-      db.cCTVWarrantyClaim.count({ where: { businessId, isActive: true, status: "IN_PROGRESS" } }),
-      db.cCTVWarrantyClaim.count({ where: { businessId, isActive: true, status: "COMPLETED" } }),
-      db.cCTVWarrantyClaim.count({ where: { businessId, isActive: true, status: "REJECTED" } }),
+      db.mSWarrantyClaim.count({ where: { businessId, isActive: true, status: "PENDING" } }),
+      db.mSWarrantyClaim.count({ where: { businessId, isActive: true, status: "APPROVED" } }),
+      db.mSWarrantyClaim.count({ where: { businessId, isActive: true, status: "IN_PROGRESS" } }),
+      db.mSWarrantyClaim.count({ where: { businessId, isActive: true, status: "COMPLETED" } }),
+      db.mSWarrantyClaim.count({ where: { businessId, isActive: true, status: "REJECTED" } }),
     ]);
 
     return NextResponse.json({

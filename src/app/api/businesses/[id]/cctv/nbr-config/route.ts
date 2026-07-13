@@ -22,7 +22,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   try {
     const { id: _businessId } = await params;
 
-    let config = await db.cCTVNbrConfig.findUnique({
+    let config = await db.mSNbrConfig.findUnique({
       where: { businessId: BUSINESS_ID },
       include: {
         hsCodeMappings: {
@@ -34,7 +34,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
     // Auto-create on first access
     if (!config) {
-      config = await db.cCTVNbrConfig.create({
+      config = await db.mSNbrConfig.create({
         data: {
           businessId: BUSINESS_ID,
           hsCodeMappings: {
@@ -78,7 +78,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     } = body;
 
     // Upsert the config
-    const config = await db.cCTVNbrConfig.upsert({
+    const config = await db.mSNbrConfig.upsert({
       where: { businessId: BUSINESS_ID },
       create: {
         businessId: BUSINESS_ID,

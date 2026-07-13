@@ -19,7 +19,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
 
     // Validate plan exists and is ACTIVE
-    const plan = await db.cCTVEmiPlan.findFirst({
+    const plan = await db.mSEmiPlan.findFirst({
       where: { id: emiPlanId, businessId, isActive: true, status: "ACTIVE" },
       include: {
         installments: {

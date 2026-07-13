@@ -23,7 +23,7 @@ export async function GET(
   try {
     const { id: businessId, claimId } = await params;
 
-    const claim = await db.cCTVWarrantyClaim.findFirst({
+    const claim = await db.mSWarrantyClaim.findFirst({
       where: { id: claimId, businessId, isActive: true },
       include: {
         serialItem: {
@@ -66,7 +66,7 @@ export async function PUT(
     }
 
     // Fetch existing claim
-    const existing = await db.cCTVWarrantyClaim.findFirst({
+    const existing = await db.mSWarrantyClaim.findFirst({
       where: { id: claimId, businessId, isActive: true },
     });
 
@@ -100,7 +100,7 @@ export async function PUT(
       updateData.completedAt = new Date();
     }
 
-    const updated = await db.cCTVWarrantyClaim.update({
+    const updated = await db.mSWarrantyClaim.update({
       where: { id: claimId },
       data: updateData,
       include: {
@@ -130,7 +130,7 @@ export async function DELETE(
     const { id: businessId, claimId } = await params;
 
     // Fetch existing claim
-    const existing = await db.cCTVWarrantyClaim.findFirst({
+    const existing = await db.mSWarrantyClaim.findFirst({
       where: { id: claimId, businessId, isActive: true },
     });
 
@@ -146,7 +146,7 @@ export async function DELETE(
       );
     }
 
-    await db.cCTVWarrantyClaim.update({
+    await db.mSWarrantyClaim.update({
       where: { id: claimId },
       data: { isActive: false },
     });

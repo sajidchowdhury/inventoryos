@@ -237,7 +237,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
 
     // Load existing categories for validation
-    const cats = await db.cCTVCategory.findMany({
+    const cats = await db.mSCategory.findMany({
       where: { businessId, isActive: true },
       select: { id: true, name: true },
     });
@@ -299,7 +299,7 @@ async function executeImport(
   }
 
   // Create missing categories
-  const existingCats = await db.cCTVCategory.findMany({
+  const existingCats = await db.mSCategory.findMany({
     where: { businessId, isActive: true },
     select: { id: true, name: true },
   });
@@ -315,7 +315,7 @@ async function executeImport(
         .trim()
         .replace(/[^\w\s-]/g, "")
         .replace(/\s+/g, "-");
-      const created = await db.cCTVCategory.create({
+      const created = await db.mSCategory.create({
         data: {
           businessId,
           name: catName,
@@ -337,7 +337,7 @@ async function executeImport(
     const batch = validRows.slice(i, i + BATCH_SIZE);
 
     try {
-      await db.cCTVProduct.createMany({
+      await db.mSProduct.createMany({
         data: batch.map((row) => {
           const catName = (row.data["category"] || "").trim();
           return {

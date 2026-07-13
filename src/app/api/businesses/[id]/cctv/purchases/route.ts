@@ -27,7 +27,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     if (supplierId) where.supplierId = supplierId;
 
     const [purchases, total] = await Promise.all([
-      db.cCTVPurchase.findMany({
+      db.mSPurchase.findMany({
         where,
         include: {
           supplier: { select: { id: true, name: true, code: true } },
@@ -37,11 +37,11 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         skip,
         take: limit,
       }),
-      db.cCTVPurchase.count({ where }),
+      db.mSPurchase.count({ where }),
     ]);
 
     // Summary stats
-    const summary = await db.cCTVPurchase.aggregate({
+    const summary = await db.mSPurchase.aggregate({
       where: { businessId },
       _sum: { totalAmount: true, paidAmount: true },
       _count: true,
@@ -84,7 +84,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     // Verify all products exist
     const productIds = items.map((i: { productId: string }) => i.productId);
-    const products = await db.cCTVProduct.findMany({
+    const products = await db.mSProduct.findMany({
       where: { id: { in: productIds }, businessId, isActive: true },
     });
     const productMap = new Map(products.map((p) => [p.id, p]));
@@ -126,7 +126,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     // Check against existing serial items in DB
     let dbDuplicateSerials: string[] = [];
     if (allSerials.length > 0) {
-      const existingSerials = await db.cCTVSerialItem.findMany({
+      const existingSerials = await db.mSSerialItem.findMany({
         where: {
           businessId,
           serialNumber: { in: allSerials.map((s) => s) },
@@ -163,7 +163,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const prefix = `CPO-${year}-`;
 
     // Find the highest existing number for this year
-    const lastPurchase = await db.cCTVPurchase.findFirst({
+    const lastPurchase = await db.mSPurchase.findFirst({
       where: { businessId, purchaseNo: { startsWith: prefix } },
       orderBy: { purchaseNo: "desc" },
       select: { purchaseNo: true },
@@ -201,7 +201,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const totalAmount = subtotal - discountAmount;
 
     // Create purchase with items
-    const purchase = await db.cCTVPurchase.create({
+    const purchase = await db.mSPurchase.create({
       data: {
         businessId,
         supplierId: supplierId || null,
@@ -251,7 +251,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         if (userSerials.length > 0) {
           // Phase 5: Use user-provided serial numbers
           for (const serialNumber of userSerials) {
-            const serialItem = await db.cCTVSerialItem.create({
+            const serialItem = await db.mSSerialItem.create({
               data: {
                 businessId,
                 productId: item.productId,
@@ -270,7 +270,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
             });
 
             // Create history entry
-            await db.cCTVSerialItemHistory.create({
+            await db.mSSerialItemHistory.create({
               data: {
                 businessId,
                 serialItemId: serialItem.id,
@@ -296,7 +296,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
             const serialSuffix = (i + 1).toString().padStart(3, "0");
             const serialNumber = `${product.sku || product.name.substring(0, 6).toUpperCase()}-${purchaseNo}-${serialSuffix}`;
 
-            const serialItem = await db.cCTVSerialItem.create({
+            const serialItem = await db.mSSerialItem.create({
               data: {
                 businessId,
                 productId: item.productId,
@@ -315,7 +315,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
             });
 
             // Create history entry
-            await db.cCTVSerialItemHistory.create({
+            await db.mSSerialItemHistory.create({
               data: {
                 businessId,
                 serialItemId: serialItem.id,
@@ -338,7 +338,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         }
 
         // Update receivedQty
-        await db.cCTVPurchaseItem.update({
+        await db.mSPurchaseItem.update({
           where: { id: item.id },
           data: { receivedQty: createdCount },
         });
@@ -352,12 +352,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         });
       } else {
         // Non-serial: just increment product stock
-        await db.cCTVProduct.update({
+        await db.mSProduct.update({
           where: { id: item.productId },
           data: { stock: { increment: item.quantity } },
         });
 
-        await db.cCTVPurchaseItem.update({
+        await db.mSPurchaseItem.update({
           where: { id: item.id },
           data: { receivedQty: item.quantity },
         });

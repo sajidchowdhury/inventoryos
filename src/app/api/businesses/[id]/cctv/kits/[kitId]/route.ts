@@ -8,7 +8,7 @@ export async function GET(
 ) {
   try {
     const { id: businessId, kitId } = await params;
-    const kit = await db.cCTVKitDefinition.findFirst({
+    const kit = await db.mSKitDefinition.findFirst({
       where: { id: kitId, businessId, isActive: true },
       include: {
         components: {
@@ -38,7 +38,7 @@ export async function PUT(
     const body = await req.json();
     const { name, slug, description, kitPrice, discountPercent, imageUrl, isActive, sortOrder } = body;
 
-    const existing = await db.cCTVKitDefinition.findFirst({
+    const existing = await db.mSKitDefinition.findFirst({
       where: { id: kitId, businessId, isActive: true },
     });
     if (!existing) {
@@ -48,7 +48,7 @@ export async function PUT(
     // Check slug uniqueness if changed
     if (slug && slug.trim() !== existing.slug) {
       const slugClean = slug.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
-      const dup = await db.cCTVKitDefinition.findFirst({
+      const dup = await db.mSKitDefinition.findFirst({
         where: { businessId, slug: slugClean, isActive: true, id: { not: kitId } },
       });
       if (dup) {
@@ -56,7 +56,7 @@ export async function PUT(
       }
     }
 
-    const updated = await db.cCTVKitDefinition.update({
+    const updated = await db.mSKitDefinition.update({
       where: { id: kitId },
       data: {
         name: name?.trim() || undefined,
@@ -85,7 +85,7 @@ export async function DELETE(
   try {
     const { id: businessId, kitId } = await params;
 
-    const kit = await db.cCTVKitDefinition.findFirst({
+    const kit = await db.mSKitDefinition.findFirst({
       where: { id: kitId, businessId, isActive: true },
     });
     if (!kit) {
@@ -93,7 +93,7 @@ export async function DELETE(
     }
 
     // Soft delete — cascade will remove components
-    await db.cCTVKitDefinition.update({
+    await db.mSKitDefinition.update({
       where: { id: kitId },
       data: { isActive: false },
     });
