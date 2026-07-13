@@ -1,13 +1,13 @@
 "use client";
 
 // AdminSidebar — left sidebar navigation for the super admin panel.
-// 5 sections: Global Dashboard, API Setup, Pharmacy, CC Camera, Others (placeholder).
+// 5 sections: Global Dashboard, API Setup, Pharmacy, MobileShop, Others (placeholder).
 // On mobile, collapses to a bottom tab bar.
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  LayoutDashboard, Settings, Pill, Rocket, Package, Users, ShieldCheck, Camera,
+  LayoutDashboard, Settings, Pill, Rocket, Package, Users, ShieldCheck, Smartphone,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -33,7 +33,7 @@ const NAV_ITEMS = [
   {
     label: "MobileShop Catalog",
     href: "/admin/catalog/mobile-shop",
-    icon: Camera,
+    icon: Smartphone,
     description: "MobileShop master product catalog",
   },
   {

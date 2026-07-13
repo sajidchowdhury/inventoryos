@@ -286,7 +286,7 @@ const HELP_ENTRIES: HelpEntry[] = [
     category: "Operations",
     whatItIs: "Each business type (Pharmacy, CC Camera, etc.) has its own dashboard at /admin/{type}. Shows only data for that business type: schedules, reports, contacts, and metrics filtered by businessTypeId.",
     whatHappensIfNotSet: "If you navigate to a project dashboard that isn't active (e.g., CC Camera), you'll see a 'Coming Soon' placeholder with planned features.",
-    whyYouNeedIt: "When InventoryOS launches its second business type, the admin needs to see pharmacy data and CCTV data separately — not mixed in one list. Project dashboards provide this separation without losing the global cross-project view.",
+    whyYouNeedIt: "When InventoryOS launches its second business type, the admin needs to see pharmacy data and MobileShop data separately — not mixed in one list. Project dashboards provide this separation without losing the global cross-project view.",
     howToUse: "Click a project card on the Global Dashboard, or use the sidebar navigation. Each project dashboard has the same structure (schedules, reports, contacts) but filtered to that project. Use the sidebar to switch between projects.",
   },
   {
@@ -336,7 +336,7 @@ const HELP_ENTRIES: HelpEntry[] = [
     category: "Configuration",
     whatItIs: "All super-admin API endpoints support a businessTypeId query parameter for filtering by project. Schedules, generated reports, and businesses can all be filtered to a specific business type (pharmacy, cctv, etc.).",
     whatHappensIfNotSet: "Without the filter, all data from all business types is returned mixed together. This is fine when only pharmacy is active, but becomes unmanageable when multiple business types are live.",
-    whyYouNeedIt: "When InventoryOS launches its second business type, the admin needs to see pharmacy schedules separately from CCTV schedules. The businessTypeId filter provides this separation without duplicating endpoints or UI components.",
+    whyYouNeedIt: "When InventoryOS launches its second business type, the admin needs to see pharmacy schedules separately from MobileShop schedules. The businessTypeId filter provides this separation without duplicating endpoints or UI components.",
     howToUse: "The filter is applied automatically when you navigate to a project dashboard (e.g., /admin/pharmacy adds businessTypeId=pharmacy to all API calls). For manual API access, add ?businessTypeId=pharmacy to any super-admin endpoint URL.",
   },
 ];

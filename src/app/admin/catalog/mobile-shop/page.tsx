@@ -1,6 +1,6 @@
 "use client";
 
-// /admin/catalog/cctv — CCTV Master Product Catalog management page.
+// /admin/catalog/mobile-shop — MobileShop Master Product Catalog management page.
 // Search products, create/edit/delete, import CSV, review user-submitted products.
 
 import { useEffect, useState, useCallback } from "react";
@@ -17,7 +17,7 @@ import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
 import {
-  Camera, Search, Loader2, RefreshCw, Upload, Plus, Pencil, Trash2,
+  Smartphone, Search, Loader2, RefreshCw, Upload, Plus, Pencil, Trash2,
   CheckCircle2, XCircle, ChevronLeft, ChevronRight, Package,
 } from "lucide-react";
 import { useAdmin } from "../../AdminContext";
@@ -265,11 +265,11 @@ export default function MSCatalogPage() {
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-            <Camera className="h-6 w-6 text-purple-400" />
-            CCTV Master Catalog
+            <Smartphone className="h-6 w-6 text-purple-400" />
+            MobileShop Master Catalog
           </h1>
           <p className="text-sm text-slate-400 mt-1">
-            Manage the shared CCTV product catalog. Shops subscribe to these products.
+            Manage the shared MobileShop product catalog. Shops subscribe to these products.
           </p>
         </div>
         <div className="flex gap-2">
@@ -460,7 +460,7 @@ export default function MSCatalogPage() {
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-slate-900 border-slate-700">
           <DialogHeader>
             <DialogTitle className="text-white">
-              {editingId ? "Edit Product" : "Add CCTV Master Product"}
+              {editingId ? "Edit Product" : "Add MobileShop Master Product"}
             </DialogTitle>
             <DialogDescription className="text-slate-400">
               {editingId ? "Update the master catalog entry" : "Add a new product to the shared catalog"}
@@ -541,7 +541,7 @@ export default function MSCatalogPage() {
               <Label className="text-slate-300">Description</Label>
               <Textarea value={form.description}
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
-                placeholder="4MP AcuSense Bullet Camera, 2.8mm lens, IR up to 40m..."
+                placeholder="4MP AcuSense Bullet Smartphone, 2.8mm lens, IR up to 40m..."
                 className="bg-slate-800 border-slate-700 text-white" rows={2} />
             </div>
             <div className="col-span-2 space-y-1.5">
@@ -566,7 +566,7 @@ export default function MSCatalogPage() {
       <Dialog open={showImport} onOpenChange={setShowImport}>
         <DialogContent className="max-w-2xl bg-slate-900 border-slate-700">
           <DialogHeader>
-            <DialogTitle className="text-white">Import CCTV Products via CSV</DialogTitle>
+            <DialogTitle className="text-white">Import MobileShop Products via CSV</DialogTitle>
             <DialogDescription className="text-slate-400">
               Paste CSV data with columns: name, brand, model, sku, description, hsnCode, category, warranty, serial, unit, vatRate, mrp, manufacturer
             </DialogDescription>
