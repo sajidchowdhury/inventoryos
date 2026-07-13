@@ -7,6 +7,7 @@ import { CCTVProductsList } from './CCTVProductsList';
 import { CCTVProductForm } from './CCTVProductForm';
 import { CCTVSales } from './CCTVSales';
 import { CCTVCashBook } from './CCTVCashBook';
+import { CCTVLedger } from './CCTVLedger';
 import {
   Home, Package, ShoppingCart, Users, Building2, Receipt,
   BarChart3, Settings, Camera, Plus, TrendingUp, AlertTriangle,
@@ -110,8 +111,8 @@ export function CCTVShell() {
           {activeView === 'edit-product' && <CCTVProductForm />}
           {activeView === 'purchase' && <CCTVPurchase />}
           {activeView === 'sales' && <CCTVSales />}
-          {activeView === 'customers' && <PlaceholderView title="Customers" desc="Customer management with ledger — coming in Phase 5" />}
-          {activeView === 'suppliers' && <PlaceholderView title="Suppliers" desc="Supplier management with ledger — coming in Phase 5" />}
+          {activeView === 'customers' && <CCTVLedger type="customer" />}
+          {activeView === 'suppliers' && <CCTVLedger type="supplier" />}
           {activeView === 'expenses' && <PlaceholderView title="Expenses" desc="Daily expense tracking — coming soon" />}
           {activeView === 'reports' && <CCTVCashBook />}
           {activeView === 'settings' && <PlaceholderView title="Settings" desc="Business settings — coming soon" />}
