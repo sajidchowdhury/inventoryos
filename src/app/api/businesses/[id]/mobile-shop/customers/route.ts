@@ -43,21 +43,21 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     // Compute CCTV-specific stats in bulk
     const customerIds = customers.map((c) => c.id);
 
-    let cctvStatsMap: Record<string, { cctvSalesCount: number; cctvTotalSpent: number }> = {};
+    let msStatsMap: Record<string, { msSalesCount: number; msTotalSpent: number }> = {};
 
     if (customerIds.length > 0) {
-      const cctvStats = await db.mSSale.groupBy({
+      const msStats = await db.mSSale.groupBy({
         by: ["customerId"],
         where: { businessId, customerId: { in: customerIds }, isActive: true },
         _sum: { totalDue: true },
         _count: true,
       });
 
-      for (const stat of cctvStats) {
+      for (const stat of msStats) {
         if (stat.customerId) {
-          cctvStatsMap[stat.customerId] = {
-            cctvSalesCount: stat._count,
-            cctvTotalSpent: stat._sum.totalDue || 0,
+          msStatsMap[stat.customerId] = {
+            msSalesCount: stat._count,
+            msTotalSpent: stat._sum.totalDue || 0,
           };
         }
       }
@@ -66,8 +66,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     // Merge CCTV stats into each customer
     const enriched = customers.map((c) => ({
       ...c,
-      cctvSalesCount: cctvStatsMap[c.id]?.cctvSalesCount || 0,
-      cctvTotalSpent: cctvStatsMap[c.id]?.cctvTotalSpent || 0,
+      msSalesCount: msStatsMap[c.id]?.msSalesCount || 0,
+      msTotalSpent: msStatsMap[c.id]?.msTotalSpent || 0,
     }));
 
     // Count customers with outstanding balance

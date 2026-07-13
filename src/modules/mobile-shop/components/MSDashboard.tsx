@@ -171,7 +171,7 @@ export function MSDashboard() {
       {/* ── Header Banner ── */}
       <motion.div
         variants={fadeUp}
-        className="cctv-bg relative overflow-hidden rounded-b-3xl px-5 pt-12 pb-8"
+        className="ms-bg relative overflow-hidden rounded-b-3xl px-5 pt-12 pb-8"
       >
         <div className="relative z-10">
           <div className="flex items-start justify-between mb-4">

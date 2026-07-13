@@ -39,8 +39,8 @@ interface CustomerRecord {
   loyaltyTier: LoyaltyTier;
   preferredPaymentMethod: string;
   createdAt: string;
-  cctvSalesCount: number;
-  cctvTotalSpent: number;
+  msSalesCount: number;
+  msTotalSpent: number;
 }
 
 const TIER_TABS: { label: string; value: string }[] = [
@@ -109,7 +109,7 @@ export function MSCustomersList() {
       const params = new URLSearchParams();
       if (search) params.set('search', search);
       if (activeTier) params.set('tier', activeTier);
-      params.set('sortBy', 'cctvTotalSpent');
+      params.set('sortBy', 'msTotalSpent');
       params.set('sortDir', 'desc');
 
       try {
@@ -330,7 +330,7 @@ export function MSCustomersList() {
                         <ShoppingCart className="w-2.5 h-2.5" /> Purchases
                       </p>
                       <p className="text-xs font-semibold text-gray-900 mt-0.5">
-                        {customer.cctvSalesCount}
+                        {customer.msSalesCount}
                       </p>
                     </div>
                     <div>
@@ -338,7 +338,7 @@ export function MSCustomersList() {
                         <Coins className="w-2.5 h-2.5" /> Total Spent
                       </p>
                       <p className="text-xs font-semibold text-gray-900 mt-0.5">
-                        {formatBDT(customer.cctvTotalSpent)}
+                        {formatBDT(customer.msTotalSpent)}
                       </p>
                     </div>
                     <div>

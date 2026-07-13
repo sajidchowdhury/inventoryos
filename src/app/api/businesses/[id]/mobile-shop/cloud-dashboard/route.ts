@@ -61,7 +61,7 @@ export async function GET(
     }),
     db.mSCategory.findMany({
       where: { businessId, isActive: true },
-      include: { _count: { select: { cctvProducts: { where: { isActive: true } } } } },
+      include: { _count: { select: { msProducts: { where: { isActive: true } } } } },
       orderBy: { name: 'asc' },
     }),
   ]);
@@ -85,7 +85,7 @@ export async function GET(
   const categoryBreakdown = categories.map((c) => ({
     name: c.name,
     color: c.color,
-    productCount: c._count.cctvProducts,
+    productCount: c._count.msProducts,
   }));
 
   return NextResponse.json({

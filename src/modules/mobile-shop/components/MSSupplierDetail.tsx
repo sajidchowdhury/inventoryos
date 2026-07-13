@@ -55,7 +55,7 @@ interface SupplierData {
   isActive: boolean;
   createdAt: string;
   purchases?: PurchaseRecord[];
-  _count?: { purchases: number; batches: number; cctvPurchases?: number };
+  _count?: { purchases: number; batches: number; msPurchases?: number };
 }
 
 interface PurchaseRecord {
@@ -80,7 +80,7 @@ interface OutstandingPurchase {
   createdAt: string;
   ageDays: number;
   bucket: string;
-  source: 'purchase' | 'cctv';
+  source: 'purchase' | 'mobile-shop';
 }
 
 interface BalanceData {
@@ -92,7 +92,7 @@ interface BalanceData {
     outstandingCount: number;
     oldestDueDays: number;
     generalOutstanding?: number;
-    cctvOutstanding?: number;
+    msOutstanding?: number;
   };
   aging: {
     current: { count: number; amount: number };
@@ -251,7 +251,7 @@ export function MSSupplierDetail() {
   }
 
   const summary = balance?.summary;
-  const totalPurchases = (supplier._count?.purchases || 0) + (supplier._count?.cctvPurchases || 0);
+  const totalPurchases = (supplier._count?.purchases || 0) + (supplier._count?.msPurchases || 0);
 
   return (
     <motion.div {...fadeUp} className="space-y-4 pb-4">
@@ -445,7 +445,7 @@ export function MSSupplierDetail() {
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5">
                       <p className="text-sm font-semibold text-gray-900">{p.purchaseNo}</p>
-                      {p.source === 'cctv' && (
+                      {p.source === 'mobile-shop' && (
                         <span className="text-[9px] font-bold bg-cyan-100 text-cyan-600 px-1.5 py-0.5 rounded leading-4">
                           CCTV
                         </span>
@@ -516,7 +516,7 @@ export function MSSupplierDetail() {
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-1.5">
                         <p className="text-sm font-semibold text-gray-900">{p.purchaseNo}</p>
-                        {p.source === 'cctv' && (
+                        {p.source === 'mobile-shop' && (
                           <span className="text-[9px] font-bold bg-cyan-100 text-cyan-600 px-1.5 py-0.5 rounded leading-4">
                             CCTV
                           </span>
@@ -568,7 +568,7 @@ export function MSSupplierDetail() {
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-1.5">
                         <p className="text-sm font-semibold text-gray-900">{p.purchaseNo}</p>
-                        {p.source === 'cctv' && (
+                        {p.source === 'mobile-shop' && (
                           <span className="text-[9px] font-bold bg-cyan-100 text-cyan-600 px-1.5 py-0.5 rounded leading-4">
                             CCTV
                           </span>
@@ -635,12 +635,12 @@ export function MSSupplierDetail() {
               <span className="text-gray-700 font-semibold">{summary.generalOutstanding}</span>
             </div>
           )}
-          {summary?.cctvOutstanding !== undefined && (
+          {summary?.msOutstanding !== undefined && (
             <div className="flex justify-between text-xs">
               <span className="text-gray-400 flex items-center gap-1">
                 <Monitor className="w-3 h-3" /> CCTV Outstanding
               </span>
-              <span className="text-cyan-600 font-semibold">{summary.cctvOutstanding}</span>
+              <span className="text-cyan-600 font-semibold">{summary.msOutstanding}</span>
             </div>
           )}
           <div className="flex justify-between text-xs">

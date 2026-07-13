@@ -652,7 +652,7 @@ export function MSWarrantyDetail() {
             <p className="text-xs text-gray-400">No claims yet</p>
           </div>
         ) : (
-          <div className="space-y-3 max-h-80 overflow-y-auto cctv-scrollbar">
+          <div className="space-y-3 max-h-80 overflow-y-auto ms-scrollbar">
             {claims.map((claim, i) => {
               const cfg = CLAIM_STATUS_CONFIG[claim.status] || {
                 badge: 'bg-gray-100 text-gray-600',
@@ -862,7 +862,7 @@ export function MSWarrantyDetail() {
               Timeline
             </h3>
           </div>
-          <div className="space-y-0 max-h-60 overflow-y-auto cctv-scrollbar">
+          <div className="space-y-0 max-h-60 overflow-y-auto ms-scrollbar">
             {item.history.map((entry, i) => (
               <div key={entry.id} className="flex gap-3">
                 {/* Timeline dot + line */}

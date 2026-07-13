@@ -269,7 +269,7 @@ export function MSWarrantiesList() {
       </div>
 
       {/* Warranty list */}
-      <div className="space-y-2.5 max-h-[calc(100vh-320px)] overflow-y-auto cctv-scrollbar">
+      <div className="space-y-2.5 max-h-[calc(100vh-320px)] overflow-y-auto ms-scrollbar">
         {loading ? (
           Array.from({ length: 4 }).map((_, i) => (
             <div

@@ -43,7 +43,7 @@ interface SupplierRecord {
   totalPaid: number;
   isActive: boolean;
   createdAt: string;
-  _count?: { purchases: number; batches: number; cctvPurchases: number };
+  _count?: { purchases: number; batches: number; msPurchases: number };
 }
 
 interface SupplierStats {
@@ -73,7 +73,7 @@ interface OutstandingPurchase {
   createdAt: string;
   ageDays: number;
   bucket: string;
-  source: 'purchase' | 'cctv';
+  source: 'purchase' | 'mobile-shop';
 }
 
 // ── Helpers ──
@@ -303,7 +303,7 @@ export function MSSupplierView() {
         ) : (
           <AnimatePresence mode="popLayout">
             {suppliers.map((supplier, i) => {
-              const totalPurchases = (supplier._count?.purchases || 0) + (supplier._count?.cctvPurchases || 0);
+              const totalPurchases = (supplier._count?.purchases || 0) + (supplier._count?.msPurchases || 0);
               const hasDue = supplier.balance > 0;
 
               return (
@@ -359,8 +359,8 @@ export function MSSupplierView() {
                         </p>
                         <p className="text-xs font-semibold text-gray-900 mt-0.5">
                           {totalPurchases}
-                          {supplier._count?.cctvPurchases && supplier._count.cctvPurchases > 0 && (
-                            <span className="ml-1 text-[9px] text-cyan-500">({supplier._count.cctvPurchases} CCTV)</span>
+                          {supplier._count?.msPurchases && supplier._count.msPurchases > 0 && (
+                            <span className="ml-1 text-[9px] text-cyan-500">({supplier._count.msPurchases} CCTV)</span>
                           )}
                         </p>
                       </div>

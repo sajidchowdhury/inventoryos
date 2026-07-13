@@ -481,7 +481,7 @@ export function MSAmcDetail() {
           </motion.div>
 
           {/* Visits list */}
-          <div className="space-y-2 max-h-[calc(100vh-360px)] overflow-y-auto cctv-scrollbar">
+          <div className="space-y-2 max-h-[calc(100vh-360px)] overflow-y-auto ms-scrollbar">
             {visits.length === 0 ? (
               <div className="text-center py-10">
                 <Wrench className="w-10 h-10 text-gray-300 mx-auto mb-2" />

@@ -45,7 +45,7 @@ export async function GET(
     });
 
     // Fetch outstanding CCTV purchases
-    const cctvPurchases = await db.mSPurchase.findMany({
+    const msPurchases = await db.mSPurchase.findMany({
       where: {
         businessId, supplierId,
         status: { not: "cancelled" },
@@ -113,11 +113,11 @@ export async function GET(
 
     const allOutstanding = [
       ...generalPurchases.map((p) => processPurchase(p, "purchase")),
-      ...cctvPurchases.map((p) => processPurchase(p, "mobile-shop")),
+      ...msPurchases.map((p) => processPurchase(p, "mobile-shop")),
     ].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
 
     // All-time purchase history (last 15, both sources)
-    const [generalHistory, cctvHistory] = await Promise.all([
+    const [generalHistory, msHistory] = await Promise.all([
       db.purchase.findMany({
         where: { businessId, supplierId, status: { not: "cancelled" } },
         orderBy: { createdAt: "desc" },
@@ -142,7 +142,7 @@ export async function GET(
 
     const purchaseHistory = [
       ...generalHistory.map((p) => ({ ...p, source: "purchase" as const })),
-      ...cctvHistory.map((p) => ({ ...p, source: "mobile-shop" as const })),
+      ...msHistory.map((p) => ({ ...p, source: "mobile-shop" as const })),
     ]
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
       .slice(0, 20);
@@ -163,7 +163,7 @@ export async function GET(
         outstandingCount: allOutstanding.length,
         oldestDueDays: allOutstanding.length > 0 ? allOutstanding[0].ageDays : 0,
         generalOutstanding: generalPurchases.length,
-        cctvOutstanding: cctvPurchases.length,
+        msOutstanding: msPurchases.length,
       },
       aging,
       outstandingPurchases: allOutstanding,

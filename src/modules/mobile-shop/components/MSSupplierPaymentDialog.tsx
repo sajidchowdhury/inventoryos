@@ -49,7 +49,7 @@ interface OutstandingPurchase {
   createdAt: string;
   ageDays: number;
   bucket: string;
-  source: 'purchase' | 'cctv';
+  source: 'purchase' | 'mobile-shop';
 }
 
 interface PaymentDialogProps {
@@ -401,7 +401,7 @@ export function MSSupplierPaymentDialog({
                             <div>
                               <p className="text-xs font-semibold text-gray-900">
                                 {p.purchaseNo}
-                                {p.source === 'cctv' && (
+                                {p.source === 'mobile-shop' && (
                                   <span className="ml-1.5 text-[9px] font-bold bg-cyan-100 text-cyan-600 px-1.5 py-0.5 rounded">
                                     CCTV
                                   </span>
@@ -431,7 +431,7 @@ export function MSSupplierPaymentDialog({
                             <div className="min-w-0 flex-1">
                               <p className="text-[11px] font-semibold text-gray-900 truncate">
                                 {p.purchaseNo}
-                                {p.source === 'cctv' && (
+                                {p.source === 'mobile-shop' && (
                                   <span className="ml-1 text-[9px] font-bold bg-cyan-100 text-cyan-600 px-1 py-0.5 rounded">
                                     CCTV
                                   </span>
@@ -521,7 +521,7 @@ export function MSSupplierPaymentDialog({
                         <div key={p.id} className="flex justify-between items-center py-1">
                           <span className="text-[11px] text-gray-600">
                             {p.purchaseNo}
-                            {p.source === 'cctv' && (
+                            {p.source === 'mobile-shop' && (
                               <span className="ml-1 text-[9px] font-bold bg-cyan-100 text-cyan-600 px-1 py-0.5 rounded">
                                 CCTV
                               </span>

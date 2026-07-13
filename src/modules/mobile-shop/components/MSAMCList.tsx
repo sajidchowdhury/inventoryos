@@ -235,7 +235,7 @@ export function MSAMCList() {
       </div>
 
       {/* AMC contract list */}
-      <div className="space-y-2.5 max-h-[calc(100vh-340px)] overflow-y-auto cctv-scrollbar">
+      <div className="space-y-2.5 max-h-[calc(100vh-340px)] overflow-y-auto ms-scrollbar">
         {loading ? (
           Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm space-y-3">

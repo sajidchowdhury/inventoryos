@@ -19,7 +19,7 @@ export async function GET(
     }
 
     // Run all stat queries in parallel
-    const [cctvSalesCount, cctvTotalSpentResult, emiPlansResult, recentSales, activeEmiPlans, loyaltyConfig] =
+    const [msSalesCount, msTotalSpentResult, emiPlansResult, recentSales, activeEmiPlans, loyaltyConfig] =
       await Promise.all([
         // Count of MSSale for this customer
         db.mSSale.count({
@@ -102,8 +102,8 @@ export async function GET(
     return NextResponse.json({
       ...customer,
       stats: {
-        cctvSalesCount,
-        cctvTotalSpent: cctvTotalSpentResult._sum.totalDue || 0,
+        msSalesCount,
+        msTotalSpent: msTotalSpentResult._sum.totalDue || 0,
         emiPlansCount: emiPlansResult,
         activeEmiRemainingAmount,
       },

@@ -334,7 +334,7 @@ const HELP_ENTRIES: HelpEntry[] = [
     title: "Multi-Project Filtering",
     icon: Sparkles,
     category: "Configuration",
-    whatItIs: "All super-admin API endpoints support a businessTypeId query parameter for filtering by project. Schedules, generated reports, and businesses can all be filtered to a specific business type (pharmacy, cctv, etc.).",
+    whatItIs: "All super-admin API endpoints support a businessTypeId query parameter for filtering by project. Schedules, generated reports, and businesses can all be filtered to a specific business type (pharmacy, mobile-shop, etc.).",
     whatHappensIfNotSet: "Without the filter, all data from all business types is returned mixed together. This is fine when only pharmacy is active, but becomes unmanageable when multiple business types are live.",
     whyYouNeedIt: "When InventoryOS launches its second business type, the admin needs to see pharmacy schedules separately from MobileShop schedules. The businessTypeId filter provides this separation without duplicating endpoints or UI components.",
     howToUse: "The filter is applied automatically when you navigate to a project dashboard (e.g., /admin/pharmacy adds businessTypeId=pharmacy to all API calls). For manual API access, add ?businessTypeId=pharmacy to any super-admin endpoint URL.",

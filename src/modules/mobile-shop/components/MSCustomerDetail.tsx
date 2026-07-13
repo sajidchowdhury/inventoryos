@@ -93,8 +93,8 @@ interface CustomerDetail {
   preferredPaymentMethod: string;
   isActive: boolean;
   createdAt: string;
-  cctvSalesCount: number;
-  cctvTotalSpent: number;
+  msSalesCount: number;
+  msTotalSpent: number;
   activeEmiCount: number;
   activeEmiRemaining: number;
   recentSales: {
