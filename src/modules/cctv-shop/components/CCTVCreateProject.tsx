@@ -69,7 +69,7 @@ export function CCTVCreateProject() {
       if (form.notes.trim()) body.notes = form.notes.trim();
       if (form.internalNotes.trim()) body.internalNotes = form.internalNotes.trim();
 
-      const res = await fetch(`/api/businesses/${businessId}/cctv/projects`, {
+      const res = await fetch(`/api/businesses/${businessId}/mobile-shop/projects`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),

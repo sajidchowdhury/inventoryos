@@ -56,7 +56,7 @@ export function CCTVEMIList() {
         const params = new URLSearchParams();
         if (activeFilter && !['OVERDUE'].includes(activeFilter)) params.set('status', activeFilter);
         if (search) params.set('search', search);
-        const res = await fetch(`/api/businesses/${businessId}/cctv/emi-plans?${params}`);
+        const res = await fetch(`/api/businesses/${businessId}/mobile-shop/emi-plans?${params}`);
         if (res.ok && !cancelled) setAllPlans(await res.json());
       } catch {}
       if (!cancelled) setLoading(false);

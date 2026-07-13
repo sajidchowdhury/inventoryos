@@ -23,7 +23,7 @@ export function CCTVMushakInvoiceDetail() {
     if (!contextId) return;
     const load = async () => {
       try {
-        const res = await fetch(`/api/businesses/${businessId}/cctv/mushak-invoices/${contextId}`);
+        const res = await fetch(`/api/businesses/${businessId}/mobile-shop/mushak-invoices/${contextId}`);
         const json = await res.json();
         if (json.success) setInvoice(json.data);
       } catch (err) {

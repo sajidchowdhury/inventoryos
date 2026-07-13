@@ -168,7 +168,7 @@ export function CCTVCustomerDetail() {
   const fetchCustomer = useCallback(async () => {
     if (!contextId) return;
     try {
-      const res = await fetch(`/api/businesses/${businessId}/cctv/customers/${contextId}`);
+      const res = await fetch(`/api/businesses/${businessId}/mobile-shop/customers/${contextId}`);
       if (res.ok) setCustomer(await res.json());
     } catch {}
     setLoading(false);
@@ -179,7 +179,7 @@ export function CCTVCustomerDetail() {
     setTxLoading(true);
     try {
       const res = await fetch(
-        `/api/businesses/${businessId}/cctv/customers/${contextId}/loyalty?limit=20&offset=0`
+        `/api/businesses/${businessId}/mobile-shop/customers/${contextId}/loyalty?limit=20&offset=0`
       );
       if (res.ok) {
         const data = await res.json();
@@ -191,7 +191,7 @@ export function CCTVCustomerDetail() {
 
   const fetchLoyaltyConfig = useCallback(async () => {
     try {
-      const res = await fetch(`/api/businesses/${businessId}/cctv/loyalty-config`);
+      const res = await fetch(`/api/businesses/${businessId}/mobile-shop/loyalty-config`);
       if (res.ok) setLoyaltyConfig(await res.json());
     } catch {}
   }, [businessId]);
@@ -218,7 +218,7 @@ export function CCTVCustomerDetail() {
     setSubmitting(true);
     try {
       const res = await fetch(
-        `/api/businesses/${businessId}/cctv/customers/${contextId}/redeem`,
+        `/api/businesses/${businessId}/mobile-shop/customers/${contextId}/redeem`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -255,7 +255,7 @@ export function CCTVCustomerDetail() {
     try {
       const actualPoints = adjustMode === 'deduct' ? -pts : pts;
       const res = await fetch(
-        `/api/businesses/${businessId}/cctv/customers/${contextId}/loyalty`,
+        `/api/businesses/${businessId}/mobile-shop/customers/${contextId}/loyalty`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

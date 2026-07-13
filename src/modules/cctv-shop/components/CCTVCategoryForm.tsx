@@ -36,7 +36,7 @@ export function CCTVCategoryForm() {
     if (!contextId) return;
     setLoading(true);
     try {
-      const res = await fetch(`/api/businesses/${businessId}/cctv/categories/${contextId}`);
+      const res = await fetch(`/api/businesses/${businessId}/mobile-shop/categories/${contextId}`);
       if (res.ok) {
         const data = await res.json();
         setName(data.name || '');
@@ -68,8 +68,8 @@ export function CCTVCategoryForm() {
     setSaving(true);
     try {
       const url = isEdit
-        ? `/api/businesses/${businessId}/cctv/categories/${contextId}`
-        : `/api/businesses/${businessId}/cctv/categories`;
+        ? `/api/businesses/${businessId}/mobile-shop/categories/${contextId}`
+        : `/api/businesses/${businessId}/mobile-shop/categories`;
 
       const res = await fetch(url, {
         method: isEdit ? 'PUT' : 'POST',

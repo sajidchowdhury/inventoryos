@@ -119,7 +119,7 @@ export function CCTVProductForm() {
   // Fetch categories
   useEffect(() => {
     if (!businessId) return;
-    fetch(`/api/businesses/${businessId}/cctv/categories`)
+    fetch(`/api/businesses/${businessId}/mobile-shop/categories`)
       .then((res) => res.json())
       .then((data) => {
         const cats: CategoryItem[] = Array.isArray(data) ? data : data.categories || [];
@@ -134,7 +134,7 @@ export function CCTVProductForm() {
   useEffect(() => {
     if (!isEdit || !businessId || !contextId) return;
     setLoadingData(true);
-    fetch(`/api/businesses/${businessId}/cctv/products/${contextId}`)
+    fetch(`/api/businesses/${businessId}/mobile-shop/products/${contextId}`)
       .then((res) => res.json())
       .then((data) => {
         const p = data.product || data;
@@ -171,7 +171,7 @@ export function CCTVProductForm() {
   // Also load brands from products list for datalist
   useEffect(() => {
     if (!businessId) return;
-    fetch(`/api/businesses/${businessId}/cctv/products?limit=100`)
+    fetch(`/api/businesses/${businessId}/mobile-shop/products?limit=100`)
       .then((res) => res.json())
       .then((data) => {
         const prods = data.products || [];
@@ -193,7 +193,7 @@ export function CCTVProductForm() {
     setCatalogSearching(true);
     try {
       const res = await fetch(
-        `/api/businesses/${businessId}/catalog/cctv/search?q=${encodeURIComponent(q.trim())}&limit=8`
+        `/api/businesses/${businessId}/catalog/mobile-shop/search?q=${encodeURIComponent(q.trim())}&limit=8`
       );
       if (!res.ok) return;
       const data = await res.json();
@@ -309,7 +309,7 @@ export function CCTVProductForm() {
   const handleCreateCategory = async () => {
     if (!newCategoryName.trim() || !businessId) return;
     try {
-      const res = await fetch(`/api/businesses/${businessId}/cctv/categories`, {
+      const res = await fetch(`/api/businesses/${businessId}/mobile-shop/categories`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: newCategoryName.trim() }),
@@ -335,7 +335,7 @@ export function CCTVProductForm() {
     if (!isEdit && !masterProductId && addToMasterCatalog) {
       try {
         const suggestRes = await fetch(
-          `/api/businesses/${businessId}/catalog/cctv/suggest`,
+          `/api/businesses/${businessId}/catalog/mobile-shop/suggest`,
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -396,8 +396,8 @@ export function CCTVProductForm() {
 
     try {
       const url = isEdit
-        ? `/api/businesses/${businessId}/cctv/products/${contextId}`
-        : `/api/businesses/${businessId}/cctv/products`;
+        ? `/api/businesses/${businessId}/mobile-shop/products/${contextId}`
+        : `/api/businesses/${businessId}/mobile-shop/products`;
 
       const res = await fetch(url, {
         method: isEdit ? 'PUT' : 'POST',

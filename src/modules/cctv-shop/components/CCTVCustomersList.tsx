@@ -114,7 +114,7 @@ export function CCTVCustomersList() {
 
       try {
         const res = await fetch(
-          `/api/businesses/${businessId}/cctv/customers?${params.toString()}`,
+          `/api/businesses/${businessId}/mobile-shop/customers?${params.toString()}`,
           { signal: controller.signal },
         );
         if (!res.ok) throw new Error(`HTTP ${res.status}`);

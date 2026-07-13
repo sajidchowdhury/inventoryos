@@ -70,7 +70,7 @@ export function CCTVDueBook() {
     try {
       const params = new URLSearchParams();
       if (query) params.set('search', query);
-      const res = await fetch(`/api/businesses/${businessId}/cctv/sales/due-book?${params}`);
+      const res = await fetch(`/api/businesses/${businessId}/mobile-shop/sales/due-book?${params}`);
       if (res.ok) {
         const data = await res.json();
         setCustomers(data.customers || []);

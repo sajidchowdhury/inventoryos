@@ -166,7 +166,7 @@ export function CCTVJobCardDetail() {
   const fetchJob = async () => {
     if (!contextId) return;
     try {
-      const res = await fetch(`/api/businesses/${businessId}/cctv/job-cards/${contextId}`);
+      const res = await fetch(`/api/businesses/${businessId}/mobile-shop/job-cards/${contextId}`);
       if (res.ok) {
         const data = await res.json();
         const jobData: CCTVJobCard = data.jobCard || data;
@@ -186,7 +186,7 @@ export function CCTVJobCardDetail() {
     (async () => {
       setLoading(true);
       try {
-        const res = await fetch(`/api/businesses/${businessId}/cctv/job-cards/${contextId}`);
+        const res = await fetch(`/api/businesses/${businessId}/mobile-shop/job-cards/${contextId}`);
         if (res.ok && !cancelled) {
           const data = await res.json();
           const jobData: CCTVJobCard = data.jobCard || data;
@@ -243,7 +243,7 @@ export function CCTVJobCardDetail() {
       if (editForm.conditionNotes !== undefined) body.conditionNotes = editForm.conditionNotes || null;
       if (editForm.photoUrls !== undefined) body.photoUrls = editForm.photoUrls || null;
 
-      const res = await fetch(`/api/businesses/${businessId}/cctv/job-cards/${contextId}`, {
+      const res = await fetch(`/api/businesses/${businessId}/mobile-shop/job-cards/${contextId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -287,7 +287,7 @@ export function CCTVJobCardDetail() {
       // Fetch vendor list for picker
       (async () => {
         try {
-          const res = await fetch(`/api/businesses/${businessId}/cctv/outsourced-vendors`);
+          const res = await fetch(`/api/businesses/${businessId}/mobile-shop/outsourced-vendors`);
           if (res.ok) setVendorList(await res.json());
         } catch { /* silent */ }
       })();
@@ -311,7 +311,7 @@ export function CCTVJobCardDetail() {
     setOtpLoading(true);
     setOtpError('');
     try {
-      const res = await fetch(`/api/businesses/${businessId}/cctv/job-cards/${contextId}/otp`, {
+      const res = await fetch(`/api/businesses/${businessId}/mobile-shop/job-cards/${contextId}/otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -345,7 +345,7 @@ export function CCTVJobCardDetail() {
     setOtpLoading(true);
     setOtpError('');
     try {
-      const res = await fetch(`/api/businesses/${businessId}/cctv/job-cards/${contextId}/otp`, {
+      const res = await fetch(`/api/businesses/${businessId}/mobile-shop/job-cards/${contextId}/otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'verify', code: otpCode }),
@@ -369,7 +369,7 @@ export function CCTVJobCardDetail() {
     if (!contextId) return;
     setOtpLoading(true);
     try {
-      const statusRes = await fetch(`/api/businesses/${businessId}/cctv/job-cards/${contextId}/status`, {
+      const statusRes = await fetch(`/api/businesses/${businessId}/mobile-shop/job-cards/${contextId}/status`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: 'DELIVERED' }),
@@ -400,7 +400,7 @@ export function CCTVJobCardDetail() {
     setDialogLoading(true);
 
     try {
-      const statusRes = await fetch(`/api/businesses/${businessId}/cctv/job-cards/${contextId}/status`, {
+      const statusRes = await fetch(`/api/businesses/${businessId}/mobile-shop/job-cards/${contextId}/status`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: transitionTarget.status, notes: transitionNotes || undefined }),
@@ -414,7 +414,7 @@ export function CCTVJobCardDetail() {
 
       // Follow-up PUT for OUTSOURCED (vendor info)
       if (transitionTarget.status === 'OUTSOURCED') {
-        await fetch(`/api/businesses/${businessId}/cctv/job-cards/${contextId}`, {
+        await fetch(`/api/businesses/${businessId}/mobile-shop/job-cards/${contextId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -722,7 +722,7 @@ export function CCTVJobCardDetail() {
                               onClick={async () => {
                                 setNewVendorSaving(true);
                                 try {
-                                  const res = await fetch(`/api/businesses/${businessId}/cctv/outsourced-vendors`, {
+                                  const res = await fetch(`/api/businesses/${businessId}/mobile-shop/outsourced-vendors`, {
                                     method: 'POST',
                                     headers: { 'Content-Type': 'application/json' },
                                     body: JSON.stringify({ name: newVendorName, phone: newVendorPhone, specialization: newVendorSpec }),
@@ -1078,7 +1078,7 @@ export function CCTVJobCardDetail() {
                     partSearchTimer.current = setTimeout(async () => {
                       try {
                         setPartSearchLoading(true);
-                        const res = await fetch(`/api/businesses/${businessId}/cctv/serial-items?search=${encodeURIComponent(v.trim())}&status=IN_STOCK&limit=10`);
+                        const res = await fetch(`/api/businesses/${businessId}/mobile-shop/serial-items?search=${encodeURIComponent(v.trim())}&status=IN_STOCK&limit=10`);
                         if (res.ok) {
                           const d = await res.json();
                           setPartResults(d.items || d || []);
@@ -1118,7 +1118,7 @@ export function CCTVJobCardDetail() {
                           onClick={async () => {
                             setPartAdding(item.id);
                             try {
-                              const res = await fetch(`/api/businesses/${businessId}/cctv/job-cards/${contextId}/parts`, {
+                              const res = await fetch(`/api/businesses/${businessId}/mobile-shop/job-cards/${contextId}/parts`, {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({ serialItemId: item.id }),
@@ -1195,7 +1195,7 @@ export function CCTVJobCardDetail() {
                           onClick={async () => {
                             setPartRemoving(part.id);
                             try {
-                              const res = await fetch(`/api/businesses/${businessId}/cctv/job-cards/${contextId}/parts/${part.id}`, {
+                              const res = await fetch(`/api/businesses/${businessId}/mobile-shop/job-cards/${contextId}/parts/${part.id}`, {
                                 method: 'DELETE',
                               });
                               if (res.ok) {

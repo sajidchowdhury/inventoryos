@@ -174,7 +174,7 @@ export function CCTVLoyaltyCenter() {
   // ── Fetch config ──
   const fetchConfig = useCallback(async () => {
     try {
-      const res = await fetch(`/api/businesses/${businessId}/cctv/loyalty-config`);
+      const res = await fetch(`/api/businesses/${businessId}/mobile-shop/loyalty-config`);
       if (!res.ok) throw new Error('Failed to load config');
       const data: LoyaltyConfig = await res.json();
       setConfig(data);
@@ -198,7 +198,7 @@ export function CCTVLoyaltyCenter() {
   // ── Fetch offers ──
   const fetchOffers = useCallback(async () => {
     try {
-      const res = await fetch(`/api/businesses/${businessId}/cctv/loyalty-offers?active=true`);
+      const res = await fetch(`/api/businesses/${businessId}/mobile-shop/loyalty-offers?active=true`);
       if (!res.ok) throw new Error('Failed to load offers');
       const data: LoyaltyOffer[] = await res.json();
       setOffers(data);
@@ -218,7 +218,7 @@ export function CCTVLoyaltyCenter() {
   const handleSaveConfig = async () => {
     setSavingConfig(true);
     try {
-      const res = await fetch(`/api/businesses/${businessId}/cctv/loyalty-config`, {
+      const res = await fetch(`/api/businesses/${businessId}/mobile-shop/loyalty-config`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -244,7 +244,7 @@ export function CCTVLoyaltyCenter() {
     if (!config) return;
     setSavingConfig(true);
     try {
-      const res = await fetch(`/api/businesses/${businessId}/cctv/loyalty-config`, {
+      const res = await fetch(`/api/businesses/${businessId}/mobile-shop/loyalty-config`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ isActive: checked }),
@@ -263,7 +263,7 @@ export function CCTVLoyaltyCenter() {
   const handleToggleOffer = async (offer: LoyaltyOffer) => {
     setTogglingIds((prev) => new Set(prev).add(offer.id));
     try {
-      const res = await fetch(`/api/businesses/${businessId}/cctv/loyalty-offers/${offer.id}`, {
+      const res = await fetch(`/api/businesses/${businessId}/mobile-shop/loyalty-offers/${offer.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ isActive: !offer.isActive }),
@@ -285,7 +285,7 @@ export function CCTVLoyaltyCenter() {
   // ── Delete offer ──
   const handleDeleteOffer = async (offerId: string) => {
     try {
-      const res = await fetch(`/api/businesses/${businessId}/cctv/loyalty-offers/${offerId}`, {
+      const res = await fetch(`/api/businesses/${businessId}/mobile-shop/loyalty-offers/${offerId}`, {
         method: 'DELETE',
       });
       if (!res.ok) throw new Error('Failed');
@@ -347,8 +347,8 @@ export function CCTVLoyaltyCenter() {
     try {
       const isEdit = !!editingOffer;
       const url = isEdit
-        ? `/api/businesses/${businessId}/cctv/loyalty-offers/${editingOffer.id}`
-        : `/api/businesses/${businessId}/cctv/loyalty-offers`;
+        ? `/api/businesses/${businessId}/mobile-shop/loyalty-offers/${editingOffer.id}`
+        : `/api/businesses/${businessId}/mobile-shop/loyalty-offers`;
       const res = await fetch(url, {
         method: isEdit ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },

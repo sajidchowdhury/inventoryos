@@ -76,7 +76,7 @@ export function CCTVSalesHistory() {
 
     try {
       const res = await fetch(
-        `/api/businesses/${businessId}/cctv/sales?${params.toString()}`,
+        `/api/businesses/${businessId}/mobile-shop/sales?${params.toString()}`,
       );
       if (res.ok) {
         const json = await res.json();

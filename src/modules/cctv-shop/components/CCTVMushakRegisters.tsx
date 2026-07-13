@@ -61,7 +61,7 @@ export function CCTVMushakRegisters() {
       if (fromDate) params.set('from', fromDate);
       if (toDate) params.set('to', toDate);
       const endpoint = tab === 'sales' ? 'sales' : 'purchases';
-      const res = await fetch(`/api/businesses/${businessId}/cctv/mushak-registers/${endpoint}?${params}`);
+      const res = await fetch(`/api/businesses/${businessId}/mobile-shop/mushak-registers/${endpoint}?${params}`);
       const json = await res.json();
       if (json.success) {
         setRows(json.data);

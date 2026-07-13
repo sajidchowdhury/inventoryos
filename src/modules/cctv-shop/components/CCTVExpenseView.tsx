@@ -121,7 +121,7 @@ export function CCTVExpenseView() {
     if (filterCategory) params.set('category', filterCategory);
 
     try {
-      const res = await fetch(`/api/businesses/${businessId}/cctv/expenses?${params.toString()}`);
+      const res = await fetch(`/api/businesses/${businessId}/mobile-shop/expenses?${params.toString()}`);
       if (res.ok) {
         const data = await res.json();
         setExpenses(data.expenses || []);
@@ -152,7 +152,7 @@ export function CCTVExpenseView() {
     setFormError('');
 
     try {
-      const res = await fetch(`/api/businesses/${businessId}/cctv/expenses`, {
+      const res = await fetch(`/api/businesses/${businessId}/mobile-shop/expenses`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -189,7 +189,7 @@ export function CCTVExpenseView() {
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this expense?')) return;
     try {
-      await fetch(`/api/businesses/${businessId}/cctv/expenses?id=${id}`, { method: 'DELETE' });
+      await fetch(`/api/businesses/${businessId}/mobile-shop/expenses?id=${id}`, { method: 'DELETE' });
       fetchData();
     } catch {
       // handle error

@@ -1,6 +1,6 @@
 "use client";
 
-// /admin/cctv/page.tsx — CC Camera project placeholder.
+// /admin/mobile-shop/page.tsx — CC Camera project placeholder.
 // Will be built when the CCTV business module is activated.
 
 import {

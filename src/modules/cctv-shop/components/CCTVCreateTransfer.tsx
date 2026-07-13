@@ -56,7 +56,7 @@ export function CCTVCreateTransfer() {
   // Fetch branches
   useEffect(() => {
     setBranchesLoading(true);
-    fetch(`/api/businesses/${businessId}/cctv/branches`)
+    fetch(`/api/businesses/${businessId}/mobile-shop/branches`)
       .then((res) => res.json())
       .then((data) => {
         const arr: CCTVBranch[] = Array.isArray(data) ? data : data.branches || [];
@@ -78,7 +78,7 @@ export function CCTVCreateTransfer() {
         params.set('page', String(page));
         params.set('limit', '20');
         const res = await fetch(
-          `/api/businesses/${businessId}/cctv/branches/${fromBranchId}/inventory?${params.toString()}`
+          `/api/businesses/${businessId}/mobile-shop/branches/${fromBranchId}/inventory?${params.toString()}`
         );
         if (res.ok) {
           const data = await res.json();
@@ -168,7 +168,7 @@ export function CCTVCreateTransfer() {
     if (stagedItems.length === 0) return;
     setCreating(true);
     try {
-      const res = await fetch(`/api/businesses/${businessId}/cctv/transfers`, {
+      const res = await fetch(`/api/businesses/${businessId}/mobile-shop/transfers`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

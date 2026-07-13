@@ -47,7 +47,7 @@ export function CCTVTransfersList() {
   const fetchTransfers = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/businesses/${businessId}/cctv/transfers`);
+      const res = await fetch(`/api/businesses/${businessId}/mobile-shop/transfers`);
       if (res.ok) {
         const data = await res.json();
         const all: CCTVTransfer[] = Array.isArray(data) ? data : data.transfers || [];

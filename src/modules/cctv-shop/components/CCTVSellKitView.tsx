@@ -96,8 +96,8 @@ export function CCTVSellKitView() {
     setLoading(true);
     try {
       const [kitRes, availRes] = await Promise.all([
-        fetch(`/api/businesses/${businessId}/cctv/kits/${contextId}`),
-        fetch(`/api/businesses/${businessId}/cctv/kits/${contextId}/availability`),
+        fetch(`/api/businesses/${businessId}/mobile-shop/kits/${contextId}`),
+        fetch(`/api/businesses/${businessId}/mobile-shop/kits/${contextId}/availability`),
       ]);
       if (kitRes.ok) {
         const data = await kitRes.json();
@@ -129,7 +129,7 @@ export function CCTVSellKitView() {
     setLoadingSerials((prev) => ({ ...prev, [String(compIndex)]: true }));
     try {
       const res = await fetch(
-        `/api/businesses/${businessId}/cctv/products/${productId}/serials?status=IN_STOCK&limit=${qty + 5}`
+        `/api/businesses/${businessId}/mobile-shop/products/${productId}/serials?status=IN_STOCK&limit=${qty + 5}`
       );
       if (res.ok) {
         const data = await res.json();
@@ -164,7 +164,7 @@ export function CCTVSellKitView() {
         : [];
 
       const res = await fetch(
-        `/api/businesses/${businessId}/cctv/kits/${contextId}/sell`,
+        `/api/businesses/${businessId}/mobile-shop/kits/${contextId}/sell`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

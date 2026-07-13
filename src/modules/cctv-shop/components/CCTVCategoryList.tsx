@@ -41,7 +41,7 @@ export function CCTVCategoryList() {
     if (!businessId) return;
     setLoading(true);
     try {
-      const res = await fetch(`/api/businesses/${businessId}/cctv/categories`);
+      const res = await fetch(`/api/businesses/${businessId}/mobile-shop/categories`);
       if (res.ok) {
         const data = await res.json();
         setCategories(Array.isArray(data) ? data : data.categories || []);
@@ -65,7 +65,7 @@ export function CCTVCategoryList() {
     if (!window.confirm(`Delete "${cat.name}"? Products in this category will become uncategorized.`)) return;
     setDeletingId(cat.id);
     try {
-      const res = await fetch(`/api/businesses/${businessId}/cctv/categories/${cat.id}`, {
+      const res = await fetch(`/api/businesses/${businessId}/mobile-shop/categories/${cat.id}`, {
         method: 'DELETE',
       });
       if (res.ok) {

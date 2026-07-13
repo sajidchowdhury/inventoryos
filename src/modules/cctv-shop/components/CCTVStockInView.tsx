@@ -268,7 +268,7 @@ export function CCTVStockInView() {
   useEffect(() => {
     if (!businessId) return;
     setLoadingProducts(true);
-    fetch(`/api/businesses/${businessId}/cctv/products?limit=100&serialTracked=true`)
+    fetch(`/api/businesses/${businessId}/mobile-shop/products?limit=100&serialTracked=true`)
       .then((r) => r.json())
       .then((data) => {
         const list: CCTVProduct[] = data.products || [];
@@ -298,7 +298,7 @@ export function CCTVStockInView() {
     const params = new URLSearchParams({ limit: '50' });
     if (selectedSupplierId) params.set('supplierId', selectedSupplierId);
     if (purchaseSearch) params.set('search', purchaseSearch);
-    fetch(`/api/businesses/${businessId}/cctv/purchases?${params}`)
+    fetch(`/api/businesses/${businessId}/mobile-shop/purchases?${params}`)
       .then((r) => r.json())
       .then((data) => {
         setPurchases((data.purchases || []).map((p: { id: string; purchaseNo: string; totalAmount: number; status: string; supplier?: { name: string } | null }) => ({
@@ -417,7 +417,7 @@ export function CCTVStockInView() {
     setSubmitResult(null);
 
     try {
-      const res = await fetch(`/api/businesses/${businessId}/cctv/stock-in`, {
+      const res = await fetch(`/api/businesses/${businessId}/mobile-shop/stock-in`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

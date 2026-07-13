@@ -124,7 +124,7 @@ export function CCTVSerialItemsList() {
       if (q.trim()) params.set('search', q.trim());
 
       const res = await fetch(
-        `/api/businesses/${businessId}/cctv/serial-items?${params.toString()}`
+        `/api/businesses/${businessId}/mobile-shop/serial-items?${params.toString()}`
       );
       if (res.ok) {
         const data: SerialListResponse = await res.json();
@@ -158,7 +158,7 @@ export function CCTVSerialItemsList() {
       setLoading(true);
       try {
         const res = await fetch(
-          `/api/businesses/${businessId}/cctv/serial-items?${params.toString()}`
+          `/api/businesses/${businessId}/mobile-shop/serial-items?${params.toString()}`
         );
         if (res.ok && !cancelled) {
           const data: SerialListResponse = await res.json();

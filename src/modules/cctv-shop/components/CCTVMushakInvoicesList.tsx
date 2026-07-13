@@ -23,7 +23,7 @@ export function CCTVMushakInvoicesList() {
   useEffect(() => {
     const load = async () => {
       try {
-        const res = await fetch(`/api/businesses/${businessId}/cctv/mushak-invoices?limit=50${search ? `&search=${encodeURIComponent(search)}` : ''}`);
+        const res = await fetch(`/api/businesses/${businessId}/mobile-shop/mushak-invoices?limit=50${search ? `&search=${encodeURIComponent(search)}` : ''}`);
         const json = await res.json();
         if (json.success) {
           setInvoices(json.data);

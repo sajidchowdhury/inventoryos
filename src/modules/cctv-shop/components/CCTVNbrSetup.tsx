@@ -74,7 +74,7 @@ export function CCTVNbrSetup() {
 
   const loadConfig = useCallback(async () => {
     try {
-      const res = await fetch(`/api/businesses/${businessId}/cctv/nbr-config`);
+      const res = await fetch(`/api/businesses/${businessId}/mobile-shop/nbr-config`);
       const json = await res.json();
       if (json.success) {
         const c: CCTVNbrConfig = json.data;
@@ -102,7 +102,7 @@ export function CCTVNbrSetup() {
   const handleSaveConfig = async () => {
     setSaving(true);
     try {
-      const res = await fetch(`/api/businesses/${businessId}/cctv/nbr-config`, {
+      const res = await fetch(`/api/businesses/${businessId}/mobile-shop/nbr-config`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -137,7 +137,7 @@ export function CCTVNbrSetup() {
       return;
     }
     try {
-      const res = await fetch(`/api/businesses/${businessId}/cctv/nbr-config/hs-codes`, {
+      const res = await fetch(`/api/businesses/${businessId}/mobile-shop/nbr-config/hs-codes`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -164,7 +164,7 @@ export function CCTVNbrSetup() {
   const handleUpdateHs = async () => {
     if (!editingHs) return;
     try {
-      const res = await fetch(`/api/businesses/${businessId}/cctv/nbr-config/hs-codes/${editingHs.id}`, {
+      const res = await fetch(`/api/businesses/${businessId}/mobile-shop/nbr-config/hs-codes/${editingHs.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -190,7 +190,7 @@ export function CCTVNbrSetup() {
 
   const handleDeleteHs = async (id: string) => {
     try {
-      const res = await fetch(`/api/businesses/${businessId}/cctv/nbr-config/hs-codes/${id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/businesses/${businessId}/mobile-shop/nbr-config/hs-codes/${id}`, { method: 'DELETE' });
       const json = await res.json();
       if (json.success) {
         setHsCodes((prev) => prev.filter((h) => h.id !== id));
@@ -203,7 +203,7 @@ export function CCTVNbrSetup() {
 
   const handleSeedDefaults = async () => {
     try {
-      const res = await fetch(`/api/businesses/${businessId}/cctv/nbr-config/seed-defaults`, { method: 'POST' });
+      const res = await fetch(`/api/businesses/${businessId}/mobile-shop/nbr-config/seed-defaults`, { method: 'POST' });
       const json = await res.json();
       if (json.success) {
         loadConfig();

@@ -98,7 +98,7 @@ export function CCTVWarrantiesList() {
       setSummaryLoading(true);
       try {
         const res = await fetch(
-          `/api/businesses/${businessId}/cctv/warranties/summary`
+          `/api/businesses/${businessId}/mobile-shop/warranties/summary`
         );
         if (res.ok && !cancelled) {
           setSummary(await res.json());
@@ -128,7 +128,7 @@ export function CCTVWarrantiesList() {
       if (search) params.set('search', search);
       if (activeFilter) params.set('status', activeFilter);
       const res = await fetch(
-        `/api/businesses/${businessId}/cctv/warranties?${params}`
+        `/api/businesses/${businessId}/mobile-shop/warranties?${params}`
       );
       if (res.ok) {
         const data = await res.json();

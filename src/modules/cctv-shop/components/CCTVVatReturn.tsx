@@ -87,7 +87,7 @@ export function CCTVVatReturn() {
   // Load NBR config
   const loadConfig = useCallback(async () => {
     try {
-      const res = await fetch(`/api/businesses/${businessId}/cctv/nbr-config`);
+      const res = await fetch(`/api/businesses/${businessId}/mobile-shop/nbr-config`);
       const json = await res.json();
       if (json.success) setNbrConfig(json.data);
     } catch { /* ignore */ }
@@ -97,7 +97,7 @@ export function CCTVVatReturn() {
   const loadReturn = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/businesses/${businessId}/cctv/vat-returns?year=${taxYear}&month=${taxMonth}`);
+      const res = await fetch(`/api/businesses/${businessId}/mobile-shop/vat-returns?year=${taxYear}&month=${taxMonth}`);
       const json = await res.json();
       if (json.success) {
         setCalculated(json.data.calculated);
@@ -123,7 +123,7 @@ export function CCTVVatReturn() {
   // Load returns list
   const loadList = useCallback(async () => {
     try {
-      const res = await fetch(`/api/businesses/${businessId}/cctv/vat-returns`);
+      const res = await fetch(`/api/businesses/${businessId}/mobile-shop/vat-returns`);
       const json = await res.json();
       if (json.success) setReturnsList(json.data || []);
     } catch { /* ignore */ }
@@ -147,7 +147,7 @@ export function CCTVVatReturn() {
     if (!calculated) return;
     setSaving(true);
     try {
-      const res = await fetch(`/api/businesses/${businessId}/cctv/vat-returns`, {
+      const res = await fetch(`/api/businesses/${businessId}/mobile-shop/vat-returns`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -179,7 +179,7 @@ export function CCTVVatReturn() {
     if (!savedReturn || savedReturn.status !== 'DRAFT') return;
     if (!confirm('Delete this draft VAT return?')) return;
     try {
-      await fetch(`/api/businesses/${businessId}/cctv/vat-returns/${savedReturn.id}`, { method: 'DELETE' });
+      await fetch(`/api/businesses/${businessId}/mobile-shop/vat-returns/${savedReturn.id}`, { method: 'DELETE' });
       setSavedReturn(null);
       setAdjustmentAmount('0');
       setAdjustmentNote('');

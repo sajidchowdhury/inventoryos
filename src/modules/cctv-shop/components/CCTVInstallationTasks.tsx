@@ -131,8 +131,8 @@ export function CCTVInstallationTasks() {
       setLoading(true);
       try {
         const [summaryRes, tasksRes] = await Promise.all([
-          fetch(`/api/businesses/${businessId}/cctv/installation-tasks/summary`),
-          fetch(`/api/businesses/${businessId}/cctv/installation-tasks`),
+          fetch(`/api/businesses/${businessId}/mobile-shop/installation-tasks/summary`),
+          fetch(`/api/businesses/${businessId}/mobile-shop/installation-tasks`),
         ]);
         if (!cancelled) {
           if (summaryRes.ok) {

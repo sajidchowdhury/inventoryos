@@ -184,8 +184,8 @@ export function CCTVWarrantyDetail() {
     setClaimsLoading(true);
     try {
       const [itemRes, claimsRes] = await Promise.all([
-        fetch(`/api/businesses/${businessId}/cctv/serial-items/${contextId}`),
-        fetch(`/api/businesses/${businessId}/cctv/warranty-claims?serialItemId=${contextId}`),
+        fetch(`/api/businesses/${businessId}/mobile-shop/serial-items/${contextId}`),
+        fetch(`/api/businesses/${businessId}/mobile-shop/warranty-claims?serialItemId=${contextId}`),
       ]);
       if (itemRes.ok) {
         const data = await itemRes.json();
@@ -221,7 +221,7 @@ export function CCTVWarrantyDetail() {
     setSubmittingClaim(true);
     try {
       const res = await fetch(
-        `/api/businesses/${businessId}/cctv/warranty-claims`,
+        `/api/businesses/${businessId}/mobile-shop/warranty-claims`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -257,7 +257,7 @@ export function CCTVWarrantyDetail() {
       const body: Record<string, string> = { status };
       if (notes) body.resolutionNotes = notes;
       const res = await fetch(
-        `/api/businesses/${businessId}/cctv/warranty-claims/${claimId}`,
+        `/api/businesses/${businessId}/mobile-shop/warranty-claims/${claimId}`,
         {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },

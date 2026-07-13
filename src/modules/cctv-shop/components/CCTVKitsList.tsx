@@ -40,7 +40,7 @@ export function CCTVKitsList() {
   const fetchKits = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/businesses/${businessId}/cctv/kits`);
+      const res = await fetch(`/api/businesses/${businessId}/mobile-shop/kits`);
       if (!res.ok) throw new Error('Failed to fetch kits');
       const data = await res.json();
       const kitList: CCTVKitDefinition[] = Array.isArray(data) ? data : data.kits || [];
@@ -57,7 +57,7 @@ export function CCTVKitsList() {
       kitList.forEach(async (kit) => {
         try {
           const availRes = await fetch(
-            `/api/businesses/${businessId}/cctv/kits/${kit.id}/availability`
+            `/api/businesses/${businessId}/mobile-shop/kits/${kit.id}/availability`
           );
           if (availRes.ok) {
             const availData: KitAvailabilityResult = await availRes.json();

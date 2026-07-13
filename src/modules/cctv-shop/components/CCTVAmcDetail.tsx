@@ -147,7 +147,7 @@ export function CCTVAmcDetail() {
     let cancelled = false;
     const load = async () => {
       try {
-        const res = await fetch(`/api/businesses/${businessId}/cctv/amc-contracts/${contextId}`);
+        const res = await fetch(`/api/businesses/${businessId}/mobile-shop/amc-contracts/${contextId}`);
         if (res.ok && !cancelled) {
           const data = await res.json();
           setContract(data);
@@ -163,7 +163,7 @@ export function CCTVAmcDetail() {
   const fetchVisits = async () => {
     if (!contextId) return;
     try {
-      const res = await fetch(`/api/businesses/${businessId}/cctv/amc-contracts/${contextId}/visits`);
+      const res = await fetch(`/api/businesses/${businessId}/mobile-shop/amc-contracts/${contextId}/visits`);
       if (res.ok) setVisits(await res.json());
     } catch { /* silent */ }
   };
@@ -173,7 +173,7 @@ export function CCTVAmcDetail() {
     if (!visitDate) return;
     setSubmittingVisit(true);
     try {
-      const res = await fetch(`/api/businesses/${businessId}/cctv/amc-contracts/${contextId}/visits`, {
+      const res = await fetch(`/api/businesses/${businessId}/mobile-shop/amc-contracts/${contextId}/visits`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -199,7 +199,7 @@ export function CCTVAmcDetail() {
         // Refresh visits
         await fetchVisits();
         // Also refresh contract to update totalVisitsUsed
-        const contractRes = await fetch(`/api/businesses/${businessId}/cctv/amc-contracts/${contextId}`);
+        const contractRes = await fetch(`/api/businesses/${businessId}/mobile-shop/amc-contracts/${contextId}`);
         if (contractRes.ok) setContract(await contractRes.json());
       } else {
         const err = await res.json();

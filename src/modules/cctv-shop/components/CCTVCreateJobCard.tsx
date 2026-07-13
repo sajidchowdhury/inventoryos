@@ -86,7 +86,7 @@ export function CCTVCreateJobCard() {
     if (!contextId) return;
     (async () => {
       try {
-        const res = await fetch(`/api/businesses/${businessId}/cctv/serial-items/${contextId}`);
+        const res = await fetch(`/api/businesses/${businessId}/mobile-shop/serial-items/${contextId}`);
         if (res.ok) {
           const item = await res.json();
           setSerialItemId(item.id);
@@ -108,7 +108,7 @@ export function CCTVCreateJobCard() {
       setSerialSearching(true);
       try {
         const res = await fetch(
-          `/api/businesses/${businessId}/cctv/serial-items?search=${encodeURIComponent(serialSearch)}&status=IN_STOCK&limit=10`,
+          `/api/businesses/${businessId}/mobile-shop/serial-items?search=${encodeURIComponent(serialSearch)}&status=IN_STOCK&limit=10`,
           { signal: abortRef.current.signal },
         );
         if (res.ok) {
@@ -174,7 +174,7 @@ export function CCTVCreateJobCard() {
       if (assignedToName.trim()) body.assignedToName = assignedToName.trim();
       if (internalNotes.trim()) body.internalNotes = internalNotes.trim();
 
-      const res = await fetch(`/api/businesses/${businessId}/cctv/job-cards`, {
+      const res = await fetch(`/api/businesses/${businessId}/mobile-shop/job-cards`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),

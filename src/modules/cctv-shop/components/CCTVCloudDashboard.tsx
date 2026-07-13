@@ -117,7 +117,7 @@ export function CCTVCloudDashboard() {
   const load = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/businesses/${businessId}/cctv/cloud-dashboard`);
+      const res = await fetch(`/api/businesses/${businessId}/mobile-shop/cloud-dashboard`);
       if (!res.ok) {
         console.error(`Cloud Dashboard API returned ${res.status}`);
         return;

@@ -151,7 +151,7 @@ export function CCTVSaleDetail() {
   const fetchSale = async () => {
     if (!contextId) return;
     try {
-      const res = await fetch(`/api/businesses/${businessId}/cctv/sales/${contextId}`);
+      const res = await fetch(`/api/businesses/${businessId}/mobile-shop/sales/${contextId}`);
       if (res.ok) {
         const data = await res.json();
         setSale(data.sale || data);
@@ -169,7 +169,7 @@ export function CCTVSaleDetail() {
     (async () => {
       setLoading(true);
       try {
-        const res = await fetch(`/api/businesses/${businessId}/cctv/sales/${contextId}`);
+        const res = await fetch(`/api/businesses/${businessId}/mobile-shop/sales/${contextId}`);
         if (res.ok && !cancelled) {
           const data = await res.json();
           setSale(data.sale || data);
@@ -197,7 +197,7 @@ export function CCTVSaleDetail() {
 
     setPayLoading(true);
     try {
-      const res = await fetch(`/api/businesses/${businessId}/cctv/sales/${contextId}/payments`, {
+      const res = await fetch(`/api/businesses/${businessId}/mobile-shop/sales/${contextId}/payments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -228,7 +228,7 @@ export function CCTVSaleDetail() {
     if (!contextId || !sale) return;
     setMushakLoading(true);
     try {
-      const res = await fetch(`/api/businesses/${businessId}/cctv/mushak-invoices`, {
+      const res = await fetch(`/api/businesses/${businessId}/mobile-shop/mushak-invoices`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -257,7 +257,7 @@ export function CCTVSaleDetail() {
   const handleCancelSale = async () => {
     setCancelLoading(true);
     try {
-      const res = await fetch(`/api/businesses/${businessId}/cctv/sales/${contextId}`, {
+      const res = await fetch(`/api/businesses/${businessId}/mobile-shop/sales/${contextId}`, {
         method: 'DELETE',
       });
       if (res.ok) {

@@ -37,8 +37,8 @@ export function CCTVTechnicianDetail() {
       setLoading(true);
       try {
         const [techRes, perfRes] = await Promise.all([
-          fetch(`/api/businesses/${businessId}/cctv/technicians/${contextId}`),
-          fetch(`/api/businesses/${businessId}/cctv/technicians/${contextId}/performance`),
+          fetch(`/api/businesses/${businessId}/mobile-shop/technicians/${contextId}`),
+          fetch(`/api/businesses/${businessId}/mobile-shop/technicians/${contextId}/performance`),
         ]);
         if (techRes.ok && !cancelled) setTech(await techRes.json());
         if (perfRes.ok && !cancelled) setPerf(await perfRes.json());

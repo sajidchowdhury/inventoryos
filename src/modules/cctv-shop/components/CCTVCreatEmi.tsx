@@ -118,7 +118,7 @@ export function CCTVCreatEmi() {
 
     setSubmitting(true);
     try {
-      const res = await fetch(`/api/businesses/${businessId}/cctv/emi-plans`, {
+      const res = await fetch(`/api/businesses/${businessId}/mobile-shop/emi-plans`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

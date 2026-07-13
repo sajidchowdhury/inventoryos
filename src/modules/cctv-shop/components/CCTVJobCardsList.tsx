@@ -77,7 +77,7 @@ export function CCTVJobCardsList() {
         const params = new URLSearchParams();
         if (activeFilter) params.set('status', activeFilter);
         if (search) params.set('search', search);
-        const res = await fetch(`/api/businesses/${businessId}/cctv/job-cards?${params}`);
+        const res = await fetch(`/api/businesses/${businessId}/mobile-shop/job-cards?${params}`);
         if (res.ok && !cancelled) setJobs(await res.json());
       } catch {}
       if (!cancelled) setLoading(false);

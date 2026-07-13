@@ -52,7 +52,7 @@ export function CCTVProjectsList() {
       if (activeTab !== 'ALL') params.set('status', activeTab);
       if (search.trim()) params.set('search', search.trim());
 
-      const res = await fetch(`/api/businesses/${businessId}/cctv/projects?${params}`);
+      const res = await fetch(`/api/businesses/${businessId}/mobile-shop/projects?${params}`);
       if (res.ok) {
         const data = await res.json();
         setProjects(data);

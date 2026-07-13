@@ -148,7 +148,7 @@ export function CCTVLedgerView() {
     pageRef.current = p;
     try {
       const params = new URLSearchParams({ from, to, page: String(p), limit: '100' });
-      const res = await fetch(`/api/businesses/${businessId}/cctv/ledger?${params.toString()}`);
+      const res = await fetch(`/api/businesses/${businessId}/mobile-shop/ledger?${params.toString()}`);
       if (res.ok) {
         const json = await res.json();
         setData(json);
@@ -185,7 +185,7 @@ export function CCTVLedgerView() {
     setDownloading(true);
     try {
       const params = new URLSearchParams({ from: exportFrom, to: exportTo, format: 'csv' });
-      const res = await fetch(`/api/businesses/${businessId}/cctv/ledger?${params.toString()}`);
+      const res = await fetch(`/api/businesses/${businessId}/mobile-shop/ledger?${params.toString()}`);
       if (res.ok) {
         const blob = await res.blob();
         const url = URL.createObjectURL(blob);

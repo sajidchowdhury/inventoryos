@@ -52,7 +52,7 @@ export function CCTVKitDetail() {
     setLoading(true);
     try {
       const res = await fetch(
-        `/api/businesses/${businessId}/cctv/kits/${contextId}`
+        `/api/businesses/${businessId}/mobile-shop/kits/${contextId}`
       );
       if (res.ok) {
         const data = await res.json();
@@ -70,7 +70,7 @@ export function CCTVKitDetail() {
     setAvailLoading(true);
     try {
       const res = await fetch(
-        `/api/businesses/${businessId}/cctv/kits/${contextId}/availability`
+        `/api/businesses/${businessId}/mobile-shop/kits/${contextId}/availability`
       );
       if (res.ok) {
         const data: KitAvailabilityResult = await res.json();
@@ -93,7 +93,7 @@ export function CCTVKitDetail() {
     setDeleting(true);
     try {
       const res = await fetch(
-        `/api/businesses/${businessId}/cctv/kits/${contextId}`,
+        `/api/businesses/${businessId}/mobile-shop/kits/${contextId}`,
         { method: 'DELETE' }
       );
       if (res.ok) {

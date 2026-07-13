@@ -153,7 +153,7 @@ export function CCTVProfitLossReport() {
     try {
       const params = new URLSearchParams({ from, to });
       const res = await fetch(
-        `/api/businesses/${businessId}/cctv/reports/profit-loss?${params.toString()}`
+        `/api/businesses/${businessId}/mobile-shop/reports/profit-loss?${params.toString()}`
       );
       if (res.ok) {
         const json = await res.json();

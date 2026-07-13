@@ -105,7 +105,7 @@ export function SerialPickerDialog({
     params.set('limit', '50');
     if (debouncedSearch) params.set('search', debouncedSearch);
 
-    fetch(`/api/businesses/${businessId}/cctv/products/${productId}/serials?${params.toString()}`, {
+    fetch(`/api/businesses/${businessId}/mobile-shop/products/${productId}/serials?${params.toString()}`, {
       signal: controller.signal,
     })
       .then((res) => {

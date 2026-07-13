@@ -138,7 +138,7 @@ export function CCTVReturnDialog({ sale, open, onClose, onReturnSuccess }: CCTVR
     if (selectedItems.length === 0) return;
     setSubmitting(true);
     try {
-      const res = await fetch(`/api/businesses/${businessId}/cctv/sales/${sale.id}/returns`, {
+      const res = await fetch(`/api/businesses/${businessId}/mobile-shop/sales/${sale.id}/returns`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

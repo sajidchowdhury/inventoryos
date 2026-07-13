@@ -57,7 +57,7 @@ export function CCTVBranchesList() {
   const fetchBranches = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/businesses/${businessId}/cctv/branches`);
+      const res = await fetch(`/api/businesses/${businessId}/mobile-shop/branches`);
       if (res.ok) {
         const data = await res.json();
         setBranches(Array.isArray(data) ? data : data.branches || []);
@@ -84,7 +84,7 @@ export function CCTVBranchesList() {
     if (!name.trim() || !code.trim()) return;
     setCreating(true);
     try {
-      const res = await fetch(`/api/businesses/${businessId}/cctv/branches`, {
+      const res = await fetch(`/api/businesses/${businessId}/mobile-shop/branches`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

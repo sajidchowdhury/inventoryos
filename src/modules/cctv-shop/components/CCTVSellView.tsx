@@ -149,7 +149,7 @@ export function CCTVSellView() {
       const controller = new AbortController();
       abortRef.current = controller;
       const res = await fetch(
-        `/api/businesses/${businessId}/cctv/products?limit=100&search=${encodeURIComponent(query)}`,
+        `/api/businesses/${businessId}/mobile-shop/products?limit=100&search=${encodeURIComponent(query)}`,
         { signal: controller.signal }
       );
       if (!res.ok) throw new Error('Failed to fetch');
@@ -334,7 +334,7 @@ export function CCTVSellView() {
       if (customerName.trim()) body.customerName = customerName.trim();
       if (customerPhone.trim()) body.customerPhone = customerPhone.trim();
 
-      const res = await fetch(`/api/businesses/${businessId}/cctv/sales`, {
+      const res = await fetch(`/api/businesses/${businessId}/mobile-shop/sales`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),

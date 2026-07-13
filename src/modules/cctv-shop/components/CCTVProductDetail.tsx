@@ -109,7 +109,7 @@ export function CCTVProductDetail() {
   useEffect(() => {
     if (!businessId || !contextId) return;
     setLoading(true);
-    fetch(`/api/businesses/${businessId}/cctv/products/${contextId}`)
+    fetch(`/api/businesses/${businessId}/mobile-shop/products/${contextId}`)
       .then((res) => res.json())
       .then((data) => {
         const p: ProductDetail = data.product || data;
@@ -129,7 +129,7 @@ export function CCTVProductDetail() {
     try {
       // Only fetch IN_STOCK serials — sold/installed items are archived and not shown here
       const res = await fetch(
-        `/api/businesses/${businessId}/cctv/products/${contextId}/serials?status=IN_STOCK&limit=50`
+        `/api/businesses/${businessId}/mobile-shop/products/${contextId}/serials?status=IN_STOCK&limit=50`
       );
       const data = await res.json();
       setSerials(data.items || data.serialItems || data.serials || []);
@@ -148,7 +148,7 @@ export function CCTVProductDetail() {
     setAddingSerials(true);
     try {
       const res = await fetch(
-        `/api/businesses/${businessId}/cctv/products/${contextId}/serials`,
+        `/api/businesses/${businessId}/mobile-shop/products/${contextId}/serials`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -173,7 +173,7 @@ export function CCTVProductDetail() {
     if (!businessId || !contextId) return;
     setDeleting(true);
     try {
-      await fetch(`/api/businesses/${businessId}/cctv/products/${contextId}`, {
+      await fetch(`/api/businesses/${businessId}/mobile-shop/products/${contextId}`, {
         method: 'DELETE',
       });
       goBack();

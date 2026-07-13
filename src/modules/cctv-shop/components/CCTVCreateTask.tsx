@@ -77,7 +77,7 @@ export function CCTVCreateTask() {
     let cancelled = false;
     const fetchProjects = async () => {
       try {
-        const res = await fetch(`/api/businesses/${businessId}/cctv/projects`);
+        const res = await fetch(`/api/businesses/${businessId}/mobile-shop/projects`);
         if (res.ok && !cancelled) {
           const data = await res.json();
           const list: CCTVProject[] = (Array.isArray(data) ? data : data.projects ?? data.data ?? []);
@@ -97,7 +97,7 @@ export function CCTVCreateTask() {
     const fetchTask = async () => {
       setLoading(true);
       try {
-        const res = await fetch(`/api/businesses/${businessId}/cctv/installation-tasks/${contextId}`);
+        const res = await fetch(`/api/businesses/${businessId}/mobile-shop/installation-tasks/${contextId}`);
         if (res.ok && !cancelled) {
           const task: CCTVInstallationTask = await res.json();
           setProjectId(task.projectId);
@@ -191,7 +191,7 @@ export function CCTVCreateTask() {
         internalNotes: internalNotes.trim() || undefined,
       };
 
-      const url = isEditing ? `/api/businesses/${businessId}/cctv/installation-tasks/${contextId}` : `/api/businesses/${businessId}/cctv/installation-tasks`;
+      const url = isEditing ? `/api/businesses/${businessId}/mobile-shop/installation-tasks/${contextId}` : `/api/businesses/${businessId}/mobile-shop/installation-tasks`;
       const res = await fetch(url, {
         method: isEditing ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },

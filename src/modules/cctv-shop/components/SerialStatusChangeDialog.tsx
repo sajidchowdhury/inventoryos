@@ -82,7 +82,7 @@ export function SerialStatusChangeDialog({
 
     try {
       const res = await fetch(
-        `/api/businesses/${businessId}/cctv/serial-items/${item.id}`,
+        `/api/businesses/${businessId}/mobile-shop/serial-items/${item.id}`,
         {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },

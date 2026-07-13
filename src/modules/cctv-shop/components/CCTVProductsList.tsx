@@ -76,7 +76,7 @@ export function CCTVProductsList() {
       return;
     }
     setLoadingDetail(true);
-    fetch(`/api/businesses/${businessId}/cctv/products/${selectedProductId}`)
+    fetch(`/api/businesses/${businessId}/mobile-shop/products/${selectedProductId}`)
       .then((res) => res.json())
       .then((data) => {
         setSelectedProduct(data.product || null);
@@ -114,7 +114,7 @@ export function CCTVProductsList() {
   // Fetch categories
   useEffect(() => {
     if (!businessId) return;
-    fetch(`/api/businesses/${businessId}/cctv/categories`)
+    fetch(`/api/businesses/${businessId}/mobile-shop/categories`)
       .then((res) => res.json())
       .then((data) => {
         if (Array.isArray(data)) setCategories(data);
@@ -139,7 +139,7 @@ export function CCTVProductsList() {
         params.set('limit', String(PAGE_LIMIT));
 
         const res = await fetch(
-          `/api/businesses/${businessId}/cctv/products?${params.toString()}`
+          `/api/businesses/${businessId}/mobile-shop/products?${params.toString()}`
         );
         const data = await res.json();
 

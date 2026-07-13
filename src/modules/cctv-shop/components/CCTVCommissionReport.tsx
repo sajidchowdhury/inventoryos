@@ -49,7 +49,7 @@ export function CCTVCommissionReport() {
   const fetchReport = async (month: string) => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/businesses/${businessId}/cctv/commissions/report?month=${month}`);
+      const res = await fetch(`/api/businesses/${businessId}/mobile-shop/commissions/report?month=${month}`);
       if (res.ok) {
         const data = await res.json();
         setReport(data);

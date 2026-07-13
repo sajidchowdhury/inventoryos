@@ -128,7 +128,7 @@ export function CCTVPurchaseOrderView() {
       if (statusFilter) params.set('status', statusFilter);
 
       const res = await fetch(
-        `/api/businesses/${businessId}/cctv/purchases?${params.toString()}`,
+        `/api/businesses/${businessId}/mobile-shop/purchases?${params.toString()}`,
         { signal: controller.signal },
       );
       if (!res.ok) throw new Error(`HTTP ${res.status}`);

@@ -85,7 +85,7 @@ export function CCTVAMCList() {
     const fetchSummary = async () => {
       setSummaryLoading(true);
       try {
-        const res = await fetch(`/api/businesses/${businessId}/cctv/amc-contracts/summary`);
+        const res = await fetch(`/api/businesses/${businessId}/mobile-shop/amc-contracts/summary`);
         if (res.ok && !cancelled) setSummary(await res.json());
       } catch { /* silent */ }
       if (!cancelled) setSummaryLoading(false);
@@ -108,7 +108,7 @@ export function CCTVAMCList() {
         const params = new URLSearchParams();
         if (search) params.set('search', search);
         if (activeFilter) params.set('status', activeFilter);
-        const res = await fetch(`/api/businesses/${businessId}/cctv/amc-contracts?${params}`);
+        const res = await fetch(`/api/businesses/${businessId}/mobile-shop/amc-contracts?${params}`);
         if (res.ok && !cancelled) {
           const data = await res.json();
           setContracts(Array.isArray(data) ? data : []);

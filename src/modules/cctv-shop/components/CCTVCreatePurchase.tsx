@@ -122,7 +122,7 @@ export function CCTVCreatePurchase() {
     if (!q.trim()) { setProductResults([]); return; }
     setProductLoading(true);
     try {
-      const res = await fetch(`/api/businesses/${businessId}/cctv/products?search=${encodeURIComponent(q)}&limit=10`);
+      const res = await fetch(`/api/businesses/${businessId}/mobile-shop/products?search=${encodeURIComponent(q)}&limit=10`);
       if (res.ok) {
         const data = await res.json();
         setProductResults(data.products ?? data ?? []);
@@ -233,7 +233,7 @@ export function CCTVCreatePurchase() {
     setSubmitting(true);
     setError('');
     try {
-      const res = await fetch(`/api/businesses/${businessId}/cctv/purchases`, {
+      const res = await fetch(`/api/businesses/${businessId}/mobile-shop/purchases`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

@@ -32,7 +32,7 @@ const NAV_ITEMS = [
   },
   {
     label: "CCTV Catalog",
-    href: "/admin/catalog/cctv",
+    href: "/admin/catalog/mobile-shop",
     icon: Camera,
     description: "CCTV master product catalog",
   },

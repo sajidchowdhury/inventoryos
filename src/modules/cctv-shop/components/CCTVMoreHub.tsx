@@ -57,7 +57,7 @@ export function CCTVMoreHub() {
     (async () => {
       try {
         const res = await fetch(
-          `/api/businesses/${businessId}/cctv/quick-stats`,
+          `/api/businesses/${businessId}/mobile-shop/quick-stats`,
           { signal: controller.signal },
         );
         if (res.ok && !cancelled) {

@@ -72,7 +72,7 @@ export function CCTVTaskDetail() {
   const { navigate, goBack, contextId } = useCCTVNavStore();
   const { toast } = useToast();
   const businessId = useCctvBusinessId();
-  const apiBase = `/api/businesses/${businessId}/cctv/installation-tasks`;
+  const apiBase = `/api/businesses/${businessId}/mobile-shop/installation-tasks`;
 
   const [task, setTask] = useState<CCTVInstallationTask | null>(null);
   const [loading, setLoading] = useState<boolean | null>(null); // null=initial, true=loading, false=done

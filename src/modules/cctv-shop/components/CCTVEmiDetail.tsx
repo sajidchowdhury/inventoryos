@@ -60,7 +60,7 @@ export function CCTVEmiDetail() {
     const load = async () => {
       if (!contextId) return;
       try {
-        const res = await fetch(`/api/businesses/${businessId}/cctv/emi-plans/${contextId}`);
+        const res = await fetch(`/api/businesses/${businessId}/mobile-shop/emi-plans/${contextId}`);
         if (res.ok && !cancelled) setPlan(await res.json());
       } catch {}
       if (!cancelled) setLoading(false);
@@ -83,7 +83,7 @@ export function CCTVEmiDetail() {
     }
     setCollecting(true);
     try {
-      const res = await fetch(`/api/businesses/${businessId}/cctv/emi-plans/${contextId}/collect`, {
+      const res = await fetch(`/api/businesses/${businessId}/mobile-shop/emi-plans/${contextId}/collect`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ installmentId: collectingId, amount }),
@@ -93,7 +93,7 @@ export function CCTVEmiDetail() {
         setCollectingId(null);
         // Refresh plan data
         try {
-          const ref = await fetch(`/api/businesses/${businessId}/cctv/emi-plans/${contextId}`);
+          const ref = await fetch(`/api/businesses/${businessId}/mobile-shop/emi-plans/${contextId}`);
           if (ref.ok) setPlan(await ref.json());
         } catch {}
       } else {

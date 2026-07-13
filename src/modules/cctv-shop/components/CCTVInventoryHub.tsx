@@ -92,7 +92,7 @@ export function CCTVInventoryHub() {
       const params = new URLSearchParams();
       if (q) params.set('q', q);
       const res = await fetch(
-        `/api/businesses/${businessId}/cctv/inventory-stats?${params.toString()}`
+        `/api/businesses/${businessId}/mobile-shop/inventory-stats?${params.toString()}`
       );
       if (res.ok) {
         const json = await res.json();
@@ -110,7 +110,7 @@ export function CCTVInventoryHub() {
       setLoading(true);
       try {
         const res = await fetch(
-          `/api/businesses/${businessId}/cctv/inventory-stats`
+          `/api/businesses/${businessId}/mobile-shop/inventory-stats`
         );
         if (res.ok && !cancelled) {
           const json = await res.json();

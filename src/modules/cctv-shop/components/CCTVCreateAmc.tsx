@@ -76,7 +76,7 @@ export function CCTVCreateAmc() {
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch(`/api/businesses/${businessId}/cctv/amc-contracts/${contextId}`);
+        const res = await fetch(`/api/businesses/${businessId}/mobile-shop/amc-contracts/${contextId}`);
         if (res.ok && !cancelled) {
           const c = await res.json();
           setClientName(c.clientName || '');
@@ -142,8 +142,8 @@ export function CCTVCreateAmc() {
       };
 
       const url = contextId
-        ? `/api/businesses/${businessId}/cctv/amc-contracts/${contextId}`
-        : `/api/businesses/${businessId}/cctv/amc-contracts`;
+        ? `/api/businesses/${businessId}/mobile-shop/amc-contracts/${contextId}`
+        : `/api/businesses/${businessId}/mobile-shop/amc-contracts`;
       const method = contextId ? 'PUT' : 'POST';
 
       const res = await fetch(url, {

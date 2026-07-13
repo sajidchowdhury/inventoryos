@@ -42,7 +42,7 @@ export function CCTVBranchDetail() {
     if (!contextId) return;
     setLoading(true);
     try {
-      const res = await fetch(`/api/businesses/${businessId}/cctv/branches/${contextId}`);
+      const res = await fetch(`/api/businesses/${businessId}/mobile-shop/branches/${contextId}`);
       if (res.ok) {
         const data = await res.json();
         setBranch(data);
@@ -57,7 +57,7 @@ export function CCTVBranchDetail() {
   const fetchTransfers = useCallback(async () => {
     if (!contextId) return;
     try {
-      const res = await fetch(`/api/businesses/${businessId}/cctv/transfers`);
+      const res = await fetch(`/api/businesses/${businessId}/mobile-shop/transfers`);
       if (res.ok) {
         const data = await res.json();
         const all: CCTVTransfer[] = Array.isArray(data) ? data : data.transfers || [];
@@ -86,7 +86,7 @@ export function CCTVBranchDetail() {
     if (!contextId) return;
     setMenuOpen(false);
     try {
-      const res = await fetch(`/api/businesses/${businessId}/cctv/branches/${contextId}`, {
+      const res = await fetch(`/api/businesses/${businessId}/mobile-shop/branches/${contextId}`, {
         method: 'DELETE',
       });
       if (res.ok) {

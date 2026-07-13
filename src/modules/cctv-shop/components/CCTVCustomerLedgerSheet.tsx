@@ -115,7 +115,7 @@ export function CCTVCustomerLedgerSheet({
       setLoading(true);
       try {
         const res = await fetch(
-          `/api/businesses/${businessId}/cctv/customers/${customerId}/ledger`
+          `/api/businesses/${businessId}/mobile-shop/customers/${customerId}/ledger`
         );
         if (res.ok && !cancelled) {
           setData(await res.json());

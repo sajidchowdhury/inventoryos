@@ -41,7 +41,7 @@ export function CCTVTechniciansList() {
       (async () => {
         setLoading(true);
         try {
-          const res = await fetch(`/api/businesses/${businessId}/cctv/technicians`);
+          const res = await fetch(`/api/businesses/${businessId}/mobile-shop/technicians`);
           if (res.ok && !cancelled) setTechnicians(await res.json());
         } catch { /* silent */ }
         finally { if (!cancelled) setLoading(false); }
@@ -58,7 +58,7 @@ export function CCTVTechniciansList() {
       const cache: Record<string, TechnicianPerformance> = {};
       for (const t of technicians) {
         try {
-          const res = await fetch(`/api/businesses/${businessId}/cctv/technicians/${t.id}/performance`);
+          const res = await fetch(`/api/businesses/${businessId}/mobile-shop/technicians/${t.id}/performance`);
           if (res.ok && !cancelled) cache[t.id] = await res.json();
         } catch { /* skip */ }
       }
@@ -71,7 +71,7 @@ export function CCTVTechniciansList() {
     if (!createName.trim()) return;
     setCreating(true);
     try {
-      const res = await fetch(`/api/businesses/${businessId}/cctv/technicians`, {
+      const res = await fetch(`/api/businesses/${businessId}/mobile-shop/technicians`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ displayName: createName, phone: createPhone, specialization: createSpec }),

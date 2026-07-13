@@ -50,7 +50,7 @@ function ProjectTasksTab({ projectId, navigate }: { projectId: string; navigate:
     if (!projectId) return;
     (async () => {
       try {
-        const res = await fetch(`/api/businesses/${businessId}/cctv/installation-tasks/by-project/${projectId}`);
+        const res = await fetch(`/api/businesses/${businessId}/mobile-shop/installation-tasks/by-project/${projectId}`);
         if (res.ok) setTasks(await res.json());
       } catch { /* silent */ }
       setLoading(false);
@@ -181,7 +181,7 @@ function getWorkflowStepIndex(project: CCTVProject | null): number {
 export function CCTVProjectDetail() {
   const { goBack, contextId, navigate } = useCCTVNavStore();
   const businessId = useCctvBusinessId();
-  const apiBase = `/api/businesses/${businessId}/cctv/projects`;
+  const apiBase = `/api/businesses/${businessId}/mobile-shop/projects`;
   const projectId = contextId;
 
   const [project, setProject] = useState<CCTVProject | null>(null);

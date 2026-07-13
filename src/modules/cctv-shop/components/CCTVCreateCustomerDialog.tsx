@@ -77,7 +77,7 @@ export function CCTVCreateCustomerDialog({
       if (form.address.trim()) payload.address = form.address.trim();
 
       const res = await fetch(
-        `/api/businesses/${businessId}/cctv/customers`,
+        `/api/businesses/${businessId}/mobile-shop/customers`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

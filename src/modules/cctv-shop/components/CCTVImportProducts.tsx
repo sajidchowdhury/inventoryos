@@ -84,7 +84,7 @@ export function CCTVImportProducts() {
       const formData = new FormData();
       formData.append('file', file);
 
-      const res = await fetch(`/api/businesses/${businessId}/cctv/products/import`, {
+      const res = await fetch(`/api/businesses/${businessId}/mobile-shop/products/import`, {
         method: 'POST',
         body: formData,
       });
@@ -119,7 +119,7 @@ export function CCTVImportProducts() {
     );
 
     try {
-      const res = await fetch(`/api/businesses/${businessId}/cctv/products/import`, {
+      const res = await fetch(`/api/businesses/${businessId}/mobile-shop/products/import`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
