@@ -6,7 +6,7 @@ import {
   ArrowLeft, Phone, User, Package, ShieldCheck, ShieldAlert,
   AlertTriangle, Clock, Hash, ExternalLink, Plus, Loader2,
   CheckCircle2, XCircle, Wrench, ChevronRight, RefreshCw,
-  MessageSquare, FileText, Shield,
+  MessageSquare, FileText, Shield, Calendar,
 } from 'lucide-react';
 import { useCCTVNavStore } from '@/stores/cctv-nav-store';
 import { cn } from '@/lib/utils';
@@ -848,7 +848,7 @@ export function CCTVWarrantyDetail() {
         )}
       </motion.div>
 
-      {/* Timeline Section */}
+      {/* Timeline Section — Tree View (date-wise) */}
       {item.history && item.history.length > 0 && (
         <motion.div
           variants={fadeChild}
@@ -859,42 +859,74 @@ export function CCTVWarrantyDetail() {
           <div className="flex items-center gap-2 mb-3">
             <Clock className="w-4 h-4 text-violet-500" />
             <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              Timeline
+              Timeline (Tree View)
             </h3>
           </div>
-          <div className="space-y-0 max-h-60 overflow-y-auto cctv-scrollbar">
-            {item.history.map((entry, i) => (
-              <div key={entry.id} className="flex gap-3">
-                {/* Timeline dot + line */}
-                <div className="flex flex-col items-center">
-                  <div
-                    className={cn(
-                      'w-2.5 h-2.5 rounded-full shrink-0 mt-1.5',
-                      i === 0
-                        ? 'bg-violet-500 ring-2 ring-violet-100'
-                        : 'bg-gray-300'
-                    )}
-                  />
-                  {i < item.history.length - 1 && (
-                    <div className="w-px flex-1 bg-gray-200 mt-1" />
-                  )}
-                </div>
-                {/* Content */}
-                <div className="pb-3 min-w-0">
-                  <p className="text-xs font-semibold text-gray-800">
-                    {entry.event}
-                  </p>
-                  {entry.notes && (
-                    <p className="text-[11px] text-gray-500 mt-0.5 line-clamp-2">
-                      {entry.notes}
+          <div className="space-y-3 max-h-80 overflow-y-auto cctv-scrollbar">
+            {(() => {
+              // Group entries by date
+              const grouped: Record<string, HistoryEntry[]> = {};
+              for (const entry of item.history) {
+                const dateKey = new Date(entry.createdAt).toLocaleDateString('en-GB', {
+                  day: '2-digit', month: 'short', year: 'numeric'
+                });
+                if (!grouped[dateKey]) grouped[dateKey] = [];
+                grouped[dateKey].push(entry);
+              }
+              const dates = Object.keys(grouped);
+
+              return dates.map((date, di) => (
+                <div key={date}>
+                  {/* Date header */}
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className={cn(
+                      'w-6 h-6 rounded-lg flex items-center justify-center shrink-0',
+                      di === 0 ? 'bg-violet-100' : 'bg-gray-100'
+                    )}>
+                      <Calendar className={cn('w-3.5 h-3.5', di === 0 ? 'text-violet-600' : 'text-gray-500')} />
+                    </div>
+                    <p className={cn(
+                      'text-xs font-bold',
+                      di === 0 ? 'text-violet-700' : 'text-gray-700'
+                    )}>
+                      {date}
                     </p>
-                  )}
-                  <p className="text-[10px] text-gray-400 mt-0.5">
-                    {relativeDate(entry.createdAt)}
-                  </p>
+                    <div className="flex-1 h-px bg-gray-100" />
+                    <span className="text-[10px] text-gray-400">
+                      {grouped[date].length} event{grouped[date].length > 1 ? 's' : ''}
+                    </span>
+                  </div>
+                  {/* Events for this date */}
+                  <div className="ml-3 border-l-2 border-gray-100 space-y-2">
+                    {grouped[date].map((entry, ei) => (
+                      <div key={entry.id} className="flex gap-2 pl-3 pt-1">
+                        <div className={cn(
+                          'w-2 h-2 rounded-full shrink-0 mt-1.5',
+                          di === 0 && ei === 0
+                            ? 'bg-violet-500'
+                            : 'bg-gray-300'
+                        )} />
+                        <div className="flex-1 min-w-0 pb-1">
+                          <div className="flex items-baseline justify-between gap-2">
+                            <p className="text-xs font-semibold text-gray-800">
+                              {entry.event}
+                            </p>
+                            <p className="text-[10px] text-gray-400 shrink-0">
+                              {new Date(entry.createdAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
+                            </p>
+                          </div>
+                          {entry.notes && (
+                            <p className="text-[11px] text-gray-500 mt-0.5 line-clamp-2">
+                              {entry.notes}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ))}
+              ));
+            })()}
           </div>
         </motion.div>
       )}

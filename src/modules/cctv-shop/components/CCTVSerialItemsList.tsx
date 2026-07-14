@@ -178,13 +178,10 @@ export function CCTVSerialItemsList() {
     return () => { cancelled = true; };
   }, [activeFilter, businessId, limit, search]);
 
-  // Debounced search
-  const handleSearchChange = (value: string) => {
-    setSearch(value);
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => {
-      doFetch(1, activeFilter, value);
-    }, 350);
+  // Search on button click (no on-key-up to avoid lag with many serials)
+  const handleSearchClick = () => {
+    setPage(1);
+    doFetch(1, activeFilter, search);
   };
 
   const clearSearch = () => {
@@ -243,24 +240,35 @@ export function CCTVSerialItemsList() {
         )}
       </div>
 
-      {/* ── Search ── */}
-      <div className="relative">
-        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-violet-400" />
-        <input
-          type="text"
-          placeholder="Search by product, serial, IMEI, customer..."
-          value={search}
-          onChange={(e) => handleSearchChange(e.target.value)}
-          className="w-full h-11 pl-10 pr-10 rounded-2xl bg-white border border-gray-200 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-400/40 focus:border-violet-400 transition-all"
-        />
-        {search && (
-          <button
-            onClick={clearSearch}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        )}
+      {/* ── Search with button (no on-key-up) ── */}
+      <div className="flex gap-2">
+        <div className="relative flex-1">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-violet-400" />
+          <input
+            type="text"
+            placeholder="Type serial number, then click Search..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') handleSearchClick(); }}
+            className="w-full h-11 pl-10 pr-10 rounded-2xl bg-white border border-gray-200 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-400/40 focus:border-violet-400 transition-all"
+          />
+          {search && (
+            <button
+              onClick={clearSearch}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+        <button
+          onClick={handleSearchClick}
+          disabled={loading}
+          className="h-11 px-5 rounded-2xl bg-gradient-to-r from-violet-500 to-purple-600 text-white text-sm font-semibold flex items-center gap-1.5 active:scale-95 transition-transform disabled:opacity-50 shrink-0"
+        >
+          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+          {loading ? 'Searching...' : 'Search'}
+        </button>
       </div>
 
       {/* ── Filter tabs ── */}
