@@ -342,12 +342,9 @@
 
 /* ── Print styles for invoices and tokens ── */
 @media print {
-  /* Hide everything by default */
-  body * {
-    visibility: hidden;
-  }
-
-  /* Show only the invoice/token content */
+  /* Hide sidebar, bottom nav, and any element marked print:hidden */
+  aside,
+  nav,
   .print\:hidden {
     display: none !important;
   }
@@ -355,6 +352,15 @@
   /* Show print-only elements */
   .print\:block {
     display: block !important;
+  }
+
+  /* Remove padding/margins that offset content */
+  .cctv-shell-wrap {
+    padding: 0 !important;
+  }
+
+  .md\:pl-64 {
+    padding-left: 0 !important;
   }
 
   /* Reset page margins for printing */

@@ -15,17 +15,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json({ error: "Replacement not found" }, { status: 404 });
   }
 
-  // If we're receiving the replacement
-  // For serial-tracked: requires newSerialNumber
-  // For non-serial: just mark as received + increment stock
-  const isSerialMode = replacement.isSerialTracked;
-  const shouldReceive = isSerialMode
-    ? (body.newSerialNumber && replacement.status !== "received")
-    : (body.status === "received" || body.action === "receive") && replacement.status !== "received";
-
-  if (shouldReceive) {
-    if (isSerialMode) {
-    // Serial flow: create new serial item
+  // Receiving replacement — ALWAYS requires new serial number
+  if (body.newSerialNumber && replacement.status !== "received") {
     // Check if new serial already exists
     const existing = await db.cCTVSerialItem.findFirst({
       where: { businessId, serialNumber: body.newSerialNumber },
@@ -36,21 +27,30 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       }, { status: 400 });
     }
 
-    // Create the new serial item — inherits cost/price/warranty from original
+    // Get original serial for cost/price inheritance (if serial-tracked)
     const originalSerial = replacement.originalSerialItemId
       ? await db.cCTVSerialItem.findUnique({
           where: { id: replacement.originalSerialItemId },
         })
       : null;
 
+    // Get product for cost/price (if non-serial mode)
+    const product = replacement.productId
+      ? await db.cCTVProduct.findUnique({
+          where: { id: replacement.productId },
+          select: { costPrice: true, sellPrice: true },
+        })
+      : null;
+
+    // Create the new serial item — works for both serial and non-serial
     const newSerialItem = await db.cCTVSerialItem.create({
       data: {
         businessId,
         productId: replacement.productId || originalSerial?.productId || body.productId,
         serialNumber: body.newSerialNumber,
         status: "IN_STOCK",
-        costPrice: originalSerial?.costPrice || 0,
-        sellPrice: originalSerial?.sellPrice,
+        costPrice: originalSerial?.costPrice || product?.costPrice || 0,
+        sellPrice: originalSerial?.sellPrice || product?.sellPrice || null,
         purchaseDate: new Date(),
         warrantyEnd: null,
         replacesSerialId: replacement.originalSerialItemId,
@@ -69,11 +69,19 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       },
     });
 
-    // Mark old serial as REPLACED
+    // Mark old serial as REPLACED (if serial-tracked)
     if (replacement.originalSerialItemId) {
       await db.cCTVSerialItem.update({
         where: { id: replacement.originalSerialItemId },
         data: { status: "REPLACED" },
+      });
+    }
+
+    // For non-serial mode: also increment product stock (replacement arrived)
+    if (replacement.isSerialTracked === false && replacement.productId) {
+      await db.cCTVProduct.update({
+        where: { id: replacement.productId },
+        data: { stock: { increment: replacement.quantity } },
       });
     }
 
@@ -104,7 +112,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
           productId: replacement.productId,
           productName: replacement.productName,
           eventType: "REPLACEMENT_RECEIVED",
-          description: `Received as replacement for ${replacement.originalSerialNumber}`,
+          description: replacement.originalSerialNumber
+            ? `Received as replacement for ${replacement.originalSerialNumber}`
+            : `Received as replacement for ${replacement.productName} (in-stock damaged)`,
           referenceId: replacementId,
           referenceType: "replacement",
           eventDate: new Date(),
@@ -123,35 +133,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     }
 
     return NextResponse.json({ success: true, replacement: updated, newSerialItem });
-    } else {
-      // Non-serial flow: just mark as received + increment stock back
-      const updated = await db.cCTVSupplierReplacement.update({
-        where: { id: replacementId },
-        data: {
-          status: "received",
-          receivedDate: new Date(),
-          notes: body.notes ? `${replacement.notes || ""}\n${body.notes}`.trim() : replacement.notes,
-        },
-      });
-
-      // Increment stock — replacement items arrive (good condition)
-      if (replacement.productId) {
-        await db.cCTVProduct.update({
-          where: { id: replacement.productId },
-          data: { stock: { increment: replacement.quantity } },
-        });
-      }
-
-      // If linked to repair, mark repair as replaced
-      if (replacement.repairId) {
-        await db.cCTVRepair.update({
-          where: { id: replacement.repairId },
-          data: { status: "replaced" },
-        });
-      }
-
-      return NextResponse.json({ success: true, replacement: updated });
-    }
   }
 
   // Generic update (e.g. cancel)

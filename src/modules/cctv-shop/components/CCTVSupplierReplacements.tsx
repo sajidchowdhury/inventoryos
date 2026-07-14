@@ -210,35 +210,26 @@ export function CCTVSupplierReplacements() {
 
   const handleReceive = async () => {
     if (!receiveItem) return;
-    // For serial-tracked: require new serial number
-    if (receiveItem.isSerialTracked !== false && !newSerialNumber.trim()) {
+    if (!newSerialNumber.trim()) {
       toast({ title: 'Error', description: 'New serial number is required', variant: 'destructive' });
       return;
     }
     setReceiving(true);
     try {
-      const payload: any = {
-        notes: receiveNotes || undefined,
-      };
-      if (receiveItem.isSerialTracked === false) {
-        // Non-serial: just mark as received
-        payload.action = 'receive';
-        payload.status = 'received';
-      } else {
-        // Serial: provide new serial number
-        payload.newSerialNumber = newSerialNumber.trim();
-      }
-
+      // Always send the new serial number — API handles both serial and non-serial
       const res = await fetch(`/api/businesses/${businessId}/cctv/supplier-replacements/${receiveItem.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          newSerialNumber: newSerialNumber.trim(),
+          notes: receiveNotes || undefined,
+        }),
       });
       if (res.ok) {
-        const msg = receiveItem.isSerialTracked === false
-          ? `${receiveItem.quantity} item(s) added back to stock`
-          : `New serial ${newSerialNumber} added to stock`;
-        toast({ title: 'Replacement received', description: msg });
+        toast({
+          title: 'Replacement received',
+          description: `New serial ${newSerialNumber} added to stock`,
+        });
         setReceiveItem(null);
         setNewSerialNumber(''); setReceiveNotes('');
         loadReplacements();
@@ -576,28 +567,25 @@ export function CCTVSupplierReplacements() {
                       <p className="text-xs text-gray-500">Quantity sent: {receiveItem.quantity}</p>
                     </>
                   )}
+                  {receiveItem.productName && receiveItem.isSerialTracked !== false && (
+                    <p className="text-xs text-gray-500">{receiveItem.productName}</p>
+                  )}
                 </div>
 
                 <div className="flex items-center justify-center text-cyan-500">
                   <RefreshCw className="w-5 h-5" />
                 </div>
 
-                {receiveItem.isSerialTracked !== false ? (
-                  /* Serial mode: ask for new serial number */
-                  <div className="space-y-1.5">
-                    <Label className="text-xs text-gray-600">New Serial Number *</Label>
-                    <Input value={newSerialNumber} onChange={(e) => setNewSerialNumber(e.target.value)}
-                      placeholder="Scan or type the new serial..." className="h-10 rounded-xl font-mono text-sm" autoFocus />
-                    <p className="text-[10px] text-gray-400">
-                      This serial will be added to stock and linked to the original. Old serial will be marked as REPLACED.
-                    </p>
-                  </div>
-                ) : (
-                  /* Non-serial mode: just confirm receipt */
-                  <div className="bg-emerald-50 rounded-xl p-3 text-xs text-emerald-700">
-                    Click "Receive" to add {receiveItem.quantity} item(s) back to stock. The replacement items are assumed to be in good condition.
-                  </div>
-                )}
+                {/* ALWAYS ask for new serial number — every replacement product has a unique serial */}
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-gray-600">New Serial Number *</Label>
+                  <Input value={newSerialNumber} onChange={(e) => setNewSerialNumber(e.target.value)}
+                    placeholder="Scan or type the new serial..." className="h-10 rounded-xl font-mono text-sm" autoFocus />
+                  <p className="text-[10px] text-gray-400">
+                    Enter the serial number on the replacement product from the supplier.
+                    This serial will be added to stock and can be searched/sold later.
+                  </p>
+                </div>
 
                 <div className="space-y-1.5">
                   <Label className="text-xs text-gray-600">Notes (optional)</Label>
@@ -613,7 +601,7 @@ export function CCTVSupplierReplacements() {
                 </button>
                 <button
                   onClick={handleReceive}
-                  disabled={receiving || (receiveItem.isSerialTracked !== false && !newSerialNumber.trim())}
+                  disabled={receiving || !newSerialNumber.trim()}
                   className="flex-1 h-11 rounded-xl bg-emerald-500 text-white font-semibold text-sm disabled:opacity-50 flex items-center justify-center gap-2">
                   {receiving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
                   {receiving ? 'Receiving...' : 'Receive & Add to Stock'}
