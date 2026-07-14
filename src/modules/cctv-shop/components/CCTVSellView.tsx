@@ -498,7 +498,6 @@ export function CCTVSellView() {
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: 12, height: 0, marginBottom: 0, paddingTop: 0, paddingBottom: 0 }}
                   onClick={() => {
-                    // Allow re-selecting serial for unresolved items
                     if (item.serialTracked && !item.serialItemId) {
                       setSerialPickerProduct({
                         productId: item.productId,
@@ -511,57 +510,62 @@ export function CCTVSellView() {
                     }
                   }}
                   className={cn(
-                    'bg-white rounded-xl border border-gray-100 p-3 shadow-sm',
-                    item.serialTracked && !item.serialItemId && 'cursor-pointer border-amber-200 hover:border-amber-300'
+                    'bg-white rounded-xl border p-2.5 shadow-sm',
+                    item.serialTracked && !item.serialItemId
+                      ? 'border-amber-200 hover:border-amber-300 cursor-pointer'
+                      : 'border-gray-100'
                   )}
                 >
-                  <div className="flex items-center gap-3">
+                  {/* Row 1: Name + total + delete */}
+                  <div className="flex items-center gap-2">
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-semibold text-gray-900 truncate">{item.name}</p>
-                      <p className="text-[10px] text-gray-400 mt-0.5">
+                      <p className="text-[10px] text-gray-400">
                         {item.brand}
                         {item.serialTracked && (
                           <Badge variant="secondary" className="ml-1 text-[9px] px-1.5 py-0 h-4">Serial</Badge>
                         )}
                       </p>
-                      {item.serialTracked && item.serialNumber && (
-                        <p className="text-[10px] text-violet-600 font-mono mt-0.5 truncate">
-                          {item.serialNumber}
-                        </p>
-                      )}
-                      {item.serialTracked && !item.serialNumber && (
-                        <p className="text-[10px] text-amber-500 mt-0.5">
-                          Tap to select serial unit
-                        </p>
-                      )}
                     </div>
                     <span className="text-xs font-bold text-gray-900 shrink-0">
                       {formatBDT(item.unitPrice * item.quantity)}
                     </span>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); removeItem(item.productId); }}
+                      className="w-6 h-6 rounded-lg flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors shrink-0"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
                   </div>
-                  <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-50">
-                    <p className="text-[10px] text-gray-400">{formatBDT(item.unitPrice)} × {item.quantity}</p>
-                    <div className="flex items-center gap-2">
+                  {/* Row 2: Serial (if applicable) */}
+                  {item.serialTracked && item.serialNumber && (
+                    <p className="text-[10px] text-violet-600 font-mono mt-1 truncate">
+                      {item.serialNumber}
+                    </p>
+                  )}
+                  {item.serialTracked && !item.serialNumber && (
+                    <p className="text-[10px] text-amber-500 mt-1">
+                      Tap to select serial unit
+                    </p>
+                  )}
+                  {/* Row 3: Price + qty controls */}
+                  <div className="flex items-center justify-between mt-1.5">
+                    <p className="text-[10px] text-gray-400">{formatBDT(item.unitPrice)} each</p>
+                    <div className="flex items-center gap-1.5">
                       <button
-                        onClick={() => updateQty(item.productId, -1)}
+                        onClick={(e) => { e.stopPropagation(); updateQty(item.productId, -1); }}
                         disabled={item.quantity <= 1}
-                        className="w-7 h-7 rounded-lg bg-gray-100 flex items-center justify-center active:bg-gray-200 transition-colors disabled:opacity-40"
+                        className="w-6 h-6 rounded-lg bg-gray-100 flex items-center justify-center active:bg-gray-200 transition-colors disabled:opacity-40"
                       >
-                        <Minus className="w-3.5 h-3.5 text-gray-600" />
+                        <Minus className="w-3 h-3 text-gray-600" />
                       </button>
-                      <span className="text-sm font-semibold text-gray-900 w-6 text-center">{item.quantity}</span>
+                      <span className="text-xs font-semibold text-gray-900 w-5 text-center">{item.quantity}</span>
                       <button
-                        onClick={() => updateQty(item.productId, 1)}
+                        onClick={(e) => { e.stopPropagation(); updateQty(item.productId, 1); }}
                         disabled={item.serialTracked || item.quantity >= item.maxStock}
-                        className="w-7 h-7 rounded-lg bg-violet-100 flex items-center justify-center active:bg-violet-200 transition-colors disabled:opacity-40"
+                        className="w-6 h-6 rounded-lg bg-violet-100 flex items-center justify-center active:bg-violet-200 transition-colors disabled:opacity-40"
                       >
-                        <Plus className="w-3.5 h-3.5 text-violet-600" />
-                      </button>
-                      <button
-                        onClick={() => removeItem(item.productId)}
-                        className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 active:bg-red-100 transition-colors"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
+                        <Plus className="w-3 h-3 text-violet-600" />
                       </button>
                     </div>
                   </div>
@@ -591,22 +595,22 @@ export function CCTVSellView() {
         </div>
       )}
 
-      {/* Summary */}
+      {/* Summary — distinct colored section */}
       {cart.length > 0 && (
-        <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm space-y-2">
+        <div className="bg-gradient-to-br from-slate-50 to-violet-50 rounded-2xl border-2 border-violet-200 p-4 shadow-sm space-y-2">
           <div className="flex justify-between text-sm">
-            <span className="text-gray-500">Subtotal</span>
-            <span className="font-medium text-gray-900">{formatBDT(subtotal)}</span>
+            <span className="text-gray-600">Subtotal</span>
+            <span className="font-semibold text-gray-900">{formatBDT(subtotal)}</span>
           </div>
           {discountAmount > 0 && (
             <div className="flex justify-between text-sm">
-              <span className="text-gray-500">Discount</span>
-              <span className="font-medium text-red-500">-{formatBDT(discountAmount)}</span>
+              <span className="text-gray-600">Discount</span>
+              <span className="font-semibold text-red-500">-{formatBDT(discountAmount)}</span>
             </div>
           )}
-          <div className="border-t border-gray-100 pt-2 flex justify-between">
-            <span className="text-sm font-bold text-gray-900">Total Due</span>
-            <span className="text-lg font-bold text-gray-900">{formatBDT(totalDue)}</span>
+          <div className="border-t-2 border-violet-200 pt-2 flex justify-between items-center">
+            <span className="text-sm font-bold text-violet-700">Total Due</span>
+            <span className="text-xl font-bold text-violet-700">{formatBDT(totalDue)}</span>
           </div>
         </div>
       )}
