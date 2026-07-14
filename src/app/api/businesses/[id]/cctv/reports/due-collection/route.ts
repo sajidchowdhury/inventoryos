@@ -22,9 +22,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       orderBy: { saleDate: "asc" },
     });
 
-    const totalPurchases = sales.reduce((s, x) => s + x.totalAmount, 0);
-    const totalPaid = sales.reduce((s, x) => s + x.paidAmount, 0);
-    const balance = c.openingBalance + totalPurchases - totalPaid;
+    const totalPurchases = sales.reduce((s, x) => s + Number(x.totalAmount), 0);
+    const totalPaid = sales.reduce((s, x) => s + Number(x.paidAmount), 0);
+    const balance = Number(c.openingBalance) + totalPurchases - totalPaid;
 
     if (balance > 0) {
       // Find oldest unpaid sale for aging
@@ -44,7 +44,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         name: c.name,
         phone: c.phone,
         balance,
-        openingBalance: c.openingBalance,
+        openingBalance: Number(c.openingBalance),
         totalPurchases,
         totalPaid,
         unpaidSalesCount: unpaidSales.length,

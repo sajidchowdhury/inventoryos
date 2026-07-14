@@ -22,7 +22,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     orderBy: { expenseDate: "desc" },
   });
 
-  const total = expenses.reduce((s, x) => s + x.amount, 0);
+  const total = expenses.reduce((s, x) => s + Number(x.amount), 0);
 
   // Breakdown by category
   const byCategory: Record<string, { count: number; total: number }> = {};

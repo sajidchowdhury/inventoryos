@@ -2,6 +2,7 @@
 // Returns a single sale with all items + customer info for invoice printing
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { serializeDecimals } from "@/lib/decimal-serializer";
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string; saleId: string }> }) {
   const { id: businessId, saleId } = await params;
@@ -43,13 +44,13 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       },
       select: { totalAmount: true, paidAmount: true },
     });
-    previousDue = prevSales.reduce((s, x) => s + (x.totalAmount - x.paidAmount), 0);
+    previousDue = prevSales.reduce((s, x) => s + Number(x.totalAmount) - Number(x.paidAmount), 0);
   }
 
   return NextResponse.json({
     success: true,
-    sale,
-    customer,
+    sale: serializeDecimals(sale),
+    customer: serializeDecimals(customer),
     business,
     previousDue,
   });

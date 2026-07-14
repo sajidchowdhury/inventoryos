@@ -57,9 +57,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       }),
     ]);
 
-    const salesTotal = daySales._sum.totalAmount || 0;
-    const expensesTotal = dayExpenses._sum.amount || 0;
-    const purchasesTotal = dayPurchases._sum.totalAmount || 0;
+    const salesTotal = daySales._sum.totalAmount ? Number(_sum.totalAmount) : 0;
+    const expensesTotal = dayExpenses._sum.amount ? Number(_sum.amount) : 0;
+    const purchasesTotal = dayPurchases._sum.totalAmount ? Number(_sum.totalAmount) : 0;
 
     dailyData.push({
       date: dayStart.toISOString().split("T")[0],
@@ -67,7 +67,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       sales: salesTotal,
       purchases: purchasesTotal,
       expenses: expensesTotal,
-      repairs: dayRepairs._sum.repairCost || 0,
+      repairs: dayRepairs._sum.repairCost ? Number(_sum.repairCost) : 0,
       profit: salesTotal - expensesTotal - purchasesTotal, // simplified profit
     });
   }
@@ -102,9 +102,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   ]);
 
   const prevWeek = {
-    sales: prevSales._sum.totalAmount || 0,
-    purchases: prevPurchases._sum.totalAmount || 0,
-    expenses: prevExpenses._sum.amount || 0,
+    sales: prevSales._sum.totalAmount ? Number(_sum.totalAmount) : 0,
+    purchases: prevPurchases._sum.totalAmount ? Number(_sum.totalAmount) : 0,
+    expenses: prevExpenses._sum.amount ? Number(_sum.amount) : 0,
   };
 
   // ── Insights ──

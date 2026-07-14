@@ -3,6 +3,7 @@
 // PHASE 1: Wrapped in $transaction() for atomic safety
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { serializeDecimals } from "@/lib/decimal-serializer";
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id: businessId } = await params;
@@ -12,7 +13,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     orderBy: { purchaseDate: "desc" },
     take: 50,
   });
-  return NextResponse.json({ success: true, purchases });
+  return NextResponse.json({ success: true, purchases: serializeDecimals(purchases) });
 }
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

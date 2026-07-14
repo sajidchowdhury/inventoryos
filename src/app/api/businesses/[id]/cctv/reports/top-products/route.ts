@@ -32,8 +32,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     const key = item.productName;
     if (!productMap[key]) productMap[key] = { name: key, qtySold: 0, revenue: 0, cost: 0, profit: 0 };
     productMap[key].qtySold += item.quantity;
-    productMap[key].revenue += item.sellPrice * item.quantity;
-    productMap[key].cost += (item.costPrice || 0) * item.quantity;
+    productMap[key].revenue += Number(item.sellPrice) * item.quantity;
+    productMap[key].cost += (Number(item.costPrice) || 0) * item.quantity;
     productMap[key].profit = productMap[key].revenue - productMap[key].cost;
   }
 

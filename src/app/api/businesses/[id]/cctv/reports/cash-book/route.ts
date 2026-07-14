@@ -40,7 +40,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     entries.push({
       time: new Date(sale.saleDate).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }),
       description: `Sale${sale.customerName ? ` — ${sale.customerName}` : ""}${sale.invoiceNo ? ` (${sale.invoiceNo})` : ""}`,
-      amountIn: sale.paidAmount,
+      amountIn: Number(sale.paidAmount),
       amountOut: 0,
       type: "sale",
       reference: sale.id,
@@ -61,7 +61,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     entries.push({
       time: new Date(pay.paymentDate).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }),
       description: `Customer Payment (${pay.paymentMethod})${pay.notes ? ` — ${pay.notes}` : ""}`,
-      amountIn: pay.amount,
+      amountIn: Number(pay.amount),
       amountOut: 0,
       type: "customer_payment",
       reference: pay.id,
@@ -83,7 +83,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       time: new Date(pay.paymentDate).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }),
       description: `Purchase Payment (${pay.paymentMethod})${pay.notes ? ` — ${pay.notes}` : ""}`,
       amountIn: 0,
-      amountOut: pay.amount,
+      amountOut: Number(pay.amount),
       type: "purchase_payment",
       reference: pay.id,
     });
@@ -104,7 +104,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       time: new Date(pay.paymentDate).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }),
       description: `Supplier Payment (${pay.paymentMethod})${pay.notes ? ` — ${pay.notes}` : ""}`,
       amountIn: 0,
-      amountOut: pay.amount,
+      amountOut: Number(pay.amount),
       type: "supplier_payment",
       reference: pay.id,
     });
@@ -124,7 +124,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       time: new Date(exp.expenseDate).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }),
       description: `Expense — ${exp.category}${exp.description ? `: ${exp.description}` : ""}`,
       amountIn: 0,
-      amountOut: exp.amount,
+      amountOut: Number(exp.amount),
       type: "expense",
       reference: exp.id,
     });
@@ -134,8 +134,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   entries.sort((a, b) => a.time.localeCompare(b.time));
 
   // Calculate totals
-  const totalIn = entries.reduce((sum, e) => sum + e.amountIn, 0);
-  const totalOut = entries.reduce((sum, e) => sum + e.amountOut, 0);
+  const totalIn = entries.reduce((sum, e) => sum + Number(e.amountIn), 0);
+  const totalOut = entries.reduce((sum, e) => sum + Number(e.amountOut), 0);
   const netCash = totalIn - totalOut;
 
   return NextResponse.json({

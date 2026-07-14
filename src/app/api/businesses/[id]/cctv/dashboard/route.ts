@@ -22,7 +22,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     where: { businessId, saleDate: { gte: startOfDay, lte: endOfDay } },
     select: { totalAmount: true, paidAmount: true },
   });
-  const todaySalesTotal = todaySales.reduce((s, sale) => s + sale.totalAmount, 0);
+  const todaySalesTotal = todaySales.reduce((s, sale) => s + Number(sale.totalAmount), 0);
   const todaySaleCount = todaySales.length;
 
   // Low stock products
@@ -54,7 +54,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         where: { businessId, productId: p.id, status: "IN_STOCK" },
       });
     }
-    totalStockValue += effectiveStock * p.costPrice;
+    totalStockValue += effectiveStock * Number(p.costPrice);
   }
 
   // Total customers
@@ -68,7 +68,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     where: { businessId, expenseDate: { gte: startOfDay, lte: endOfDay } },
     select: { amount: true },
   });
-  const todayExpensesTotal = todayExpenses.reduce((s, e) => s + e.amount, 0);
+  const todayExpensesTotal = todayExpenses.reduce((s, e) => s + Number(e.amount), 0);
 
   // Recent sales (last 5)
   const recentSales = await db.cCTVSale.findMany({

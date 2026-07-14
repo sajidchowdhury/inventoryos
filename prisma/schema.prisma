@@ -3413,8 +3413,8 @@ model CCTVProduct {
   model           String?
   sku             String?
   description     String?
-  costPrice       Float    @default(0)
-  sellPrice       Float    @default(0)
+  costPrice       Decimal  @default(0) @db.Decimal(12, 2)
+  sellPrice       Decimal  @default(0) @db.Decimal(12, 2)
   stock           Int      @default(0)
   unit            String   @default("piece")
   minStock        Int      @default(0)
@@ -3446,8 +3446,8 @@ model CCTVSerialItem {
   serialNumber  String
   status        String   @default("IN_STOCK") // IN_STOCK, SOLD, RETURNED, IN_REPAIR,
                                                 // SENT_TO_SUPPLIER, REPLACED, RETURNED_TO_CUSTOMER
-  costPrice     Float    @default(0)
-  sellPrice     Float?
+  costPrice     Decimal  @default(0) @db.Decimal(12, 2)
+  sellPrice     Decimal? @db.Decimal(12, 2)
   purchaseDate  DateTime?
   saleDate      DateTime?
   warrantyMonths Int?    // warranty period in months (from purchase item or product default)
@@ -3475,7 +3475,7 @@ model CCTVCustomer {
   name           String
   phone          String
   address        String?
-  openingBalance Float    @default(0)
+  openingBalance Decimal  @default(0) @db.Decimal(12, 2)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
@@ -3494,7 +3494,7 @@ model CCTVSupplier {
   name           String
   phone          String
   address        String?
-  openingBalance Float    @default(0)
+  openingBalance Decimal  @default(0) @db.Decimal(12, 2)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
@@ -3513,9 +3513,9 @@ model CCTVPurchase {
   supplierId   String?
   supplierName String?
   invoiceNo    String?
-  totalAmount  Float    @default(0)
-  paidAmount   Float    @default(0)
-  dueAmount    Float    @default(0)
+  totalAmount  Decimal  @default(0) @db.Decimal(12, 2)
+  paidAmount   Decimal  @default(0) @db.Decimal(12, 2)
+  dueAmount    Decimal  @default(0) @db.Decimal(12, 2)
   purchaseDate DateTime @default(now())
   notes        String?
   createdAt    DateTime @default(now())
@@ -3539,8 +3539,8 @@ model CCTVPurchaseItem {
   productId   String
   productName String
   quantity    Int      @default(1)
-  costPrice   Float    @default(0)
-  sellPrice   Float    @default(0) // suggested sell price at time of purchase
+  costPrice   Decimal  @default(0) @db.Decimal(12, 2)
+  sellPrice   Decimal  @default(0) @db.Decimal(12, 2) // suggested sell price at time of purchase
   serialNumbers String? // comma-separated or newline-separated serials
   warrantyMonths Int?  // override product default at purchase time
   createdAt   DateTime @default(now())
@@ -3560,11 +3560,11 @@ model CCTVSale {
   customerId      String?
   customerName    String?
   invoiceNo       String?
-  subtotal        Float    @default(0)
-  discount        Float    @default(0) // invoice-level discount
-  totalAmount     Float    @default(0) // subtotal - discount
-  paidAmount      Float    @default(0)
-  dueAmount       Float    @default(0)
+  subtotal        Decimal  @default(0) @db.Decimal(12, 2)
+  discount        Decimal  @default(0) @db.Decimal(12, 2) // invoice-level discount
+  totalAmount     Decimal  @default(0) @db.Decimal(12, 2) // subtotal - discount
+  paidAmount      Decimal  @default(0) @db.Decimal(12, 2)
+  dueAmount       Decimal  @default(0) @db.Decimal(12, 2)
   paymentType     String   @default("cash") // cash, credit
   saleDate        DateTime @default(now())
   notes           String?
@@ -3589,9 +3589,9 @@ model CCTVSaleItem {
   productId    String
   productName  String
   quantity     Int      @default(1)
-  sellPrice    Float    @default(0)
-  costPrice    Float    @default(0)
-  discount     Float    @default(0) // per-item discount amount
+  sellPrice    Decimal  @default(0) @db.Decimal(12, 2)
+  costPrice    Decimal  @default(0) @db.Decimal(12, 2)
+  discount     Decimal  @default(0) @db.Decimal(12, 2) // per-item discount amount
   serialNumber String?
   createdAt    DateTime @default(now())
 
@@ -3611,7 +3611,7 @@ model CCTVPayment {
   referenceId String?  // sale or purchase ID
   customerId  String?
   supplierId  String?
-  amount      Float    @default(0)
+  amount      Decimal  @default(0) @db.Decimal(12, 2)
   paymentMethod String @default("cash") // cash, bank, mobile
   paymentDate DateTime @default(now())
   notes       String?
@@ -3631,7 +3631,7 @@ model CCTVExpense {
   businessId  String
   category    String   // rent, electricity, transport, tea, other
   description String?
-  amount      Float    @default(0)
+  amount      Decimal  @default(0) @db.Decimal(12, 2)
   expenseDate DateTime @default(now())
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -3651,7 +3651,7 @@ model CCTVReturn {
   businessId  String
   saleId      String?
   customerName String?
-  totalAmount Float    @default(0)
+  totalAmount Decimal  @default(0) @db.Decimal(12, 2)
   reason      String?
   returnDate  DateTime @default(now())
   createdAt   DateTime @default(now())
@@ -3672,7 +3672,7 @@ model CCTVReturnItem {
   productId   String
   productName String
   quantity    Int      @default(1)
-  sellPrice   Float    @default(0)
+  sellPrice   Decimal  @default(0) @db.Decimal(12, 2)
   serialNumber String?
   createdAt   DateTime @default(now())
 
@@ -3762,7 +3762,7 @@ model CCTVRepair {
   readyDate       DateTime?
   returnedDate    DateTime?
   repairNotes     String?
-  repairCost      Float    @default(0)
+  repairCost      Decimal  @default(0) @db.Decimal(12, 2)
   replacementId   String?  // links to CCTVSupplierReplacement if sent to supplier
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -3823,7 +3823,7 @@ model CCTVEstimate {
   customerName String?
   customerPhone String?
   projectTitle String?  // e.g. "6-camera CCTV installation at home"
-  totalAmount  Float    @default(0)
+  totalAmount  Decimal  @default(0) @db.Decimal(12, 2)
   status       String   @default("draft") // draft, sent, accepted, converted, rejected
   notes        String?
   convertedSaleId String? // links to CCTVSale when converted
@@ -3847,7 +3847,7 @@ model CCTVEstimateItem {
   productId   String?
   productName String
   quantity    Int      @default(1)
-  unitPrice   Float    @default(0)
+  unitPrice   Decimal  @default(0) @db.Decimal(12, 2)
   notes       String?
   createdAt   DateTime @default(now())
 

@@ -47,9 +47,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     filteredSales = sales.filter((s) => saleIds.has(s.id));
   }
 
-  const totalAmount = filteredSales.reduce((s, x) => s + x.totalAmount, 0);
-  const totalPaid = filteredSales.reduce((s, x) => s + x.paidAmount, 0);
-  const totalDue = filteredSales.reduce((s, x) => s + x.dueAmount, 0);
+  const totalAmount = filteredSales.reduce((s, x) => s + Number(x.totalAmount), 0);
+  const totalPaid = filteredSales.reduce((s, x) => s + Number(x.paidAmount), 0);
+  const totalDue = filteredSales.reduce((s, x) => s + Number(x.dueAmount), 0);
 
   // Payment method breakdown
   const allPayments = await db.cCTVPayment.findMany({
@@ -58,7 +58,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   });
   const methodBreakdown: Record<string, number> = {};
   for (const p of allPayments) {
-    methodBreakdown[p.paymentMethod] = (methodBreakdown[p.paymentMethod] || 0) + p.amount;
+    methodBreakdown[p.paymentMethod] = (methodBreakdown[p.paymentMethod] || 0) + Number(p.amount);
   }
 
   // Top products in this period
@@ -68,7 +68,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       const key = item.productName;
       if (!productSales[key]) productSales[key] = { name: key, qty: 0, revenue: 0 };
       productSales[key].qty += item.quantity;
-      productSales[key].revenue += item.sellPrice * item.quantity;
+      productSales[key].revenue += Number(item.sellPrice) * item.quantity;
     }
   }
   const topProducts = Object.values(productSales).sort((a, b) => b.revenue - a.revenue).slice(0, 10);

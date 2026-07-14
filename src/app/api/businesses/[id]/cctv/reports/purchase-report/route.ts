@@ -33,9 +33,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     orderBy: { purchaseDate: "desc" },
   });
 
-  const totalAmount = purchases.reduce((s, x) => s + x.totalAmount, 0);
-  const totalPaid = purchases.reduce((s, x) => s + x.paidAmount, 0);
-  const totalDue = purchases.reduce((s, x) => s + x.dueAmount, 0);
+  const totalAmount = purchases.reduce((s, x) => s + Number(x.totalAmount), 0);
+  const totalPaid = purchases.reduce((s, x) => s + Number(x.paidAmount), 0);
+  const totalDue = purchases.reduce((s, x) => s + Number(x.dueAmount), 0);
 
   // Top purchased products
   const productPurchases: Record<string, { name: string; qty: number; cost: number }> = {};
@@ -44,7 +44,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       const key = item.productName;
       if (!productPurchases[key]) productPurchases[key] = { name: key, qty: 0, cost: 0 };
       productPurchases[key].qty += item.quantity;
-      productPurchases[key].cost += item.costPrice * item.quantity;
+      productPurchases[key].cost += Number(item.costPrice) * item.quantity;
     }
   }
   const topProducts = Object.values(productPurchases).sort((a, b) => b.cost - a.cost).slice(0, 10);
@@ -53,7 +53,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const supplierBreakdown: Record<string, number> = {};
   for (const pur of purchases) {
     const key = pur.supplierName || "Unknown";
-    supplierBreakdown[key] = (supplierBreakdown[key] || 0) + pur.totalAmount;
+    supplierBreakdown[key] = (supplierBreakdown[key] || 0) + Number(pur.totalAmount);
   }
 
   return NextResponse.json({

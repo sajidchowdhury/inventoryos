@@ -20,9 +20,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     select: { id: true, totalAmount: true, paidAmount: true, dueAmount: true, customerName: true, paymentType: true, saleDate: true },
     orderBy: { saleDate: "desc" },
   });
-  const salesTotal = sales.reduce((s, x) => s + x.totalAmount, 0);
-  const salesPaid = sales.reduce((s, x) => s + x.paidAmount, 0);
-  const salesDue = sales.reduce((s, x) => s + x.dueAmount, 0);
+  const salesTotal = sales.reduce((s, x) => s + Number(x.totalAmount), 0);
+  const salesPaid = sales.reduce((s, x) => s + Number(x.paidAmount), 0);
+  const salesDue = sales.reduce((s, x) => s + Number(x.dueAmount), 0);
 
   // 2. Purchases
   const purchases = await db.cCTVPurchase.findMany({
@@ -30,8 +30,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     select: { id: true, totalAmount: true, paidAmount: true, dueAmount: true, supplierName: true, invoiceNo: true, purchaseDate: true },
     orderBy: { purchaseDate: "desc" },
   });
-  const purchaseTotal = purchases.reduce((s, x) => s + x.totalAmount, 0);
-  const purchasePaid = purchases.reduce((s, x) => s + x.paidAmount, 0);
+  const purchaseTotal = purchases.reduce((s, x) => s + Number(x.totalAmount), 0);
+  const purchasePaid = purchases.reduce((s, x) => s + Number(x.paidAmount), 0);
 
   // 3. Expenses
   const expenses = await db.cCTVExpense.findMany({
@@ -39,7 +39,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     select: { id: true, category: true, description: true, amount: true, expenseDate: true },
     orderBy: { expenseDate: "desc" },
   });
-  const expenseTotal = expenses.reduce((s, x) => s + x.amount, 0);
+  const expenseTotal = expenses.reduce((s, x) => s + Number(x.amount), 0);
 
   // 4. Repairs received
   const repairs = await db.cCTVRepair.findMany({
@@ -47,7 +47,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     select: { id: true, tokenNo: true, serialNumber: true, productName: true, customerName: true, underWarranty: true, status: true, repairCost: true },
     orderBy: { receivedDate: "desc" },
   });
-  const repairRevenue = repairs.reduce((s, x) => s + x.repairCost, 0);
+  const repairRevenue = repairs.reduce((s, x) => s + Number(x.repairCost), 0);
 
   // 5. Returns
   const returns = await db.cCTVReturn.findMany({
@@ -55,21 +55,21 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     select: { id: true, customerName: true, totalAmount: true, reason: true, returnDate: true },
     orderBy: { returnDate: "desc" },
   });
-  const returnTotal = returns.reduce((s, x) => s + x.totalAmount, 0);
+  const returnTotal = returns.reduce((s, x) => s + Number(x.totalAmount), 0);
 
   // 6. Customer payments received
   const customerPayments = await db.cCTVPayment.findMany({
     where: { businessId, type: "customer_payment", paymentDate: { gte: startOfDay, lte: endOfDay } },
     select: { id: true, amount: true, paymentMethod: true, paymentDate: true },
   });
-  const customerPaymentTotal = customerPayments.reduce((s, x) => s + x.amount, 0);
+  const customerPaymentTotal = customerPayments.reduce((s, x) => s + Number(x.amount), 0);
 
   // 7. Supplier payments made
   const supplierPayments = await db.cCTVPayment.findMany({
     where: { businessId, type: "supplier_payment", paymentDate: { gte: startOfDay, lte: endOfDay } },
     select: { id: true, amount: true, paymentMethod: true, paymentDate: true },
   });
-  const supplierPaymentTotal = supplierPayments.reduce((s, x) => s + x.amount, 0);
+  const supplierPaymentTotal = supplierPayments.reduce((s, x) => s + Number(x.amount), 0);
 
   // Calculate net cash flow
   const moneyIn = salesPaid + customerPaymentTotal;

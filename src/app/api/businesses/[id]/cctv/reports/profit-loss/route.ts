@@ -23,13 +23,13 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     where: { businessId, saleDate: { gte: startDate, lte: endDate } },
     include: { items: { select: { sellPrice: true, costPrice: true, quantity: true } } },
   });
-  const totalRevenue = sales.reduce((s, x) => s + x.totalAmount, 0);
+  const totalRevenue = sales.reduce((s, x) => s + Number(x.totalAmount), 0);
 
   // 2. COGS = sum of (costPrice * quantity) for each sale item
   let totalCOGS = 0;
   for (const sale of sales) {
     for (const item of sale.items) {
-      totalCOGS += (item.costPrice || 0) * item.quantity;
+      totalCOGS += (Number(item.costPrice) || 0) * item.quantity;
     }
   }
 
@@ -41,12 +41,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     where: { businessId, expenseDate: { gte: startDate, lte: endDate } },
     select: { category: true, amount: true },
   });
-  const totalExpenses = expenses.reduce((s, x) => s + x.amount, 0);
+  const totalExpenses = expenses.reduce((s, x) => s + Number(x.amount), 0);
 
   // Expense breakdown by category
   const expenseByCategory: Record<string, number> = {};
   for (const exp of expenses) {
-    expenseByCategory[exp.category] = (expenseByCategory[exp.category] || 0) + exp.amount;
+    expenseByCategory[exp.category] = (expenseByCategory[exp.category] || 0) + Number(exp.amount);
   }
 
   // 5. Repair revenue
@@ -54,7 +54,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     where: { businessId, receivedDate: { gte: startDate, lte: endDate } },
     select: { repairCost: true, underWarranty: true },
   });
-  const repairRevenue = repairs.reduce((s, x) => s + x.repairCost, 0);
+  const repairRevenue = repairs.reduce((s, x) => s + Number(x.repairCost), 0);
 
   // 6. Net profit
   const netProfit = grossProfit + repairRevenue - totalExpenses;

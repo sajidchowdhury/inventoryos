@@ -23,9 +23,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
           where: { businessId, customerId: c.id },
           select: { totalAmount: true, paidAmount: true },
         });
-        const totalPurchases = sales.reduce((s, sale) => s + sale.totalAmount, 0);
-        const totalPaid = sales.reduce((s, sale) => s + sale.paidAmount, 0);
-        const balance = c.openingBalance + totalPurchases - totalPaid;
+        const totalPurchases = sales.reduce((s, sale) => s + Number(sale.totalAmount), 0);
+        const totalPaid = sales.reduce((s, sale) => s + Number(sale.paidAmount), 0);
+        const balance = Number(c.openingBalance) + totalPurchases - totalPaid;
         return { ...c, balance, totalPurchases, totalPaid };
       })
     );
@@ -54,13 +54,13 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const entries: Entry[] = [];
 
   // Opening balance
-  if (customer.openingBalance > 0) {
+  if (Number(customer.openingBalance) > 0) {
     entries.push({
       date: customer.createdAt.toISOString().split("T")[0],
       description: "Opening Balance",
-      debit: customer.openingBalance,
+      debit: Number(customer.openingBalance),
       credit: 0,
-      balance: customer.openingBalance,
+      balance: Number(customer.openingBalance),
       type: "opening",
     });
   }
@@ -73,12 +73,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   });
 
   for (const sale of sales) {
-    const due = sale.totalAmount - sale.paidAmount;
+    const due = Number(sale.totalAmount) - Number(sale.paidAmount);
     entries.push({
       date: sale.saleDate.toISOString().split("T")[0],
       description: `Sale${sale.invoiceNo ? ` (${sale.invoiceNo})` : ""}`,
-      debit: sale.totalAmount,
-      credit: sale.paidAmount,
+      debit: Number(sale.totalAmount),
+      credit: Number(sale.paidAmount),
       balance: 0, // will calculate below
       type: "sale",
     });
@@ -96,7 +96,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       date: pay.paymentDate.toISOString().split("T")[0],
       description: `Payment (${pay.paymentMethod})${pay.notes ? ` — ${pay.notes}` : ""}`,
       debit: 0,
-      credit: pay.amount,
+      credit: Number(pay.amount),
       balance: 0,
       type: "payment",
     });

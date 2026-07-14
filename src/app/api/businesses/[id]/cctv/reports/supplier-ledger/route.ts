@@ -24,7 +24,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         });
         const totalPurchases = purchases.reduce((sum, p) => sum + p.totalAmount, 0);
         const totalPaid = purchases.reduce((sum, p) => sum + p.paidAmount, 0);
-        const balance = s.openingBalance + totalPurchases - totalPaid;
+        const balance = Number(s.openingBalance) + totalPurchases - totalPaid;
         return { ...s, balance, totalPurchases, totalPaid };
       })
     );
@@ -53,13 +53,13 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const entries: Entry[] = [];
 
   // Opening balance
-  if (supplier.openingBalance > 0) {
+  if (Number(supplier.openingBalance) > 0) {
     entries.push({
       date: supplier.createdAt.toISOString().split("T")[0],
       description: "Opening Balance",
-      debit: supplier.openingBalance,
+      debit: Number(supplier.openingBalance),
       credit: 0,
-      balance: supplier.openingBalance,
+      balance: Number(supplier.openingBalance),
       type: "opening",
     });
   }
@@ -75,8 +75,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     entries.push({
       date: pur.purchaseDate.toISOString().split("T")[0],
       description: `Purchase${pur.invoiceNo ? ` (${pur.invoiceNo})` : ""}`,
-      debit: pur.totalAmount,
-      credit: pur.paidAmount,
+      debit: Number(pur.totalAmount),
+      credit: Number(pur.paidAmount),
       balance: 0,
       type: "purchase",
     });
@@ -94,7 +94,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       date: pay.paymentDate.toISOString().split("T")[0],
       description: `Payment (${pay.paymentMethod})${pay.notes ? ` — ${pay.notes}` : ""}`,
       debit: 0,
-      credit: pay.amount,
+      credit: Number(pay.amount),
       balance: 0,
       type: "payment",
     });
