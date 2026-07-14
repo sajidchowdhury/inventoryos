@@ -222,6 +222,7 @@ model Business {
   newCctvPurchaseItems      CCTVPurchaseItem[]    @relation("newCctvPurchaseItems")
   newCctvSaleItems          CCTVSaleItem[]          @relation("newCctvSaleItems")
   newCctvPayments           CCTVPayment[]           @relation("newCctvPayments")
+  newCctvReturns            CCTVReturn[]            @relation("newCctvReturns")
   newCctvReturnItems        CCTVReturnItem[]        @relation("newCctvReturnItems")
   newCctvWarrantyClaims     CCTVWarrantyClaim[]     @relation("newCctvWarrantyClaims")
   newCctvSerialHistories    CCTVSerialHistory[]     @relation("newCctvSerialHistories")
@@ -3426,7 +3427,7 @@ model CCTVProduct {
   updatedAt       DateTime @updatedAt
 
   business    Business         @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  category    CCTVCategory?    @relation(fields: [categoryId], references: [id])
+  category    CCTVCategory?    @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   serialItems CCTVSerialItem[]
   purchaseItems CCTVPurchaseItem[]
   saleItems   CCTVSaleItem[]
@@ -3522,7 +3523,7 @@ model CCTVPurchase {
   updatedAt    DateTime @updatedAt
 
   business  Business           @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  supplier CCTVSupplier?       @relation(fields: [supplierId], references: [id])
+  supplier CCTVSupplier?       @relation(fields: [supplierId], references: [id], onDelete: SetNull)
   items    CCTVPurchaseItem[]
 
   @@index([businessId])
@@ -3572,7 +3573,7 @@ model CCTVSale {
   updatedAt       DateTime @updatedAt
 
   business Business     @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  customer CCTVCustomer? @relation(fields: [customerId], references: [id])
+  customer CCTVCustomer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
   items    CCTVSaleItem[]
 
   @@index([businessId])
@@ -3656,6 +3657,7 @@ model CCTVReturn {
   returnDate  DateTime @default(now())
   createdAt   DateTime @default(now())
 
+  business Business     @relation("newCctvReturns", fields: [businessId], references: [id], onDelete: Cascade)
   items CCTVReturnItem[]
 
   @@index([businessId])
