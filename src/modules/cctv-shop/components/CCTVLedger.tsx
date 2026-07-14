@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
   ArrowLeft, Loader2, Printer, Users, Building2, Phone, Plus, X,
+  ArrowDownToLine, ArrowUpFromLine, Percent,
 } from 'lucide-react';
 import { useCCTVNavStore } from '@/stores/cctv-nav-store-simple';
 import { useAuthStore } from '@/stores/auth-store';
@@ -68,6 +69,7 @@ export function CCTVLedger({ type }: { type: 'customer' | 'supplier' }) {
 
   // Payment dialog state
   const [showPayment, setShowPayment] = useState(false);
+  const [actionMode, setActionMode] = useState<'payment' | 'discount'>('payment');
   const [paymentAmount, setPaymentAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
@@ -117,21 +119,30 @@ export function CCTVLedger({ type }: { type: 'customer' | 'supplier' }) {
     }
     setSavingPayment(true);
     try {
+      const isDiscount = actionMode === 'discount';
+      const baseType = isCustomer ? 'customer_payment' : 'supplier_payment';
+      const discountType = isCustomer ? 'customer_discount' : 'supplier_discount';
       const res = await fetch(`/api/businesses/${businessId}/cctv/payments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          type: isCustomer ? 'customer_payment' : 'supplier_payment',
+          type: isDiscount ? discountType : baseType,
           customerId: isCustomer ? selectedId : null,
           supplierId: !isCustomer ? selectedId : null,
           amount: paymentAmount,
-          paymentMethod,
+          paymentMethod: isDiscount ? 'cash' : paymentMethod, // discounts are always cash adjustments
           paymentDate,
           notes: paymentNotes || null,
         }),
       });
       if (res.ok) {
-        toast({ title: 'Payment recorded', description: `৳${paymentAmount} ${paymentMethod}` });
+        const actionLabel = isDiscount
+          ? 'Discount adjusted'
+          : (isCustomer ? 'Payment received' : 'Payment made');
+        toast({
+          title: actionLabel,
+          description: `৳${paymentAmount}${isDiscount ? '' : ` via ${paymentMethod}`}`,
+        });
         setShowPayment(false);
         setPaymentAmount('');
         setPaymentNotes('');
@@ -162,9 +173,17 @@ export function CCTVLedger({ type }: { type: 'customer' | 'supplier' }) {
         <h1 className="text-lg font-bold text-gray-900 flex-1">{label} Ledger</h1>
         {ledger && (
           <>
-            <button onClick={() => setShowPayment(true)}
-              className="h-9 px-4 rounded-xl bg-emerald-500 text-white text-xs font-semibold flex items-center gap-1.5 active:scale-95 transition-transform">
-              <Plus className="w-4 h-4" /> Payment
+            <button
+              onClick={() => { setActionMode('payment'); setPaymentAmount(''); setShowPayment(true); }}
+              className="h-9 px-4 rounded-xl bg-emerald-500 text-white text-xs font-semibold flex items-center gap-1.5 active:scale-95 transition-transform"
+            >
+              <Plus className="w-4 h-4" /> {isCustomer ? 'Receive' : 'Pay'}
+            </button>
+            <button
+              onClick={() => { setActionMode('discount'); setPaymentAmount(''); setShowPayment(true); }}
+              className="h-9 px-4 rounded-xl bg-violet-500 text-white text-xs font-semibold flex items-center gap-1.5 active:scale-95 transition-transform"
+            >
+              <Percent className="w-4 h-4" /> Discount
             </button>
             <button onClick={handlePrint}
               className="h-9 px-4 rounded-xl bg-white border border-gray-200 text-xs font-semibold flex items-center gap-1.5">
@@ -288,6 +307,55 @@ export function CCTVLedger({ type }: { type: 'customer' | 'supplier' }) {
                 </div>
               </div>
 
+              {/* ── DUE ACTION PANEL ── */}
+              {ledger.summary.balance > 0 && (
+                <div className="bg-white rounded-2xl border-2 border-violet-200 p-4 shadow-sm print:hidden">
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <p className="text-xs text-gray-500 font-medium">
+                        {isCustomer ? 'Customer Due' : 'We Owe'}
+                      </p>
+                      <p className="text-2xl font-bold text-amber-600">{formatBDT(ledger.summary.balance)}</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => {
+                          setPaymentAmount(String(ledger.summary.balance));
+                          setActionMode('payment');
+                          setShowPayment(true);
+                        }}
+                        className="h-10 px-4 rounded-xl bg-emerald-500 text-white text-xs font-semibold flex items-center gap-1.5 active:scale-95 transition-transform"
+                      >
+                        {isCustomer ? <ArrowDownToLine className="w-4 h-4" /> : <ArrowUpFromLine className="w-4 h-4" />}
+                        {isCustomer ? 'Receive Payment' : 'Pay Supplier'}
+                      </button>
+                      <button
+                        onClick={() => {
+                          setPaymentAmount(String(ledger.summary.balance));
+                          setActionMode('discount');
+                          setShowPayment(true);
+                        }}
+                        className="h-10 px-4 rounded-xl bg-violet-500 text-white text-xs font-semibold flex items-center gap-1.5 active:scale-95 transition-transform"
+                      >
+                        <Percent className="w-4 h-4" /> Discount / Adjust
+                      </button>
+                    </div>
+                  </div>
+                  {/* Quick pay buttons */}
+                  <div className="flex gap-1.5 flex-wrap">
+                    {[0.25, 0.5, 0.75, 1].map((pct) => (
+                      <button
+                        key={pct}
+                        onClick={() => setPaymentAmount(String(Math.round(ledger.summary.balance * pct * 100) / 100))}
+                        className="px-2.5 py-1 rounded-lg text-[10px] font-semibold bg-gray-100 text-gray-600 hover:bg-violet-100 hover:text-violet-700 transition-colors"
+                      >
+                        {pct === 1 ? 'Full' : `${pct * 100}%`}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Ledger table */}
               <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
                 <div className="overflow-x-auto">
@@ -347,11 +415,35 @@ export function CCTVLedger({ type }: { type: 'customer' | 'supplier' }) {
           >
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-base font-bold text-gray-900">
-                {isCustomer ? 'Receive Payment' : 'Pay Supplier'}
+                {actionMode === 'discount'
+                  ? (isCustomer ? 'Adjust Discount' : 'Adjust Discount')
+                  : (isCustomer ? 'Receive Payment' : 'Pay Supplier')}
               </h3>
               <button onClick={() => setShowPayment(false)}
                 className="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center">
                 <X className="w-4 h-4 text-gray-400" />
+              </button>
+            </div>
+
+            {/* Mode toggle */}
+            <div className="flex gap-1 p-1 bg-gray-100 rounded-xl mb-4">
+              <button
+                onClick={() => setActionMode('payment')}
+                className={cn(
+                  'flex-1 h-8 rounded-lg text-xs font-semibold transition-colors',
+                  actionMode === 'payment' ? 'bg-white text-emerald-600 shadow-sm' : 'text-gray-500'
+                )}
+              >
+                {isCustomer ? 'Receive Payment' : 'Pay Supplier'}
+              </button>
+              <button
+                onClick={() => setActionMode('discount')}
+                className={cn(
+                  'flex-1 h-8 rounded-lg text-xs font-semibold transition-colors',
+                  actionMode === 'discount' ? 'bg-white text-violet-600 shadow-sm' : 'text-gray-500'
+                )}
+              >
+                Discount / Adjust
               </button>
             </div>
 
@@ -391,11 +483,20 @@ export function CCTVLedger({ type }: { type: 'customer' | 'supplier' }) {
                 </div>
               </div>
 
-              <PaymentMethodSelector
-                value={paymentMethod}
-                onChange={setPaymentMethod}
-                label="Payment Method"
-              />
+              {actionMode === 'payment' && (
+                <PaymentMethodSelector
+                  value={paymentMethod}
+                  onChange={setPaymentMethod}
+                  label="Payment Method"
+                />
+              )}
+
+              {actionMode === 'discount' && (
+                <div className="bg-violet-50 rounded-xl p-3 text-xs text-violet-700">
+                  Discount reduces the {isCustomer ? "customer's due" : "amount we owe"} without actual payment.
+                  The adjustment will appear in the ledger as [DISCOUNT].
+                </div>
+              )}
 
               <div className="space-y-1.5">
                 <Label className="text-xs text-gray-600">Notes (optional)</Label>

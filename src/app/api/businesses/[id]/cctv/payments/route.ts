@@ -36,19 +36,32 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   }
 
   if (!body.type) {
-    return NextResponse.json({ error: "Payment type is required (customer_payment or supplier_payment)" }, { status: 400 });
+    return NextResponse.json({ error: "Payment type is required (customer_payment, supplier_payment, customer_discount, supplier_discount)" }, { status: 400 });
+  }
+
+  // Map discount types to internal type for ledger recognition
+  // customer_discount / supplier_discount are stored as the same type
+  // but with notes prefix for ledger display
+  let storedType = body.type;
+  let notes = body.notes || null;
+  if (body.type === "customer_discount") {
+    storedType = "customer_payment"; // discount reduces customer due
+    notes = `[DISCOUNT] ${body.notes || "Discount adjusted"}`;
+  } else if (body.type === "supplier_discount") {
+    storedType = "supplier_payment"; // discount reduces what we owe
+    notes = `[DISCOUNT] ${body.notes || "Discount adjusted"}`;
   }
 
   const payment = await db.cCTVPayment.create({
     data: {
       businessId,
-      type: body.type, // customer_payment, supplier_payment
+      type: storedType,
       customerId: body.customerId || null,
       supplierId: body.supplierId || null,
       amount: parseFloat(body.amount),
       paymentMethod: body.paymentMethod || "cash",
       paymentDate: body.paymentDate ? new Date(body.paymentDate) : new Date(),
-      notes: body.notes || null,
+      notes,
     },
   });
 
