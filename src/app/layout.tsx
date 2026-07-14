@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "InventoryOS - Smart Business Management for Every Trade",
-  description: "Complete inventory, sales, and operations management platform. Manage your pharmacy, CCTV shop, or any retail business with AI-powered insights.",
-  keywords: ["InventoryOS", "inventory management", "pharmacy", "CCTV", "business management", "POS", "AI", "stock management"],
+  description: "Complete inventory, sales, and operations management platform. Manage your pharmacy, mobile shop, or any retail business with AI-powered insights.",
+  keywords: ["InventoryOS", "inventory management", "pharmacy", "mobile shop", "business management", "POS", "AI", "stock management"],
   authors: [{ name: "InventoryOS" }],
   icons: {
     icon: "https://z-cdn.chatglm.cn/z-ai/static/logo.svg",

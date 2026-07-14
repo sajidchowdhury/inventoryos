@@ -121,7 +121,7 @@
   }
 }
 
-/* ─── CCTV Module Styles ─── */
+/* ─── MobileShop Module Styles ─── */
 .cctv-bg {
   background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 30%, #5b21b6 60%, #4c1d95 100%);
   position: relative;
@@ -307,8 +307,8 @@
   }
 }
 
-/* CCTV responsive container */
-.cctv-shell-wrap {
+/* MobileShop responsive container */
+.ms-shell-wrap {
   width: 100%;
   max-width: 480px;
   margin: 0 auto;
@@ -318,10 +318,59 @@
 }
 
 @media (min-width: 768px) {
-  .cctv-shell-wrap {
+  .ms-shell-wrap {
     max-width: 100%;
     box-shadow: none;
     border-left: none;
     border-right: none;
+  }
+}
+
+/* CCTV module responsive container */
+.cctv-shell-wrap {
+  width: 100%;
+  min-height: 100vh;
+  position: relative;
+  background: #f9fafb;
+}
+
+@media (min-width: 768px) {
+  .cctv-shell-wrap {
+    max-width: 100%;
+  }
+}
+
+/* ── Print styles for invoices and tokens ── */
+@media print {
+  /* Hide sidebar, bottom nav, and any element marked print:hidden */
+  aside,
+  nav,
+  .print\:hidden {
+    display: none !important;
+  }
+
+  /* Show print-only elements */
+  .print\:block {
+    display: block !important;
+  }
+
+  /* Remove padding/margins that offset content */
+  .cctv-shell-wrap {
+    padding: 0 !important;
+  }
+
+  .md\:pl-64 {
+    padding-left: 0 !important;
+  }
+
+  /* Reset page margins for printing */
+  @page {
+    margin: 1cm;
+  }
+
+  /* Ensure colors print */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 }

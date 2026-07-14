@@ -1,487 +1,165 @@
 // GET/POST /api/businesses/[id]/cctv/sales
+// POST: Create sale + mark serials as SOLD + update stock + record payment
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 
-const VALID_METHODS = ["CASH", "CARD", "BKASH", "NAGAD", "ROCKET"];
-
-// GET: List sales with optional filters
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  try {
-    const { id: businessId } = await params;
-    const url = new URL(req.url);
-    const status = url.searchParams.get("status")?.trim() || "";
-    const search = url.searchParams.get("search")?.trim() || "";
-    const from = url.searchParams.get("from")?.trim() || "";
-    const to = url.searchParams.get("to")?.trim() || "";
-    const limit = Math.min(parseInt(url.searchParams.get("limit") || "20", 10) || 20, 100);
-    const offset = Math.max(parseInt(url.searchParams.get("offset") || "0", 10) || 0, 0);
-
-    const where: Record<string, unknown> = { businessId, isActive: true };
-
-    if (status) {
-      where.status = status;
-    }
-
-    if (search) {
-      where.OR = [
-        { saleCode: { contains: search, mode: "insensitive" } },
-        { customerName: { contains: search, mode: "insensitive" } },
-        { customerPhone: { contains: search, mode: "insensitive" } },
-      ];
-    }
-
-    if (from || to) {
-      const createdAtFilter: Record<string, unknown> = {};
-      if (from) createdAtFilter.gte = new Date(from);
-      if (to) createdAtFilter.lte = new Date(to);
-      where.createdAt = createdAtFilter;
-    }
-
-    const [sales, total] = await Promise.all([
-      db.cCTVSale.findMany({
-        where,
-        include: {
-          _count: {
-            select: { items: true, payments: true },
-          },
-        },
-        orderBy: { createdAt: "desc" },
-        take: limit,
-        skip: offset,
-      }),
-      db.cCTVSale.count({ where }),
-    ]);
-
-    return NextResponse.json({ sales, total, limit, offset });
-  } catch (error) {
-    console.error("List sales error:", error);
-    return NextResponse.json({ error: "Failed to list sales" }, { status: 500 });
-  }
+  const { id: businessId } = await params;
+  const sales = await db.cCTVSale.findMany({
+    where: { businessId },
+    include: { items: true },
+    orderBy: { saleDate: "desc" },
+    take: 50,
+  });
+  return NextResponse.json({ success: true, sales });
 }
 
-// POST: Create a sale with items and optional payments in a single transaction
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  try {
-    const { id: businessId } = await params;
-    const body = await req.json();
+  const { id: businessId } = await params;
+  const body = await req.json();
 
-    const {
-      customerName,
-      customerPhone,
-      customerId,
-      discountAmount,
-      items,
-      payments,
-    } = body as {
-      customerName?: string;
-      customerPhone?: string;
-      customerId?: string;
-      discountAmount?: number;
-      items: { productId: string; serialItemId?: string; quantity: number; unitPrice: number }[];
-      payments?: { method: string; amount: number; referenceNumber?: string; receivedBy?: string }[];
-    };
+  if (!body.items || !Array.isArray(body.items) || body.items.length === 0) {
+    return NextResponse.json({ error: "At least one item is required" }, { status: 400 });
+  }
 
-    // Validate items
-    if (!items || !Array.isArray(items) || items.length === 0) {
-      return NextResponse.json({ error: "At least one sale item is required" }, { status: 400 });
-    }
+  // Calculate subtotal (sum of sell price * qty per item)
+  let subtotal = 0;
+  for (const item of body.items) {
+    subtotal += (item.sellPrice || 0) * (item.quantity || 1);
+  }
 
-    for (let i = 0; i < items.length; i++) {
-      const item = items[i];
-      if (!item.productId) {
-        return NextResponse.json({ error: `Item ${i + 1}: productId is required` }, { status: 400 });
-      }
-      if (!item.quantity || item.quantity < 1) {
-        return NextResponse.json({ error: `Item ${i + 1}: quantity must be at least 1` }, { status: 400 });
-      }
-      if (item.unitPrice == null || item.unitPrice < 0) {
-        return NextResponse.json({ error: `Item ${i + 1}: unitPrice is required and must be >= 0` }, { status: 400 });
-      }
-    }
+  // Apply invoice-level discount (if provided)
+  const invoiceDiscount = body.invoiceDiscount || 0;
+  const totalAmount = Math.max(0, subtotal - invoiceDiscount);
 
-    // Validate payments if provided
-    if (payments && Array.isArray(payments)) {
-      for (let i = 0; i < payments.length; i++) {
-        const p = payments[i];
-        if (!VALID_METHODS.includes(p.method)) {
-          return NextResponse.json(
-            { error: `Payment ${i + 1}: invalid method. Must be one of ${VALID_METHODS.join(", ")}` },
-            { status: 400 },
-          );
-        }
-        if (!p.amount || p.amount <= 0) {
-          return NextResponse.json({ error: `Payment ${i + 1}: amount must be > 0` }, { status: 400 });
-        }
-      }
-    }
+  const paidAmount = body.paidAmount !== undefined ? body.paidAmount : totalAmount;
+  const dueAmount = Math.max(0, totalAmount - paidAmount);
 
-    // Auto-generate saleCode: SAL-YYYY-NNN
-    const year = new Date().getFullYear();
-    const lastSale = await db.cCTVSale.findFirst({
-      where: { businessId, saleCode: { startsWith: `SAL-${year}-` } },
-      orderBy: { saleCode: "desc" },
-      select: { saleCode: true },
-    });
-    let seq = 1;
-    if (lastSale) {
-      const parts = lastSale.saleCode.split("-");
-      const lastSeq = parseInt(parts[parts.length - 1], 10);
-      if (!isNaN(lastSeq)) seq = lastSeq + 1;
-    }
-    const saleCode = `SAL-${year}-${String(seq).padStart(3, "0")}`;
+  // Create sale
+  const sale = await db.cCTVSale.create({
+    data: {
+      businessId,
+      customerId: body.customerId || null,
+      customerName: body.customerName || null,
+      invoiceNo: body.invoiceNo || null,
+      subtotal,
+      discount: invoiceDiscount,
+      totalAmount,
+      paidAmount,
+      dueAmount,
+      paymentType: body.paymentType || (dueAmount > 0 ? "credit" : "cash"),
+      saleDate: body.saleDate ? new Date(body.saleDate) : new Date(),
+      notes: body.notes || null,
+    },
+  });
 
-    // Look up all products to get name/brand/serialTracked
-    const productIds = items.map((it) => it.productId);
-    const productMap = new Map<string, { name: string; brand: string; serialTracked: boolean }>();
-    const products = await db.cCTVProduct.findMany({
-      where: { id: { in: productIds }, businessId },
-      select: { id: true, name: true, brand: true, serialTracked: true, stock: true },
-    });
-    for (const p of products) {
-      productMap.set(p.id, { name: p.name, brand: p.brand, serialTracked: p.serialTracked });
-    }
-
-    // Validate all products exist
-    for (let i = 0; i < items.length; i++) {
-      if (!productMap.has(items[i].productId)) {
-        return NextResponse.json({ error: `Item ${i + 1}: product not found` }, { status: 404 });
-      }
-    }
-
-    // Validate serial items if provided
-    if (items.some((it) => it.serialItemId)) {
-      const serialItemIds = items.filter((it) => it.serialItemId).map((it) => it.serialItemId!);
-      const serialItems = await db.cCTVSerialItem.findMany({
-        where: { id: { in: serialItemIds }, businessId, isActive: true, status: "IN_STOCK" },
-        select: { id: true, productId: true, status: true },
-      });
-      const serialMap = new Map(serialItems.map((si) => [si.id, si]));
-
-      for (let i = 0; i < items.length; i++) {
-        const item = items[i];
-        if (item.serialItemId) {
-          const si = serialMap.get(item.serialItemId);
-          if (!si) {
-            return NextResponse.json(
-              { error: `Item ${i + 1}: serial item not found, not active, or not IN_STOCK` },
-              { status: 400 },
-            );
-          }
-          if (si.productId !== item.productId) {
-            return NextResponse.json(
-              { error: `Item ${i + 1}: serial item does not belong to this product` },
-              { status: 400 },
-            );
-          }
-        }
-      }
-    }
-
-    // Calculate totals
-    const subtotal = items.reduce((sum, it) => sum + it.unitPrice * it.quantity, 0);
-    const disc = discountAmount || 0;
-    const totalDue = subtotal - disc;
-
-    // Execute in transaction
-    const sale = await db.$transaction(async (tx) => {
-      // Create the sale
-      const createdSale = await tx.cCTVSale.create({
-        data: {
-          businessId,
-          saleCode,
-          status: "PENDING",
-          customerName: customerName?.trim() || "Walk-in Customer",
-          customerPhone: customerPhone?.trim() || null,
-          customerId: customerId || null,
-          subtotal,
-          discountAmount: disc,
-          totalDue,
-          isActive: true,
-        },
-      });
-
-      // Create sale items
-      for (const item of items) {
-        const prod = productMap.get(item.productId)!;
-        const totalPrice = item.unitPrice * item.quantity;
-
-        await tx.cCTVSaleItem.create({
-          data: {
-            businessId,
-            saleId: createdSale.id,
-            productId: item.productId,
-            serialItemId: item.serialItemId || null,
-            productName: prod.name,
-            productBrand: prod.brand,
-            quantity: item.quantity,
-            unitPrice: item.unitPrice,
-            totalPrice,
-            isActive: true,
-          },
-        });
-
-        // Handle serial item: mark as SOLD + create history
-        if (item.serialItemId) {
-          await tx.cCTVSerialItem.update({
-            where: { id: item.serialItemId },
-            data: {
-              status: "SOLD",
-              saleId: createdSale.id,
-              customerName: customerName?.trim() || "Walk-in Customer",
-              customerPhone: customerPhone?.trim() || null,
-            },
-          });
-
-          await tx.cCTVSerialItemHistory.create({
-            data: {
-              businessId,
-              serialItemId: item.serialItemId,
-              fromStatus: "IN_STOCK",
-              toStatus: "SOLD",
-              event: "SOLD",
-              referenceId: createdSale.id,
-              referenceType: "SALE",
-              notes: `Sold via ${saleCode}`,
-            },
-          });
-        }
-
-        // Decrease stock for non-serial-tracked products (with safety check)
-        if (!prod.serialTracked) {
-          // Check current stock before decrementing
-          const currentProduct = await tx.cCTVProduct.findUnique({
-            where: { id: item.productId },
-            select: { stock: true, name: true },
-          });
-          if (currentProduct && currentProduct.stock < item.quantity) {
-            throw new Error(
-              `Insufficient stock for "${currentProduct.name}". Available: ${currentProduct.stock}, requested: ${item.quantity}`
-            );
-          }
-          await tx.cCTVProduct.update({
-            where: { id: item.productId },
-            data: { stock: { decrement: item.quantity } },
-          });
-        }
-      }
-
-      // Create payments if provided
-      if (payments && payments.length > 0) {
-        for (const p of payments) {
-          await tx.cCTVPayment.create({
-            data: {
-              businessId,
-              saleId: createdSale.id,
-              method: p.method,
-              amount: p.amount,
-              referenceNumber: p.referenceNumber?.trim() || null,
-              receivedBy: p.receivedBy?.trim() || null,
-              isActive: true,
-            },
-          });
-        }
-
-        // Calculate payment status
-        const paymentSum = payments.reduce((s, p) => s + p.amount, 0);
-        let status = "PENDING";
-        let completedAt: Date | null = null;
-
-        if (paymentSum >= totalDue) {
-          status = "PAID";
-          completedAt = new Date();
-        } else if (paymentSum > 0) {
-          status = "PARTIALLY_PAID";
-        }
-
-        await tx.cCTVSale.update({
-          where: { id: createdSale.id },
-          data: { status, completedAt },
-        });
-
-        createdSale.status = status;
-        createdSale.completedAt = completedAt;
-      }
-
-      // 3C: Auto-create/lookup customer + earn loyalty points
-      let linkedCustomerId = customerId || null;
-      const trimmedPhone = customerPhone?.trim() || null;
-      const trimmedName = customerName?.trim() || "Walk-in Customer";
-
-      if (trimmedPhone && !linkedCustomerId) {
-        // Look up existing customer by phone
-        const existingCustomer = await tx.customer.findFirst({
-          where: { businessId, phone: trimmedPhone, isActive: true },
-        });
-        if (existingCustomer) {
-          linkedCustomerId = existingCustomer.id;
-        } else {
-          // Create new customer
-          const newCustomer = await tx.customer.create({
-            data: {
-              businessId,
-              name: trimmedName,
-              phone: trimmedPhone,
-              loyaltyPoints: 0,
-              loyaltyTier: "BRONZE",
-              totalSpent: 0,
-              visitCount: 0,
-              isActive: true,
-            },
-          });
-          linkedCustomerId = newCustomer.id;
-        }
-      }
-
-      // Update sale with linked customerId if found/created
-      if (linkedCustomerId && !customerId) {
-        await tx.cCTVSale.update({
-          where: { id: createdSale.id },
-          data: { customerId: linkedCustomerId },
-        });
-        createdSale.customerId = linkedCustomerId;
-      }
-
-      // Earn loyalty points if we have a linked customer and loyalty is active
-      if (linkedCustomerId) {
-        const loyaltyConfig = await tx.cCTVLoyaltyConfig.findUnique({
-          where: { businessId },
-        });
-
-        if (loyaltyConfig && loyaltyConfig.isActive && loyaltyConfig.earnRateAmount > 0) {
-          const earnedPoints = Math.floor(totalDue / loyaltyConfig.earnRateAmount) * loyaltyConfig.earnRatePoints;
-
-          if (earnedPoints > 0) {
-            // Check for active double-points offers
-            const now = new Date();
-            const activeOffer = await tx.cCTVLoyaltyOffer.findFirst({
-              where: {
-                businessId,
-                configId: loyaltyConfig.id,
-                offerType: "DOUBLE_POINTS",
-                isActive: true,
-                startDate: { lte: now },
-                endDate: { gte: now },
-              },
-            });
-
-            const multiplier = activeOffer ? activeOffer.multiplier : 1;
-            const finalPoints = Math.floor(earnedPoints * multiplier);
-
-            const updatedCustomer = await tx.customer.update({
-              where: { id: linkedCustomerId },
-              data: {
-                loyaltyPoints: { increment: finalPoints },
-                totalSpent: { increment: totalDue },
-                visitCount: { increment: 1 },
-                lastVisitAt: now,
-              },
-            });
-
-            // Recalculate tier
-            const newTotal = (updatedCustomer.totalSpent || 0);
-            let tier = "BRONZE";
-            if (newTotal >= (loyaltyConfig.tierPlatinum || 500000)) tier = "PLATINUM";
-            else if (newTotal >= (loyaltyConfig.tierGold || 200000)) tier = "GOLD";
-            else if (newTotal >= (loyaltyConfig.tierSilver || 50000)) tier = "SILVER";
-
-            if (tier !== updatedCustomer.loyaltyTier) {
-              await tx.customer.update({
-                where: { id: linkedCustomerId },
-                data: { loyaltyTier: tier },
-              });
-            }
-
-            // Create loyalty transaction
-            await tx.cCTVLoyaltyTransaction.create({
-              data: {
-                businessId,
-                customerId: linkedCustomerId,
-                type: "EARN",
-                points: finalPoints,
-                balanceAfter: (updatedCustomer.loyaltyPoints || 0) + finalPoints,
-                saleId: createdSale.id,
-                offerId: activeOffer?.id || null,
-                description: activeOffer
-                  ? `Earned ${finalPoints} pts (${activeOffer.name}) on ${saleCode}`
-                  : `Earned ${finalPoints} pts on ${saleCode}`,
-              },
-            });
-
-            // Check for BONUS_POINTS offers
-            const bonusOffer = await tx.cCTVLoyaltyOffer.findFirst({
-              where: {
-                businessId,
-                configId: loyaltyConfig.id,
-                offerType: "BONUS_POINTS",
-                isActive: true,
-                startDate: { lte: now },
-                endDate: { gte: now },
-              },
-            });
-
-            if (bonusOffer && bonusOffer.bonusPoints && bonusOffer.bonusPoints > 0) {
-              const bonusBalance = (updatedCustomer.loyaltyPoints || 0) + finalPoints + bonusOffer.bonusPoints;
-              await tx.customer.update({
-                where: { id: linkedCustomerId },
-                data: { loyaltyPoints: { increment: bonusOffer.bonusPoints } },
-              });
-              await tx.cCTVLoyaltyTransaction.create({
-                data: {
-                  businessId,
-                  customerId: linkedCustomerId,
-                  type: "BONUS",
-                  points: bonusOffer.bonusPoints,
-                  balanceAfter: bonusBalance,
-                  saleId: createdSale.id,
-                  offerId: bonusOffer.id,
-                  description: `Bonus ${bonusOffer.bonusPoints} pts (${bonusOffer.name})`,
-                },
-              });
-            }
-          } else {
-            // No points earned but still update visit stats
-            await tx.customer.update({
-              where: { id: linkedCustomerId },
-              data: {
-                totalSpent: { increment: totalDue },
-                visitCount: { increment: 1 },
-                lastVisitAt: new Date(),
-              },
-            });
-          }
-        } else {
-          // No loyalty config — just update visit stats
-          await tx.customer.update({
-            where: { id: linkedCustomerId },
-            data: {
-              totalSpent: { increment: totalDue },
-              visitCount: { increment: 1 },
-              lastVisitAt: new Date(),
-            },
-          });
-        }
-      }
-
-      return createdSale;
-    });
-
-    // Fetch the complete sale with items and payments
-    const fullSale = await db.cCTVSale.findUnique({
-      where: { id: sale.id },
-      include: {
-        items: {
-          include: {
-            product: { select: { id: true, name: true, brand: true, imageUrl: true } },
-            serialItem: { select: { id: true, serialNumber: true, imei: true, status: true } },
-          },
-        },
-        payments: { orderBy: { createdAt: "asc" } },
+  // Create sale items + process serials + update stock
+  for (const item of body.items) {
+    await db.cCTVSaleItem.create({
+      data: {
+        saleId: sale.id,
+        businessId,
+        productId: item.productId,
+        productName: item.productName,
+        quantity: item.quantity || 1,
+        sellPrice: item.sellPrice || 0,
+        costPrice: item.costPrice || 0,
+        discount: item.discount || 0,
+        serialNumber: item.serialNumber || null,
       },
     });
 
-    return NextResponse.json(fullSale, { status: 201 });
-  } catch (error) {
-    console.error("Create sale error:", error);
-    return NextResponse.json({ error: "Failed to create sale" }, { status: 500 });
+    // If this is a serial-tracked item (has serialNumber), mark it as SOLD
+    if (item.serialNumber) {
+      // Find the serial item first (to get its ID + warranty months for history)
+      const serialItem = await db.cCTVSerialItem.findFirst({
+        where: { businessId, serialNumber: item.serialNumber, status: "IN_STOCK" },
+      });
+
+      // Determine warranty months: serial item's stored value > product default > 0
+      let warrantyMonths = item.warrantyMonths || 0;
+      if (!warrantyMonths && serialItem?.warrantyMonths) {
+        warrantyMonths = serialItem.warrantyMonths;
+      }
+      if (!warrantyMonths) {
+        const product = await db.cCTVProduct.findUnique({
+          where: { id: item.productId },
+          select: { warrantyMonths: true },
+        });
+        warrantyMonths = product?.warrantyMonths || 0;
+      }
+      const warrantyEnd = warrantyMonths > 0
+        ? new Date(Date.now() + warrantyMonths * 30 * 24 * 60 * 60 * 1000)
+        : null;
+
+      if (serialItem) {
+        await db.cCTVSerialItem.update({
+          where: { id: serialItem.id },
+          data: {
+            status: "SOLD",
+            sellPrice: item.sellPrice || 0,
+            saleDate: new Date(),
+            warrantyEnd,
+            customerId: body.customerId || null,
+            customerName: body.customerName || null,
+          },
+        });
+
+        // Create history entry (best-effort — don't block sale if history table missing)
+        try {
+          await db.cCTVSerialHistory.create({
+            data: {
+              businessId,
+              serialItemId: serialItem.id,
+              serialNumber: item.serialNumber,
+              productId: item.productId,
+              productName: item.productName,
+              eventType: "SOLD",
+              description: `Sold to ${body.customerName || "walk-in customer"}${warrantyMonths > 0 ? ` · ${warrantyMonths}m warranty` : ""}`,
+              referenceId: sale.id,
+              referenceType: "sale",
+              eventDate: new Date(),
+            },
+          });
+        } catch (historyErr) {
+          console.error("[cctv/sales] History write failed (run `bunx prisma db push` to create cctv_serial_history table):", historyErr);
+        }
+      }
+    } else {
+      // Non-serial product: check + decrement stock (prevent negative)
+      const product = await db.cCTVProduct.findUnique({
+        where: { id: item.productId },
+        select: { stock: true, name: true },
+      });
+      if (product && product.stock < (item.quantity || 1)) {
+        return NextResponse.json({
+          error: `Insufficient stock for ${product.name}. Available: ${product.stock}, requested: ${item.quantity || 1}`,
+        }, { status: 400 });
+      }
+      if (product) {
+        await db.cCTVProduct.update({
+          where: { id: item.productId },
+          data: { stock: { decrement: item.quantity || 1 } },
+        });
+      }
+    }
   }
+
+  // Record payment if paid
+  if (paidAmount > 0) {
+    await db.cCTVPayment.create({
+      data: {
+        businessId,
+        type: "sale",
+        referenceId: sale.id,
+        customerId: body.customerId || null,
+        amount: paidAmount,
+        paymentMethod: body.paymentMethod || "cash",
+        paymentDate: new Date(),
+        notes: `Payment for sale ${sale.id}`,
+      },
+    });
+  }
+
+  return NextResponse.json({ success: true, sale }, { status: 201 });
 }

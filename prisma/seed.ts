@@ -12,8 +12,8 @@ async function main() {
     { slug: "pharmacy", name: "Pharmacy", icon: "Pill", color: "#16A34A", isActive: true, sortOrder: 1 },
     { slug: "grocery", name: "Grocery Shop", icon: "ShoppingCart", color: "#EA580C", isActive: false, sortOrder: 2 },
     { slug: "restaurant", name: "Restaurant", icon: "UtensilsCrossed", color: "#DC2626", isActive: false, sortOrder: 3 },
-    { slug: "cctv-shop", name: "CCTV Shop", icon: "Camera", color: "#7C3AED", isActive: true, sortOrder: 4 },
-    { slug: "mobile", name: "Mobile Shop", icon: "Smartphone", color: "#0891B2", isActive: false, sortOrder: 5 },
+    { slug: "mobile-shop", name: "Mobile Shop", icon: "Smartphone", color: "#0891B2", isActive: true, sortOrder: 4 },
+    { slug: "mobile", name: "Mobile Repair", icon: "Smartphone", color: "#0891B2", isActive: false, sortOrder: 5 },
     { slug: "electric", name: "Electric Shop", icon: "Zap", color: "#CA8A04", isActive: false, sortOrder: 6 },
     { slug: "bakery", name: "Bakery", icon: "Cake", color: "#DB2777", isActive: false, sortOrder: 7 },
   ];
@@ -102,10 +102,10 @@ async function main() {
     console.log(`Super-admin "${superAdminUsername}" already exists — password left unchanged`);
   }
 
-  // ── Seed CCTV Master Products (catalog) ──
+  // ── Seed MobileShop Master Products (catalog) ──
   // A small starter catalog so the master catalog is not empty on first run.
-  // Super-admin can add more via /admin/catalog/cctv (Phase 3B).
-  const cctvMasterProducts = [
+  // Super-admin can add more via /admin/catalog/mobile-shop (Phase 3B (MobileShop)).
+  const mobileShopMasterProducts = [
     {
       name: "DS-2CD2143G2-I 4MP Bullet Camera",
       brand: "Hikvision",
@@ -162,7 +162,7 @@ async function main() {
       name: "RG59 Siamese Cable 100m Roll",
       brand: "Generic",
       model: "RG59-100M",
-      description: "RG59 Siamese Coaxial + 2C Power Cable, 100m roll, for CCTV installations",
+      description: "RG59 Siamese Coaxial + 2C Power Cable, 100m roll, for mobile shop installations",
       hsnCode: "8544.70.00",
       defaultCategoryName: "Cables",
       defaultWarrantyMonths: 0,
@@ -173,14 +173,14 @@ async function main() {
     },
   ];
 
-  for (const mp of cctvMasterProducts) {
+  for (const mp of mobileShopMasterProducts) {
     await db.cCTVMasterProduct.upsert({
       where: { brand_model: { brand: mp.brand, model: mp.model } },
       update: {},
       create: mp,
     });
   }
-  console.log(`Seeded ${cctvMasterProducts.length} CCTV master products`);
+  console.log(`Seeded ${mobileShopMasterProducts.length} MobileShop master products`);
 
   console.log("Done!");
 }

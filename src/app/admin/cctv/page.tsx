@@ -1,54 +1,24 @@
 "use client";
 
-// /admin/cctv/page.tsx — CC Camera project placeholder.
+// /admin/cctv — CCTV module placeholder.
 // Will be built when the CCTV business module is activated.
 
-import {
-  Card, CardContent, CardDescription, CardHeader, CardTitle,
-} from "@/components/ui/card";
-import { Cctv, Construction, CheckCircle2 } from "lucide-react";
+import { Camera } from "lucide-react";
 
-export default function CctvDashboard() {
+export default function CCTVPage() {
   return (
-    <Card className="border-blue-200 dark:border-blue-900">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-blue-700 dark:text-blue-400">
-          <Cctv className="h-5 w-5" />
-          CC Camera Inventory
-        </CardTitle>
-        <CardDescription>Coming Soon — Module under development</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="flex flex-col items-center justify-center py-12 text-center">
-          <div className="w-16 h-16 rounded-full bg-blue-50 dark:bg-blue-950/30 flex items-center justify-center mb-4">
-            <Construction className="h-8 w-8 text-blue-600" />
-          </div>
-          <h3 className="text-lg font-semibold mb-2">CC Camera Module</h3>
-          <p className="text-sm text-muted-foreground max-w-md">
-            This module will handle CCTV inventory management including installation tracking,
-            maintenance contracts, warranty management, and project-based billing.
-          </p>
+    <div className="p-8 max-w-4xl mx-auto">
+      <div className="flex flex-col items-center justify-center py-20 text-center">
+        <div className="w-16 h-16 rounded-2xl bg-violet-100 flex items-center justify-center mb-4">
+          <Camera className="h-8 w-8 text-violet-500" />
         </div>
-
-        <div>
-          <h4 className="text-sm font-semibold mb-2">Planned Features:</h4>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {[
-              "Installation tracking",
-              "Maintenance contracts",
-              "Warranty management",
-              "Project-based inventory",
-              "Contractor pricing",
-              "Monthly service reminders",
-            ].map((feature) => (
-              <div key={feature} className="flex items-center gap-2 text-sm text-muted-foreground">
-                <CheckCircle2 className="h-4 w-4 text-blue-600" />
-                {feature}
-              </div>
-            ))}
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+        <h1 className="text-xl font-bold text-gray-900">CCTV Module (Coming Soon)</h1>
+        <p className="text-sm text-gray-500 mt-2 max-w-md">
+          A clean, simple, desktop-first CCTV business management module is being built.
+          It will handle inventory, purchases, sales, warranty, and reports — designed
+          specifically for Bangladeshi CCTV shops.
+        </p>
+      </div>
+    </div>
   );
 }
