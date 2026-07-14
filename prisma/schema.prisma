@@ -218,6 +218,16 @@ model Business {
   newCctvPurchases        CCTVPurchase[]
   newCctvSales            CCTVSale[]
   newCctvExpenses         CCTVExpense[]
+  // Phase 2: Add reverse relations for orphaned CCTV models (fixes C-5)
+  newCctvPurchaseItems      CCTVPurchaseItem[]    @relation("newCctvPurchaseItems")
+  newCctvSaleItems          CCTVSaleItem[]          @relation("newCctvSaleItems")
+  newCctvPayments           CCTVPayment[]           @relation("newCctvPayments")
+  newCctvReturnItems        CCTVReturnItem[]        @relation("newCctvReturnItems")
+  newCctvWarrantyClaims     CCTVWarrantyClaim[]     @relation("newCctvWarrantyClaims")
+  newCctvSerialHistories    CCTVSerialHistory[]     @relation("newCctvSerialHistories")
+  newCctvRepairs            CCTVRepair[]            @relation("newCctvRepairs")
+  newCctvSupplierReplacements CCTVSupplierReplacement[] @relation("newCctvSupplierReplacements")
+  newCctvEstimateItems      CCTVEstimateItem[]      @relation("newCctvEstimateItems")
 
   @@index([userId])
   @@index([businessTypeId])
@@ -3536,10 +3546,10 @@ model CCTVPurchaseItem {
   createdAt   DateTime @default(now())
 
   purchase CCTVPurchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
-  product  CCTVProduct  @relation(fields: [productId], references: [id])
-
-  @@index([purchaseId])
+  product  CCTVProduct  @relation(fields: [productId], references: [id], onDelete: Restrict)
+  business Business     @relation("newCctvPurchaseItems", fields: [businessId], references: [id], onDelete: Cascade)
   @@index([productId])
+  @@index([businessId])
   @@map("cctv_purchase_items")
 }
 
@@ -3586,10 +3596,10 @@ model CCTVSaleItem {
   createdAt    DateTime @default(now())
 
   sale    CCTVSale    @relation(fields: [saleId], references: [id], onDelete: Cascade)
-  product CCTVProduct @relation(fields: [productId], references: [id])
-
-  @@index([saleId])
+  product CCTVProduct @relation(fields: [productId], references: [id], onDelete: Restrict)
+  business Business   @relation("newCctvSaleItems", fields: [businessId], references: [id], onDelete: Cascade)
   @@index([productId])
+  @@index([businessId])
   @@map("cctv_sale_items")
 }
 
@@ -3606,6 +3616,8 @@ model CCTVPayment {
   paymentDate DateTime @default(now())
   notes       String?
   createdAt   DateTime @default(now())
+
+  business Business @relation("newCctvPayments", fields: [businessId], references: [id], onDelete: Cascade)
 
   @@index([businessId])
   @@index([type])
@@ -3656,6 +3668,7 @@ model CCTVReturn {
 model CCTVReturnItem {
   id          String   @id @default(cuid())
   returnId    String
+  businessId  String
   productId   String
   productName String
   quantity    Int      @default(1)
@@ -3664,8 +3677,10 @@ model CCTVReturnItem {
   createdAt   DateTime @default(now())
 
   return CCTVReturn @relation(fields: [returnId], references: [id], onDelete: Cascade)
+  business Business @relation("newCctvReturnItems", fields: [businessId], references: [id], onDelete: Cascade)
 
   @@index([returnId])
+  @@index([businessId])
   @@map("cctv_return_items")
 }
 
@@ -3684,6 +3699,8 @@ model CCTVWarrantyClaim {
   resolvedDate  DateTime?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+
+  business Business @relation("newCctvWarrantyClaims", fields: [businessId], references: [id], onDelete: Cascade)
 
   @@index([businessId])
   @@index([serialNumber])
@@ -3711,6 +3728,7 @@ model CCTVSerialHistory {
   createdAt     DateTime @default(now())
 
   serialItem CCTVSerialItem? @relation(fields: [serialItemId], references: [id], onDelete: SetNull)
+  business Business @relation("newCctvSerialHistories", fields: [businessId], references: [id], onDelete: Cascade)
 
   @@index([businessId])
   @@index([serialItemId])
@@ -3749,6 +3767,8 @@ model CCTVRepair {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
+  business Business @relation("newCctvRepairs", fields: [businessId], references: [id], onDelete: Cascade)
+
   @@index([businessId])
   @@index([serialNumber])
   @@index([customerId])
@@ -3781,6 +3801,8 @@ model CCTVSupplierReplacement {
   notes                String?
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
+
+  business Business @relation("newCctvSupplierReplacements", fields: [businessId], references: [id], onDelete: Cascade)
 
   @@index([businessId])
   @@index([repairId])
@@ -3830,8 +3852,10 @@ model CCTVEstimateItem {
   createdAt   DateTime @default(now())
 
   estimate CCTVEstimate @relation(fields: [estimateId], references: [id], onDelete: Cascade)
+  business Business @relation("newCctvEstimateItems", fields: [businessId], references: [id], onDelete: Cascade)
 
   @@index([estimateId])
   @@index([productId])
+  @@index([businessId])
   @@map("cctv_estimate_items")
 }
