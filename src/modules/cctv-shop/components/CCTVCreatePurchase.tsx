@@ -50,10 +50,12 @@ interface PurchaseItem {
   productBrand?: string;
   quantity: number;
   unitCost: number;
+  unitPrice?: number; // sell price
+  warrantyMonths: number;
   serialTracked: boolean;
   unit?: string;
-  serialNumbers: string[]; // Phase 5: user-entered serials
-  showSerialEntry: boolean; // Phase 5: toggle serial entry panel
+  serialNumbers: string[];
+  showSerialEntry: boolean;
 }
 
 export function CCTVCreatePurchase() {
@@ -155,6 +157,8 @@ export function CCTVCreatePurchase() {
         productBrand: p.brand,
         quantity: 1,
         unitCost: p.costPrice,
+        unitPrice: p.sellPrice,
+        warrantyMonths: p.warrantyMonths || 0,
         serialTracked: p.serialTracked,
         unit: p.unit,
         serialNumbers: [],
@@ -245,6 +249,8 @@ export function CCTVCreatePurchase() {
             productId: it.productId,
             quantity: it.quantity,
             unitCost: it.unitCost,
+            unitPrice: it.unitPrice || 0,
+            warrantyMonths: it.warrantyMonths || 0,
             serialNumbers: it.serialTracked ? it.serialNumbers : undefined,
           })),
         }),
@@ -538,13 +544,13 @@ export function CCTVCreatePurchase() {
             transition={{ duration: 0.25 }}
             className="space-y-4"
           >
-            {/* Items list */}
+            {/* Items list — last added on top */}
             {items.length > 0 && (
               <div className="space-y-2.5">
                 <p className="text-sm font-semibold text-gray-700">
                   Items ({items.length})
                 </p>
-                {items.map((item, idx) => (
+                {[...items].reverse().map((item, idx) => (
                   <motion.div
                     key={item._localId}
                     initial={{ opacity: 0, y: 10 }}
@@ -619,6 +625,41 @@ export function CCTVCreatePurchase() {
                       </div>
                     </div>
 
+                    {/* Sell Price + Warranty row */}
+                    <div className="flex items-center gap-3 mt-2">
+                      <div className="flex-1 min-w-0">
+                        <label className="text-[9px] text-gray-400 font-medium uppercase tracking-wider block mb-0.5">Sell Price</label>
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          value={item.unitPrice || ''}
+                          onChange={(e) => setItems((prev) => prev.map((it) =>
+                            it._localId === item._localId ? { ...it, unitPrice: parseFloat(e.target.value) || 0 } : it
+                          ))}
+                          placeholder="0"
+                          className="w-full h-8 px-2.5 rounded-lg bg-gray-50 border border-gray-200 text-sm font-semibold text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-400/40 focus:border-violet-400 transition-all"
+                        />
+                      </div>
+                      <div className="shrink-0">
+                        <label className="text-[9px] text-gray-400 font-medium uppercase tracking-wider block mb-0.5">Warranty</label>
+                        <select
+                          value={item.warrantyMonths}
+                          onChange={(e) => setItems((prev) => prev.map((it) =>
+                            it._localId === item._localId ? { ...it, warrantyMonths: parseInt(e.target.value) } : it
+                          ))}
+                          className="h-8 px-2 rounded-lg bg-gray-50 border border-gray-200 text-xs font-semibold text-gray-700 focus:outline-none focus:ring-2 focus:ring-violet-400/40"
+                        >
+                          <option value={0}>None</option>
+                          <option value={6}>6 mo</option>
+                          <option value={12}>1 yr</option>
+                          <option value={24}>2 yr</option>
+                          <option value={36}>3 yr</option>
+                          <option value={48}>4 yr</option>
+                          <option value={60}>5 yr</option>
+                        </select>
+                      </div>
+                    </div>
+
                     {/* Serial number entry (Phase 5) */}
                     {item.serialTracked && (
                       <div className="mt-3 pt-3 border-t border-gray-50">
@@ -671,10 +712,20 @@ export function CCTVCreatePurchase() {
                   </motion.div>
                 ))}
 
-                {/* Running subtotal */}
-                <div className="bg-violet-50 rounded-xl p-3 flex items-center justify-between">
-                  <span className="text-xs text-violet-600 font-medium">Subtotal</span>
-                  <span className="text-sm font-bold text-violet-700">{formatBDT(subtotal)}</span>
+                {/* Running total — distinct colored section */}
+                <div className="bg-gradient-to-r from-violet-600 to-purple-700 rounded-2xl p-4 shadow-lg shadow-violet-500/20">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-[10px] text-violet-100 uppercase tracking-wider font-medium">Running Total</p>
+                      <p className="text-2xl font-bold text-white mt-0.5">{formatBDT(subtotal)}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[10px] text-violet-100 uppercase tracking-wider">{items.length} item(s)</p>
+                      <p className="text-xs text-violet-100 mt-0.5">
+                        {items.reduce((s, it) => s + it.quantity, 0)} unit(s)
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
