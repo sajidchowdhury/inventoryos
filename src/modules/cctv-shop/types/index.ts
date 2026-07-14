@@ -33,6 +33,7 @@ export type CCTVViewType =
   | 'replacements'
   | 'warranties'
   | 'estimates'
+  | 'sale-invoice'
   | 'settings';
 
 export interface CCTVProduct {

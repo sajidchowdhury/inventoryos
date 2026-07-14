@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft, Loader2, Plus, Send, X, RefreshCw, CheckCircle2,
-  AlertCircle, Package, Building2,
+  AlertCircle, Package, Building2, Search,
 } from 'lucide-react';
 import { useCCTVNavStore } from '@/stores/cctv-nav-store-simple';
 import { useAuthStore } from '@/stores/auth-store';
@@ -439,14 +439,59 @@ export function CCTVSupplierReplacements() {
                       Use this mode when you have damaged items in stock that need to be sent to the supplier for replacement. Stock will be decremented now and incremented when replacement arrives.
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-xs text-gray-600">Product *</Label>
-                      <select value={stockProductId} onChange={(e) => setStockProductId(e.target.value)}
-                        className="w-full h-10 rounded-xl border border-gray-200 px-3 text-sm bg-white">
-                        <option value="">Select product...</option>
-                        {products.filter(p => !p.serialTracked).map((p) => (
-                          <option key={p.id} value={p.id}>{p.name} ({p.brand}) — Stock: {p.stock}</option>
-                        ))}
-                      </select>
+                      <Label className="text-xs text-gray-600">Search Product *</Label>
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                        <Input value={productSearch} onChange={(e) => setProductSearch(e.target.value)}
+                          placeholder="Type product name or brand..." className="h-10 rounded-xl pl-10 text-sm" autoFocus />
+                      </div>
+                      {/* Search results dropdown */}
+                      {productSearch.trim() && !stockProductId && (
+                        <div className="bg-white rounded-xl border border-gray-200 shadow-lg max-h-48 overflow-y-auto">
+                          {products
+                            .filter(p => !p.serialTracked)
+                            .filter(p => {
+                              const q = productSearch.toLowerCase();
+                              return p.name.toLowerCase().includes(q) ||
+                                     p.brand.toLowerCase().includes(q) ||
+                                     (p.model || '').toLowerCase().includes(q);
+                            })
+                            .slice(0, 8)
+                            .map((p) => (
+                              <button
+                                key={p.id}
+                                onClick={() => { setStockProductId(p.id); setProductSearch(`${p.name} (${p.brand})`); }}
+                                className="w-full text-left p-2.5 hover:bg-orange-50 border-b border-gray-50 last:border-0"
+                              >
+                                <p className="text-sm font-medium text-gray-900">{p.name}</p>
+                                <p className="text-[10px] text-gray-500">{p.brand} · Stock: {p.stock}</p>
+                              </button>
+                            ))}
+                          {products.filter(p => !p.serialTracked).filter(p => {
+                            const q = productSearch.toLowerCase();
+                            return p.name.toLowerCase().includes(q) || p.brand.toLowerCase().includes(q);
+                          }).length === 0 && (
+                            <p className="p-3 text-xs text-gray-400 text-center">No products found</p>
+                          )}
+                        </div>
+                      )}
+                      {/* Selected product */}
+                      {stockProductId && (
+                        <div className="bg-emerald-50 rounded-lg p-2 flex items-center justify-between">
+                          <div className="text-xs">
+                            <p className="font-semibold text-emerald-800">
+                              {products.find(p => p.id === stockProductId)?.name}
+                            </p>
+                            <p className="text-emerald-600">
+                              {products.find(p => p.id === stockProductId)?.brand} · Stock: {products.find(p => p.id === stockProductId)?.stock}
+                            </p>
+                          </div>
+                          <button onClick={() => { setStockProductId(''); setProductSearch(''); }}
+                            className="text-[10px] text-emerald-600 hover:text-red-500">
+                            Change
+                          </button>
+                        </div>
+                      )}
                     </div>
                     <div className="space-y-1.5">
                       <Label className="text-xs text-gray-600">Quantity (damaged items)</Label>

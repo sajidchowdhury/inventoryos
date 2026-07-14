@@ -17,6 +17,7 @@ import { CCTVSupplierReplacements } from './CCTVSupplierReplacements';
 import { CCTVWarrantyDashboard } from './CCTVWarrantyDashboard';
 import { CCTVRepairToken } from './CCTVRepairToken';
 import { CCTVEstimates } from './CCTVEstimates';
+import { CCTVSaleInvoice } from './CCTVSaleInvoice';
 import { CCTVCategories } from './CCTVCategories';
 import { CCTVImportProducts } from './CCTVImportProducts';
 import { CCTVReportsHub } from './CCTVReportsHub';
@@ -280,6 +281,7 @@ export function CCTVShell() {
           {activeView === 'purchase' && <CCTVPurchase />}
           {activeView === 'sales' && <CCTVSales />}
           {activeView === 'estimates' && <CCTVEstimates />}
+          {activeView === 'sale-invoice' && <CCTVSaleInvoice />}
           {activeView === 'serial-search' && <CCTVSerialSearch />}
           {activeView === 'warranties' && <CCTVWarrantyDashboard />}
           {activeView === 'repairs' && <CCTVRepairs />}

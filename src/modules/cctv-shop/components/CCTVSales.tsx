@@ -67,7 +67,7 @@ const fadeUp = {
 };
 
 export function CCTVSales() {
-  const { goBack } = useCCTVNavStore();
+  const { goBack, navigate } = useCCTVNavStore();
   const businessId = useAuthStore((s) => s.session?.business?.id);
   const { toast } = useToast();
 
@@ -246,8 +246,14 @@ export function CCTVSales() {
       });
 
       if (res.ok) {
+        const data = await res.json();
         toast({ title: 'Sale completed', description: `${cart.length} item(s) sold` });
-        goBack();
+        // Navigate to printable invoice
+        if (data.sale?.id) {
+          navigate('sale-invoice', data.sale.id);
+        } else {
+          goBack();
+        }
       } else {
         const data = await res.json();
         toast({ title: data.error || 'Failed', variant: 'destructive' });

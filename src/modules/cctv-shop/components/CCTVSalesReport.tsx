@@ -2,10 +2,12 @@
 
 import { useState } from 'react';
 import { ReportShell, formatBDT, formatDate } from './ReportShell';
-import { TrendingUp, ShoppingBag, DollarSign, AlertCircle } from 'lucide-react';
+import { TrendingUp, ShoppingBag, DollarSign, AlertCircle, Printer } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useCCTVNavStore } from '@/stores/cctv-nav-store-simple';
 
 export function CCTVSalesReport() {
+  const { navigate } = useCCTVNavStore();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
@@ -119,17 +121,24 @@ export function CCTVSalesReport() {
             <div className="divide-y divide-gray-50 max-h-96 overflow-y-auto">
               {data.sales.map((sale: any) => (
                 <div key={sale.id} className="flex items-center justify-between p-3 text-sm">
-                  <div>
+                  <div className="flex-1 min-w-0">
                     <p className="font-medium text-gray-900">{sale.customerName || 'Walk-in'}</p>
                     <p className="text-[10px] text-gray-400">
                       {formatDate(sale.saleDate)} · {sale.items.length} item(s)
                       {sale.paymentType === 'credit' && ' · Credit'}
                     </p>
                   </div>
-                  <div className="text-right">
+                  <div className="text-right shrink-0 mr-3">
                     <p className="font-semibold text-emerald-600">{formatBDT(sale.totalAmount)}</p>
                     {sale.dueAmount > 0 && <p className="text-[10px] text-red-500">Due: {formatBDT(sale.dueAmount)}</p>}
                   </div>
+                  <button
+                    onClick={() => navigate('sale-invoice', sale.id)}
+                    className="w-8 h-8 rounded-lg bg-violet-50 hover:bg-violet-100 flex items-center justify-center shrink-0"
+                    title="Print Invoice"
+                  >
+                    <Printer className="w-4 h-4 text-violet-600" />
+                  </button>
                 </div>
               ))}
             </div>

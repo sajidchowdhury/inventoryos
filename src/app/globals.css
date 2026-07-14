@@ -339,3 +339,32 @@
     max-width: 100%;
   }
 }
+
+/* ── Print styles for invoices and tokens ── */
+@media print {
+  /* Hide everything by default */
+  body * {
+    visibility: hidden;
+  }
+
+  /* Show only the invoice/token content */
+  .print\:hidden {
+    display: none !important;
+  }
+
+  /* Show print-only elements */
+  .print\:block {
+    display: block !important;
+  }
+
+  /* Reset page margins for printing */
+  @page {
+    margin: 1cm;
+  }
+
+  /* Ensure colors print */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}
