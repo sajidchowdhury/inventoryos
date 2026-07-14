@@ -3466,6 +3466,7 @@ model CCTVSerialItem {
   @@index([productId])
   @@index([serialNumber])
   @@index([status])
+  @@unique([businessId, serialNumber])
   @@map("cctv_serial_items")
 }
 
@@ -3579,6 +3580,7 @@ model CCTVSale {
   @@index([businessId])
   @@index([customerId])
   @@index([saleDate])
+  @@unique([businessId, invoiceNo])
   @@map("cctv_sales")
 }
 
@@ -3838,6 +3840,7 @@ model CCTVEstimate {
   @@index([businessId])
   @@index([customerId])
   @@index([status])
+  @@unique([businessId, estimateNo])
   @@map("cctv_estimates")
 }
 

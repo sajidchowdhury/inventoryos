@@ -166,6 +166,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   } catch (err: any) {
     console.error("[cctv/purchases] Transaction failed:", err);
     const msg = err?.message || "Failed to save purchase";
+
+    // Handle unique constraint violations (P2002)
+    if (err?.code === "P2002") {
+      const target = err?.meta?.target as string[] | undefined;
+      if (target?.includes("serialNumber")) {
+        return NextResponse.json({ error: "One or more serial numbers already exist in this business. Duplicate serials are not allowed." }, { status: 400 });
+      }
+      return NextResponse.json({ error: "Duplicate entry — this record already exists." }, { status: 400 });
+    }
+
     if (msg.includes("does not exist") || msg.includes("relation") || err?.code === "P2021") {
       return NextResponse.json({
         error: "Database table missing. Run `bunx prisma db push` on the server to create the new tables.",
