@@ -56,10 +56,28 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         productName: item.productName,
         quantity: item.quantity || 1,
         costPrice: item.costPrice || 0,
+        sellPrice: item.sellPrice != null ? parseFloat(item.sellPrice) : 0,
         serialNumbers: item.serialNumbers || null,
         warrantyMonths: item.warrantyMonths != null ? parseInt(item.warrantyMonths) : null,
       },
     });
+
+    // Update product's sellPrice if provided (so future sales use the new price)
+    if (item.sellPrice != null && parseFloat(item.sellPrice) > 0) {
+      await db.cCTVProduct.update({
+        where: { id: item.productId },
+        data: {
+          costPrice: item.costPrice || 0,
+          sellPrice: parseFloat(item.sellPrice),
+        },
+      });
+    } else {
+      // Just update cost price
+      await db.cCTVProduct.update({
+        where: { id: item.productId },
+        data: { costPrice: item.costPrice || 0 },
+      });
+    }
 
     // Parse serial numbers (newline or comma separated)
     if (item.serialNumbers && item.serialNumbers.trim()) {
@@ -114,19 +132,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         }
       }
 
-      // Update product stock by serial count
+      // Update product stock by serial count (cost/sell price already updated above)
       await db.cCTVProduct.update({
         where: { id: item.productId },
         data: { stock: { increment: serials.length } },
       });
     } else {
-      // Non-serial product: just update stock
+      // Non-serial product: just increment stock (cost/sell price already updated above)
       await db.cCTVProduct.update({
         where: { id: item.productId },
-        data: {
-          stock: { increment: item.quantity || 1 },
-          costPrice: item.costPrice || 0, // Update cost price to latest
-        },
+        data: { stock: { increment: item.quantity || 1 } },
       });
     }
   }

@@ -16,11 +16,13 @@ import { Textarea } from '@/components/ui/textarea';
 
 interface SupplierReplacement {
   id: string;
-  originalSerialNumber: string;
+  originalSerialNumber: string | null;
   newSerialNumber: string | null;
   productName: string | null;
   supplierName: string | null;
-  status: string; // sent, received, cancelled
+  status: string;
+  quantity: number;
+  isSerialTracked: boolean;
   sentDate: string;
   receivedDate: string | null;
   notes: string | null;
@@ -61,7 +63,10 @@ export function CCTVSupplierReplacements() {
   const [showForm, setShowForm] = useState(false);
 
   // Form state
+  const [formMode, setFormMode] = useState<'serial' | 'stock'>('serial');
   const [originalSerialNumber, setOriginalSerialNumber] = useState('');
+  const [stockProductId, setStockProductId] = useState('');
+  const [stockQuantity, setStockQuantity] = useState('1');
   const [supplierId, setSupplierId] = useState('');
   const [notes, setNotes] = useState('');
   const [repairId, setRepairId] = useState('');
@@ -70,6 +75,10 @@ export function CCTVSupplierReplacements() {
   // Found product info from serial
   const [foundProduct, setFoundProduct] = useState<{ name: string; brand: string; status: string } | null>(null);
   const [serialSearching, setSerialSearching] = useState(false);
+
+  // Products for stock mode
+  const [products, setProducts] = useState<any[]>([]);
+  const [productSearch, setProductSearch] = useState('');
 
   // Receive replacement dialog
   const [receiveItem, setReceiveItem] = useState<SupplierReplacement | null>(null);
@@ -100,6 +109,13 @@ export function CCTVSupplierReplacements() {
   useEffect(() => {
     loadReplacements();
     loadSuppliers();
+    // Load products for stock mode
+    if (businessId) {
+      fetch(`/api/businesses/${businessId}/cctv/products?limit=100`)
+        .then((r) => r.json())
+        .then((data) => setProducts(data.products || []))
+        .catch(() => {});
+    }
   }, [businessId]);
 
   // If navigated from repair detail with contextId, open the form pre-filled
@@ -146,26 +162,39 @@ export function CCTVSupplierReplacements() {
   }, [originalSerialNumber, businessId]);
 
   const handleCreate = async () => {
-    if (!originalSerialNumber.trim()) {
+    if (formMode === 'serial' && !originalSerialNumber.trim()) {
       toast({ title: 'Error', description: 'Original serial number is required', variant: 'destructive' });
+      return;
+    }
+    if (formMode === 'stock' && !stockProductId) {
+      toast({ title: 'Error', description: 'Select a product', variant: 'destructive' });
       return;
     }
     setSaving(true);
     try {
+      const payload: any = {
+        supplierId: supplierId || null,
+        repairId: repairId || null,
+        notes: notes || null,
+      };
+      if (formMode === 'serial') {
+        payload.originalSerialNumber = originalSerialNumber.trim();
+      } else {
+        payload.productId = stockProductId;
+        payload.quantity = parseInt(stockQuantity) || 1;
+      }
+
       const res = await fetch(`/api/businesses/${businessId}/cctv/supplier-replacements`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          originalSerialNumber: originalSerialNumber.trim(),
-          supplierId: supplierId || null,
-          repairId: repairId || null,
-          notes: notes || null,
-        }),
+        body: JSON.stringify(payload),
       });
       if (res.ok) {
-        toast({ title: 'Sent to supplier', description: `Replacement requested for ${originalSerialNumber}` });
+        const label = formMode === 'serial' ? originalSerialNumber : `${stockQuantity} item(s)`;
+        toast({ title: 'Sent to supplier', description: `Replacement requested for ${label}` });
         setShowForm(false);
         setOriginalSerialNumber(''); setSupplierId(''); setNotes(''); setRepairId('');
+        setStockProductId(''); setStockQuantity('1'); setProductSearch('');
         setFoundProduct(null);
         loadReplacements();
       } else {
@@ -181,25 +210,35 @@ export function CCTVSupplierReplacements() {
 
   const handleReceive = async () => {
     if (!receiveItem) return;
-    if (!newSerialNumber.trim()) {
+    // For serial-tracked: require new serial number
+    if (receiveItem.isSerialTracked !== false && !newSerialNumber.trim()) {
       toast({ title: 'Error', description: 'New serial number is required', variant: 'destructive' });
       return;
     }
     setReceiving(true);
     try {
+      const payload: any = {
+        notes: receiveNotes || undefined,
+      };
+      if (receiveItem.isSerialTracked === false) {
+        // Non-serial: just mark as received
+        payload.action = 'receive';
+        payload.status = 'received';
+      } else {
+        // Serial: provide new serial number
+        payload.newSerialNumber = newSerialNumber.trim();
+      }
+
       const res = await fetch(`/api/businesses/${businessId}/cctv/supplier-replacements/${receiveItem.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          newSerialNumber: newSerialNumber.trim(),
-          notes: receiveNotes || undefined,
-        }),
+        body: JSON.stringify(payload),
       });
       if (res.ok) {
-        toast({
-          title: 'Replacement received',
-          description: `New serial ${newSerialNumber} added to stock`,
-        });
+        const msg = receiveItem.isSerialTracked === false
+          ? `${receiveItem.quantity} item(s) added back to stock`
+          : `New serial ${newSerialNumber} added to stock`;
+        toast({ title: 'Replacement received', description: msg });
         setReceiveItem(null);
         setNewSerialNumber(''); setReceiveNotes('');
         loadReplacements();
@@ -257,12 +296,22 @@ export function CCTVSupplierReplacements() {
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
-                    {/* Original serial */}
+                    {/* Original — serial or stock */}
                     <div className="flex items-center gap-1.5">
                       <span className="text-[9px] text-gray-400 font-medium">ORIGINAL</span>
+                      {r.isSerialTracked === false && (
+                        <span className="text-[9px] px-1.5 py-0.5 rounded bg-orange-100 text-orange-600 font-semibold">IN-STOCK</span>
+                      )}
                     </div>
-                    <p className="text-sm font-mono font-semibold text-gray-900 break-all">{r.originalSerialNumber}</p>
-                    {r.productName && <p className="text-xs text-gray-600 mt-0.5">{r.productName}</p>}
+                    {r.isSerialTracked !== false ? (
+                      <p className="text-sm font-mono font-semibold text-gray-900 break-all">{r.originalSerialNumber}</p>
+                    ) : (
+                      <p className="text-sm font-semibold text-gray-900">{r.productName}</p>
+                    )}
+                    {r.productName && r.isSerialTracked !== false && <p className="text-xs text-gray-600 mt-0.5">{r.productName}</p>}
+                    {r.isSerialTracked === false && (
+                      <p className="text-xs text-gray-500 mt-0.5">Qty: {r.quantity} damaged item(s)</p>
+                    )}
 
                     {/* Arrow + new serial (if received) */}
                     {r.newSerialNumber && (
@@ -272,6 +321,15 @@ export function CCTVSupplierReplacements() {
                           <span className="text-[9px] text-cyan-600 font-medium">REPLACEMENT</span>
                         </div>
                         <p className="text-sm font-mono font-semibold text-cyan-700 break-all">{r.newSerialNumber}</p>
+                      </div>
+                    )}
+                    {r.isSerialTracked === false && r.status === 'received' && (
+                      <div className="mt-3 pt-3 border-t border-gray-100">
+                        <div className="flex items-center gap-1.5">
+                          <RefreshCw className="w-3 h-3 text-emerald-500" />
+                          <span className="text-[9px] text-emerald-600 font-medium">REPLACEMENT RECEIVED</span>
+                        </div>
+                        <p className="text-sm font-semibold text-emerald-700">{r.quantity} item(s) added to stock</p>
                       </div>
                     )}
 
@@ -327,28 +385,77 @@ export function CCTVSupplierReplacements() {
               </div>
 
               <div className="space-y-4">
-                {/* Original serial — auto-finds product */}
-                <div className="space-y-1.5">
-                  <Label className="text-xs text-gray-600">Original Serial Number *</Label>
-                  <Input value={originalSerialNumber} onChange={(e) => setOriginalSerialNumber(e.target.value)}
-                    placeholder="Type or scan serial..." className="h-10 rounded-xl font-mono text-sm" autoFocus />
-                  {serialSearching && (
-                    <p className="text-[10px] text-gray-400 flex items-center gap-1">
-                      <Loader2 className="w-3 h-3 animate-spin" /> Looking up serial...
-                    </p>
-                  )}
-                  {foundProduct && (
-                    <div className="bg-emerald-50 rounded-lg p-2 text-xs">
-                      <p className="font-semibold text-emerald-800">{foundProduct.name}</p>
-                      <p className="text-emerald-600">{foundProduct.brand} · Status: {foundProduct.status}</p>
+                {/* Mode toggle */}
+                {!repairId && (
+                  <div className="flex gap-1 p-1 bg-gray-100 rounded-xl">
+                    <button
+                      onClick={() => setFormMode('serial')}
+                      className={cn(
+                        'flex-1 h-8 rounded-lg text-xs font-semibold transition-colors',
+                        formMode === 'serial' ? 'bg-white text-violet-600 shadow-sm' : 'text-gray-500'
+                      )}
+                    >
+                      Serial Tracked
+                    </button>
+                    <button
+                      onClick={() => setFormMode('stock')}
+                      className={cn(
+                        'flex-1 h-8 rounded-lg text-xs font-semibold transition-colors',
+                        formMode === 'stock' ? 'bg-white text-orange-600 shadow-sm' : 'text-gray-500'
+                      )}
+                    >
+                      In-Stock (Damaged)
+                    </button>
+                  </div>
+                )}
+
+                {formMode === 'serial' ? (
+                  /* Serial mode */
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-gray-600">Original Serial Number *</Label>
+                    <Input value={originalSerialNumber} onChange={(e) => setOriginalSerialNumber(e.target.value)}
+                      placeholder="Type or scan serial..." className="h-10 rounded-xl font-mono text-sm" autoFocus />
+                    {serialSearching && (
+                      <p className="text-[10px] text-gray-400 flex items-center gap-1">
+                        <Loader2 className="w-3 h-3 animate-spin" /> Looking up serial...
+                      </p>
+                    )}
+                    {foundProduct && (
+                      <div className="bg-emerald-50 rounded-lg p-2 text-xs">
+                        <p className="font-semibold text-emerald-800">{foundProduct.name}</p>
+                        <p className="text-emerald-600">{foundProduct.brand} · Status: {foundProduct.status}</p>
+                      </div>
+                    )}
+                    {originalSerialNumber.trim() && !foundProduct && !serialSearching && (
+                      <p className="text-[10px] text-amber-500 flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3" /> Serial not found in system.
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  /* Stock mode — for damaged in-house products */
+                  <div className="space-y-3">
+                    <div className="bg-orange-50 rounded-lg p-2 text-xs text-orange-700">
+                      Use this mode when you have damaged items in stock that need to be sent to the supplier for replacement. Stock will be decremented now and incremented when replacement arrives.
                     </div>
-                  )}
-                  {originalSerialNumber.trim() && !foundProduct && !serialSearching && (
-                    <p className="text-[10px] text-amber-500 flex items-center gap-1">
-                      <AlertCircle className="w-3 h-3" /> Serial not found in system.
-                    </p>
-                  )}
-                </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-gray-600">Product *</Label>
+                      <select value={stockProductId} onChange={(e) => setStockProductId(e.target.value)}
+                        className="w-full h-10 rounded-xl border border-gray-200 px-3 text-sm bg-white">
+                        <option value="">Select product...</option>
+                        {products.filter(p => !p.serialTracked).map((p) => (
+                          <option key={p.id} value={p.id}>{p.name} ({p.brand}) — Stock: {p.stock}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-gray-600">Quantity (damaged items)</Label>
+                      <Input type="number" value={stockQuantity}
+                        onChange={(e) => setStockQuantity(e.target.value)}
+                        className="h-10 rounded-xl text-sm" min="1" />
+                    </div>
+                  </div>
+                )}
 
                 <div className="space-y-1.5">
                   <Label className="text-xs text-gray-600">Supplier</Label>
@@ -379,7 +486,9 @@ export function CCTVSupplierReplacements() {
                   className="flex-1 h-11 rounded-xl border border-gray-200 text-gray-600 font-semibold text-sm">
                   Cancel
                 </button>
-                <button onClick={handleCreate} disabled={saving || !originalSerialNumber.trim()}
+                <button
+                  onClick={handleCreate}
+                  disabled={saving || (formMode === 'serial' ? !originalSerialNumber.trim() : !stockProductId)}
                   className="flex-1 h-11 rounded-xl bg-orange-500 text-white font-semibold text-sm disabled:opacity-50 flex items-center justify-center gap-2">
                   {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                   {saving ? 'Sending...' : 'Send to Supplier'}
@@ -410,23 +519,40 @@ export function CCTVSupplierReplacements() {
 
               <div className="space-y-4">
                 <div className="bg-gray-50 rounded-xl p-3 space-y-1">
-                  <p className="text-[10px] text-gray-500">Original Serial</p>
-                  <p className="text-sm font-mono font-semibold text-gray-900 break-all">{receiveItem.originalSerialNumber}</p>
-                  {receiveItem.productName && <p className="text-xs text-gray-600">{receiveItem.productName}</p>}
+                  {receiveItem.isSerialTracked !== false ? (
+                    <>
+                      <p className="text-[10px] text-gray-500">Original Serial</p>
+                      <p className="text-sm font-mono font-semibold text-gray-900 break-all">{receiveItem.originalSerialNumber}</p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-[10px] text-gray-500">Product (In-Stock)</p>
+                      <p className="text-sm font-semibold text-gray-900">{receiveItem.productName}</p>
+                      <p className="text-xs text-gray-500">Quantity sent: {receiveItem.quantity}</p>
+                    </>
+                  )}
                 </div>
 
                 <div className="flex items-center justify-center text-cyan-500">
                   <RefreshCw className="w-5 h-5" />
                 </div>
 
-                <div className="space-y-1.5">
-                  <Label className="text-xs text-gray-600">New Serial Number *</Label>
-                  <Input value={newSerialNumber} onChange={(e) => setNewSerialNumber(e.target.value)}
-                    placeholder="Scan or type the new serial..." className="h-10 rounded-xl font-mono text-sm" autoFocus />
-                  <p className="text-[10px] text-gray-400">
-                    This serial will be added to stock and linked to the original. Old serial will be marked as REPLACED.
-                  </p>
-                </div>
+                {receiveItem.isSerialTracked !== false ? (
+                  /* Serial mode: ask for new serial number */
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-gray-600">New Serial Number *</Label>
+                    <Input value={newSerialNumber} onChange={(e) => setNewSerialNumber(e.target.value)}
+                      placeholder="Scan or type the new serial..." className="h-10 rounded-xl font-mono text-sm" autoFocus />
+                    <p className="text-[10px] text-gray-400">
+                      This serial will be added to stock and linked to the original. Old serial will be marked as REPLACED.
+                    </p>
+                  </div>
+                ) : (
+                  /* Non-serial mode: just confirm receipt */
+                  <div className="bg-emerald-50 rounded-xl p-3 text-xs text-emerald-700">
+                    Click "Receive" to add {receiveItem.quantity} item(s) back to stock. The replacement items are assumed to be in good condition.
+                  </div>
+                )}
 
                 <div className="space-y-1.5">
                   <Label className="text-xs text-gray-600">Notes (optional)</Label>
@@ -440,7 +566,9 @@ export function CCTVSupplierReplacements() {
                   className="flex-1 h-11 rounded-xl border border-gray-200 text-gray-600 font-semibold text-sm">
                   Cancel
                 </button>
-                <button onClick={handleReceive} disabled={receiving || !newSerialNumber.trim()}
+                <button
+                  onClick={handleReceive}
+                  disabled={receiving || (receiveItem.isSerialTracked !== false && !newSerialNumber.trim())}
                   className="flex-1 h-11 rounded-xl bg-emerald-500 text-white font-semibold text-sm disabled:opacity-50 flex items-center justify-center gap-2">
                   {receiving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
                   {receiving ? 'Receiving...' : 'Receive & Add to Stock'}

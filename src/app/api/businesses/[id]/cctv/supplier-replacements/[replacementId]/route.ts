@@ -15,8 +15,17 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json({ error: "Replacement not found" }, { status: 404 });
   }
 
-  // If we're receiving the replacement (new serial provided)
-  if (body.newSerialNumber && replacement.status !== "received") {
+  // If we're receiving the replacement
+  // For serial-tracked: requires newSerialNumber
+  // For non-serial: just mark as received + increment stock
+  const isSerialMode = replacement.isSerialTracked;
+  const shouldReceive = isSerialMode
+    ? (body.newSerialNumber && replacement.status !== "received")
+    : (body.status === "received" || body.action === "receive") && replacement.status !== "received";
+
+  if (shouldReceive) {
+    if (isSerialMode) {
+    // Serial flow: create new serial item
     // Check if new serial already exists
     const existing = await db.cCTVSerialItem.findFirst({
       where: { businessId, serialNumber: body.newSerialNumber },
@@ -39,11 +48,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         businessId,
         productId: replacement.productId || originalSerial?.productId || body.productId,
         serialNumber: body.newSerialNumber,
-        status: "IN_STOCK", // ready to be given to customer or sold
+        status: "IN_STOCK",
         costPrice: originalSerial?.costPrice || 0,
         sellPrice: originalSerial?.sellPrice,
         purchaseDate: new Date(),
-        warrantyEnd: null, // warranty resets on replacement
+        warrantyEnd: null,
         replacesSerialId: replacement.originalSerialItemId,
       },
     });
@@ -68,38 +77,42 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       });
     }
 
-    // Create history entries for both old and new serials
-    if (replacement.originalSerialItemId) {
+    // Create history entries (best-effort)
+    try {
+      if (replacement.originalSerialItemId) {
+        await db.cCTVSerialHistory.create({
+          data: {
+            businessId,
+            serialItemId: replacement.originalSerialItemId,
+            serialNumber: replacement.originalSerialNumber || "",
+            productId: replacement.productId,
+            productName: replacement.productName,
+            eventType: "REPLACED",
+            description: `Replaced by supplier — new serial: ${body.newSerialNumber}`,
+            referenceId: replacementId,
+            referenceType: "replacement",
+            eventDate: new Date(),
+          },
+        });
+      }
+
       await db.cCTVSerialHistory.create({
         data: {
           businessId,
-          serialItemId: replacement.originalSerialItemId,
-          serialNumber: replacement.originalSerialNumber,
+          serialItemId: newSerialItem.id,
+          serialNumber: body.newSerialNumber,
           productId: replacement.productId,
           productName: replacement.productName,
-          eventType: "REPLACED",
-          description: `Replaced by supplier — new serial: ${body.newSerialNumber}`,
+          eventType: "REPLACEMENT_RECEIVED",
+          description: `Received as replacement for ${replacement.originalSerialNumber}`,
           referenceId: replacementId,
           referenceType: "replacement",
           eventDate: new Date(),
         },
       });
+    } catch (historyErr) {
+      console.error("[cctv/supplier-replacements] History write failed:", historyErr);
     }
-
-    await db.cCTVSerialHistory.create({
-      data: {
-        businessId,
-        serialItemId: newSerialItem.id,
-        serialNumber: body.newSerialNumber,
-        productId: replacement.productId,
-        productName: replacement.productName,
-        eventType: "REPLACEMENT_RECEIVED",
-        description: `Received as replacement for ${replacement.originalSerialNumber}`,
-        referenceId: replacementId,
-        referenceType: "replacement",
-        eventDate: new Date(),
-      },
-    });
 
     // If linked to repair, mark repair as replaced
     if (replacement.repairId) {
@@ -110,6 +123,35 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     }
 
     return NextResponse.json({ success: true, replacement: updated, newSerialItem });
+    } else {
+      // Non-serial flow: just mark as received + increment stock back
+      const updated = await db.cCTVSupplierReplacement.update({
+        where: { id: replacementId },
+        data: {
+          status: "received",
+          receivedDate: new Date(),
+          notes: body.notes ? `${replacement.notes || ""}\n${body.notes}`.trim() : replacement.notes,
+        },
+      });
+
+      // Increment stock — replacement items arrive (good condition)
+      if (replacement.productId) {
+        await db.cCTVProduct.update({
+          where: { id: replacement.productId },
+          data: { stock: { increment: replacement.quantity } },
+        });
+      }
+
+      // If linked to repair, mark repair as replaced
+      if (replacement.repairId) {
+        await db.cCTVRepair.update({
+          where: { id: replacement.repairId },
+          data: { status: "replaced" },
+        });
+      }
+
+      return NextResponse.json({ success: true, replacement: updated });
+    }
   }
 
   // Generic update (e.g. cancel)

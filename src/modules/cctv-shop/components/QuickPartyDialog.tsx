@@ -3,13 +3,14 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  X, Loader2, User, Building2, Phone, Plus, Search, CheckCircle2,
+  X, Loader2, User, Building2, Phone, Plus, Search, CheckCircle2, MapPin,
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 
 interface Party {
   id: string;
@@ -38,6 +39,7 @@ export function QuickPartyDialog({ type, open, onClose, onSelect, existingPartie
   const [search, setSearch] = useState('');
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
+  const [address, setAddress] = useState('');
   const [saving, setSaving] = useState(false);
 
   const isCustomer = type === 'customer';
@@ -63,6 +65,7 @@ export function QuickPartyDialog({ type, open, onClose, onSelect, existingPartie
         body: JSON.stringify({
           name: name.trim(),
           phone: phone.trim(),
+          address: address.trim() || null,
         }),
       });
       if (res.ok) {
@@ -90,6 +93,7 @@ export function QuickPartyDialog({ type, open, onClose, onSelect, existingPartie
     setSearch('');
     setName('');
     setPhone('');
+    setAddress('');
     onClose();
   };
 
@@ -188,6 +192,16 @@ export function QuickPartyDialog({ type, open, onClose, onSelect, existingPartie
                     <Input value={phone} onChange={(e) => setPhone(e.target.value)}
                       placeholder="01XXXXXXXXX"
                       className="h-10 rounded-xl pl-10 text-sm" type="tel" />
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-gray-600">Address (optional)</Label>
+                  <div className="relative">
+                    <MapPin className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+                    <Textarea value={address} onChange={(e) => setAddress(e.target.value)}
+                      placeholder="House, road, area..."
+                      className="rounded-xl pl-10 text-sm resize-none" rows={2} />
                   </div>
                 </div>
 

@@ -41,6 +41,7 @@ interface CartItem {
   productName: string;
   brand: string;
   costPrice: number;
+  sellPrice: number;        // suggested sell price (user input)
   quantity: number;         // TARGET quantity (user-set)
   serialTracked: boolean;
   serialNumbers: string[];  // scanned serials (fills up to quantity)
@@ -172,6 +173,7 @@ export function CCTVPurchase() {
       productName: product.name,
       brand: product.brand,
       costPrice: product.costPrice,
+      sellPrice: product.sellPrice,
       quantity: 1,
       serialTracked: product.serialTracked,
       serialNumbers: [],
@@ -337,6 +339,7 @@ export function CCTVPurchase() {
             ...item,
             serialNumbers: item.serialNumbers.join('\n'),
             costPrice: parseFloat(String(item.costPrice)) || 0,
+            sellPrice: parseFloat(String(item.sellPrice)) || 0,
             quantity: parseInt(String(item.quantity)) || 1,
             warrantyMonths: item.warrantyMonths,
           })),
@@ -486,7 +489,7 @@ export function CCTVPurchase() {
                   </button>
                 </div>
 
-                {/* Cost Price + Quantity selector */}
+                {/* Cost Price + Sell Price */}
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
                     <label className="text-[10px] text-gray-500 font-medium">Cost Price (৳)</label>
@@ -495,31 +498,44 @@ export function CCTVPurchase() {
                       className="h-9 rounded-lg text-sm" min="0" step="0.01" />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[10px] text-gray-500 font-medium">Warranty (months)</label>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <input
-                        type="number"
-                        value={item.warrantyMonths}
-                        onChange={(e) => updateCartItem(index, { warrantyMonths: parseInt(e.target.value) || 0 })}
-                        className="w-16 h-9 rounded-lg border border-gray-200 bg-white text-center text-sm font-bold text-gray-900"
-                        min="0"
-                      />
-                      <div className="flex gap-1">
-                        {[0, 6, 12, 24].map(w => (
-                          <button
-                            key={w}
-                            onClick={() => updateCartItem(index, { warrantyMonths: w })}
-                            className={cn(
-                              'px-2.5 h-9 rounded-lg text-xs font-semibold transition-colors',
-                              item.warrantyMonths === w
-                                ? 'bg-violet-500 text-white'
-                                : 'bg-white border border-gray-200 text-gray-600 hover:bg-violet-50'
-                            )}
-                          >
-                            {w === 0 ? 'None' : `${w}m`}
-                          </button>
-                        ))}
-                      </div>
+                    <label className="text-[10px] text-gray-500 font-medium">Sell Price (৳)</label>
+                    <Input type="number" value={item.sellPrice}
+                      onChange={(e) => updateCartItem(index, { sellPrice: parseFloat(e.target.value) || 0 })}
+                      className="h-9 rounded-lg text-sm" min="0" step="0.01" />
+                    {item.costPrice > 0 && item.sellPrice > 0 && (
+                      <p className="text-[9px] text-emerald-600">
+                        Margin: ৳{((item.sellPrice - item.costPrice) * item.quantity).toLocaleString()} ({Math.round(((item.sellPrice - item.costPrice) / item.costPrice) * 100)}%)
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Warranty */}
+                <div className="space-y-1">
+                  <label className="text-[10px] text-gray-500 font-medium">Warranty (months)</label>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <input
+                      type="number"
+                      value={item.warrantyMonths}
+                      onChange={(e) => updateCartItem(index, { warrantyMonths: parseInt(e.target.value) || 0 })}
+                      className="w-16 h-9 rounded-lg border border-gray-200 bg-white text-center text-sm font-bold text-gray-900"
+                      min="0"
+                    />
+                    <div className="flex gap-1">
+                      {[0, 6, 12, 24].map(w => (
+                        <button
+                          key={w}
+                          onClick={() => updateCartItem(index, { warrantyMonths: w })}
+                          className={cn(
+                            'px-2.5 h-9 rounded-lg text-xs font-semibold transition-colors',
+                            item.warrantyMonths === w
+                              ? 'bg-violet-500 text-white'
+                              : 'bg-white border border-gray-200 text-gray-600 hover:bg-violet-50'
+                          )}
+                        >
+                          {w === 0 ? 'None' : `${w}m`}
+                        </button>
+                      ))}
                     </div>
                   </div>
                 </div>

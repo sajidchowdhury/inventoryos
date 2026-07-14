@@ -3530,6 +3530,7 @@ model CCTVPurchaseItem {
   productName String
   quantity    Int      @default(1)
   costPrice   Float    @default(0)
+  sellPrice   Float    @default(0) // suggested sell price at time of purchase
   serialNumbers String? // comma-separated or newline-separated serials
   warrantyMonths Int?  // override product default at purchase time
   createdAt   DateTime @default(now())
@@ -3578,6 +3579,7 @@ model CCTVSaleItem {
   quantity     Int      @default(1)
   sellPrice    Float    @default(0)
   costPrice    Float    @default(0)
+  discount     Float    @default(0) // per-item discount amount
   serialNumber String?
   createdAt    DateTime @default(now())
 
@@ -3763,12 +3765,14 @@ model CCTVSupplierReplacement {
   repairId             String?
   supplierId           String?
   supplierName         String?
-  originalSerialNumber String
+  originalSerialNumber String?  // null for non-serial products
   originalSerialItemId String?
-  newSerialNumber      String?
+  newSerialNumber      String?  // null for non-serial products
   newSerialItemId      String?
   productId            String?
   productName          String?
+  quantity             Int      @default(1) // for non-serial: how many damaged items sent
+  isSerialTracked      Boolean  @default(true) // true=serial flow, false=stock quantity flow
   status               String   @default("sent") // sent, received, cancelled
   sentDate             DateTime @default(now())
   receivedDate         DateTime?
@@ -3780,6 +3784,7 @@ model CCTVSupplierReplacement {
   @@index([repairId])
   @@index([originalSerialNumber])
   @@index([newSerialNumber])
+  @@index([productId])
   @@map("cctv_supplier_replacements")
 }
 

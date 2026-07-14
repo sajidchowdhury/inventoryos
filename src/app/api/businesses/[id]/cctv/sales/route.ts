@@ -22,10 +22,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: "At least one item is required" }, { status: 400 });
   }
 
-  // Calculate total
+  // Calculate total (sell price * qty - discount per item)
   let totalAmount = 0;
   for (const item of body.items) {
-    totalAmount += (item.sellPrice || 0) * (item.quantity || 1);
+    totalAmount += ((item.sellPrice || 0) * (item.quantity || 1)) - (item.discount || 0);
   }
 
   const paidAmount = body.paidAmount !== undefined ? body.paidAmount : totalAmount;
@@ -58,6 +58,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         quantity: item.quantity || 1,
         sellPrice: item.sellPrice || 0,
         costPrice: item.costPrice || 0,
+        discount: item.discount || 0,
         serialNumber: item.serialNumber || null,
       },
     });

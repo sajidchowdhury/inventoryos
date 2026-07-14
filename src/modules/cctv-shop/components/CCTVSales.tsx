@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import {
   ArrowLeft, Plus, X, Search, Loader2, Save, ShoppingCart,
-  Trash2, Scan, User,
+  Trash2, Scan, User, Eye, EyeOff, Tag,
 } from 'lucide-react';
 import { useCCTVNavStore } from '@/stores/cctv-nav-store-simple';
 import { useAuthStore } from '@/stores/auth-store';
@@ -41,6 +41,7 @@ interface CartItem {
   sellPrice: number;
   costPrice: number;
   quantity: number;
+  discount: number;          // per-item discount amount
   serialNumber?: string;
   warrantyMonths: number;
   serialTracked: boolean;
@@ -91,6 +92,7 @@ export function CCTVSales() {
   // Customer dialog state
   const [showCustomerDialog, setShowCustomerDialog] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [showCostPrice, setShowCostPrice] = useState<Record<number, boolean>>({});
 
   // Load customers and products
   useEffect(() => {
@@ -167,6 +169,7 @@ export function CCTVSales() {
         sellPrice: item.serialResult.product.sellPrice,
         costPrice: item.serialResult.product.costPrice,
         quantity: 1,
+        discount: 0,
         serialNumber: item.serialResult.serialNumber,
         warrantyMonths: item.serialResult.product.warrantyMonths,
         serialTracked: true,
@@ -192,6 +195,7 @@ export function CCTVSales() {
         sellPrice: item.product.sellPrice,
         costPrice: item.product.costPrice,
         quantity: 1,
+        discount: 0,
         warrantyMonths: item.product.warrantyMonths,
         serialTracked: item.product.serialTracked,
       }]);
@@ -209,7 +213,8 @@ export function CCTVSales() {
     setCart(cart.map((item, i) => i === index ? { ...item, [field]: value } : item));
   };
 
-  const totalAmount = cart.reduce((sum, item) => sum + (item.sellPrice * item.quantity), 0);
+  const totalAmount = cart.reduce((sum, item) => sum + ((item.sellPrice * item.quantity) - item.discount), 0);
+  const totalDiscount = cart.reduce((sum, item) => sum + item.discount, 0);
 
   const handleSave = async () => {
     if (cart.length === 0) {
@@ -232,6 +237,7 @@ export function CCTVSales() {
             ...item,
             sellPrice: parseFloat(String(item.sellPrice)) || 0,
             quantity: parseInt(String(item.quantity)) || 1,
+            discount: parseFloat(String(item.discount)) || 0,
           })),
         }),
       });
@@ -406,31 +412,68 @@ export function CCTVSales() {
                 </button>
               </div>
 
-              {/* Price + Quantity */}
+              {/* Sell Price + Discount (full row) */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-[10px] text-gray-500 font-medium">Sell Price (৳)</label>
+                  <label className="text-[10px] text-gray-500 font-medium flex items-center gap-1">
+                    Sell Price (৳)
+                    {/* Hidden cost price toggle */}
+                    <button
+                      onClick={() => setShowCostPrice((prev) => ({ ...prev, [index]: !prev[index] }))}
+                      className="ml-auto text-[9px] text-gray-400 hover:text-violet-500 flex items-center gap-0.5"
+                    >
+                      {showCostPrice[index]
+                        ? <><EyeOff className="w-2.5 h-2.5" /> Hide cost</>
+                        : <><Eye className="w-2.5 h-2.5" /> Cost</>}
+                    </button>
+                  </label>
                   <Input type="number" value={item.sellPrice}
                     onChange={(e) => updateCartItem(index, 'sellPrice', parseFloat(e.target.value) || 0)}
                     className="h-9 rounded-lg text-sm" min="0" step="0.01" />
+                  {showCostPrice[index] && (
+                    <p className="text-[9px] text-gray-500">
+                      Cost: ৳{item.costPrice.toLocaleString()} · Margin: ৳{(item.sellPrice - item.costPrice).toLocaleString()} ({item.costPrice > 0 ? Math.round(((item.sellPrice - item.costPrice) / item.costPrice) * 100) : 0}%)
+                    </p>
+                  )}
                 </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] text-gray-500 font-medium flex items-center gap-1">
+                    <Tag className="w-2.5 h-2.5" /> Discount (৳)
+                  </label>
+                  <Input type="number" value={item.discount || ''}
+                    onChange={(e) => updateCartItem(index, 'discount', parseFloat(e.target.value) || 0)}
+                    className="h-9 rounded-lg text-sm" min="0" step="0.01" placeholder="0" />
+                </div>
+              </div>
+
+              {/* Quantity — only for non-serial items */}
+              {!item.serialTracked && (
                 <div className="space-y-1">
                   <label className="text-[10px] text-gray-500 font-medium">Quantity</label>
                   <Input type="number" value={item.quantity}
                     onChange={(e) => updateCartItem(index, 'quantity', parseInt(e.target.value) || 1)}
-                    className="h-9 rounded-lg text-sm" min="1"
-                    disabled={item.serialTracked} />
+                    className="h-9 rounded-lg text-sm" min="1" />
                 </div>
-              </div>
+              )}
+              {item.serialTracked && (
+                <p className="text-[10px] text-blue-500 bg-blue-50 rounded-lg p-1.5 text-center">
+                  ✓ Serial item — quantity is 1
+                </p>
+              )}
 
               {/* Line total */}
-              <div className="flex items-center justify-between text-xs">
+              <div className="flex items-center justify-between text-xs pt-1 border-t border-gray-200/50">
                 <span className="text-gray-500">
                   {item.warrantyMonths > 0 ? `${item.warrantyMonths}mo warranty` : 'No warranty'}
                 </span>
-                <span className="font-semibold text-gray-900">
-                  ৳{(item.sellPrice * item.quantity).toLocaleString()}
-                </span>
+                <div className="text-right">
+                  {item.discount > 0 && (
+                    <p className="text-[9px] text-red-400 line-through">৳{(item.sellPrice * item.quantity).toLocaleString()}</p>
+                  )}
+                  <p className="font-semibold text-gray-900">
+                    ৳{((item.sellPrice * item.quantity) - (item.discount || 0)).toLocaleString()}
+                  </p>
+                </div>
               </div>
             </div>
           ))}
