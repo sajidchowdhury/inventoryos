@@ -176,9 +176,10 @@ else
 fi
 echo ""
 
-# ─── Step 4: Apply schema changes (NON-DESTRUCTIVE) ───
-info "Step 4: Applying database schema changes..."
-info "  This adds NEW tables/columns only. Existing data is preserved."
+# ─── Step 4: Apply database migrations (VERSIONED, SAFE) ───
+info "Step 4: Applying database migrations..."
+info "  Uses prisma migrate deploy (versioned migrations, NOT db push)"
+info "  Each migration is applied in order. Already-applied migrations are skipped."
 
 # Generate Prisma client
 if bunx prisma generate 2>/dev/null || npx prisma generate 2>/dev/null; then
@@ -188,23 +189,36 @@ else
   exit 1
 fi
 
-# Apply schema changes with db push
-# db push is safe here — it only ADDS new tables and columns
-# It does NOT drop existing tables or data
-info "  Running: prisma db push (adds new tables, preserves existing data)"
-if bunx prisma db push --accept-data-loss 2>/dev/null || npx prisma db push --accept-data-loss 2>/dev/null; then
-  ok "Schema changes applied successfully!"
-  info "  New tables added: cctv_serial_history, cctv_repairs,"
-  info "  cctv_supplier_replacements, cctv_estimates, cctv_estimate_items"
-  info "  New columns added: warrantyMonths, tokenNo, underWarranty, etc."
+# Apply migrations with prisma migrate deploy (production-safe)
+# This applies all pending migrations in order:
+#   - Phase 2: CHECK constraints
+#   - Phase 3: Float → Decimal
+#   - Phase 5: Unique constraints
+#   - Phase 6: Stock movements table
+#   - Phase 7: Ledger entries table
+#   - Phase 8: Composite indexes
+#   - Phase 9: Row-Level Security
+info "  Running: prisma migrate deploy"
+if bunx prisma migrate deploy 2>&1; then
+  ok "All migrations applied successfully!"
+  info "  Migrations include:"
+  info "    - CHECK constraints (non-negative stock, prices, amounts)"
+  info "    - Float → Decimal(12,2) money type migration"
+  info "    - Unique constraints (serials, invoices, estimates)"
+  info "    - Stock movements audit table"
+  info "    - Double-entry ledger table"
+  info "    - Composite indexes for performance"
+  info "    - Row-Level Security (tenant isolation)"
 else
-  err "Schema push failed!"
+  err "Migration failed!"
   err ""
   err "ROLLBACK INSTRUCTIONS:"
   err "  1. Restore database from backup:"
   err "     psql \$DATABASE_URL < $BACKUP_FILE"
   err "  2. Restore old code:"
   err "     git reset --hard HEAD~1"
+  err "  3. Check migration status:"
+  err "     bunx prisma migrate status"
   err ""
   exit 1
 fi
