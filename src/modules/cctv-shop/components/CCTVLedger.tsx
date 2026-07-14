@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
+import { PaymentMethodSelector } from './PaymentMethodSelector';
 
 interface Party {
   id: string;
@@ -373,22 +374,28 @@ export function CCTVLedger({ type }: { type: 'customer' | 'supplier' }) {
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label className="text-xs text-gray-600">Method</Label>
-                  <select value={paymentMethod}
-                    onChange={(e) => setPaymentMethod(e.target.value)}
-                    className="w-full h-10 rounded-xl border border-gray-200 px-3 text-sm bg-white">
-                    <option value="cash">Cash</option>
-                    <option value="bank">Bank Transfer</option>
-                    <option value="mobile">Mobile (bKash/Nagad)</option>
-                  </select>
-                </div>
-                <div className="space-y-1.5">
                   <Label className="text-xs text-gray-600">Date</Label>
                   <Input type="date" value={paymentDate}
                     onChange={(e) => setPaymentDate(e.target.value)}
                     className="h-10 rounded-xl" />
                 </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-gray-600">Quick Pay</Label>
+                  <button
+                    onClick={() => setPaymentAmount(String(ledger?.summary.balance || 0))}
+                    disabled={!ledger || ledger.summary.balance <= 0}
+                    className="w-full h-10 rounded-xl bg-violet-50 border border-violet-200 text-violet-600 text-xs font-semibold disabled:opacity-50 hover:bg-violet-100 transition-colors"
+                  >
+                    Pay Full ৳{ledger?.summary.balance.toLocaleString() || 0}
+                  </button>
+                </div>
               </div>
+
+              <PaymentMethodSelector
+                value={paymentMethod}
+                onChange={setPaymentMethod}
+                label="Payment Method"
+              />
 
               <div className="space-y-1.5">
                 <Label className="text-xs text-gray-600">Notes (optional)</Label>

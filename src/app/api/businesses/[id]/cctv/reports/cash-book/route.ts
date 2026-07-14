@@ -47,21 +47,20 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     });
   }
 
-  // 2. Customer payments received (credit payments)
+  // 2. Customer payments received (all methods: cash, bank, bkash, nagad)
   const customerPayments = await db.cCTVPayment.findMany({
     where: {
       businessId,
       type: "customer_payment",
       paymentDate: { gte: startOfDay, lte: endOfDay },
-      paymentMethod: { in: ["cash"] },
     },
-    select: { id: true, amount: true, paymentDate: true, customerId: true, notes: true },
+    select: { id: true, amount: true, paymentDate: true, customerId: true, paymentMethod: true, notes: true },
     orderBy: { paymentDate: "asc" },
   });
   for (const pay of customerPayments) {
     entries.push({
       time: new Date(pay.paymentDate).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }),
-      description: `Customer Payment${pay.notes ? ` — ${pay.notes}` : ""}`,
+      description: `Customer Payment (${pay.paymentMethod})${pay.notes ? ` — ${pay.notes}` : ""}`,
       amountIn: pay.amount,
       amountOut: 0,
       type: "customer_payment",
@@ -69,21 +68,20 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     });
   }
 
-  // 3. Purchases (cash paid for purchases)
+  // 3. Purchases (paid for purchases — all methods)
   const purchasePayments = await db.cCTVPayment.findMany({
     where: {
       businessId,
       type: "purchase",
       paymentDate: { gte: startOfDay, lte: endOfDay },
-      paymentMethod: { in: ["cash"] },
     },
-    select: { id: true, amount: true, paymentDate: true, supplierId: true, notes: true },
+    select: { id: true, amount: true, paymentDate: true, supplierId: true, paymentMethod: true, notes: true },
     orderBy: { paymentDate: "asc" },
   });
   for (const pay of purchasePayments) {
     entries.push({
       time: new Date(pay.paymentDate).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }),
-      description: `Purchase Payment${pay.notes ? ` — ${pay.notes}` : ""}`,
+      description: `Purchase Payment (${pay.paymentMethod})${pay.notes ? ` — ${pay.notes}` : ""}`,
       amountIn: 0,
       amountOut: pay.amount,
       type: "purchase_payment",
@@ -91,21 +89,20 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     });
   }
 
-  // 4. Supplier payments
+  // 4. Supplier payments (all methods)
   const supplierPayments = await db.cCTVPayment.findMany({
     where: {
       businessId,
       type: "supplier_payment",
       paymentDate: { gte: startOfDay, lte: endOfDay },
-      paymentMethod: { in: ["cash"] },
     },
-    select: { id: true, amount: true, paymentDate: true, notes: true },
+    select: { id: true, amount: true, paymentDate: true, paymentMethod: true, notes: true },
     orderBy: { paymentDate: "asc" },
   });
   for (const pay of supplierPayments) {
     entries.push({
       time: new Date(pay.paymentDate).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }),
-      description: `Supplier Payment${pay.notes ? ` — ${pay.notes}` : ""}`,
+      description: `Supplier Payment (${pay.paymentMethod})${pay.notes ? ` — ${pay.notes}` : ""}`,
       amountIn: 0,
       amountOut: pay.amount,
       type: "supplier_payment",

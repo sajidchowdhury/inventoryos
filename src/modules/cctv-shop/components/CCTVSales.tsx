@@ -12,6 +12,8 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { QuickPartyDialog } from './QuickPartyDialog';
+import { PaymentMethodSelector } from './PaymentMethodSelector';
 
 interface Customer {
   id: string;
@@ -85,6 +87,10 @@ export function CCTVSales() {
   const [showResults, setShowResults] = useState(false);
   const [searchResults, setSearchResults] = useState<{ type: 'serial' | 'product'; serialResult?: SerialSearchResult; product?: Product }[]>([]);
   const [searchingSerials, setSearchingSerials] = useState(false);
+
+  // Customer dialog state
+  const [showCustomerDialog, setShowCustomerDialog] = useState(false);
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
 
   // Load customers and products
   useEffect(() => {
@@ -218,7 +224,7 @@ export function CCTVSales() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           customerId: customerId || null,
-          customerName: customers.find((c) => c.id === customerId)?.name || null,
+          customerName: selectedCustomer?.name || null,
           paidAmount: paidAmount ? parseFloat(paidAmount) : totalAmount,
           paymentMethod,
           notes: notes || null,
@@ -264,20 +270,50 @@ export function CCTVSales() {
 
       {/* Customer */}
       <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
-        <div className="space-y-1.5">
-          <Label className="text-xs text-gray-600">Customer</Label>
-          <select
-            value={customerId}
-            onChange={(e) => setCustomerId(e.target.value)}
-            className="w-full h-10 rounded-xl border border-gray-200 px-3 text-sm bg-white"
-          >
-            <option value="">Walk-in Customer</option>
-            {customers.map((c) => (
-              <option key={c.id} value={c.id}>{c.name} — {c.phone}</option>
-            ))}
-          </select>
-        </div>
+        <Label className="text-xs text-gray-600 mb-2 block">Customer</Label>
+        {selectedCustomer ? (
+          <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-xl">
+            <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center shrink-0">
+              <User className="w-5 h-5 text-blue-600" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-gray-900">{selectedCustomer.name}</p>
+              <p className="text-xs text-gray-500">{selectedCustomer.phone || 'No phone'}</p>
+            </div>
+            <button onClick={() => { setSelectedCustomer(null); setCustomerId(''); }}
+              className="w-8 h-8 rounded-lg hover:bg-blue-100 flex items-center justify-center shrink-0">
+              <X className="w-4 h-4 text-blue-400" />
+            </button>
+          </div>
+        ) : (
+          <div className="flex gap-2">
+            <button
+              onClick={() => setShowCustomerDialog(true)}
+              className="flex-1 h-10 rounded-xl border-2 border-dashed border-gray-200 text-gray-500 text-sm font-medium hover:border-violet-300 hover:text-violet-600 transition-colors flex items-center justify-center gap-1.5"
+            >
+              <User className="w-4 h-4" /> Select Customer (optional)
+            </button>
+          </div>
+        )}
       </div>
+
+      {/* Customer Dialog */}
+      <QuickPartyDialog
+        type="customer"
+        open={showCustomerDialog}
+        onClose={() => setShowCustomerDialog(false)}
+        existingParties={customers}
+        onSelect={(c) => {
+          setSelectedCustomer(c);
+          setCustomerId(c.id);
+          // Refresh customers list to include newly created ones
+          if (businessId) {
+            fetch(`/api/businesses/${businessId}/cctv/customers`).then(r => r.json()).then(data => {
+              setCustomers(Array.isArray(data) ? data : []);
+            }).catch(() => {});
+          }
+        }}
+      />
 
       {/* Smart Search — type serial OR product name */}
       <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
@@ -404,27 +440,22 @@ export function CCTVSales() {
       {/* Payment */}
       {cart.length > 0 && (
         <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <Label className="text-xs text-gray-600">Amount Paid (৳)</Label>
-              <Input type="number" value={paidAmount}
-                onChange={(e) => setPaidAmount(e.target.value)}
-                placeholder={String(totalAmount)}
-                className="h-10 rounded-xl" min="0" step="0.01" />
-              <p className="text-[10px] text-gray-400">Leave empty for full payment (cash)</p>
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs text-gray-600">Payment Method</Label>
-              <select value={paymentMethod}
-                onChange={(e) => setPaymentMethod(e.target.value)}
-                className="w-full h-10 rounded-xl border border-gray-200 px-3 text-sm bg-white">
-                <option value="cash">Cash</option>
-                <option value="bank">Bank Transfer</option>
-                <option value="mobile">Mobile (bKash/Nagad)</option>
-                <option value="credit">Credit (pay later)</option>
-              </select>
-            </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs text-gray-600">Amount Paid (৳)</Label>
+            <Input type="number" value={paidAmount}
+              onChange={(e) => setPaidAmount(e.target.value)}
+              placeholder={String(totalAmount)}
+              className="h-10 rounded-xl" min="0" step="0.01" />
+            <p className="text-[10px] text-gray-400">
+              Leave empty for full payment · Due: ৳{Math.max(0, totalAmount - (parseFloat(paidAmount) || totalAmount)).toLocaleString()}
+            </p>
           </div>
+
+          <PaymentMethodSelector
+            value={paymentMethod}
+            onChange={setPaymentMethod}
+            label="Payment Method"
+          />
         </div>
       )}
 

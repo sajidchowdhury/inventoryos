@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft, Plus, X, Search, Loader2, Save, ShoppingCart,
   Package, Trash2, Scan, ClipboardPaste, CheckCircle2, AlertCircle,
-  Minus, Hash, Volume2, VolumeX,
+  Minus, Hash, Volume2, VolumeX, Building2,
 } from 'lucide-react';
 import { useCCTVNavStore } from '@/stores/cctv-nav-store-simple';
 import { useAuthStore } from '@/stores/auth-store';
@@ -14,6 +14,8 @@ import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { QuickPartyDialog } from './QuickPartyDialog';
+import { PaymentMethodSelector } from './PaymentMethodSelector';
 
 interface Product {
   id: string;
@@ -102,10 +104,15 @@ export function CCTVPurchase() {
 
   // Form state
   const [supplierId, setSupplierId] = useState('');
+  const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
   const [invoiceNo, setInvoiceNo] = useState('');
   const [paidAmount, setPaidAmount] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('cash');
   const [notes, setNotes] = useState('');
   const [cart, setCart] = useState<CartItem[]>([]);
+
+  // Supplier dialog state
+  const [showSupplierDialog, setShowSupplierDialog] = useState(false);
 
   // Product search
   const [searchQuery, setSearchQuery] = useState('');
@@ -321,9 +328,10 @@ export function CCTVPurchase() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           supplierId: supplierId || null,
-          supplierName: suppliers.find((s) => s.id === supplierId)?.name || null,
+          supplierName: selectedSupplier?.name || null,
           invoiceNo: invoiceNo || null,
           paidAmount: paidAmount ? parseFloat(paidAmount) : totalAmount,
+          paymentMethod,
           notes: notes || null,
           items: cart.map((item) => ({
             ...item,
@@ -376,22 +384,54 @@ export function CCTVPurchase() {
 
       {/* Supplier + Invoice */}
       <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-1.5">
-            <Label className="text-xs text-gray-600">Supplier</Label>
-            <select value={supplierId} onChange={(e) => setSupplierId(e.target.value)}
-              className="w-full h-10 rounded-xl border border-gray-200 px-3 text-sm bg-white">
-              <option value="">Select supplier (optional)</option>
-              {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name} — {s.phone}</option>)}
-            </select>
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs text-gray-600">Invoice No. (optional)</Label>
-            <Input value={invoiceNo} onChange={(e) => setInvoiceNo(e.target.value)}
-              placeholder="e.g. INV-001" className="h-10 rounded-xl" />
-          </div>
+        <div>
+          <Label className="text-xs text-gray-600 mb-2 block">Supplier</Label>
+          {selectedSupplier ? (
+            <div className="flex items-center gap-3 p-3 bg-amber-50 rounded-xl">
+              <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center shrink-0">
+                <Building2 className="w-5 h-5 text-amber-600" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-gray-900">{selectedSupplier.name}</p>
+                <p className="text-xs text-gray-500">{selectedSupplier.phone || 'No phone'}</p>
+              </div>
+              <button onClick={() => { setSelectedSupplier(null); setSupplierId(''); }}
+                className="w-8 h-8 rounded-lg hover:bg-amber-100 flex items-center justify-center shrink-0">
+                <X className="w-4 h-4 text-amber-400" />
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setShowSupplierDialog(true)}
+              className="w-full h-10 rounded-xl border-2 border-dashed border-gray-200 text-gray-500 text-sm font-medium hover:border-violet-300 hover:text-violet-600 transition-colors flex items-center justify-center gap-1.5"
+            >
+              <Building2 className="w-4 h-4" /> Select Supplier (optional)
+            </button>
+          )}
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs text-gray-600">Invoice No. (optional)</Label>
+          <Input value={invoiceNo} onChange={(e) => setInvoiceNo(e.target.value)}
+            placeholder="e.g. INV-001" className="h-10 rounded-xl" />
         </div>
       </div>
+
+      {/* Supplier Dialog */}
+      <QuickPartyDialog
+        type="supplier"
+        open={showSupplierDialog}
+        onClose={() => setShowSupplierDialog(false)}
+        existingParties={suppliers}
+        onSelect={(s) => {
+          setSelectedSupplier(s);
+          setSupplierId(s.id);
+          if (businessId) {
+            fetch(`/api/businesses/${businessId}/cctv/suppliers`).then(r => r.json()).then(data => {
+              setSuppliers(Array.isArray(data) ? data : data.suppliers || []);
+            }).catch(() => {});
+          }
+        }}
+      />
 
       {/* Product Search */}
       <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
@@ -713,19 +753,26 @@ export function CCTVPurchase() {
       {/* Payment + Notes */}
       {cart.length > 0 && (
         <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <Label className="text-xs text-gray-600">Amount Paid (৳)</Label>
-              <Input type="number" value={paidAmount}
-                onChange={(e) => setPaidAmount(e.target.value)}
-                placeholder={String(totalAmount)} className="h-10 rounded-xl" min="0" step="0.01" />
-              <p className="text-[10px] text-gray-400">Leave empty to pay full amount</p>
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs text-gray-600">Notes (optional)</Label>
-              <Input value={notes} onChange={(e) => setNotes(e.target.value)}
-                placeholder="Any notes..." className="h-10 rounded-xl" />
-            </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs text-gray-600">Amount Paid (৳)</Label>
+            <Input type="number" value={paidAmount}
+              onChange={(e) => setPaidAmount(e.target.value)}
+              placeholder={String(totalAmount)} className="h-10 rounded-xl" min="0" step="0.01" />
+            <p className="text-[10px] text-gray-400">
+              Leave empty to pay full · Due: ৳{Math.max(0, totalAmount - (parseFloat(paidAmount) || totalAmount)).toLocaleString()}
+            </p>
+          </div>
+
+          <PaymentMethodSelector
+            value={paymentMethod}
+            onChange={setPaymentMethod}
+            label="Payment Method"
+          />
+
+          <div className="space-y-1.5">
+            <Label className="text-xs text-gray-600">Notes (optional)</Label>
+            <Input value={notes} onChange={(e) => setNotes(e.target.value)}
+              placeholder="Any notes..." className="h-10 rounded-xl" />
           </div>
         </div>
       )}
