@@ -246,8 +246,18 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           });
         }
 
-        // Decrease stock for non-serial-tracked products
+        // Decrease stock for non-serial-tracked products (with safety check)
         if (!prod.serialTracked) {
+          // Check current stock before decrementing
+          const currentProduct = await tx.cCTVProduct.findUnique({
+            where: { id: item.productId },
+            select: { stock: true, name: true },
+          });
+          if (currentProduct && currentProduct.stock < item.quantity) {
+            throw new Error(
+              `Insufficient stock for "${currentProduct.name}". Available: ${currentProduct.stock}, requested: ${item.quantity}`
+            );
+          }
           await tx.cCTVProduct.update({
             where: { id: item.productId },
             data: { stock: { decrement: item.quantity } },
