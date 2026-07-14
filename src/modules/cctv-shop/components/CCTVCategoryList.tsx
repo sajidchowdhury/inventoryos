@@ -10,6 +10,7 @@ import { useCctvBusinessId } from '@/modules/cctv-shop/hooks/use-cctv-business-i
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Pagination } from './Pagination';
 
 const fadeUp = {
   initial: { opacity: 0, y: 16 },
@@ -36,6 +37,8 @@ export function CCTVCategoryList() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
 
   const fetchCategories = useCallback(async () => {
     if (!businessId) return;
@@ -59,6 +62,15 @@ export function CCTVCategoryList() {
 
   const filtered = categories.filter((c) =>
     c.name.toLowerCase().includes(search.toLowerCase())
+  );
+
+  // Reset to page 1 when search changes
+  useEffect(() => { setCurrentPage(1); }, [search]);
+
+  const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
+  const paginatedCategories = filtered.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
   );
 
   const handleDelete = async (cat: CategoryWithCount) => {
@@ -178,9 +190,9 @@ export function CCTVCategoryList() {
 
       {/* Category list */}
       {!loading && filtered.length > 0 && (
-        <div className="space-y-3 max-h-[calc(100vh-200px)] overflow-y-auto pr-0.5 scrollbar-thin">
+        <div className="space-y-3">
           <AnimatePresence>
-            {filtered.map((cat, i) => (
+            {paginatedCategories.map((cat, i) => (
               <motion.div
                 key={cat.id}
                 initial={{ opacity: 0, y: 12 }}
@@ -237,6 +249,19 @@ export function CCTVCategoryList() {
               </motion.div>
             ))}
           </AnimatePresence>
+        </div>
+      )}
+
+      {/* Pagination */}
+      {!loading && filtered.length > 0 && (
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm">
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+            totalItems={filtered.length}
+            itemsPerPage={ITEMS_PER_PAGE}
+          />
         </div>
       )}
     </motion.div>

@@ -10,6 +10,7 @@ import { useCCTVNavStore } from '@/stores/cctv-nav-store';
 import { useAuthStore } from '@/stores/auth-store';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Pagination } from './Pagination';
 import type { CCTVProduct } from '@/modules/cctv-shop/types';
 
 const fadeUp = {
@@ -181,6 +182,12 @@ export function CCTVProductsList() {
     if (nextPage > totalPages) return;
     setPage(nextPage);
     fetchProducts(nextPage, true);
+  };
+
+  // Page change for pagination — replaces products (no infinite scroll)
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
+    fetchProducts(newPage, false);
   };
 
   return (
@@ -496,21 +503,14 @@ export function CCTVProductsList() {
             </div>
           </div>
 
-          {/* Load More */}
-          {page < totalPages && (
-            <div className="pt-2">
-              <button
-                onClick={handleLoadMore}
-                disabled={loadingMore}
-                className="w-full py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-              >
-                {loadingMore ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <ChevronDown className="w-4 h-4" />
-                )}
-                {loadingMore ? 'Loading...' : 'Load More'}
-              </button>
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="pt-2 bg-white rounded-2xl border border-gray-100 shadow-sm">
+              <Pagination
+                currentPage={page}
+                totalPages={totalPages}
+                onPageChange={handlePageChange}
+              />
             </div>
           )}
         </>
