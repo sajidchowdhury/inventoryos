@@ -22,11 +22,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: "At least one item is required" }, { status: 400 });
   }
 
-  // Calculate total (sell price * qty - discount per item)
-  let totalAmount = 0;
+  // Calculate subtotal (sum of sell price * qty per item)
+  let subtotal = 0;
   for (const item of body.items) {
-    totalAmount += ((item.sellPrice || 0) * (item.quantity || 1)) - (item.discount || 0);
+    subtotal += (item.sellPrice || 0) * (item.quantity || 1);
   }
+
+  // Apply invoice-level discount (if provided)
+  const invoiceDiscount = body.invoiceDiscount || 0;
+  const totalAmount = Math.max(0, subtotal - invoiceDiscount);
 
   const paidAmount = body.paidAmount !== undefined ? body.paidAmount : totalAmount;
   const dueAmount = Math.max(0, totalAmount - paidAmount);
@@ -38,6 +42,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       customerId: body.customerId || null,
       customerName: body.customerName || null,
       invoiceNo: body.invoiceNo || null,
+      subtotal,
+      discount: invoiceDiscount,
       totalAmount,
       paidAmount,
       dueAmount,

@@ -3545,19 +3545,21 @@ model CCTVPurchaseItem {
 
 // ── 8. CCTV Sales ──
 model CCTVSale {
-  id           String   @id @default(cuid())
-  businessId   String
-  customerId   String?
-  customerName String?
-  invoiceNo    String?
-  totalAmount  Float    @default(0)
-  paidAmount   Float    @default(0)
-  dueAmount    Float    @default(0)
-  paymentType  String   @default("cash") // cash, credit
-  saleDate     DateTime @default(now())
-  notes        String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id              String   @id @default(cuid())
+  businessId      String
+  customerId      String?
+  customerName    String?
+  invoiceNo       String?
+  subtotal        Float    @default(0)
+  discount        Float    @default(0) // invoice-level discount
+  totalAmount     Float    @default(0) // subtotal - discount
+  paidAmount      Float    @default(0)
+  dueAmount       Float    @default(0)
+  paymentType     String   @default("cash") // cash, credit
+  saleDate        DateTime @default(now())
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   business Business     @relation(fields: [businessId], references: [id], onDelete: Cascade)
   customer CCTVCustomer? @relation(fields: [customerId], references: [id])

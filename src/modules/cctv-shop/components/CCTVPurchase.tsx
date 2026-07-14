@@ -224,17 +224,6 @@ export function CCTVPurchase() {
     const item = cart[index];
     if (!item) return;
 
-    const scannedCount = item.serialNumbers.length;
-
-    // Check if already at target
-    if (scannedCount >= item.quantity) {
-      setScanFeedback((prev) => ({ ...prev, [index]: 'full' }));
-      setTimeout(() => setScanFeedback((prev) => ({ ...prev, [index]: null })), 800);
-      setScanInputs((prev) => ({ ...prev, [index]: '' }));
-      if (soundOn) playBeep('dup');
-      return;
-    }
-
     // Check for duplicates
     if (item.serialNumbers.includes(value)) {
       setScanFeedback((prev) => ({ ...prev, [index]: 'dup' }));
@@ -245,15 +234,14 @@ export function CCTVPurchase() {
       return;
     }
 
-    // Add serial — SINGLE update call (fixes stale state bug)
+    // Add serial — quantity AUTO-INCREASES to match scanned count
     const newSerials = [...item.serialNumbers, value];
-    const isComplete = newSerials.length >= item.quantity;
-    updateCartItem(index, { serialNumbers: newSerials });
+    updateCartItem(index, { serialNumbers: newSerials, quantity: newSerials.length });
 
     // Feedback
     setScanFeedback((prev) => ({ ...prev, [index]: 'ok' }));
     setTimeout(() => setScanFeedback((prev) => ({ ...prev, [index]: null })), 400);
-    if (soundOn) playBeep(isComplete ? 'done' : 'ok');
+    if (soundOn) playBeep('ok');
 
     // Clear input and refocus for next scan
     setScanInputs((prev) => ({ ...prev, [index]: '' }));
@@ -267,7 +255,12 @@ export function CCTVPurchase() {
     const item = cart[index];
     if (!item) return;
     const newSerials = item.serialNumbers.filter((_, i) => i !== serialIndex);
-    updateCartItem(index, { serialNumbers: newSerials });
+    // Auto-decrement quantity for serial-tracked items
+    if (item.serialTracked) {
+      updateCartItem(index, { serialNumbers: newSerials, quantity: Math.max(1, newSerials.length) });
+    } else {
+      updateCartItem(index, { serialNumbers: newSerials });
+    }
   };
 
   // Paste mode: parse pasted text
@@ -277,20 +270,12 @@ export function CCTVPurchase() {
     const serials = text.split(/[\n,]/).map((s) => s.trim()).filter((s) => s.length > 0);
     const item = cart[index];
     if (!item) return;
-    // Merge with existing, remove duplicates, limit to quantity
+    // Merge with existing, remove duplicates
     const merged = [...new Set([...item.serialNumbers, ...serials])];
-    const limited = merged.slice(0, item.quantity);
-    updateCartItem(index, { serialNumbers: limited });
+    // Quantity auto-adjusts to scanned count
+    updateCartItem(index, { serialNumbers: merged, quantity: merged.length });
     setPasteText((prev) => ({ ...prev, [index]: '' }));
-    if (limited.length < merged.length) {
-      toast({
-        title: `${limited.length} serials added`,
-        description: `${merged.length - limited.length} were trimmed (exceeds quantity of ${item.quantity})`,
-        variant: 'default',
-      });
-    } else {
-      toast({ title: `${serials.length} serials added`, description: `${limited.length} total for ${item.productName}` });
-    }
+    toast({ title: `${serials.length} serials added`, description: `${merged.length} total for ${item.productName}` });
   };
 
   const totalAmount = cart.reduce((sum, item) => sum + (item.costPrice * item.quantity), 0);
@@ -470,10 +455,6 @@ export function CCTVPurchase() {
 
           {cart.map((item, index) => {
             const scannedCount = item.serialNumbers.length;
-            const target = item.quantity;
-            const isComplete = item.serialTracked && scannedCount >= target;
-            const remaining = target - scannedCount;
-            const progressPct = target > 0 ? Math.min(100, (scannedCount / target) * 100) : 0;
 
             return (
               <div key={index} className="bg-gray-50 rounded-xl p-3 space-y-3">
@@ -540,93 +521,79 @@ export function CCTVPurchase() {
                   </div>
                 </div>
 
-                {/* Quantity selector — full width row */}
-                <div className="space-y-1">
-                  <label className="text-[10px] text-gray-500 font-medium flex items-center gap-1">
-                    <Hash className="w-2.5 h-2.5" />
-                    Quantity {item.serialTracked && <span className="text-violet-500">(= serials to scan)</span>}
-                  </label>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    {/* - button */}
-                    <button
-                      onClick={() => handleQuantityChange(index, item.quantity - 1)}
-                      disabled={item.quantity <= 1}
-                      className="w-9 h-9 rounded-lg border border-gray-200 bg-white flex items-center justify-center disabled:opacity-40 active:scale-95 transition-transform"
-                    >
-                      <Minus className="w-3.5 h-3.5 text-gray-600" />
-                    </button>
-                    {/* number input */}
-                    <input
-                      type="number"
-                      value={item.quantity}
-                      onChange={(e) => handleQuantityChange(index, parseInt(e.target.value) || 1)}
-                      className="w-16 h-9 rounded-lg border border-gray-200 bg-white text-center text-sm font-bold text-gray-900"
-                      min="1"
-                    />
-                    {/* + button */}
-                    <button
-                      onClick={() => handleQuantityChange(index, item.quantity + 1)}
-                      className="w-9 h-9 rounded-lg border border-gray-200 bg-white flex items-center justify-center active:scale-95 transition-transform"
-                    >
-                      <Plus className="w-3.5 h-3.5 text-gray-600" />
-                    </button>
-                    {/* Quick presets */}
-                    <div className="flex gap-1 ml-1">
-                      {[5, 10, 20].map(q => (
-                        <button
-                          key={q}
-                          onClick={() => handleQuantityChange(index, q)}
-                          className={cn(
-                            'px-2.5 h-9 rounded-lg text-xs font-semibold transition-colors',
-                            item.quantity === q
-                              ? 'bg-violet-500 text-white'
-                              : 'bg-white border border-gray-200 text-gray-600 hover:bg-violet-50'
-                          )}
-                        >
-                          {q}
-                        </button>
-                      ))}
+                {/* Quantity — serial items: auto from scan count; non-serial: manual */}
+                {item.serialTracked ? (
+                  <div className="bg-violet-50 rounded-lg p-2.5 flex items-center justify-between">
+                    <span className="text-[10px] text-violet-600 font-medium flex items-center gap-1">
+                      <Hash className="w-2.5 h-2.5" /> Quantity (auto)
+                    </span>
+                    <span className="text-sm font-bold text-violet-700">
+                      {item.quantity} {item.quantity === 1 ? 'item' : 'items'} scanned
+                    </span>
+                  </div>
+                ) : (
+                  <div className="space-y-1">
+                    <label className="text-[10px] text-gray-500 font-medium flex items-center gap-1">
+                      <Hash className="w-2.5 h-2.5" /> Quantity
+                    </label>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <button
+                        onClick={() => handleQuantityChange(index, item.quantity - 1)}
+                        disabled={item.quantity <= 1}
+                        className="w-9 h-9 rounded-lg border border-gray-200 bg-white flex items-center justify-center disabled:opacity-40 active:scale-95 transition-transform"
+                      >
+                        <Minus className="w-3.5 h-3.5 text-gray-600" />
+                      </button>
+                      <input
+                        type="number"
+                        value={item.quantity}
+                        onChange={(e) => handleQuantityChange(index, parseInt(e.target.value) || 1)}
+                        className="w-16 h-9 rounded-lg border border-gray-200 bg-white text-center text-sm font-bold text-gray-900"
+                        min="1"
+                      />
+                      <button
+                        onClick={() => handleQuantityChange(index, item.quantity + 1)}
+                        className="w-9 h-9 rounded-lg border border-gray-200 bg-white flex items-center justify-center active:scale-95 transition-transform"
+                      >
+                        <Plus className="w-3.5 h-3.5 text-gray-600" />
+                      </button>
+                      <div className="flex gap-1 ml-1">
+                        {[5, 10, 20].map(q => (
+                          <button
+                            key={q}
+                            onClick={() => handleQuantityChange(index, q)}
+                            className={cn(
+                              'px-2.5 h-9 rounded-lg text-xs font-semibold transition-colors',
+                              item.quantity === q
+                                ? 'bg-violet-500 text-white'
+                                : 'bg-white border border-gray-200 text-gray-600 hover:bg-violet-50'
+                            )}
+                          >
+                            {q}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
 
                 {/* ── SERIAL SCANNING ── */}
                 {item.serialTracked && (
                   <div className="space-y-2.5 pt-1">
-                    {/* Progress header */}
+                    {/* Count header */}
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-1.5">
                         <Scan className="w-3.5 h-3.5 text-violet-400" />
                         <span className="text-xs font-semibold text-gray-700">Serial Numbers</span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        {isComplete && (
-                          <span className="text-[10px] font-bold text-emerald-600 flex items-center gap-0.5">
-                            <CheckCircle2 className="w-3 h-3" /> Done!
-                          </span>
-                        )}
-                        <span className={cn(
-                          'text-xs font-bold px-2 py-0.5 rounded-lg tabular-nums',
-                          isComplete
-                            ? 'bg-emerald-100 text-emerald-700'
-                            : 'bg-violet-100 text-violet-700'
-                        )}>
-                          {scannedCount} / {target}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Progress bar */}
-                    <div className="h-2 rounded-full bg-gray-200 overflow-hidden">
-                      <motion.div
-                        className={cn(
-                          'h-full rounded-full',
-                          isComplete ? 'bg-emerald-500' : 'bg-violet-500'
-                        )}
-                        initial={{ width: 0 }}
-                        animate={{ width: `${progressPct}%` }}
-                        transition={{ duration: 0.3, ease: 'easeOut' }}
-                      />
+                      <span className={cn(
+                        'text-xs font-bold px-2 py-0.5 rounded-lg tabular-nums',
+                        scannedCount > 0
+                          ? 'bg-emerald-100 text-emerald-700'
+                          : 'bg-violet-100 text-violet-700'
+                      )}>
+                        {scannedCount} scanned
+                      </span>
                     </div>
 
                     {/* Mode toggle */}
@@ -659,15 +626,12 @@ export function CCTVPurchase() {
                           scanFeedback[index] === 'ok' ? 'border-emerald-400 bg-emerald-50' :
                           scanFeedback[index] === 'dup' ? 'border-red-400 bg-red-50' :
                           scanFeedback[index] === 'full' ? 'border-amber-400 bg-amber-50' :
-                          isComplete ? 'border-emerald-200 bg-emerald-50/50' :
                           'border-violet-200 bg-white'
                         )}>
                           <Scan className={cn(
                             'absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 transition-colors',
                             scanFeedback[index] === 'ok' ? 'text-emerald-500' :
                             scanFeedback[index] === 'dup' ? 'text-red-500' :
-                            scanFeedback[index] === 'full' ? 'text-amber-500' :
-                            isComplete ? 'text-emerald-400' :
                             'text-violet-400'
                           )} />
                           <input
@@ -676,13 +640,8 @@ export function CCTVPurchase() {
                             value={scanInputs[index] || ''}
                             onChange={(e) => setScanInputs((prev) => ({ ...prev, [index]: e.target.value }))}
                             onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleScanEnter(index); } }}
-                            placeholder={
-                              isComplete
-                                ? '✓ All scanned! Increase quantity to add more.'
-                                : `Scan serial ${scannedCount + 1} of ${target}...`
-                            }
-                            disabled={isComplete}
-                            className="w-full h-11 pl-10 pr-10 rounded-xl bg-transparent text-sm font-mono outline-none disabled:cursor-not-allowed"
+                            placeholder={`Scan serial #${scannedCount + 1}...`}
+                            className="w-full h-11 pl-10 pr-10 rounded-xl bg-transparent text-sm font-mono outline-none"
                             autoComplete="off"
                           />
                           {scanFeedback[index] === 'ok' && (
@@ -691,20 +650,11 @@ export function CCTVPurchase() {
                           {scanFeedback[index] === 'dup' && (
                             <AlertCircle className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-red-500" />
                           )}
-                          {scanFeedback[index] === 'full' && (
-                            <AlertCircle className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-amber-500" />
-                          )}
                         </div>
                         {/* Status text */}
-                        {isComplete ? (
-                          <p className="text-[10px] text-emerald-600 mt-1 flex items-center gap-1">
-                            <CheckCircle2 className="w-3 h-3" /> All {target} serials scanned. Increase quantity to scan more.
-                          </p>
-                        ) : remaining > 0 ? (
-                          <p className="text-[10px] text-gray-500 mt-1">
-                            <span className="font-semibold text-violet-600">{remaining} more</span> to scan — auto-adds on Enter
-                          </p>
-                        ) : null}
+                        <p className="text-[10px] text-gray-500 mt-1">
+                          Scan each item — quantity auto-updates. {scannedCount > 0 && <span className="font-semibold text-violet-600">{scannedCount} scanned so far</span>}
+                        </p>
                       </div>
                     ) : (
                       /* Paste mode */
@@ -712,7 +662,7 @@ export function CCTVPurchase() {
                         <Textarea
                           value={pasteText[index] || ''}
                           onChange={(e) => setPasteText((prev) => ({ ...prev, [index]: e.target.value }))}
-                          placeholder={`Paste up to ${target} serials here (one per line or comma-separated)...`}
+                          placeholder="Paste serials here (one per line or comma-separated)..."
                           className="rounded-lg text-xs font-mono resize-none" rows={3}
                         />
                         <button
@@ -731,12 +681,7 @@ export function CCTVPurchase() {
                         {item.serialNumbers.map((serial, si) => (
                           <span
                             key={si}
-                            className={cn(
-                              'inline-flex items-center gap-1 px-2 py-1 rounded-lg border text-[10px] font-mono',
-                              isComplete
-                                ? 'bg-emerald-50 border-emerald-100 text-emerald-700'
-                                : 'bg-violet-50 border-violet-100 text-violet-700'
-                            )}
+                            className='inline-flex items-center gap-1 px-2 py-1 rounded-lg border text-[10px] font-mono bg-violet-50 border-violet-100 text-violet-700'
                           >
                             <span className="text-[8px] opacity-50">#{si + 1}</span>
                             {serial}

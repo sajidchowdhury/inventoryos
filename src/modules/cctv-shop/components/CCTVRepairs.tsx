@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft, Loader2, Plus, Wrench, X, Phone, User, Package,
   CheckCircle2, Send, RefreshCw, AlertCircle, ChevronRight, Shield, Printer,
+  ShoppingCart, FileText,
 } from 'lucide-react';
 import { useCCTVNavStore } from '@/stores/cctv-nav-store-simple';
 import { useAuthStore } from '@/stores/auth-store';
@@ -45,6 +46,31 @@ const STATUS_FLOW: Record<string, { label: string; color: string; bg: string; ic
   closed: { label: 'Closed', color: 'text-gray-700', bg: 'bg-gray-100', icon: CheckCircle2 },
 };
 
+// Timeline event icons + colors
+const EVENT_ICONS: Record<string, typeof Wrench> = {
+  PURCHASED: ShoppingCart,
+  SOLD: Package,
+  REPAIR_RECEIVED: Wrench,
+  REPAIR_DONE: CheckCircle2,
+  RETURNED_TO_CUSTOMER: RefreshCw,
+  SENT_TO_SUPPLIER: Send,
+  REPLACEMENT_RECEIVED: RefreshCw,
+  REPLACED: RefreshCw,
+  NOTE: FileText,
+};
+
+const EVENT_COLORS: Record<string, string> = {
+  PURCHASED: 'bg-blue-500',
+  SOLD: 'bg-emerald-500',
+  REPAIR_RECEIVED: 'bg-amber-500',
+  REPAIR_DONE: 'bg-emerald-500',
+  RETURNED_TO_CUSTOMER: 'bg-violet-500',
+  SENT_TO_SUPPLIER: 'bg-orange-500',
+  REPLACEMENT_RECEIVED: 'bg-cyan-500',
+  REPLACED: 'bg-cyan-500',
+  NOTE: 'bg-gray-400',
+};
+
 const fadeUp = {
   initial: { opacity: 0, y: 16 },
   animate: { opacity: 1, y: 0, transition: { duration: 0.35, ease: 'easeOut' } },
@@ -82,6 +108,23 @@ export function CCTVRepairs() {
   const [statusNotes, setStatusNotes] = useState('');
   const [statusCost, setStatusCost] = useState('');
   const [updating, setUpdating] = useState(false);
+
+  // Timeline history for selected repair
+  const [timeline, setTimeline] = useState<any[]>([]);
+  const [timelineLoading, setTimelineLoading] = useState(false);
+
+  // Load timeline when a repair is selected
+  useEffect(() => {
+    if (!selectedRepair || !businessId) return;
+    setTimelineLoading(true);
+    fetch(`/api/businesses/${businessId}/cctv/repairs/${selectedRepair.id}`)
+      .then((r) => r.json())
+      .then((data) => {
+        setTimeline(data.history || []);
+        setTimelineLoading(false);
+      })
+      .catch(() => setTimelineLoading(false));
+  }, [selectedRepair, businessId]);
 
   const loadRepairs = () => {
     if (!businessId) return;
@@ -193,6 +236,13 @@ export function CCTVRepairs() {
         setSelectedRepair(data.repair);
         setStatusNotes(''); setStatusCost('');
         loadRepairs();
+        // Reload timeline to show the new event
+        if (data.repair) {
+          fetch(`/api/businesses/${businessId}/cctv/repairs/${data.repair.id}`)
+            .then((r) => r.json())
+            .then((d) => setTimeline(d.history || []))
+            .catch(() => {});
+        }
       } else {
         const data = await res.json();
         toast({ title: data.error || 'Failed', variant: 'destructive' });
@@ -336,6 +386,58 @@ export function CCTVRepairs() {
             <div className="pt-2 border-t border-gray-100">
               <p className="text-[10px] text-gray-500 font-medium">Notes</p>
               <p className="text-sm text-gray-700">{selectedRepair.repairNotes}</p>
+            </div>
+          )}
+        </div>
+
+        {/* ── WARRANTY TIMELINE ── */}
+        <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
+          <h3 className="text-sm font-bold text-gray-800 mb-3 flex items-center gap-2">
+            <RefreshCw className="w-4 h-4 text-violet-500" />
+            Warranty Timeline
+          </h3>
+          {timelineLoading ? (
+            <div className="flex items-center justify-center py-6">
+              <Loader2 className="w-5 h-5 animate-spin text-violet-400" />
+            </div>
+          ) : timeline.length === 0 ? (
+            <p className="text-xs text-gray-400 text-center py-4">No history entries yet</p>
+          ) : (
+            <div className="space-y-3">
+              {timeline.map((entry: any, idx: number) => {
+                const Icon = EVENT_ICONS[entry.eventType] || FileText;
+                const color = EVENT_COLORS[entry.eventType] || 'bg-gray-400';
+                return (
+                  <div key={entry.id || idx} className="flex gap-3">
+                    <div className="flex flex-col items-center">
+                      <div className={cn('w-8 h-8 rounded-full flex items-center justify-center shrink-0', color)}>
+                        <Icon className="w-4 h-4 text-white" />
+                      </div>
+                      {idx < timeline.length - 1 && (
+                        <div className="w-px flex-1 bg-gray-200 my-1" />
+                      )}
+                    </div>
+                    <div className="flex-1 pb-2">
+                      <div className="flex items-baseline justify-between gap-2">
+                        <p className="text-xs font-semibold text-gray-800">
+                          {entry.eventType.replace(/_/g, ' ')}
+                        </p>
+                        <p className="text-[10px] text-gray-400 shrink-0">
+                          {new Date(entry.eventDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
+                          {' · '}
+                          {new Date(entry.eventDate).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                      </div>
+                      {entry.description && (
+                        <p className="text-xs text-gray-600 mt-0.5">{entry.description}</p>
+                      )}
+                      {entry.notes && (
+                        <p className="text-[10px] text-gray-500 mt-1 italic">Note: {entry.notes}</p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>

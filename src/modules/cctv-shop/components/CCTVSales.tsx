@@ -81,6 +81,7 @@ export function CCTVSales() {
   const [notes, setNotes] = useState('');
   const [paidAmount, setPaidAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('cash');
+  const [invoiceDiscountInput, setInvoiceDiscountInput] = useState('');
   const [cart, setCart] = useState<CartItem[]>([]);
 
   // Search state — the key innovation: search by serial number OR product name
@@ -213,8 +214,9 @@ export function CCTVSales() {
     setCart(cart.map((item, i) => i === index ? { ...item, [field]: value } : item));
   };
 
-  const totalAmount = cart.reduce((sum, item) => sum + ((item.sellPrice * item.quantity) - item.discount), 0);
-  const totalDiscount = cart.reduce((sum, item) => sum + item.discount, 0);
+  const subtotal = cart.reduce((sum, item) => sum + (item.sellPrice * item.quantity), 0);
+  const invoiceDiscount = parseFloat(invoiceDiscountInput) || 0;
+  const totalAmount = Math.max(0, subtotal - invoiceDiscount);
 
   const handleSave = async () => {
     if (cart.length === 0) {
@@ -232,12 +234,13 @@ export function CCTVSales() {
           customerName: selectedCustomer?.name || null,
           paidAmount: paidAmount ? parseFloat(paidAmount) : totalAmount,
           paymentMethod,
+          invoiceDiscount: invoiceDiscount || 0,
           notes: notes || null,
           items: cart.map((item) => ({
             ...item,
             sellPrice: parseFloat(String(item.sellPrice)) || 0,
             quantity: parseInt(String(item.quantity)) || 1,
-            discount: parseFloat(String(item.discount)) || 0,
+            discount: 0, // per-item discount removed, now invoice-level
           })),
         }),
       });
@@ -412,37 +415,36 @@ export function CCTVSales() {
                 </button>
               </div>
 
-              {/* Sell Price + Discount (full row) */}
+              {/* Sell Price + Hidden Cost Price */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
+                  <label className="text-[10px] text-gray-500 font-medium">Sell Price (৳)</label>
+                  <Input type="number" value={item.sellPrice}
+                    onChange={(e) => updateCartItem(index, 'sellPrice', parseFloat(e.target.value) || 0)}
+                    className="h-9 rounded-lg text-sm" min="0" step="0.01" />
+                </div>
+                <div className="space-y-1">
                   <label className="text-[10px] text-gray-500 font-medium flex items-center gap-1">
-                    Sell Price (৳)
-                    {/* Hidden cost price toggle */}
+                    Cost Price
                     <button
                       onClick={() => setShowCostPrice((prev) => ({ ...prev, [index]: !prev[index] }))}
                       className="ml-auto text-[9px] text-gray-400 hover:text-violet-500 flex items-center gap-0.5"
                     >
                       {showCostPrice[index]
-                        ? <><EyeOff className="w-2.5 h-2.5" /> Hide cost</>
-                        : <><Eye className="w-2.5 h-2.5" /> Cost</>}
+                        ? <><EyeOff className="w-2.5 h-2.5" /> Hide</>
+                        : <><Eye className="w-2.5 h-2.5" /> Show</>}
                     </button>
                   </label>
-                  <Input type="number" value={item.sellPrice}
-                    onChange={(e) => updateCartItem(index, 'sellPrice', parseFloat(e.target.value) || 0)}
-                    className="h-9 rounded-lg text-sm" min="0" step="0.01" />
+                  <div className="h-9 rounded-lg border border-gray-200 bg-gray-50 px-3 flex items-center text-sm font-mono">
+                    {showCostPrice[index]
+                      ? <span className="text-gray-700">৳{item.costPrice.toLocaleString()}</span>
+                      : <span className="text-gray-400 tracking-widest">৳ •••••</span>}
+                  </div>
                   {showCostPrice[index] && (
                     <p className="text-[9px] text-gray-500">
-                      Cost: ৳{item.costPrice.toLocaleString()} · Margin: ৳{(item.sellPrice - item.costPrice).toLocaleString()} ({item.costPrice > 0 ? Math.round(((item.sellPrice - item.costPrice) / item.costPrice) * 100) : 0}%)
+                      Margin: ৳{(item.sellPrice - item.costPrice).toLocaleString()} ({item.costPrice > 0 ? Math.round(((item.sellPrice - item.costPrice) / item.costPrice) * 100) : 0}%)
                     </p>
                   )}
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] text-gray-500 font-medium flex items-center gap-1">
-                    <Tag className="w-2.5 h-2.5" /> Discount (৳)
-                  </label>
-                  <Input type="number" value={item.discount || ''}
-                    onChange={(e) => updateCartItem(index, 'discount', parseFloat(e.target.value) || 0)}
-                    className="h-9 rounded-lg text-sm" min="0" step="0.01" placeholder="0" />
                 </div>
               </div>
 
@@ -466,14 +468,9 @@ export function CCTVSales() {
                 <span className="text-gray-500">
                   {item.warrantyMonths > 0 ? `${item.warrantyMonths}mo warranty` : 'No warranty'}
                 </span>
-                <div className="text-right">
-                  {item.discount > 0 && (
-                    <p className="text-[9px] text-red-400 line-through">৳{(item.sellPrice * item.quantity).toLocaleString()}</p>
-                  )}
-                  <p className="font-semibold text-gray-900">
-                    ৳{((item.sellPrice * item.quantity) - (item.discount || 0)).toLocaleString()}
-                  </p>
-                </div>
+                <span className="font-semibold text-gray-900">
+                  ৳{(item.sellPrice * item.quantity).toLocaleString()}
+                </span>
               </div>
             </div>
           ))}
@@ -483,6 +480,33 @@ export function CCTVSales() {
       {/* Payment */}
       {cart.length > 0 && (
         <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm space-y-4">
+          {/* Subtotal + Invoice Discount */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-gray-600">Subtotal</span>
+              <span className="font-semibold text-gray-900">৳{subtotal.toLocaleString()}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Label className="text-xs text-gray-600 flex items-center gap-1 shrink-0">
+                <Tag className="w-3 h-3" /> Invoice Discount (৳)
+              </Label>
+              <Input type="number" value={invoiceDiscountInput}
+                onChange={(e) => setInvoiceDiscountInput(e.target.value)}
+                placeholder="0"
+                className="h-9 rounded-lg text-sm" min="0" step="0.01" />
+            </div>
+            {invoiceDiscount > 0 && (
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-red-500">Discount</span>
+                <span className="font-semibold text-red-500">-৳{invoiceDiscount.toLocaleString()}</span>
+              </div>
+            )}
+            <div className="flex items-center justify-between text-sm pt-2 border-t border-gray-100">
+              <span className="font-bold text-gray-800">Total</span>
+              <span className="text-lg font-bold text-violet-600">৳{totalAmount.toLocaleString()}</span>
+            </div>
+          </div>
+
           <div className="space-y-1.5">
             <Label className="text-xs text-gray-600">Amount Paid (৳)</Label>
             <Input type="number" value={paidAmount}
