@@ -21,6 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { CategoryPickerDialog } from './CategoryPickerDialog';
 
 const fadeUp = {
   initial: { opacity: 0, y: 16 },
@@ -100,6 +101,7 @@ export function CCTVProductForm() {
   const [categories, setCategories] = useState<CategoryItem[]>([]);
   const [showNewCategory, setShowNewCategory] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
+  const [showCategoryPicker, setShowCategoryPicker] = useState(false);
   const [existingBrands, setExistingBrands] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [loadingData, setLoadingData] = useState(isEdit);
@@ -623,59 +625,28 @@ export function CCTVProductForm() {
           {/* Category */}
           <div className="space-y-1.5">
             <Label className="text-xs text-gray-600">Category</Label>
-            {showNewCategory ? (
-              <div className="flex gap-2">
-                <Input
-                  value={newCategoryName}
-                  onChange={(e) => setNewCategoryName(e.target.value)}
-                  placeholder="Category name"
-                  className="h-10 rounded-xl flex-1"
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') handleCreateCategory();
-                  }}
-                />
-                <button
-                  onClick={handleCreateCategory}
-                  className="px-3 h-10 rounded-xl bg-violet-500 text-white text-xs font-medium shrink-0 active:scale-[0.98] transition-transform"
-                >
-                  Add
-                </button>
-                <button
-                  onClick={() => {
-                    setShowNewCategory(false);
-                    setNewCategoryName('');
-                  }}
-                  className="px-3 h-10 rounded-xl border border-gray-200 text-gray-500 text-xs font-medium shrink-0"
-                >
-                  Cancel
-                </button>
-              </div>
-            ) : (
-              <Select
-                value={form.categoryId || '__create_new__'}
-                onValueChange={(val) => {
-                  if (val === '__create_new__') {
-                    setShowNewCategory(true);
-                  } else {
-                    updateField('categoryId', val);
-                  }
-                }}
-              >
-                <SelectTrigger className="w-full h-10 rounded-xl">
-                  <SelectValue placeholder="Select a category" />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories.map((cat) => (
-                    <SelectItem key={cat.id} value={cat.id}>
-                      {cat.name}
-                    </SelectItem>
-                  ))}
-                  <SelectItem value="__create_new__" className="text-violet-600 font-medium">
-                    + Create New Category
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            )}
+            <button
+              onClick={() => setShowCategoryPicker(true)}
+              className={cn(
+                'w-full h-10 rounded-xl border px-3 flex items-center justify-between text-sm transition-colors',
+                form.categoryId
+                  ? 'border-violet-200 bg-violet-50/50 text-gray-900'
+                  : 'border-gray-200 bg-white text-gray-400 hover:border-violet-300'
+              )}
+            >
+              <span className="flex items-center gap-2">
+                {form.categoryId && categories.find((c) => c.id === form.categoryId) && (
+                  <span
+                    className="w-2.5 h-2.5 rounded-full shrink-0"
+                    style={{ backgroundColor: categories.find((c) => c.id === form.categoryId)?.color || '#7c3aed' }}
+                  />
+                )}
+                {form.categoryId
+                  ? categories.find((c) => c.id === form.categoryId)?.name || 'Selected'
+                  : 'Select a category...'}
+              </span>
+              <Tag className="w-4 h-4 text-gray-400" />
+            </button>
           </div>
 
           {/* Description */}
@@ -919,6 +890,24 @@ export function CCTVProductForm() {
         )}
         {submitting ? 'Saving...' : isEdit ? 'Save Changes' : 'Create Product'}
       </button>
+
+      {/* Category Picker Modal */}
+      <CategoryPickerDialog
+        open={showCategoryPicker}
+        onClose={() => setShowCategoryPicker(false)}
+        categories={categories}
+        selectedId={form.categoryId || undefined}
+        onSelect={(catId) => {
+          updateField('categoryId', catId);
+          // Refresh categories list to include newly created ones
+          if (businessId) {
+            fetch(`/api/businesses/${businessId}/cctv/categories`)
+              .then((r) => r.json())
+              .then((data) => setCategories(data.categories || []))
+              .catch(() => {});
+          }
+        }}
+      />
     </motion.div>
   );
 }
