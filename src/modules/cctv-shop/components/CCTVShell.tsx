@@ -29,6 +29,7 @@ import { CCTVProfitLoss } from './CCTVProfitLoss';
 import { CCTVDueCollection } from './CCTVDueCollection';
 import { CCTVTopProducts } from './CCTVTopProducts';
 import { CCTVExpenseSummary } from './CCTVExpenseSummary';
+import { CCTVSettings } from './CCTVSettings';
 import {
   Home, Package, ShoppingCart, Users, Building2, Receipt,
   BarChart3, Settings, Camera, Plus, TrendingUp, AlertTriangle, Boxes, ArrowLeftRight,
@@ -303,7 +304,7 @@ export function CCTVShell() {
           {activeView === 'due-collection' && <CCTVDueCollection />}
           {activeView === 'top-products' && <CCTVTopProducts />}
           {activeView === 'expense-summary' && <CCTVExpenseSummary />}
-          {activeView === 'settings' && <PlaceholderView title="Settings" desc="Business settings — coming soon" />}
+          {activeView === 'settings' && <CCTVSettings />}
         </div>
       </div>
     </div>
