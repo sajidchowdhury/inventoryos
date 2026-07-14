@@ -57,6 +57,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         quantity: item.quantity || 1,
         costPrice: item.costPrice || 0,
         serialNumbers: item.serialNumbers || null,
+        warrantyMonths: item.warrantyMonths != null ? parseInt(item.warrantyMonths) : null,
       },
     });
 
@@ -67,11 +68,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         .map((s: string) => s.trim())
         .filter((s: string) => s.length > 0);
 
-      // Get product name for history
+      // Get product name + default warranty for history
       const product = await db.cCTVProduct.findUnique({
         where: { id: item.productId },
-        select: { name: true },
+        select: { name: true, warrantyMonths: true },
       });
+
+      // Determine warranty months: item override > product default
+      const warrantyMonths = item.warrantyMonths != null
+        ? parseInt(item.warrantyMonths)
+        : (product?.warrantyMonths || 0);
 
       // Create serial items + history entries
       for (const serial of serials) {
@@ -83,6 +89,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
             status: "IN_STOCK",
             costPrice: item.costPrice || 0,
             purchaseDate: new Date(),
+            warrantyMonths: warrantyMonths || null,
           },
         });
 

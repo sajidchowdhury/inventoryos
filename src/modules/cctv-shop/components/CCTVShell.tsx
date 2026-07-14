@@ -14,10 +14,12 @@ import { CCTVExpenses } from './CCTVExpenses';
 import { CCTVSerialSearch } from './CCTVSerialSearch';
 import { CCTVRepairs } from './CCTVRepairs';
 import { CCTVSupplierReplacements } from './CCTVSupplierReplacements';
+import { CCTVWarrantyDashboard } from './CCTVWarrantyDashboard';
+import { CCTVRepairToken } from './CCTVRepairToken';
 import {
   Home, Package, ShoppingCart, Users, Building2, Receipt,
   BarChart3, Settings, Camera, Plus, TrendingUp, AlertTriangle, Boxes, ArrowLeftRight,
-  Search, Wrench, RefreshCw,
+  Search, Wrench, RefreshCw, Shield,
 } from 'lucide-react';
 import { useCCTVNavStore } from '@/stores/cctv-nav-store-simple';
 import { useAuthStore } from '@/stores/auth-store';
@@ -53,6 +55,7 @@ export function CCTVShell() {
             { view: 'purchase' as const, label: 'Buy Products', icon: ShoppingCart },
             { view: 'sales' as const, label: 'Sell Products', icon: TrendingUp },
             { view: 'serial-search' as const, label: 'Serial Search', icon: Search },
+            { view: 'warranties' as const, label: 'Warranty', icon: Shield },
             { view: 'repairs' as const, label: 'Repairs', icon: Wrench },
             { view: 'replacements' as const, label: 'Replacements', icon: RefreshCw },
             { view: 'customers' as const, label: 'Customers', icon: Users },
@@ -124,8 +127,10 @@ export function CCTVShell() {
           {activeView === 'purchase' && <CCTVPurchase />}
           {activeView === 'sales' && <CCTVSales />}
           {activeView === 'serial-search' && <CCTVSerialSearch />}
+          {activeView === 'warranties' && <CCTVWarrantyDashboard />}
           {activeView === 'repairs' && <CCTVRepairs />}
           {activeView === 'repair-detail' && <CCTVRepairs />}
+          {activeView === 'repair-token' && <CCTVRepairToken />}
           {activeView === 'replacements' && <CCTVSupplierReplacements />}
           {activeView === 'customers' && <CCTVLedger type="customer" />}
           {activeView === 'suppliers' && <CCTVLedger type="supplier" />}
@@ -177,7 +182,7 @@ function CCTVDashboard() {
         {[
           { label: 'Buy Products', icon: ShoppingCart, view: 'purchase' as const, gradient: 'from-blue-500 to-indigo-600' },
           { label: 'Sell Products', icon: TrendingUp, view: 'sales' as const, gradient: 'from-emerald-500 to-teal-600' },
-          { label: 'Serial Search', icon: Search, view: 'serial-search' as const, gradient: 'from-cyan-500 to-blue-600' },
+          { label: 'Warranty', icon: Shield, view: 'warranties' as const, gradient: 'from-violet-500 to-purple-600' },
           { label: 'New Repair', icon: Wrench, view: 'repairs' as const, gradient: 'from-amber-500 to-orange-600' },
         ].map((action) => (
           <button
@@ -265,6 +270,7 @@ function CCTVDashboard() {
       {/* Quick Links */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
         {[
+          { label: 'Warranty Dashboard', icon: Shield, view: 'warranties' as const },
           { label: 'Serial Search', icon: Search, view: 'serial-search' as const },
           { label: 'Repairs', icon: Wrench, view: 'repairs' as const },
           { label: 'Replacements', icon: RefreshCw, view: 'replacements' as const },
@@ -273,7 +279,6 @@ function CCTVDashboard() {
           { label: 'Stock Report', icon: Boxes, view: 'stock-report' as const },
           { label: 'Expenses', icon: Receipt, view: 'expenses' as const },
           { label: 'Product Movement', icon: ArrowLeftRight, view: 'product-movement' as const },
-          { label: 'Settings', icon: Settings, view: 'settings' as const },
         ].map((item) => (
           <button
             key={item.label}

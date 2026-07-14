@@ -64,15 +64,26 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     // If this is a serial-tracked item (has serialNumber), mark it as SOLD
     if (item.serialNumber) {
-      const warrantyMonths = item.warrantyMonths || 0;
-      const warrantyEnd = warrantyMonths > 0
-        ? new Date(Date.now() + warrantyMonths * 30 * 24 * 60 * 60 * 1000)
-        : null;
-
-      // Find the serial item first (to get its ID for history)
+      // Find the serial item first (to get its ID + warranty months for history)
       const serialItem = await db.cCTVSerialItem.findFirst({
         where: { businessId, serialNumber: item.serialNumber, status: "IN_STOCK" },
       });
+
+      // Determine warranty months: serial item's stored value > product default > 0
+      let warrantyMonths = item.warrantyMonths || 0;
+      if (!warrantyMonths && serialItem?.warrantyMonths) {
+        warrantyMonths = serialItem.warrantyMonths;
+      }
+      if (!warrantyMonths) {
+        const product = await db.cCTVProduct.findUnique({
+          where: { id: item.productId },
+          select: { warrantyMonths: true },
+        });
+        warrantyMonths = product?.warrantyMonths || 0;
+      }
+      const warrantyEnd = warrantyMonths > 0
+        ? new Date(Date.now() + warrantyMonths * 30 * 24 * 60 * 60 * 1000)
+        : null;
 
       if (serialItem) {
         await db.cCTVSerialItem.update({

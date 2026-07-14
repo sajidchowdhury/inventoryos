@@ -44,6 +44,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     serialItem = found as SerialItemWithProduct | null;
   }
 
+  // ── Auto-detect warranty status ──
+  let underWarranty = false;
+  let warrantyExpiryDate: Date | null = null;
+  if (serialItem?.warrantyEnd) {
+    warrantyExpiryDate = serialItem.warrantyEnd;
+    underWarranty = new Date(serialItem.warrantyEnd) > new Date();
+  }
+
   // If customer info provided but no customerId, try to find or create customer
   let customerId = body.customerId || null;
   if (!customerId && body.customerPhone) {
@@ -64,10 +72,32 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
   }
 
+  // ── Generate token number: R{YYMMDD}{NN} ──
+  // e.g. R26071401 = first repair on 14 July 2026
+  const now = new Date();
+  const yy = String(now.getFullYear()).slice(-2);
+  const mm = String(now.getMonth() + 1).padStart(2, "0");
+  const dd = String(now.getDate()).padStart(2, "0");
+  const datePrefix = `R${yy}${mm}${dd}`;
+
+  // Count today's repairs to get sequence
+  const startOfDay = new Date(now);
+  startOfDay.setHours(0, 0, 0, 0);
+  const endOfDay = new Date(now);
+  endOfDay.setHours(23, 59, 59, 999);
+  const todayCount = await db.cCTVRepair.count({
+    where: {
+      businessId,
+      receivedDate: { gte: startOfDay, lte: endOfDay },
+    },
+  });
+  const tokenNo = `${datePrefix}${String(todayCount + 1).padStart(2, "0")}`;
+
   // Create repair record
   const repair = await db.cCTVRepair.create({
     data: {
       businessId,
+      tokenNo,
       serialNumber: body.serialNumber,
       serialItemId: serialItem?.id || null,
       productId: serialItem?.product?.id || body.productId || null,
@@ -77,6 +107,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       customerPhone: body.customerPhone || null,
       issue: body.issue,
       status: "received",
+      underWarranty,
+      warrantyExpiryDate,
       receivedDate: body.receivedDate ? new Date(body.receivedDate) : new Date(),
       repairNotes: body.repairNotes || null,
     },
@@ -89,22 +121,26 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       data: { status: "IN_REPAIR" },
     });
 
-    // Create history entry
-    await db.cCTVSerialHistory.create({
-      data: {
-        businessId,
-        serialItemId: serialItem.id,
-        serialNumber: body.serialNumber,
-        productId: serialItem.productId,
-        productName: serialItem.product?.name || null,
-        eventType: "REPAIR_RECEIVED",
-        description: `Received for repair — Issue: ${body.issue}${body.customerName ? ` · Customer: ${body.customerName}` : ""}`,
-        referenceId: repair.id,
-        referenceType: "repair",
-        eventDate: new Date(),
-      },
-    });
+    // Create history entry (best-effort)
+    try {
+      await db.cCTVSerialHistory.create({
+        data: {
+          businessId,
+          serialItemId: serialItem.id,
+          serialNumber: body.serialNumber,
+          productId: serialItem.productId,
+          productName: serialItem.product?.name || null,
+          eventType: "REPAIR_RECEIVED",
+          description: `Received for repair${underWarranty ? " (Under Warranty)" : " (Out of Warranty)"} — Issue: ${body.issue}${body.customerName ? ` · Customer: ${body.customerName}` : ""} · Token: ${tokenNo}`,
+          referenceId: repair.id,
+          referenceType: "repair",
+          eventDate: new Date(),
+        },
+      });
+    } catch (historyErr) {
+      console.error("[cctv/repairs] History write failed:", historyErr);
+    }
   }
 
-  return NextResponse.json({ success: true, repair }, { status: 201 });
+  return NextResponse.json({ success: true, repair, tokenNo }, { status: 201 });
 }

@@ -3440,6 +3440,7 @@ model CCTVSerialItem {
   sellPrice     Float?
   purchaseDate  DateTime?
   saleDate      DateTime?
+  warrantyMonths Int?    // warranty period in months (from purchase item or product default)
   warrantyEnd   DateTime?
   customerId    String?
   customerName  String?
@@ -3530,6 +3531,7 @@ model CCTVPurchaseItem {
   quantity    Int      @default(1)
   costPrice   Float    @default(0)
   serialNumbers String? // comma-separated or newline-separated serials
+  warrantyMonths Int?  // override product default at purchase time
   createdAt   DateTime @default(now())
 
   purchase CCTVPurchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
@@ -3720,6 +3722,7 @@ model CCTVSerialHistory {
 model CCTVRepair {
   id              String   @id @default(cuid())
   businessId      String
+  tokenNo         String?  @unique // printable token for customer (e.g. R26071401)
   serialNumber    String
   serialItemId    String?
   productId       String?
@@ -3730,6 +3733,8 @@ model CCTVRepair {
   issue           String
   status          String   @default("received") // received, in_repair, ready, returned,
                                                    // sent_to_supplier, replaced, closed
+  underWarranty   Boolean  @default(false) // true = free warranty repair
+  warrantyExpiryDate DateTime? // snapshot of warranty end at time of repair
   receivedDate    DateTime @default(now())
   repairStartDate DateTime?
   readyDate       DateTime?
@@ -3744,6 +3749,8 @@ model CCTVRepair {
   @@index([serialNumber])
   @@index([customerId])
   @@index([status])
+  @@index([tokenNo])
+  @@index([underWarranty])
   @@map("cctv_repairs")
 }
 

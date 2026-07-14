@@ -25,6 +25,7 @@ interface Product {
   sellPrice: number;
   stock: number;
   unit: string;
+  warrantyMonths: number;
 }
 
 interface Supplier {
@@ -42,6 +43,7 @@ interface CartItem {
   serialTracked: boolean;
   serialNumbers: string[];  // scanned serials (fills up to quantity)
   unit: string;
+  warrantyMonths: number;   // warranty period (defaults from product)
 }
 
 const fadeUp = {
@@ -167,6 +169,7 @@ export function CCTVPurchase() {
       serialTracked: product.serialTracked,
       serialNumbers: [],
       unit: product.unit,
+      warrantyMonths: product.warrantyMonths || 0,
     }]);
     if (product.serialTracked) {
       setScanMode((prev) => ({ ...prev, [newIndex]: true }));
@@ -327,6 +330,7 @@ export function CCTVPurchase() {
             serialNumbers: item.serialNumbers.join('\n'),
             costPrice: parseFloat(String(item.costPrice)) || 0,
             quantity: parseInt(String(item.quantity)) || 1,
+            warrantyMonths: item.warrantyMonths,
           })),
         }),
       });
@@ -443,7 +447,7 @@ export function CCTVPurchase() {
                 </div>
 
                 {/* Cost Price + Quantity selector */}
-                <div className="grid grid-cols-1 gap-3">
+                <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
                     <label className="text-[10px] text-gray-500 font-medium">Cost Price (৳)</label>
                     <Input type="number" value={item.costPrice}
@@ -451,51 +455,81 @@ export function CCTVPurchase() {
                       className="h-9 rounded-lg text-sm" min="0" step="0.01" />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[10px] text-gray-500 font-medium flex items-center gap-1">
-                      <Hash className="w-2.5 h-2.5" />
-                      Quantity {item.serialTracked && <span className="text-violet-500">(= serials to scan)</span>}
-                    </label>
+                    <label className="text-[10px] text-gray-500 font-medium">Warranty (months)</label>
                     <div className="flex items-center gap-2 flex-wrap">
-                      {/* - button */}
-                      <button
-                        onClick={() => handleQuantityChange(index, item.quantity - 1)}
-                        disabled={item.quantity <= 1}
-                        className="w-9 h-9 rounded-lg border border-gray-200 bg-white flex items-center justify-center disabled:opacity-40 active:scale-95 transition-transform"
-                      >
-                        <Minus className="w-3.5 h-3.5 text-gray-600" />
-                      </button>
-                      {/* number input */}
                       <input
                         type="number"
-                        value={item.quantity}
-                        onChange={(e) => handleQuantityChange(index, parseInt(e.target.value) || 1)}
+                        value={item.warrantyMonths}
+                        onChange={(e) => updateCartItem(index, { warrantyMonths: parseInt(e.target.value) || 0 })}
                         className="w-16 h-9 rounded-lg border border-gray-200 bg-white text-center text-sm font-bold text-gray-900"
-                        min="1"
+                        min="0"
                       />
-                      {/* + button */}
-                      <button
-                        onClick={() => handleQuantityChange(index, item.quantity + 1)}
-                        className="w-9 h-9 rounded-lg border border-gray-200 bg-white flex items-center justify-center active:scale-95 transition-transform"
-                      >
-                        <Plus className="w-3.5 h-3.5 text-gray-600" />
-                      </button>
-                      {/* Quick presets */}
-                      <div className="flex gap-1 ml-1">
-                        {[5, 10, 20].map(q => (
+                      <div className="flex gap-1">
+                        {[0, 6, 12, 24].map(w => (
                           <button
-                            key={q}
-                            onClick={() => handleQuantityChange(index, q)}
+                            key={w}
+                            onClick={() => updateCartItem(index, { warrantyMonths: w })}
                             className={cn(
                               'px-2.5 h-9 rounded-lg text-xs font-semibold transition-colors',
-                              item.quantity === q
+                              item.warrantyMonths === w
                                 ? 'bg-violet-500 text-white'
                                 : 'bg-white border border-gray-200 text-gray-600 hover:bg-violet-50'
                             )}
                           >
-                            {q}
+                            {w === 0 ? 'None' : `${w}m`}
                           </button>
                         ))}
                       </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Quantity selector — full width row */}
+                <div className="space-y-1">
+                  <label className="text-[10px] text-gray-500 font-medium flex items-center gap-1">
+                    <Hash className="w-2.5 h-2.5" />
+                    Quantity {item.serialTracked && <span className="text-violet-500">(= serials to scan)</span>}
+                  </label>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {/* - button */}
+                    <button
+                      onClick={() => handleQuantityChange(index, item.quantity - 1)}
+                      disabled={item.quantity <= 1}
+                      className="w-9 h-9 rounded-lg border border-gray-200 bg-white flex items-center justify-center disabled:opacity-40 active:scale-95 transition-transform"
+                    >
+                      <Minus className="w-3.5 h-3.5 text-gray-600" />
+                    </button>
+                    {/* number input */}
+                    <input
+                      type="number"
+                      value={item.quantity}
+                      onChange={(e) => handleQuantityChange(index, parseInt(e.target.value) || 1)}
+                      className="w-16 h-9 rounded-lg border border-gray-200 bg-white text-center text-sm font-bold text-gray-900"
+                      min="1"
+                    />
+                    {/* + button */}
+                    <button
+                      onClick={() => handleQuantityChange(index, item.quantity + 1)}
+                      className="w-9 h-9 rounded-lg border border-gray-200 bg-white flex items-center justify-center active:scale-95 transition-transform"
+                    >
+                      <Plus className="w-3.5 h-3.5 text-gray-600" />
+                    </button>
+                    {/* Quick presets */}
+                    <div className="flex gap-1 ml-1">
+                      {[5, 10, 20].map(q => (
+                        <button
+                          key={q}
+                          onClick={() => handleQuantityChange(index, q)}
+                          className={cn(
+                            'px-2.5 h-9 rounded-lg text-xs font-semibold transition-colors',
+                            item.quantity === q
+                              ? 'bg-violet-500 text-white'
+                              : 'bg-white border border-gray-200 text-gray-600 hover:bg-violet-50'
+                          )}
+                        >
+                          {q}
+                        </button>
+                      ))}
                     </div>
                   </div>
                 </div>

@@ -18,7 +18,9 @@ export type CCTVViewType =
   | 'serial-search'
   | 'repairs'
   | 'repair-detail'
+  | 'repair-token'
   | 'replacements'
+  | 'warranties'
   | 'settings';
 
 export interface CCTVProduct {

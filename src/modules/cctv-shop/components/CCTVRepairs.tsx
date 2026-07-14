@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft, Loader2, Plus, Wrench, X, Phone, User, Package,
-  CheckCircle2, Send, RefreshCw, AlertCircle, ChevronRight,
+  CheckCircle2, Send, RefreshCw, AlertCircle, ChevronRight, Shield, Printer,
 } from 'lucide-react';
 import { useCCTVNavStore } from '@/stores/cctv-nav-store-simple';
 import { useAuthStore } from '@/stores/auth-store';
@@ -16,12 +16,15 @@ import { Textarea } from '@/components/ui/textarea';
 
 interface Repair {
   id: string;
+  tokenNo: string | null;
   serialNumber: string;
   productName: string | null;
   customerName: string | null;
   customerPhone: string | null;
   issue: string;
   status: string;
+  underWarranty: boolean;
+  warrantyExpiryDate: string | null;
   receivedDate: string;
   repairStartDate: string | null;
   readyDate: string | null;
@@ -232,9 +235,47 @@ export function CCTVRepairs() {
             <ArrowLeft className="w-5 h-5 text-gray-600" />
           </button>
           <h1 className="text-lg font-bold text-gray-900">Repair Job</h1>
-          <span className={cn('ml-auto px-3 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5', status.bg, status.color)}>
-            <StatusIcon className="w-3.5 h-3.5" /> {status.label}
-          </span>
+          <div className="ml-auto flex items-center gap-2">
+            <button
+              onClick={() => navigate('repair-token', selectedRepair.id)}
+              className="h-9 px-4 rounded-xl bg-violet-500 text-white text-xs font-semibold flex items-center gap-1.5 active:scale-95 transition-transform"
+            >
+              <Printer className="w-4 h-4" /> Print Token
+            </button>
+            <span className={cn('px-3 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5', status.bg, status.color)}>
+              <StatusIcon className="w-3.5 h-3.5" /> {status.label}
+            </span>
+          </div>
+        </div>
+
+        {/* Token + Warranty banner */}
+        <div className={cn(
+          'rounded-2xl border p-4 flex items-center gap-3',
+          selectedRepair.underWarranty ? 'bg-emerald-50 border-emerald-200' : 'bg-gray-50 border-gray-200'
+        )}>
+          <div className={cn(
+            'w-12 h-12 rounded-xl flex items-center justify-center shrink-0',
+            selectedRepair.underWarranty ? 'bg-emerald-500' : 'bg-gray-400'
+          )}>
+            <Shield className="w-6 h-6 text-white" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[10px] text-gray-500 font-medium">Token Number</p>
+            <p className="text-xl font-mono font-bold text-gray-900">{selectedRepair.tokenNo}</p>
+          </div>
+          <div className="text-right shrink-0">
+            <p className={cn(
+              'text-xs font-bold',
+              selectedRepair.underWarranty ? 'text-emerald-700' : 'text-gray-600'
+            )}>
+              {selectedRepair.underWarranty ? 'Under Warranty' : 'Out of Warranty'}
+            </p>
+            {selectedRepair.warrantyExpiryDate && (
+              <p className="text-[10px] text-gray-500">
+                {selectedRepair.underWarranty ? 'Valid until' : 'Expired on'} {formatDate(selectedRepair.warrantyExpiryDate)}
+              </p>
+            )}
+          </div>
         </div>
 
         {/* Repair details */}
@@ -426,7 +467,19 @@ export function CCTVRepairs() {
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-mono font-semibold text-gray-900 break-all">{r.serialNumber}</p>
+                    <div className="flex items-center gap-2">
+                      {r.tokenNo && (
+                        <span className="text-xs font-mono font-bold text-violet-600 bg-violet-50 px-2 py-0.5 rounded">
+                          {r.tokenNo}
+                        </span>
+                      )}
+                      {r.underWarranty && (
+                        <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-100 text-emerald-700 flex items-center gap-0.5">
+                          <Shield className="w-2.5 h-2.5" /> WARRANTY
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-sm font-mono font-semibold text-gray-900 break-all mt-1">{r.serialNumber}</p>
                     {r.productName && <p className="text-xs text-gray-600 mt-0.5">{r.productName}</p>}
                     <p className="text-xs text-gray-500 mt-1 line-clamp-1">{r.issue}</p>
                     {r.customerName && (
