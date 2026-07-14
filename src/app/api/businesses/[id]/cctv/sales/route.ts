@@ -4,6 +4,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { serializeDecimals } from "@/lib/decimal-serializer";
+import { createLedgerEntries, LEDGER_ACCOUNTS, paymentMethodToAccount } from "@/lib/ledger-helper";
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id: businessId } = await params;
@@ -189,6 +190,45 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           },
         });
       }
+
+      // 4. Create double-entry ledger entries
+      // Sale: DEBIT cash/receivable (totalAmount), CREDIT sales_revenue (subtotal), CREDIT discount_given (if discount)
+      const paymentAccount = paymentMethodToAccount(body.paymentMethod || "cash");
+      const ledgerEntries: any[] = [];
+
+      if (invoiceDiscount > 0) {
+        // Discount: DEBIT discount_given
+        ledgerEntries.push({
+          businessId, accountId: LEDGER_ACCOUNTS.DISCOUNT_GIVEN, entryType: "DEBIT" as const,
+          amount: invoiceDiscount, referenceId: createdSale.id, referenceType: "sale",
+          description: `Discount on sale ${createdSale.id}`,
+        });
+      }
+
+      // Revenue: CREDIT sales_revenue (subtotal)
+      ledgerEntries.push({
+        businessId, accountId: LEDGER_ACCOUNTS.SALES_REVENUE, entryType: "CREDIT" as const,
+        amount: subtotal, referenceId: createdSale.id, referenceType: "sale",
+        description: `Sale revenue - ${body.customerName || "walk-in"}`,
+      });
+
+      // Payment/Receivable: DEBIT cash (paidAmount) + DEBIT receivable (dueAmount)
+      if (paidAmount > 0) {
+        ledgerEntries.push({
+          businessId, accountId: paymentAccount, entryType: "DEBIT" as const,
+          amount: paidAmount, referenceId: createdSale.id, referenceType: "sale",
+          description: `Payment received via ${body.paymentMethod || "cash"}`,
+        });
+      }
+      if (dueAmount > 0) {
+        ledgerEntries.push({
+          businessId, accountId: LEDGER_ACCOUNTS.CUSTOMER_RECEIVABLE, entryType: "DEBIT" as const,
+          amount: dueAmount, referenceId: createdSale.id, referenceType: "sale",
+          description: `Receivable from ${body.customerName || "customer"}`,
+        });
+      }
+
+      await createLedgerEntries(tx, ledgerEntries);
 
       return createdSale;
     });

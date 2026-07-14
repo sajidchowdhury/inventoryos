@@ -230,6 +230,7 @@ model Business {
   newCctvSupplierReplacements CCTVSupplierReplacement[] @relation("newCctvSupplierReplacements")
   newCctvEstimateItems      CCTVEstimateItem[]      @relation("newCctvEstimateItems")
   newCctvStockMovements     CCTVStockMovement[]     @relation("newCctvStockMovements")
+  newCctvLedgerEntries      CCTVLedgerEntry[]       @relation("newCctvLedgerEntries")
 
   @@index([userId])
   @@index([businessTypeId])
@@ -3892,4 +3893,31 @@ model CCTVStockMovement {
   @@index([movementType])
   @@index([createdAt])
   @@map("cctv_stock_movements")
+}
+
+// ── 21. CCTV Ledger Entries (double-entry accounting) ──
+// Every financial transaction creates balanced debit + credit entries.
+// Sum of all debits = sum of all credits per business (trial balance).
+// Accounts: cash, bank, bkash, nagad, sales_revenue, purchase_cost,
+// customer_receivable, supplier_payable, expense, discount_given
+model CCTVLedgerEntry {
+  id              String   @id @default(cuid())
+  businessId      String
+  accountId       String   // cash, bank, bkash, nagad, sales_revenue, etc.
+  entryType       String   // DEBIT or CREDIT
+  amount          Decimal  @default(0) @db.Decimal(12, 2)
+  referenceId     String?  // sale ID, purchase ID, payment ID, expense ID
+  referenceType   String?  // sale, purchase, payment, expense
+  description     String?
+  performedBy     String?
+  createdAt       DateTime @default(now())
+
+  business Business @relation("newCctvLedgerEntries", fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@index([accountId])
+  @@index([businessId, accountId])
+  @@index([referenceId])
+  @@index([createdAt])
+  @@map("cctv_ledger_entries")
 }

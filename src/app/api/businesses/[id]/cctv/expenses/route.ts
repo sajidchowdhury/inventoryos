@@ -1,6 +1,8 @@
 // GET/POST /api/businesses/[id]/cctv/expenses
+// PHASE 7: Creates balanced ledger entries + wrapped in $transaction()
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { createLedgerEntries, LEDGER_ACCOUNTS, paymentMethodToAccount } from "@/lib/ledger-helper";
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id: businessId } = await params;
@@ -19,7 +21,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     db.cCTVExpense.count({ where: { businessId } }),
   ]);
 
-  const totalAmount = expenses.reduce((s, e) => s + e.amount, 0);
+  const totalAmount = expenses.reduce((s, e) => s + Number(e.amount), 0);
 
   return NextResponse.json({
     success: true,
@@ -37,15 +39,35 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: "Amount is required and must be > 0" }, { status: 400 });
   }
 
-  const expense = await db.cCTVExpense.create({
-    data: {
-      businessId,
-      category: body.category || "other",
-      description: body.description || null,
-      amount: parseFloat(body.amount),
-      expenseDate: body.expenseDate ? new Date(body.expenseDate) : new Date(),
-    },
-  });
+  try {
+    const expense = await db.$transaction(async (tx) => {
+      const createdExpense = await tx.cCTVExpense.create({
+        data: {
+          businessId,
+          category: body.category || "other",
+          description: body.description || null,
+          amount: parseFloat(body.amount),
+          expenseDate: body.expenseDate ? new Date(body.expenseDate) : new Date(),
+        },
+      });
 
-  return NextResponse.json({ success: true, expense }, { status: 201 });
+      // Create balanced ledger entries
+      // Expense: DEBIT expense, CREDIT cash (default — expenses paid in cash)
+      const amount = parseFloat(body.amount);
+      const paymentAccount = paymentMethodToAccount(body.paymentMethod || "cash");
+
+      await createLedgerEntries(tx, [
+        { businessId, accountId: LEDGER_ACCOUNTS.EXPENSE, entryType: "DEBIT", amount, referenceId: createdExpense.id, referenceType: "expense", description: `Expense: ${body.category || "other"}${body.description ? ` — ${body.description}` : ""}` },
+        { businessId, accountId: paymentAccount, entryType: "CREDIT", amount, referenceId: createdExpense.id, referenceType: "expense", description: `Paid via ${body.paymentMethod || "cash"}` },
+      ]);
+
+      return createdExpense;
+    });
+
+    return NextResponse.json({ success: true, expense }, { status: 201 });
+  } catch (err: any) {
+    console.error("[cctv/expenses] Transaction failed:", err);
+    const msg = err?.message || "Failed to create expense";
+    return NextResponse.json({ error: msg }, { status: 500 });
+  }
 }

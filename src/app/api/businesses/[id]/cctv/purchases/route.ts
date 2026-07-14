@@ -4,6 +4,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { serializeDecimals } from "@/lib/decimal-serializer";
+import { createLedgerEntries, LEDGER_ACCOUNTS, paymentMethodToAccount } from "@/lib/ledger-helper";
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id: businessId } = await params;
@@ -197,6 +198,40 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           },
         });
       }
+
+      // 4. Create double-entry ledger entries
+      // Purchase: DEBIT purchase_cost (totalAmount), CREDIT cash (paidAmount) + CREDIT supplier_payable (dueAmount)
+      const purchasePaid = body.paidAmount || totalAmount;
+      const purchaseDue = Math.max(0, totalAmount - purchasePaid);
+      const purchasePaymentAccount = paymentMethodToAccount(body.paymentMethod || "cash");
+      const purchaseLedgerEntries: any[] = [];
+
+      // Cost: DEBIT purchase_cost
+      purchaseLedgerEntries.push({
+        businessId, accountId: LEDGER_ACCOUNTS.PURCHASE_COST, entryType: "DEBIT" as const,
+        amount: totalAmount, referenceId: createdPurchase.id, referenceType: "purchase",
+        description: `Purchase from ${body.supplierName || "supplier"}`,
+      });
+
+      // Payment: CREDIT cash/bank
+      if (purchasePaid > 0) {
+        purchaseLedgerEntries.push({
+          businessId, accountId: purchasePaymentAccount, entryType: "CREDIT" as const,
+          amount: purchasePaid, referenceId: createdPurchase.id, referenceType: "purchase",
+          description: `Payment via ${body.paymentMethod || "cash"}`,
+        });
+      }
+
+      // Payable: CREDIT supplier_payable
+      if (purchaseDue > 0) {
+        purchaseLedgerEntries.push({
+          businessId, accountId: LEDGER_ACCOUNTS.SUPPLIER_PAYABLE, entryType: "CREDIT" as const,
+          amount: purchaseDue, referenceId: createdPurchase.id, referenceType: "purchase",
+          description: `Payable to ${body.supplierName || "supplier"}`,
+        });
+      }
+
+      await createLedgerEntries(tx, purchaseLedgerEntries);
 
       return createdPurchase;
     });
