@@ -16,10 +16,11 @@ import { CCTVRepairs } from './CCTVRepairs';
 import { CCTVSupplierReplacements } from './CCTVSupplierReplacements';
 import { CCTVWarrantyDashboard } from './CCTVWarrantyDashboard';
 import { CCTVRepairToken } from './CCTVRepairToken';
+import { CCTVEstimates } from './CCTVEstimates';
 import {
   Home, Package, ShoppingCart, Users, Building2, Receipt,
   BarChart3, Settings, Camera, Plus, TrendingUp, AlertTriangle, Boxes, ArrowLeftRight,
-  Search, Wrench, RefreshCw, Shield,
+  Search, Wrench, RefreshCw, Shield, FileText,
 } from 'lucide-react';
 import { useCCTVNavStore } from '@/stores/cctv-nav-store-simple';
 import { useAuthStore } from '@/stores/auth-store';
@@ -54,6 +55,7 @@ export function CCTVShell() {
             { view: 'products' as const, label: 'Products', icon: Package },
             { view: 'purchase' as const, label: 'Buy Products', icon: ShoppingCart },
             { view: 'sales' as const, label: 'Sell Products', icon: TrendingUp },
+            { view: 'estimates' as const, label: 'Estimates', icon: FileText },
             { view: 'serial-search' as const, label: 'Serial Search', icon: Search },
             { view: 'warranties' as const, label: 'Warranty', icon: Shield },
             { view: 'repairs' as const, label: 'Repairs', icon: Wrench },
@@ -126,6 +128,7 @@ export function CCTVShell() {
           {activeView === 'edit-product' && <CCTVProductForm />}
           {activeView === 'purchase' && <CCTVPurchase />}
           {activeView === 'sales' && <CCTVSales />}
+          {activeView === 'estimates' && <CCTVEstimates />}
           {activeView === 'serial-search' && <CCTVSerialSearch />}
           {activeView === 'warranties' && <CCTVWarrantyDashboard />}
           {activeView === 'repairs' && <CCTVRepairs />}
@@ -270,6 +273,7 @@ function CCTVDashboard() {
       {/* Quick Links */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
         {[
+          { label: 'Estimates', icon: FileText, view: 'estimates' as const },
           { label: 'Warranty Dashboard', icon: Shield, view: 'warranties' as const },
           { label: 'Serial Search', icon: Search, view: 'serial-search' as const },
           { label: 'Repairs', icon: Wrench, view: 'repairs' as const },
@@ -278,7 +282,6 @@ function CCTVDashboard() {
           { label: 'Suppliers', icon: Building2, view: 'suppliers' as const },
           { label: 'Stock Report', icon: Boxes, view: 'stock-report' as const },
           { label: 'Expenses', icon: Receipt, view: 'expenses' as const },
-          { label: 'Product Movement', icon: ArrowLeftRight, view: 'product-movement' as const },
         ].map((item) => (
           <button
             key={item.label}

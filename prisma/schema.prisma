@@ -3782,3 +3782,49 @@ model CCTVSupplierReplacement {
   @@index([newSerialNumber])
   @@map("cctv_supplier_replacements")
 }
+
+// ── 18. CCTV Estimates (Quotations) ──
+// Create estimate for a project → add products (no serials) →
+// client agrees → convert to real invoice (sale)
+model CCTVEstimate {
+  id           String   @id @default(cuid())
+  businessId   String
+  estimateNo   String?  // e.g. EST-2607-001
+  customerId   String?
+  customerName String?
+  customerPhone String?
+  projectTitle String?  // e.g. "6-camera CCTV installation at home"
+  totalAmount  Float    @default(0)
+  status       String   @default("draft") // draft, sent, accepted, converted, rejected
+  notes        String?
+  convertedSaleId String? // links to CCTVSale when converted
+  validUntil   DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  items CCTVEstimateItem[]
+
+  @@index([businessId])
+  @@index([customerId])
+  @@index([status])
+  @@map("cctv_estimates")
+}
+
+// ── 19. CCTV Estimate Items ──
+model CCTVEstimateItem {
+  id          String   @id @default(cuid())
+  estimateId  String
+  businessId  String
+  productId   String?
+  productName String
+  quantity    Int      @default(1)
+  unitPrice   Float    @default(0)
+  notes       String?
+  createdAt   DateTime @default(now())
+
+  estimate CCTVEstimate @relation(fields: [estimateId], references: [id], onDelete: Cascade)
+
+  @@index([estimateId])
+  @@index([productId])
+  @@map("cctv_estimate_items")
+}

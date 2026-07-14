@@ -21,6 +21,7 @@ export type CCTVViewType =
   | 'repair-token'
   | 'replacements'
   | 'warranties'
+  | 'estimates'
   | 'settings';
 
 export interface CCTVProduct {
