@@ -103,7 +103,7 @@ export function CCTVRepairToken() {
       </div>
 
       {/* Printable Token */}
-      <div className="max-w-md mx-auto bg-white rounded-2xl border-2 border-dashed border-gray-300 p-6 print:border-2 print:border-black print:rounded-none print:max-w-none print:p-4">
+      <div className="print-area max-w-md mx-auto bg-white rounded-2xl border-2 border-dashed border-gray-300 p-6 print:border-2 print:border-black print:rounded-none print:max-w-none print:p-4">
         {/* Shop header */}
         <div className="text-center border-b-2 border-gray-200 pb-3 mb-4">
           <div className="flex items-center justify-center gap-2 mb-1">

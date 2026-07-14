@@ -342,25 +342,34 @@
 
 /* ── Print styles for invoices and tokens ── */
 @media print {
-  /* Hide sidebar, bottom nav, and any element marked print:hidden */
-  aside,
-  nav,
-  .print\:hidden {
+  /* Hide everything */
+  body * {
+    visibility: hidden;
+  }
+
+  /* Show only the print area and its children */
+  .print-area,
+  .print-area * {
+    visibility: visible;
+  }
+
+  /* Position print area at top of page */
+  .print-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    z-index: 9999;
+  }
+
+  /* Hide elements marked print:hidden even inside print area */
+  .print-area .print\:hidden {
     display: none !important;
   }
 
   /* Show print-only elements */
   .print\:block {
     display: block !important;
-  }
-
-  /* Remove padding/margins that offset content */
-  .cctv-shell-wrap {
-    padding: 0 !important;
-  }
-
-  .md\:pl-64 {
-    padding-left: 0 !important;
   }
 
   /* Reset page margins for printing */

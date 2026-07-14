@@ -131,7 +131,7 @@ export function CCTVSaleInvoice() {
       </div>
 
       {/* Printable Invoice */}
-      <div className="max-w-4xl mx-auto bg-white shadow-lg print:shadow-none print:max-w-none">
+      <div className="print-area max-w-4xl mx-auto bg-white shadow-lg print:shadow-none print:max-w-none">
         {/* ── Invoice Header ── */}
         <div className="border-b-2 border-gray-800 p-6">
           <div className="flex items-start justify-between gap-6">
@@ -226,32 +226,86 @@ export function CCTVSaleInvoice() {
               </tr>
             </thead>
             <tbody>
-              {sale.items.map((item: any, idx: number) => (
-                <tr key={item.id} className="border-b border-gray-100">
-                  <td className="p-2 text-center text-gray-600 border-r border-gray-100">{idx + 1}</td>
-                  <td className="p-2 text-gray-800 border-r border-gray-100">
-                    <p className="font-medium">{item.productName}</p>
-                    {item.serialNumber && (
-                      <p className="text-[10px] text-gray-500 font-mono">S/N: {item.serialNumber}</p>
-                    )}
-                  </td>
-                  <td className="p-2 text-center text-gray-600 border-r border-gray-100">—</td>
-                  <td className="p-2 text-center text-gray-700 border-r border-gray-100">{item.quantity.toFixed(2)}</td>
-                  <td className="p-2 text-right text-gray-700 border-r border-gray-100">{formatBDT(item.sellPrice)}</td>
-                  <td className="p-2 text-right font-semibold text-gray-900">{formatBDT(item.sellPrice * item.quantity)}</td>
-                </tr>
-              ))}
+              {(() => {
+                // Group items by productId to combine serials
+              const grouped: Record<string, {
+                productName: string;
+                productId: string;
+                serials: string[];
+                totalQty: number;
+                unitPrice: number;
+                warrantyMonths: number;
+              }> = {};
+
+              for (const item of sale.items) {
+                const key = item.productId;
+                if (!grouped[key]) {
+                  grouped[key] = {
+                    productName: item.productName,
+                    productId: item.productId,
+                    serials: [],
+                    totalQty: 0,
+                    unitPrice: item.sellPrice,
+                    warrantyMonths: 0,
+                  };
+                }
+                grouped[key].totalQty += item.quantity;
+                if (item.serialNumber) {
+                  grouped[key].serials.push(item.serialNumber);
+                }
+              }
+
+              const groupedItems = Object.values(grouped);
+
+              return groupedItems.map((item, idx) => {
+                // Split serials into chunks of 5
+                const serialChunks: string[][] = [];
+                for (let i = 0; i < item.serials.length; i += 5) {
+                  serialChunks.push(item.serials.slice(i, i + 5));
+                }
+
+                return (
+                  <tr key={idx} className="border-b border-gray-100 align-top">
+                    <td className="p-2 text-center text-gray-600 border-r border-gray-100">{idx + 1}</td>
+                    <td className="p-2 text-gray-800 border-r border-gray-100">
+                      <p className="font-medium text-[11px]">{item.productName}</p>
+                      {serialChunks.length > 0 && (
+                        <div className="mt-0.5">
+                          {serialChunks.map((chunk, ci) => (
+                            <p key={ci} className="text-[8px] text-gray-500 font-mono leading-tight">
+                              {ci === 0 ? 'S/N: ' : '     '}{chunk.join(', ')}
+                            </p>
+                          ))}
+                        </div>
+                      )}
+                    </td>
+                    <td className="p-2 text-center text-gray-600 border-r border-gray-100">
+                      {item.warrantyMonths > 0 ? `${item.warrantyMonths} ${item.warrantyMonths >= 12 ? 'Year' : 'Month'}` : '—'}
+                    </td>
+                    <td className="p-2 text-center text-gray-700 border-r border-gray-100">{item.totalQty.toFixed(2)}</td>
+                    <td className="p-2 text-right text-gray-700 border-r border-gray-100">{formatBDT(item.unitPrice)}</td>
+                    <td className="p-2 text-right font-semibold text-gray-900">{formatBDT(item.unitPrice * item.totalQty)}</td>
+                  </tr>
+                );
+              });
+              })()}
               {/* Fill empty rows for professional look */}
-              {sale.items.length < 8 && Array.from({ length: 8 - sale.items.length }).map((_, i) => (
-                <tr key={`empty-${i}`} className="border-b border-gray-100 h-8">
-                  <td className="border-r border-gray-100"></td>
-                  <td className="border-r border-gray-100"></td>
-                  <td className="border-r border-gray-100"></td>
-                  <td className="border-r border-gray-100"></td>
-                  <td className="border-r border-gray-100"></td>
-                  <td></td>
-                </tr>
-              ))}
+              {(() => {
+                const groupedCount = Object.keys(sale.items.reduce((acc: Record<string, any>, item: any) => {
+                  acc[item.productId] = true; return acc;
+                }, {})).length;
+                const emptyRows = Math.max(0, 8 - groupedCount);
+                return Array.from({ length: emptyRows }).map((_, i) => (
+                  <tr key={`empty-${i}`} className="border-b border-gray-100 h-8">
+                    <td className="border-r border-gray-100"></td>
+                    <td className="border-r border-gray-100"></td>
+                    <td className="border-r border-gray-100"></td>
+                    <td className="border-r border-gray-100"></td>
+                    <td className="border-r border-gray-100"></td>
+                    <td></td>
+                  </tr>
+                ));
+              })()}
             </tbody>
           </table>
         </div>
