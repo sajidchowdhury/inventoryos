@@ -60,13 +60,24 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       },
     });
 
-    // Decrement product stock if product was linked
+    // Decrement product stock if product was linked (with stock safety check)
     if (item.productId && item.productId !== "unknown") {
       try {
-        await db.cCTVProduct.update({
+        const product = await db.cCTVProduct.findUnique({
           where: { id: item.productId },
-          data: { stock: { decrement: item.quantity } },
+          select: { stock: true, name: true },
         });
+        if (product) {
+          if (product.stock < item.quantity) {
+            // Not enough stock — skip decrement but still create the sale item
+            console.warn(`[convert] Insufficient stock for ${product.name}: ${product.stock} available, ${item.quantity} needed`);
+          } else {
+            await db.cCTVProduct.update({
+              where: { id: item.productId },
+              data: { stock: { decrement: item.quantity } },
+            });
+          }
+        }
       } catch {
         // Product may not exist — skip
       }

@@ -119,11 +119,22 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         }
       }
     } else {
-      // Non-serial product: decrement stock
-      await db.cCTVProduct.update({
+      // Non-serial product: check + decrement stock (prevent negative)
+      const product = await db.cCTVProduct.findUnique({
         where: { id: item.productId },
-        data: { stock: { decrement: item.quantity || 1 } },
+        select: { stock: true, name: true },
       });
+      if (product && product.stock < (item.quantity || 1)) {
+        return NextResponse.json({
+          error: `Insufficient stock for ${product.name}. Available: ${product.stock}, requested: ${item.quantity || 1}`,
+        }, { status: 400 });
+      }
+      if (product) {
+        await db.cCTVProduct.update({
+          where: { id: item.productId },
+          data: { stock: { decrement: item.quantity || 1 } },
+        });
+      }
     }
   }
 

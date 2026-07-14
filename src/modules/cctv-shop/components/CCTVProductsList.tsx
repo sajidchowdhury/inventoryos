@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
-  ArrowLeft, Plus, Package, Search, Loader2, Sparkles,
+  ArrowLeft, Plus, Package, Search, Loader2, Sparkles, Tag, Upload,
 } from 'lucide-react';
 import { useCCTVNavStore } from '@/stores/cctv-nav-store-simple';
 import { useAuthStore } from '@/stores/auth-store';
@@ -57,6 +57,18 @@ export function CCTVProductsList() {
           <ArrowLeft className="w-5 h-5 text-gray-600" />
         </button>
         <h1 className="text-lg font-bold text-gray-900 flex-1">Products</h1>
+        <button
+          onClick={() => navigate('categories')}
+          className="h-9 px-3 rounded-xl bg-white border border-gray-200 text-gray-600 text-xs font-semibold flex items-center gap-1.5 hover:bg-gray-50 transition-colors"
+        >
+          <Tag className="w-4 h-4" /> Categories
+        </button>
+        <button
+          onClick={() => navigate('import-products')}
+          className="h-9 px-3 rounded-xl bg-white border border-gray-200 text-gray-600 text-xs font-semibold flex items-center gap-1.5 hover:bg-gray-50 transition-colors"
+        >
+          <Upload className="w-4 h-4" /> Import
+        </button>
         <button
           onClick={() => navigate('add-product')}
           className="h-9 px-4 rounded-xl bg-gradient-to-r from-violet-500 to-purple-600 text-white text-xs font-semibold flex items-center gap-1.5 active:scale-95 transition-transform"
