@@ -10,6 +10,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const { searchParams } = new URL(req.url);
   const type = searchParams.get("type");
   const partyId = searchParams.get("partyId");
+  const page = parseInt(searchParams.get("page") || "1");
+  const pageSize = parseInt(searchParams.get("pageSize") || "20");
+  const skip = (page - 1) * pageSize;
 
   const where: Record<string, unknown> = { businessId };
   if (type) where.type = type;
@@ -20,13 +23,21 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     ];
   }
 
-  const payments = await db.cCTVPayment.findMany({
-    where,
-    orderBy: { paymentDate: "desc" },
-    take: 50,
-  });
+  const [payments, total] = await Promise.all([
+    db.cCTVPayment.findMany({
+      where,
+      orderBy: { paymentDate: "desc" },
+      skip,
+      take: pageSize,
+    }),
+    db.cCTVPayment.count({ where }),
+  ]);
 
-  return NextResponse.json({ success: true, payments });
+  return NextResponse.json({
+    success: true,
+    payments,
+    pagination: { page, pageSize, total, totalPages: Math.ceil(total / pageSize) },
+  });
 }
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

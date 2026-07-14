@@ -3468,6 +3468,7 @@ model CCTVSerialItem {
   @@index([productId])
   @@index([serialNumber])
   @@index([status])
+  @@index([businessId, status])
   @@unique([businessId, serialNumber])
   @@map("cctv_serial_items")
 }
@@ -3532,6 +3533,7 @@ model CCTVPurchase {
   @@index([businessId])
   @@index([supplierId])
   @@index([purchaseDate])
+  @@index([businessId, purchaseDate])
   @@map("cctv_purchases")
 }
 
@@ -3582,6 +3584,7 @@ model CCTVSale {
   @@index([businessId])
   @@index([customerId])
   @@index([saleDate])
+  @@index([businessId, saleDate])
   @@unique([businessId, invoiceNo])
   @@map("cctv_sales")
 }
@@ -3627,6 +3630,8 @@ model CCTVPayment {
   @@index([businessId])
   @@index([type])
   @@index([paymentDate])
+  @@index([businessId, paymentDate])
+  @@index([businessId, type])
   @@map("cctv_payments")
 }
 
@@ -3781,6 +3786,7 @@ model CCTVRepair {
   @@index([status])
   @@index([tokenNo])
   @@index([underWarranty])
+  @@index([businessId, status])
   @@map("cctv_repairs")
 }
 

@@ -8,13 +8,27 @@ import { createLedgerEntries, LEDGER_ACCOUNTS, paymentMethodToAccount } from "@/
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id: businessId } = await params;
-  const sales = await db.cCTVSale.findMany({
-    where: { businessId },
-    include: { items: true },
-    orderBy: { saleDate: "desc" },
-    take: 50,
+  const { searchParams } = new URL(req.url);
+  const page = parseInt(searchParams.get("page") || "1");
+  const pageSize = parseInt(searchParams.get("pageSize") || "20");
+  const skip = (page - 1) * pageSize;
+
+  const [sales, total] = await Promise.all([
+    db.cCTVSale.findMany({
+      where: { businessId },
+      include: { items: true },
+      orderBy: { saleDate: "desc" },
+      skip,
+      take: pageSize,
+    }),
+    db.cCTVSale.count({ where: { businessId } }),
+  ]);
+
+  return NextResponse.json({
+    success: true,
+    sales: serializeDecimals(sales),
+    pagination: { page, pageSize, total, totalPages: Math.ceil(total / pageSize) },
   });
-  return NextResponse.json({ success: true, sales: serializeDecimals(sales) });
 }
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
