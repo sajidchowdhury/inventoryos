@@ -152,6 +152,25 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
               `Insufficient stock for ${product?.name || item.productId}. Available: ${product?.stock || 0}, requested: ${item.quantity || 1}`
             );
           }
+
+          // Create stock movement audit record
+          const productAfter = await tx.cCTVProduct.findUnique({
+            where: { id: item.productId },
+            select: { name: true, stock: true },
+          });
+          await tx.cCTVStockMovement.create({
+            data: {
+              businessId,
+              productId: item.productId,
+              productName: productAfter?.name || item.productName,
+              movementType: "SALE",
+              quantityChange: -(item.quantity || 1),
+              balanceAfter: productAfter?.stock || 0,
+              referenceId: createdSale.id,
+              referenceType: "sale",
+              notes: `Sale to ${body.customerName || "walk-in customer"}`,
+            },
+          });
         }
       }
 

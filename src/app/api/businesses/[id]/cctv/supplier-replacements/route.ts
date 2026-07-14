@@ -140,6 +140,25 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
             `Insufficient stock for ${product?.name || productId}. Available: ${product?.stock || 0}, needed: ${quantity}`
           );
         }
+
+        // Stock movement audit record (non-serial send to supplier)
+        const prodAfter = await tx.cCTVProduct.findUnique({
+          where: { id: productId! },
+          select: { stock: true },
+        });
+        await tx.cCTVStockMovement.create({
+          data: {
+            businessId,
+            productId: productId!,
+            productName: productName,
+            movementType: "REPLACEMENT_SEND",
+            quantityChange: -quantity,
+            balanceAfter: prodAfter?.stock || 0,
+            referenceId: createdReplacement.id,
+            referenceType: "replacement",
+            notes: `Sent ${quantity} damaged items to supplier${supplierName ? ` (${supplierName})` : ""}`,
+          },
+        });
       }
 
       return createdReplacement;

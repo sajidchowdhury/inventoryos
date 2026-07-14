@@ -79,11 +79,30 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
           });
         }
 
-        // 4. For non-serial mode: increment product stock
+        // 4. For non-serial mode: increment product stock + create movement
         if (replacement.isSerialTracked === false && replacement.productId) {
           await tx.cCTVProduct.update({
             where: { id: replacement.productId },
             data: { stock: { increment: replacement.quantity } },
+          });
+
+          // Stock movement audit record (replacement received)
+          const prodAfter = await tx.cCTVProduct.findUnique({
+            where: { id: replacement.productId },
+            select: { stock: true },
+          });
+          await tx.cCTVStockMovement.create({
+            data: {
+              businessId,
+              productId: replacement.productId,
+              productName: replacement.productName,
+              movementType: "REPLACEMENT_RECEIVE",
+              quantityChange: replacement.quantity,
+              balanceAfter: prodAfter?.stock || 0,
+              referenceId: replacementId,
+              referenceType: "replacement",
+              notes: `Received ${replacement.quantity} replacement items from supplier`,
+            },
           });
         }
 

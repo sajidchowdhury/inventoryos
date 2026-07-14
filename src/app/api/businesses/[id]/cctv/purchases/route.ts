@@ -134,11 +134,50 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
             where: { id: item.productId },
             data: { stock: { increment: serials.length } },
           });
+
+          // Stock movement audit record
+          const prodAfter = await tx.cCTVProduct.findUnique({
+            where: { id: item.productId },
+            select: { stock: true },
+          });
+          await tx.cCTVStockMovement.create({
+            data: {
+              businessId,
+              productId: item.productId,
+              productName: product?.name || item.productName,
+              movementType: "PURCHASE",
+              quantityChange: serials.length,
+              balanceAfter: prodAfter?.stock || 0,
+              referenceId: createdPurchase.id,
+              referenceType: "purchase",
+              notes: `Purchased ${serials.length} serial items from ${body.supplierName || "supplier"}`,
+            },
+          });
         } else {
           // Non-serial product: increment stock
+          const qty = item.quantity || 1;
           await tx.cCTVProduct.update({
             where: { id: item.productId },
-            data: { stock: { increment: item.quantity || 1 } },
+            data: { stock: { increment: qty } },
+          });
+
+          // Stock movement audit record
+          const prodAfter = await tx.cCTVProduct.findUnique({
+            where: { id: item.productId },
+            select: { name: true, stock: true },
+          });
+          await tx.cCTVStockMovement.create({
+            data: {
+              businessId,
+              productId: item.productId,
+              productName: prodAfter?.name || item.productName,
+              movementType: "PURCHASE",
+              quantityChange: qty,
+              balanceAfter: prodAfter?.stock || 0,
+              referenceId: createdPurchase.id,
+              referenceType: "purchase",
+              notes: `Purchased ${qty} units from ${body.supplierName || "supplier"}`,
+            },
           });
         }
       }

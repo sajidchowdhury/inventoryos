@@ -229,6 +229,7 @@ model Business {
   newCctvRepairs            CCTVRepair[]            @relation("newCctvRepairs")
   newCctvSupplierReplacements CCTVSupplierReplacement[] @relation("newCctvSupplierReplacements")
   newCctvEstimateItems      CCTVEstimateItem[]      @relation("newCctvEstimateItems")
+  newCctvStockMovements     CCTVStockMovement[]     @relation("newCctvStockMovements")
 
   @@index([userId])
   @@index([businessTypeId])
@@ -3863,4 +3864,32 @@ model CCTVEstimateItem {
   @@index([productId])
   @@index([businessId])
   @@map("cctv_estimate_items")
+}
+
+// ── 20. CCTV Stock Movements (audit trail for every stock change) ──
+// Every stock change (purchase, sale, return, adjustment, replacement)
+// creates a movement record. This provides complete traceability:
+// "who changed stock from 50 to 45 on July 14th, and why?"
+model CCTVStockMovement {
+  id              String   @id @default(cuid())
+  businessId      String
+  productId       String
+  productName     String?
+  movementType    String   // PURCHASE, SALE, RETURN, ADJUSTMENT, REPLACEMENT_SEND, REPLACEMENT_RECEIVE
+  quantityChange  Int      // signed: +5 for stock in, -3 for stock out
+  balanceAfter    Int      // stock balance after this movement
+  referenceId     String?  // sale ID, purchase ID, replacement ID, etc.
+  referenceType   String?  // sale, purchase, replacement, manual
+  performedBy     String?  // user who made the change
+  notes           String?
+  createdAt       DateTime @default(now())
+
+  business Business @relation("newCctvStockMovements", fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@index([productId])
+  @@index([businessId, productId])
+  @@index([movementType])
+  @@index([createdAt])
+  @@map("cctv_stock_movements")
 }
