@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
   ArrowLeft, Loader2, Printer, Package, AlertTriangle,
-  TrendingUp, TrendingDown,
+  TrendingUp, TrendingDown, Search,
 } from 'lucide-react';
 import { useCCTVNavStore } from '@/stores/cctv-nav-store-simple';
 import { useAuthStore } from '@/stores/auth-store';
@@ -54,15 +54,18 @@ export function CCTVStockReport() {
   const businessName = useAuthStore((s) => s.session?.business?.name || 'CCTV Shop');
 
   const [data, setData] = useState<StockData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
 
-  useEffect(() => {
+  const handleSearch = () => {
     if (!businessId) return;
+    setLoading(true);
+    setHasSearched(true);
     fetch(`/api/businesses/${businessId}/cctv/reports/stock`)
       .then((r) => r.json())
       .then((d) => { setData(d); setLoading(false); })
       .catch(() => setLoading(false));
-  }, [businessId]);
+  };
 
   const handlePrint = () => window.print();
 
@@ -73,10 +76,17 @@ export function CCTVStockReport() {
           <ArrowLeft className="w-5 h-5 text-gray-600" />
         </button>
         <h1 className="text-lg font-bold text-gray-900 flex-1">Stock Report</h1>
-        <button onClick={handlePrint}
-          className="h-9 px-4 rounded-xl bg-white border border-gray-200 text-xs font-semibold flex items-center gap-1.5">
-          <Printer className="w-4 h-4" /> Print
+        <button onClick={handleSearch} disabled={loading}
+          className="h-9 px-4 rounded-xl bg-gradient-to-r from-violet-500 to-purple-600 text-white text-xs font-semibold flex items-center gap-1.5 active:scale-95 transition-transform disabled:opacity-50">
+          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+          {loading ? 'Loading...' : 'Load Stock'}
         </button>
+        {data && (
+          <button onClick={handlePrint}
+            className="h-9 px-4 rounded-xl bg-white border border-gray-200 text-xs font-semibold flex items-center gap-1.5">
+            <Printer className="w-4 h-4" /> Print
+          </button>
+        )}
       </div>
 
       <div className="hidden print:block">
@@ -87,6 +97,12 @@ export function CCTVStockReport() {
       {loading ? (
         <div className="flex items-center justify-center py-12">
           <Loader2 className="w-6 h-6 animate-spin text-violet-400" />
+        </div>
+      ) : !hasSearched ? (
+        <div className="bg-white rounded-2xl border border-gray-100 p-12 shadow-sm text-center">
+          <Package className="w-12 h-12 text-gray-200 mx-auto mb-3" />
+          <p className="text-sm font-medium text-gray-700">Click "Load Stock" to view inventory</p>
+          <p className="text-xs text-gray-400 mt-1">Shows all products with current stock levels and values</p>
         </div>
       ) : data && data.products.length > 0 ? (
         <>

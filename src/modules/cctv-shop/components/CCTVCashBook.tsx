@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
   ArrowLeft, Loader2, TrendingUp, TrendingDown, Wallet,
-  Calendar, Printer,
+  Calendar, Printer, Search,
 } from 'lucide-react';
 import { useCCTVNavStore } from '@/stores/cctv-nav-store-simple';
 import { useAuthStore } from '@/stores/auth-store';
@@ -52,16 +52,18 @@ export function CCTVCashBook() {
 
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [data, setData] = useState<CashBookData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
 
-  useEffect(() => {
+  const handleSearch = () => {
     if (!businessId || !date) return;
     setLoading(true);
+    setHasSearched(true);
     fetch(`/api/businesses/${businessId}/cctv/reports/cash-book?date=${date}`)
       .then((r) => r.json())
       .then((d) => { setData(d); setLoading(false); })
       .catch(() => setLoading(false));
-  }, [businessId, date]);
+  };
 
   const handlePrint = () => {
     window.print();
@@ -75,15 +77,17 @@ export function CCTVCashBook() {
           <ArrowLeft className="w-5 h-5 text-gray-600" />
         </button>
         <h1 className="text-lg font-bold text-gray-900 flex-1">Daily Cash Book</h1>
-        <button
-          onClick={handlePrint}
-          className="h-9 px-4 rounded-xl bg-white border border-gray-200 text-xs font-semibold flex items-center gap-1.5 active:scale-95 transition-transform"
-        >
-          <Printer className="w-4 h-4" /> Print
-        </button>
+        {data && (
+          <button
+            onClick={handlePrint}
+            className="h-9 px-4 rounded-xl bg-white border border-gray-200 text-xs font-semibold flex items-center gap-1.5 active:scale-95 transition-transform"
+          >
+            <Printer className="w-4 h-4" /> Print
+          </button>
+        )}
       </div>
 
-      {/* Date picker */}
+      {/* Date picker + search */}
       <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm print:hidden">
         <div className="flex items-center gap-2">
           <Calendar className="w-4 h-4 text-gray-400" />
@@ -93,6 +97,14 @@ export function CCTVCashBook() {
             onChange={(e) => setDate(e.target.value)}
             className="h-10 rounded-xl max-w-[200px]"
           />
+          <button
+            onClick={handleSearch}
+            disabled={loading}
+            className="ml-auto h-10 px-5 rounded-xl bg-gradient-to-r from-violet-500 to-purple-600 text-white text-xs font-semibold flex items-center gap-1.5 active:scale-95 transition-transform disabled:opacity-50"
+          >
+            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+            {loading ? 'Loading...' : 'Search'}
+          </button>
         </div>
       </div>
 
@@ -105,6 +117,12 @@ export function CCTVCashBook() {
       {loading ? (
         <div className="flex items-center justify-center py-12">
           <Loader2 className="w-6 h-6 animate-spin text-violet-400" />
+        </div>
+      ) : !hasSearched ? (
+        <div className="bg-white rounded-2xl border border-gray-100 p-12 shadow-sm text-center">
+          <Calendar className="w-12 h-12 text-gray-200 mx-auto mb-3" />
+          <p className="text-sm font-medium text-gray-700">Pick a date and click Search</p>
+          <p className="text-xs text-gray-400 mt-1">Shows all money in/out for that day</p>
         </div>
       ) : data && data.entries.length > 0 ? (
         <>

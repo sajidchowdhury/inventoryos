@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
   ArrowLeft, Loader2, Heart, TrendingUp, TrendingDown, Minus,
-  ShoppingCart, Receipt, Wrench, AlertTriangle, CheckCircle2, Activity,
+  ShoppingCart, Receipt, Wrench, AlertTriangle, CheckCircle2, Activity, Search,
 } from 'lucide-react';
 import { useCCTVNavStore } from '@/stores/cctv-nav-store-simple';
 import { useAuthStore } from '@/stores/auth-store';
@@ -33,21 +33,54 @@ export function CCTVWeeklyHealth() {
   const { goBack } = useCCTVNavStore();
   const businessId = useAuthStore((s) => s.session?.business?.id);
   const [data, setData] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
 
-  useEffect(() => {
+  const handleSearch = () => {
     if (!businessId) return;
+    setLoading(true);
+    setHasSearched(true);
     fetch(`/api/businesses/${businessId}/cctv/reports/weekly-health`)
       .then((r) => r.json())
       .then((d) => { setData(d); setLoading(false); })
       .catch(() => setLoading(false));
-  }, [businessId]);
+  };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="w-6 h-6 animate-spin text-violet-400" />
-      </div>
+      <motion.div {...fadeUp} className="space-y-4 pb-4">
+        <div className="flex items-center gap-3 pt-1">
+          <button onClick={goBack} className="w-9 h-9 rounded-xl bg-white border border-gray-100 flex items-center justify-center">
+            <ArrowLeft className="w-5 h-5 text-gray-600" />
+          </button>
+          <h1 className="text-lg font-bold text-gray-900">Weekly Health Report</h1>
+        </div>
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="w-8 h-8 animate-spin text-violet-400" />
+        </div>
+      </motion.div>
+    );
+  }
+
+  if (!hasSearched) {
+    return (
+      <motion.div {...fadeUp} className="space-y-4 pb-4">
+        <div className="flex items-center gap-3 pt-1">
+          <button onClick={goBack} className="w-9 h-9 rounded-xl bg-white border border-gray-100 flex items-center justify-center">
+            <ArrowLeft className="w-5 h-5 text-gray-600" />
+          </button>
+          <h1 className="text-lg font-bold text-gray-900">Weekly Health Report</h1>
+          <button onClick={handleSearch}
+            className="ml-auto h-9 px-5 rounded-xl bg-gradient-to-r from-violet-500 to-purple-600 text-white text-xs font-semibold flex items-center gap-1.5 active:scale-95 transition-transform">
+            <Search className="w-4 h-4" /> Generate Report
+          </button>
+        </div>
+        <div className="bg-white rounded-2xl border border-gray-100 p-12 shadow-sm text-center">
+          <Heart className="w-12 h-12 text-gray-200 mx-auto mb-3" />
+          <p className="text-sm font-medium text-gray-700">Click "Generate Report" to see your business health</p>
+          <p className="text-xs text-gray-400 mt-1">Analyzes last 7 days of data with health score, trends, and recommendations</p>
+        </div>
+      </motion.div>
     );
   }
 
@@ -68,6 +101,10 @@ export function CCTVWeeklyHealth() {
           <ArrowLeft className="w-5 h-5 text-gray-600" />
         </button>
         <h1 className="text-lg font-bold text-gray-900">Weekly Health Report</h1>
+        <button onClick={handleSearch}
+          className="ml-auto h-9 px-4 rounded-xl bg-white border border-gray-200 text-xs font-semibold flex items-center gap-1.5">
+          <Search className="w-4 h-4" /> Refresh
+        </button>
       </div>
 
       <p className="text-xs text-gray-500 px-1">

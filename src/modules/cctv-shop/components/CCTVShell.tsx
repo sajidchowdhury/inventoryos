@@ -22,6 +22,12 @@ import { CCTVImportProducts } from './CCTVImportProducts';
 import { CCTVReportsHub } from './CCTVReportsHub';
 import { CCTVDailySummary } from './CCTVDailySummary';
 import { CCTVWeeklyHealth } from './CCTVWeeklyHealth';
+import { CCTVSalesReport } from './CCTVSalesReport';
+import { CCTVPurchaseReport } from './CCTVPurchaseReport';
+import { CCTVProfitLoss } from './CCTVProfitLoss';
+import { CCTVDueCollection } from './CCTVDueCollection';
+import { CCTVTopProducts } from './CCTVTopProducts';
+import { CCTVExpenseSummary } from './CCTVExpenseSummary';
 import {
   Home, Package, ShoppingCart, Users, Building2, Receipt,
   BarChart3, Settings, Camera, Plus, TrendingUp, AlertTriangle, Boxes, ArrowLeftRight,
@@ -61,8 +67,6 @@ const MENU_GROUPS: MenuGroup[] = [
       { view: 'categories', label: 'Categories', icon: Tag },
       { view: 'import-products', label: 'Import CSV', icon: Upload },
       { view: 'purchase', label: 'Buy Products', icon: ShoppingCart },
-      { view: 'stock-report', label: 'Stock Report', icon: Boxes },
-      { view: 'product-movement', label: 'Product Movement', icon: ArrowLeftRight },
       { view: 'serial-search', label: 'Serial Search', icon: Search },
     ],
   },
@@ -93,9 +97,18 @@ const MENU_GROUPS: MenuGroup[] = [
     label: 'Reports',
     icon: BarChart3,
     items: [
+      { view: 'reports-hub', label: 'All Reports', icon: BarChart3 },
       { view: 'daily-summary', label: 'Daily Summary', icon: Calendar },
       { view: 'weekly-health', label: 'Weekly Health', icon: Heart },
+      { view: 'sales-report', label: 'Sales Report', icon: TrendingUp },
+      { view: 'purchase-report', label: 'Purchase Report', icon: ShoppingCart },
+      { view: 'profit-loss', label: 'Profit & Loss', icon: BarChart3 },
+      { view: 'due-collection', label: 'Due Collection', icon: AlertTriangle },
+      { view: 'top-products', label: 'Top Products', icon: TrendingUp },
+      { view: 'expense-summary', label: 'Expense Summary', icon: Receipt },
       { view: 'reports', label: 'Cash Book', icon: Receipt },
+      { view: 'stock-report', label: 'Stock Report', icon: Boxes },
+      { view: 'product-movement', label: 'Product Movement', icon: ArrowLeftRight },
     ],
   },
 ];
@@ -282,6 +295,12 @@ export function CCTVShell() {
           {activeView === 'product-movement' && <CCTVProductMovement />}
           {activeView === 'daily-summary' && <CCTVDailySummary />}
           {activeView === 'weekly-health' && <CCTVWeeklyHealth />}
+          {activeView === 'sales-report' && <CCTVSalesReport />}
+          {activeView === 'purchase-report' && <CCTVPurchaseReport />}
+          {activeView === 'profit-loss' && <CCTVProfitLoss />}
+          {activeView === 'due-collection' && <CCTVDueCollection />}
+          {activeView === 'top-products' && <CCTVTopProducts />}
+          {activeView === 'expense-summary' && <CCTVExpenseSummary />}
           {activeView === 'settings' && <PlaceholderView title="Settings" desc="Business settings — coming soon" />}
         </div>
       </div>

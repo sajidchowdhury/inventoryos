@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import {
   ArrowLeft, BarChart3, Calendar, TrendingUp, ShoppingCart, Boxes,
   Heart, FileText, ArrowLeftRight, Receipt, DollarSign, Activity,
+  Award, AlertCircle, PieChart,
 } from 'lucide-react';
 import { useCCTVNavStore } from '@/stores/cctv-nav-store-simple';
 import { cn } from '@/lib/utils';
@@ -17,7 +18,7 @@ const REPORTS = [
   {
     view: 'daily-summary' as const,
     title: 'Daily Business Summary',
-    desc: 'Everything that happened today: sales, purchases, expenses, repairs, returns — all in one page',
+    desc: 'Everything that happened on any day: sales, purchases, expenses, repairs, returns — all in one page',
     icon: Calendar,
     gradient: 'from-violet-500 to-purple-600',
     badge: 'Most used',
@@ -31,18 +32,62 @@ const REPORTS = [
     badge: 'Smart insights',
   },
   {
+    view: 'sales-report' as const,
+    title: 'Sales Report',
+    desc: 'All sales in a date range — totals, payment method breakdown, top products',
+    icon: TrendingUp,
+    gradient: 'from-emerald-500 to-teal-600',
+  },
+  {
+    view: 'purchase-report' as const,
+    title: 'Purchase Report',
+    desc: 'All purchases in a date range — totals, supplier breakdown, top products',
+    icon: ShoppingCart,
+    gradient: 'from-blue-500 to-indigo-600',
+  },
+  {
+    view: 'profit-loss' as const,
+    title: 'Profit & Loss',
+    desc: 'Revenue minus cost of goods minus expenses = net profit. With category breakdown',
+    icon: PieChart,
+    gradient: 'from-violet-500 to-purple-600',
+    badge: 'Key metric',
+  },
+  {
+    view: 'due-collection' as const,
+    title: 'Due Collection',
+    desc: 'Who owes you money? Customer dues with aging analysis (0-30, 31-60, 60+ days)',
+    icon: AlertCircle,
+    gradient: 'from-red-500 to-rose-600',
+    badge: 'Cash flow',
+  },
+  {
+    view: 'top-products' as const,
+    title: 'Top Products',
+    desc: 'Best-selling products by revenue and quantity in a date range',
+    icon: Award,
+    gradient: 'from-amber-500 to-orange-600',
+  },
+  {
+    view: 'expense-summary' as const,
+    title: 'Expense Summary',
+    desc: 'All expenses by category with visual bar breakdown',
+    icon: Receipt,
+    gradient: 'from-orange-500 to-red-600',
+  },
+  {
     view: 'reports' as const,
     title: 'Cash Book (Daily)',
     desc: 'Money in vs money out — every transaction for a single day',
     icon: DollarSign,
-    gradient: 'from-amber-500 to-orange-600',
+    gradient: 'from-amber-500 to-yellow-600',
   },
   {
     view: 'stock-report' as const,
     title: 'Stock Report',
     desc: 'Current inventory: what you have, what is low, stock value',
     icon: Boxes,
-    gradient: 'from-blue-500 to-indigo-600',
+    gradient: 'from-blue-500 to-cyan-600',
   },
   {
     view: 'product-movement' as const,
