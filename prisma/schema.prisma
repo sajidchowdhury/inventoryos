@@ -233,6 +233,9 @@ model Business {
   newCctvStockMovements     CCTVStockMovement[]     @relation("newCctvStockMovements")
   newCctvLedgerEntries      CCTVLedgerEntry[]       @relation("newCctvLedgerEntries")
 
+  // ── Backup & Restore (super-admin only) ──
+  tenantBackups             TenantBackup[]
+
   @@index([userId])
   @@index([businessTypeId])
   @@index([subscriptionStage])  // P1: fast filtering by lifecycle stage
@@ -3927,4 +3930,66 @@ model CCTVLedgerEntry {
   @@index([referenceId])
   @@index([createdAt])
   @@map("cctv_ledger_entries")
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Backup & Restore Models (Phase 1 — Foundation)
+// ═══════════════════════════════════════════════════════════════════════════
+// All backup/restore operations are SUPER-ADMIN ONLY. They are never exposed
+// to client admin panels or the main business software. The data model tracks:
+//   - TenantBackup:     per-business JSON exports (last 7 kept per business)
+//   - SystemBackup:     full-database pg_dump snapshots (last 10 kept)
+//   - BackupAuditLog:   every backup + restore action (who/when/what/result)
+
+model TenantBackup {
+  id            String   @id @default(cuid())
+  businessId    String
+  business      Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  fileName      String                  // e.g. "abc123_2024-03-15_0200.json"
+  filePath      String                  // absolute path on disk
+  fileSizeKb    Int                     // rounded
+  recordCount   Int                     // total rows serialized
+  tableCount    Int                     // how many tables were serialized
+  reason        String   @default("manual")  // manual | pre-restore | pre-delete
+  createdBy     String                  // super-admin username
+  createdAt     DateTime @default(now())
+
+  @@index([businessId, createdAt])
+  @@index([businessId, reason])
+  @@map("tenant_backups")
+}
+
+model SystemBackup {
+  id            String   @id @default(cuid())
+  fileName      String                 // e.g. "inventoryos_2024-03-15_0200.sql"
+  filePath      String                 // absolute path on disk
+  fileSizeKb    Int
+  format        String   @default("custom")  // "custom" (pg_dump -Fc) | "plain"
+  reason        String   @default("manual")  // manual | pre-restore | scheduled
+  createdBy     String                 // super-admin username (or "system" for cron)
+  createdAt     DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([reason])
+  @@map("system_backups")
+}
+
+model BackupAuditLog {
+  id            String   @id @default(cuid())
+  action        String                  // "backup" | "restore"
+  scope         String                  // "tenant" | "system"
+  businessId    String?                 // null for system-wide
+  fileName      String?                 // backup file involved
+  status        String                  // "success" | "failed"
+  durationMs    Int?
+  recordCount   Int?                    // for tenant backups
+  fileSizeKb    Int?
+  errorMessage  String?
+  triggeredBy   String                  // super-admin username
+  createdAt     DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([scope, action])
+  @@index([businessId])
+  @@map("backup_audit_logs")
 }
