@@ -17,10 +17,12 @@ import {
 } from "@/components/ui/dialog";
 import {
   Users, Search, TrendingUp, DollarSign, AlertTriangle,
-  Loader2, ChevronRight, Calendar, Phone, RotateCcw, ArrowLeft, Mail, MessageCircle, Save,
+  Loader2, ChevronRight, Calendar, Phone, RotateCcw, ArrowLeft,
+  Mail, MessageCircle, Save, Database,
 } from "lucide-react";
 import { useAdmin } from "../AdminContext";
 import { cn } from "@/lib/utils";
+import { TenantBackupModal } from "../TenantBackupModal";
 
 const STAGE_STYLES: Record<string, { label: string; bg: string; text: string }> = {
   active: { label: "Active", bg: "bg-emerald-100", text: "text-emerald-700" },
@@ -72,6 +74,8 @@ export default function ClientsPage() {
   const [ownerEmail, setOwnerEmail] = useState("");
   const [ownerWhatsapp, setOwnerWhatsapp] = useState("");
   const [savingContact, setSavingContact] = useState(false);
+  // Backup modal — super admin only
+  const [backupModalOpen, setBackupModalOpen] = useState(false);
 
   const fetchClients = useCallback(async () => {
     if (!token) return;
@@ -594,12 +598,41 @@ export default function ClientsPage() {
                       ))}
                     </div>
                   )}
+
+                  {/* Data Backup — super admin only */}
+                  <div className="rounded-lg border border-border bg-accent/40 p-3 space-y-2">
+                    <p className="text-xs font-semibold flex items-center gap-1.5">
+                      <Database className="h-3.5 w-3.5 text-primary" /> Data Backup
+                    </p>
+                    <p className="text-[10px] text-muted-foreground -mt-1">
+                      Back up this client's data, view the last 7 backups, download, or restore. Every restore creates a pre-restore safety net.
+                    </p>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => setBackupModalOpen(true)}
+                    >
+                      <Database className="h-3.5 w-3.5" /> Manage Backups
+                    </Button>
+                  </div>
                 </div>
               ) : null}
             </>
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Tenant-wise backup modal — super admin only */}
+      {selectedClient && (
+        <TenantBackupModal
+          businessId={selectedClient.id}
+          businessName={selectedClient.name}
+          token={token!}
+          open={backupModalOpen}
+          onOpenChange={setBackupModalOpen}
+        />
+      )}
     </div>
   );
 }

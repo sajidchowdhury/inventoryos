@@ -13,7 +13,7 @@ async function verifySuperAdmin(req: NextRequest) {
   try {
     const session = await db.superAdminSession.findUnique({
       where: { token },
-      select: { id: true, superAdminId: true, expiresAt: true, superAdmin: { select: { id: true, isActive: true } } },
+      select: { id: true, superAdminId: true, expiresAt: true, superAdmin: { select: { id: true, isActive: true, username: true } } },
     });
     if (!session || !session.superAdmin.isActive || session.expiresAt.getTime() <= Date.now()) return null;
     return session;

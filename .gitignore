@@ -70,5 +70,8 @@ db/*.db-journal
 db/*.db-wal
 db/*.db-shm
 
-# Backup files (Phase 1: Backup & Restore) — NEVER commit actual backups
-backups/
+# Backup files (Phase 1: Backup & Restore) — NEVER commit actual backup artifacts.
+# Only ignore the TOP-LEVEL /backups/ directory (where backup files are stored on disk).
+# Do NOT match "backups" anywhere else in the tree — API routes like
+# /api/super-admin/businesses/[id]/backups/ must be committable.
+/backups/
