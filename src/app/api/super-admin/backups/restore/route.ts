@@ -23,6 +23,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { runSystemRestore, SYSTEM_BACKUP_DIR } from "@/lib/backup";
+import { checkSystemRestore } from "@/lib/backup-rate-limit";
 import { promises as fs } from "fs";
 import path from "path";
 
@@ -71,6 +72,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "File too large (>5GB). Refusing to restore." }, { status: 400 });
     }
 
+    // Safety check 4: rate limit — max 1 system restore per 5 min (global, most dangerous op)
+    const rateLimit = checkSystemRestore();
+    if (!rateLimit.allowed) {
+      return NextResponse.json({
+        error: `Rate limited — system restore is limited to 1 per 5 minutes. Please wait ${rateLimit.retryAfterSeconds}s and try again.`,
+      }, { status: 429, headers: { "Retry-After": String(rateLimit.retryAfterSeconds) } });
+    }
+
     // Save the uploaded file to /backups/db/uploads/ (temp location)
     const uploadsDir = path.join(SYSTEM_BACKUP_DIR, "uploads");
     await fs.mkdir(uploadsDir, { recursive: true, mode: 0o700 });
@@ -82,7 +91,7 @@ export async function POST(req: NextRequest) {
     const buffer = Buffer.from(arrayBuffer);
     await fs.writeFile(tempFilePath, buffer, { mode: 0o600 });
 
-    // Safety check 4: magic bytes validation (done inside runSystemRestore)
+    // Safety check 5: magic bytes validation (done inside runSystemRestore)
     const result = await runSystemRestore(tempFilePath, session.superAdmin.username);
 
     // Clean up the uploaded temp file (we don't keep it around)

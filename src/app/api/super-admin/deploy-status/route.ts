@@ -140,26 +140,56 @@ export async function GET(req: NextRequest) {
       // ignore — table may not exist in fresh installs
     }
 
-    // ── Recent DB backup (real filesystem check) ──
-    // scripts/backup-db.sh writes to backups/inventoryos_YYYYMMDD_HHMMSS.sql
+    // ── Recent DB backup (real filesystem check + BackupAuditLog check) ──
+    // Three sources of truth — newest wins:
+    //   1. backups/inventoryos_*.sql   (scripts/backup-db.sh — legacy cron)
+    //   2. backups/db/inventoryos_*.sql (super-admin UI — Phase 3)
+    //   3. BackupAuditLog table          (any successful system backup action)
     let backupStatus: { exists: boolean; latestFile: string | null; ageHours: number | null } = {
       exists: false, latestFile: null, ageHours: null,
     };
     try {
-      const backupsDir = "backups";
-      if (fs.existsSync(backupsDir)) {
-        const files = fs.readdirSync(backupsDir)
-          .filter(f => f.startsWith("inventoryos_") && f.endsWith(".sql"))
-          .map(f => {
-            const stat = fs.statSync(`${backupsDir}/${f}`);
-            return { name: f, mtime: stat.mtime };
-          })
-          .sort((a, b) => b.mtime.getTime() - a.mtime.getTime());
-        if (files.length > 0) {
-          const latest = files[0];
-          const ageHours = (Date.now() - latest.mtime.getTime()) / (1000 * 60 * 60);
-          backupStatus = { exists: true, latestFile: latest.name, ageHours: Math.round(ageHours * 10) / 10 };
+      // Scan both filesystem locations
+      const scanDirs = ["backups", "backups/db"];
+      const allFiles: { name: string; mtime: Date }[] = [];
+      for (const dir of scanDirs) {
+        if (fs.existsSync(dir)) {
+          const files = fs.readdirSync(dir)
+            .filter(f => f.startsWith("inventoryos_") && f.endsWith(".sql"))
+            .map(f => {
+              const stat = fs.statSync(`${dir}/${f}`);
+              return { name: f, mtime: stat.mtime };
+            });
+          allFiles.push(...files);
         }
+      }
+
+      // Also check BackupAuditLog for the latest successful system backup
+      let auditLogLatest: { name: string; mtime: Date } | null = null;
+      try {
+        const latestLog = await db.backupAuditLog.findFirst({
+          where: { scope: "system", action: "backup", status: "success", fileName: { not: null } },
+          orderBy: { createdAt: "desc" },
+          select: { fileName: true, createdAt: true },
+        });
+        if (latestLog?.fileName && latestLog?.createdAt) {
+          auditLogLatest = { name: latestLog.fileName, mtime: latestLog.createdAt };
+        }
+      } catch {
+        // table may not exist on fresh installs — ignore
+      }
+
+      // Combine and pick newest
+      const combined = [...allFiles.map(f => ({ name: f.name, mtime: f.mtime.getTime() }))];
+      if (auditLogLatest) {
+        combined.push({ name: auditLogLatest.name, mtime: auditLogLatest.mtime.getTime() });
+      }
+      combined.sort((a, b) => b.mtime - a.mtime);
+
+      if (combined.length > 0) {
+        const latest = combined[0];
+        const ageHours = (Date.now() - latest.mtime) / (1000 * 60 * 60);
+        backupStatus = { exists: true, latestFile: latest.name, ageHours: Math.round(ageHours * 10) / 10 };
       }
     } catch {
       // ignore
@@ -183,7 +213,7 @@ export async function GET(req: NextRequest) {
       { id: "reverse_proxy", label: "Reverse proxy in front", status: hasReverseProxy ? "ok" : "missing", detail: hasReverseProxy ? `Detected x-forwarded-for / x-forwarded-proto` : "No proxy headers — app is directly exposed", autoDetected: true },
       { id: "pm2", label: "PM2 process manager", status: isPm2Managed ? "ok" : "missing", detail: isPm2Managed ? `Managed by PM2 (PM2_HOME=${process.env.PM2_HOME ? "set" : "n/a"})` : "Not running under PM2 — restarts won't auto-recover", autoDetected: true },
       { id: "cron_health", label: "Cron scheduler active", status: cronRecentRun ? "ok" : "missing", detail: cronLastRunAgo ? `Last run: ${cronLastRunAgo}` : "No cron runs in the last 2 hours — check cron-job.org or system crontab", autoDetected: true },
-      { id: "backup_recent", label: "Recent DB backup", status: backupStatus.exists && (backupStatus.ageHours ?? 999) <= 30 ? "ok" : backupStatus.exists ? "optional" : "missing", detail: backupStatus.latestFile ? `${backupStatus.latestFile} (${backupStatus.ageHours}h old)` : "No backup found in /backups — run scripts/backup-db.sh", autoDetected: true },
+      { id: "backup_recent", label: "Recent DB backup", status: backupStatus.exists && (backupStatus.ageHours ?? 999) <= 30 ? "ok" : backupStatus.exists ? "optional" : "missing", detail: backupStatus.latestFile ? `${backupStatus.latestFile} (${backupStatus.ageHours}h old)` : "No backup found — use the System Backup card on /admin dashboard or run scripts/backup-db.sh", autoDetected: true },
       // Optional integrations
       { id: "sentry", label: "Sentry error tracking (optional)", status: process.env.SENTRY_DSN ? "ok" : "optional", detail: process.env.SENTRY_DSN ? "Configured" : "Not set — recommended for production", autoDetected: true },
       { id: "redis", label: "Redis cache (optional)", status: process.env.REDIS_URL ? "ok" : "optional", detail: process.env.REDIS_URL ? "Configured" : "Not set — falls back to in-memory cache", autoDetected: true },

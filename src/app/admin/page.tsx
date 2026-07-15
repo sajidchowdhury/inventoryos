@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { SystemBackupCard } from "./SystemBackupCard";
+import { BackupAuditLogCard } from "./BackupAuditLogCard";
 
 interface BusinessesSummary { total: number; active: number; suspended: number; proAi: number; }
 interface AiUsageData { summary?: { totalCostToday?: number; totalCostThisMonth?: number; totalCalls?: number; }; }
@@ -149,6 +150,9 @@ export default function GlobalDashboard() {
 
       {/* ═══ SYSTEM BACKUP (Phase 3) ═══ */}
       <SystemBackupCard token={token!} />
+
+      {/* ═══ BACKUP AUDIT LOG (Phase 4) ═══ */}
+      <BackupAuditLogCard token={token!} />
 
       {/* ═══ CRON STATUS ═══ */}
       {cronData?.jobs && cronData.jobs.length > 0 && (

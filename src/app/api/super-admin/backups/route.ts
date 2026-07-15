@@ -16,6 +16,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { runSystemDump, getAvailableDiskSpaceMb, MIN_DISK_SPACE_MB } from "@/lib/backup";
+import { checkSystemBackupCreate } from "@/lib/backup-rate-limit";
 
 async function verifySuperAdmin(req: NextRequest) {
   const authHeader = req.headers.get("authorization") || "";
@@ -57,6 +58,14 @@ export async function POST(
     return NextResponse.json({
       error: `Insufficient disk space: ${freeMb}MB free (need at least ${MIN_DISK_SPACE_MB}MB)`,
     }, { status: 507 });
+  }
+
+  // Rate limit: max 1 system backup create per 30s (global, prevents pg_dump storms)
+  const rateLimit = checkSystemBackupCreate();
+  if (!rateLimit.allowed) {
+    return NextResponse.json({
+      error: `Rate limited — please wait ${rateLimit.retryAfterSeconds}s before creating another system backup.`,
+    }, { status: 429, headers: { "Retry-After": String(rateLimit.retryAfterSeconds) } });
   }
 
   try {

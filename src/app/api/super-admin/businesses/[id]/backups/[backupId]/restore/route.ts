@@ -26,6 +26,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { deserializeTenant } from "@/lib/backup";
+import { checkTenantRestore } from "@/lib/backup-rate-limit";
 
 async function verifySuperAdmin(req: NextRequest) {
   const authHeader = req.headers.get("authorization") || "";
@@ -87,6 +88,14 @@ export async function POST(
       error: `Confirmation name does not match. Type "${business.name}" exactly to confirm restore.`,
       expectedName: business.name,
     }, { status: 400 });
+  }
+
+  // Rate limit: max 1 tenant restore per 60s per business (prevents panic-clicking)
+  const rateLimit = checkTenantRestore(businessId);
+  if (!rateLimit.allowed) {
+    return NextResponse.json({
+      error: `Rate limited — please wait ${rateLimit.retryAfterSeconds}s before restoring this client again.`,
+    }, { status: 429, headers: { "Retry-After": String(rateLimit.retryAfterSeconds) } });
   }
 
   try {

@@ -16,6 +16,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { serializeTenant, getAvailableDiskSpaceMb, MIN_DISK_SPACE_MB } from "@/lib/backup";
+import { checkTenantBackupCreate } from "@/lib/backup-rate-limit";
 
 async function verifySuperAdmin(req: NextRequest) {
   const authHeader = req.headers.get("authorization") || "";
@@ -71,6 +72,14 @@ export async function POST(
     return NextResponse.json({
       error: `Insufficient disk space: ${freeMb}MB free (need at least ${MIN_DISK_SPACE_MB}MB)`,
     }, { status: 507 });
+  }
+
+  // Rate limit: max 1 tenant backup create per 10s per business (prevents double-clicks)
+  const rateLimit = checkTenantBackupCreate(businessId);
+  if (!rateLimit.allowed) {
+    return NextResponse.json({
+      error: `Rate limited — please wait ${rateLimit.retryAfterSeconds}s before creating another backup for this client.`,
+    }, { status: 429, headers: { "Retry-After": String(rateLimit.retryAfterSeconds) } });
   }
 
   try {
