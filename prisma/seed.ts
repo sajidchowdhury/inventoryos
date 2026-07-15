@@ -10,10 +10,10 @@ async function main() {
   // Seed business types
   const businessTypes = [
     { slug: "pharmacy", name: "Pharmacy", icon: "Pill", color: "#16A34A", isActive: true, sortOrder: 1 },
-    { slug: "grocery", name: "Grocery Shop", icon: "ShoppingCart", color: "#EA580C", isActive: false, sortOrder: 2 },
-    { slug: "restaurant", name: "Restaurant", icon: "UtensilsCrossed", color: "#DC2626", isActive: false, sortOrder: 3 },
-    { slug: "mobile-shop", name: "Mobile Shop", icon: "Smartphone", color: "#0891B2", isActive: true, sortOrder: 4 },
-    { slug: "mobile", name: "Mobile Repair", icon: "Smartphone", color: "#0891B2", isActive: false, sortOrder: 5 },
+    { slug: "cctv-shop", name: "CCTV Shop", icon: "Camera", color: "#7C3AED", isActive: true, sortOrder: 2 },
+    { slug: "mobile-shop", name: "Mobile Shop", icon: "Smartphone", color: "#0891B2", isActive: true, sortOrder: 3 },
+    { slug: "grocery", name: "Grocery Shop", icon: "ShoppingCart", color: "#EA580C", isActive: false, sortOrder: 4 },
+    { slug: "restaurant", name: "Restaurant", icon: "UtensilsCrossed", color: "#DC2626", isActive: false, sortOrder: 5 },
     { slug: "electric", name: "Electric Shop", icon: "Zap", color: "#CA8A04", isActive: false, sortOrder: 6 },
     { slug: "bakery", name: "Bakery", icon: "Cake", color: "#DB2777", isActive: false, sortOrder: 7 },
   ];
@@ -174,7 +174,7 @@ async function main() {
   ];
 
   for (const mp of mobileShopMasterProducts) {
-    await db.cCTVMasterProduct.upsert({
+    await db.masterProduct.upsert({
       where: { brand_model: { brand: mp.brand, model: mp.model } },
       update: {},
       create: mp,
