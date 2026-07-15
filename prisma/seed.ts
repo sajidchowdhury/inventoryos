@@ -174,7 +174,7 @@ async function main() {
   ];
 
   for (const mp of mobileShopMasterProducts) {
-    await db.masterProduct.upsert({
+    await db.mSMasterProduct.upsert({
       where: { brand_model: { brand: mp.brand, model: mp.model } },
       update: {},
       create: mp,
