@@ -1,7 +1,7 @@
 // ── GET /api/super-admin/deploy-status ──
-// Returns system info + environment variable checks + deployment readiness.
-// Auto-detects what's configured vs missing so the founder can see exactly
-// what needs to be done before going live on Hostinger.
+// Returns system info + real configuration checks + deployment readiness.
+// Every checklist item is a LIVE check against the running server, DB, or
+// filesystem — no static "manual" placeholders.
 
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
@@ -37,32 +37,13 @@ export async function GET(req: NextRequest) {
       pid: process.pid,
     };
 
-    // ── Environment Variable Checks ──
-    const envVars = [
-      { name: "DATABASE_URL", value: process.env.DATABASE_URL ? "✓ Set" : "✗ Missing", configured: !!process.env.DATABASE_URL, required: true, description: "PostgreSQL connection string" },
-      { name: "DIRECT_DATABASE_URL", value: process.env.DIRECT_DATABASE_URL ? "✓ Set" : "✗ Missing (optional for dev)", configured: !!process.env.DIRECT_DATABASE_URL, required: false, description: "Direct DB URL for Prisma migrations (bypasses PgBouncer)" },
-      { name: "CRON_SECRET", value: process.env.CRON_SECRET ? "✓ Set" : "✗ Missing", configured: !!process.env.CRON_SECRET, required: true, description: "Secret for cron job endpoints (x-cron-secret header)" },
-      { name: "SMTP_HOST", value: process.env.SMTP_HOST ? "✓ Set (or use DB config)" : "✗ Not set (use DB config in SMTP tab)", configured: !!process.env.SMTP_HOST, required: false, description: "SMTP server hostname (or configure via /admin/api-setup → SMTP tab)" },
-      { name: "SMTP_PORT", value: process.env.SMTP_PORT || "✗ Not set", configured: !!process.env.SMTP_PORT, required: false, description: "SMTP port (587 or 465)" },
-      { name: "SMTP_USER", value: process.env.SMTP_USER ? "✓ Set" : "✗ Not set", configured: !!process.env.SMTP_USER, required: false, description: "SMTP username" },
-      { name: "SMTP_PASS", value: process.env.SMTP_PASS ? "✓ Set" : "✗ Not set", configured: !!process.env.SMTP_PASS, required: false, description: "SMTP password or app password" },
-      { name: "SMTP_FROM", value: process.env.SMTP_FROM || "✗ Not set (optional)", configured: !!process.env.SMTP_FROM, required: false, description: "From: email address (optional, defaults to SMTP_USER)" },
-      { name: "SENTRY_DSN", value: process.env.SENTRY_DSN ? "✓ Set" : "✗ Not set (optional)", configured: !!process.env.SENTRY_DSN, required: false, description: "Sentry error tracking DSN (optional but recommended for production)" },
-      { name: "NEXT_PUBLIC_SENTRY_DSN", value: process.env.NEXT_PUBLIC_SENTRY_DSN ? "✓ Set" : "✗ Not set (optional)", configured: !!process.env.NEXT_PUBLIC_SENTRY_DSN, required: false, description: "Sentry DSN for client-side error tracking" },
-      { name: "NEXT_PUBLIC_APP_URL", value: process.env.NEXT_PUBLIC_APP_URL || "✗ Not set", configured: !!process.env.NEXT_PUBLIC_APP_URL, required: false, description: "Public app URL (e.g., https://inventoryos.com) — used in email links" },
-      { name: "REDIS_URL", value: process.env.REDIS_URL ? "✓ Set" : "✗ Not set (optional for dev)", configured: !!process.env.REDIS_URL, required: false, description: "Redis connection URL (optional, falls back to in-memory cache)" },
-      { name: "TEST_ERROR_ENABLED", value: process.env.TEST_ERROR_ENABLED || "✗ Not set (should be false in prod)", configured: !!process.env.TEST_ERROR_ENABLED, required: false, description: "Enable /api/health/test-error endpoint (set to 'false' in production)" },
-      { name: "FOUNDER_EMAIL", value: process.env.FOUNDER_EMAIL ? "✓ Set" : "✗ Not set (optional)", configured: !!process.env.FOUNDER_EMAIL, required: false, description: "Founder email for kill-switch alerts (or use Notification Recipients)" },
-    ];
-
-    // ── Database Status ──
+    // ── Database Status (real ping) ──
     let dbStatus = { connected: false, latencyMs: 0, tableCount: 0, error: null as string | null };
     try {
       const start = Date.now();
       await db.$queryRaw`SELECT 1`;
       const latency = Date.now() - start;
 
-      // Count tables — uses information_schema (standard SQL, PostgreSQL-compatible)
       const tableCountResult = await db.$queryRaw`
         SELECT COUNT(*) as count
         FROM information_schema.tables
@@ -75,7 +56,7 @@ export async function GET(req: NextRequest) {
       dbStatus = { connected: false, latencyMs: 0, tableCount: 0, error: err instanceof Error ? err.message : "Unknown DB error" };
     }
 
-    // ── SMTP Status (from DB) ──
+    // ── SMTP Status (real check via shared helper) ──
     let smtpStatus = { configured: false, source: "none" as string };
     try {
       const smtpConfigured = await isEmailConfigured();
@@ -84,7 +65,7 @@ export async function GET(req: NextRequest) {
       // ignore
     }
 
-    // ── Build Status ──
+    // ── Build Status (real filesystem check) ──
     const fs = await import("fs");
     let buildStatus = { hasStandalone: false, hasNextDir: false };
     try {
@@ -94,7 +75,7 @@ export async function GET(req: NextRequest) {
       // ignore
     }
 
-    // ── Notification Recipients ──
+    // ── Notification Recipients (real count) ──
     let recipientCount = 0;
     try {
       recipientCount = Number(await db.notificationRecipient.count({ where: { isActive: true } }));
@@ -102,7 +83,7 @@ export async function GET(req: NextRequest) {
       // ignore
     }
 
-    // ── Kill-Switch Thresholds ──
+    // ── Kill-Switch Thresholds (real count) ──
     let killSwitchCount = 0;
     try {
       killSwitchCount = Number(await db.killSwitchThreshold.count());
@@ -110,7 +91,7 @@ export async function GET(req: NextRequest) {
       // ignore
     }
 
-    // ── AI Config ──
+    // ── AI Config (real count) ──
     let aiConfigCount = 0;
     try {
       aiConfigCount = Number(await db.aiConfig.count());
@@ -118,7 +99,7 @@ export async function GET(req: NextRequest) {
       // ignore
     }
 
-    // ── Businesses ──
+    // ── Businesses (real count) ──
     let businessCount = 0;
     try {
       businessCount = Number(await db.business.count());
@@ -126,40 +107,97 @@ export async function GET(req: NextRequest) {
       // ignore
     }
 
-    // ── Deployment Checklist (auto-detected) ──
+    // ── HTTPS / SSL (real check via request headers) ──
+    // x-forwarded-proto is set by Nginx/Caddy when proxying HTTPS → HTTP backend.
+    // In dev (no proxy) the request URL protocol tells us.
+    const xProto = req.headers.get("x-forwarded-proto") || "";
+    const xForwardedFor = req.headers.get("x-forwarded-for") || "";
+    const reqUrl = req.url || "";
+    const isHttps = xProto === "https" || reqUrl.startsWith("https://");
+    const hasReverseProxy = !!xForwardedFor || !!xProto;
+
+    // ── PM2 (real check via PM2-injected env vars) ──
+    // PM2 sets PM2_HOME and pm_id when the process is managed by it.
+    const isPm2Managed = !!(process.env.PM2_HOME || process.env.pm_id || process.env.pm_uptime);
+
+    // ── Cron scheduler health (real check via CronJobLog) ──
+    // Looks for any successful cron run in the last 2 hours.
+    let cronRecentRun = false;
+    let cronLastRunAgo: string | null = null;
+    try {
+      const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
+      const recentCron = await db.cronJobLog.findFirst({
+        where: { startedAt: { gte: twoHoursAgo } },
+        orderBy: { startedAt: "desc" },
+        select: { startedAt: true, status: true, jobName: true },
+      });
+      if (recentCron) {
+        cronRecentRun = true;
+        const minsAgo = Math.floor((Date.now() - recentCron.startedAt.getTime()) / 60000);
+        cronLastRunAgo = minsAgo < 60 ? `${minsAgo}m ago (${recentCron.jobName})` : `${Math.floor(minsAgo / 60)}h ${minsAgo % 60}m ago (${recentCron.jobName})`;
+      }
+    } catch {
+      // ignore — table may not exist in fresh installs
+    }
+
+    // ── Recent DB backup (real filesystem check) ──
+    // scripts/backup-db.sh writes to backups/inventoryos_YYYYMMDD_HHMMSS.sql
+    let backupStatus: { exists: boolean; latestFile: string | null; ageHours: number | null } = {
+      exists: false, latestFile: null, ageHours: null,
+    };
+    try {
+      const backupsDir = "backups";
+      if (fs.existsSync(backupsDir)) {
+        const files = fs.readdirSync(backupsDir)
+          .filter(f => f.startsWith("inventoryos_") && f.endsWith(".sql"))
+          .map(f => {
+            const stat = fs.statSync(`${backupsDir}/${f}`);
+            return { name: f, mtime: stat.mtime };
+          })
+          .sort((a, b) => b.mtime.getTime() - a.mtime.getTime());
+        if (files.length > 0) {
+          const latest = files[0];
+          const ageHours = (Date.now() - latest.mtime.getTime()) / (1000 * 60 * 60);
+          backupStatus = { exists: true, latestFile: latest.name, ageHours: Math.round(ageHours * 10) / 10 };
+        }
+      }
+    } catch {
+      // ignore
+    }
+
+    // ── Deployment Checklist (all REAL auto-detected checks) ──
     const checklist = [
-      { id: "nodejs", label: "Node.js installed", status: "ok", detail: systemInfo.nodeVersion, autoDetected: true },
-      { id: "database_url", label: "DATABASE_URL set", status: process.env.DATABASE_URL ? "ok" : "missing", detail: envVars.find(v => v.name === "DATABASE_URL")?.value, autoDetected: true },
-      { id: "db_connected", label: "Database connected", status: dbStatus.connected ? "ok" : "error", detail: dbStatus.connected ? `${dbStatus.latencyMs}ms, ${dbStatus.tableCount} tables` : dbStatus.error || "Failed", autoDetected: true },
-      { id: "cron_secret", label: "CRON_SECRET set", status: process.env.CRON_SECRET ? "ok" : "missing", detail: process.env.CRON_SECRET ? "Set" : "Not set — cron jobs won't work", autoDetected: true },
-      { id: "smtp", label: "SMTP configured", status: smtpStatus.configured ? "ok" : "missing", detail: smtpStatus.configured ? `Via ${smtpStatus.source}` : "Configure in API Setup → SMTP tab", autoDetected: true },
-      { id: "recipients", label: "Alert recipients added", status: recipientCount > 0 ? "ok" : "missing", detail: `${recipientCount} recipient(s)`, autoDetected: true },
-      { id: "kill_switch", label: "Kill-switch thresholds set", status: killSwitchCount > 0 ? "ok" : "missing", detail: `${killSwitchCount} thresholds`, autoDetected: true },
-      { id: "ai_config", label: "AI config tuned", status: aiConfigCount > 0 ? "ok" : "missing", detail: `${aiConfigCount} features configured`, autoDetected: true },
-      { id: "build", label: "Next.js build completed", status: buildStatus.hasNextDir ? "ok" : "missing", detail: buildStatus.hasStandalone ? "Standalone build ready" : buildStatus.hasNextDir ? "Build exists" : "Run: npm run build", autoDetected: true },
-      { id: "businesses", label: "At least 1 business created", status: businessCount > 0 ? "ok" : "missing", detail: `${businessCount} businesses`, autoDetected: true },
+      { id: "nodejs", label: "Node.js runtime", status: "ok", detail: systemInfo.nodeVersion, autoDetected: true },
+      { id: "database_url", label: "DATABASE_URL set", status: process.env.DATABASE_URL ? "ok" : "missing", detail: process.env.DATABASE_URL ? "Set" : "Not set — app cannot connect to Postgres", autoDetected: true },
+      { id: "db_connected", label: "Database reachable", status: dbStatus.connected ? "ok" : "error", detail: dbStatus.connected ? `${dbStatus.latencyMs}ms latency · ${dbStatus.tableCount} tables` : dbStatus.error || "Connection failed", autoDetected: true },
+      { id: "cron_secret", label: "CRON_SECRET set", status: process.env.CRON_SECRET ? "ok" : "missing", detail: process.env.CRON_SECRET ? "Set" : "Not set — cron endpoints are unprotected", autoDetected: true },
+      { id: "smtp", label: "SMTP email configured", status: smtpStatus.configured ? "ok" : "missing", detail: smtpStatus.configured ? `Via ${smtpStatus.source}` : "Configure in System Config → SMTP tab", autoDetected: true },
+      { id: "recipients", label: "Alert recipients", status: recipientCount > 0 ? "ok" : "missing", detail: `${recipientCount} active recipient(s)`, autoDetected: true },
+      { id: "kill_switch", label: "Kill-switch thresholds", status: killSwitchCount > 0 ? "ok" : "missing", detail: `${killSwitchCount} threshold(s) configured`, autoDetected: true },
+      { id: "ai_config", label: "AI feature config", status: aiConfigCount > 0 ? "ok" : "missing", detail: `${aiConfigCount} feature(s) configured`, autoDetected: true },
+      { id: "build", label: "Next.js build artifacts", status: buildStatus.hasNextDir ? "ok" : "missing", detail: buildStatus.hasStandalone ? "Standalone build ready" : buildStatus.hasNextDir ? "Build exists (.next/)" : "Run: npm run build", autoDetected: true },
+      { id: "businesses", label: "At least 1 business", status: businessCount > 0 ? "ok" : "missing", detail: `${businessCount} business(es) registered`, autoDetected: true },
+      { id: "app_url", label: "NEXT_PUBLIC_APP_URL", status: process.env.NEXT_PUBLIC_APP_URL ? "ok" : "missing", detail: process.env.NEXT_PUBLIC_APP_URL || "Not set — email links will be broken", autoDetected: true },
+      // Infrastructure checks (real — derived from request headers / process env)
+      { id: "https", label: "HTTPS / SSL active", status: isHttps ? "ok" : "missing", detail: isHttps ? `Via x-forwarded-proto: ${xProto || "(direct)"}` : "No HTTPS detected — SSL not terminated at proxy", autoDetected: true },
+      { id: "reverse_proxy", label: "Reverse proxy in front", status: hasReverseProxy ? "ok" : "missing", detail: hasReverseProxy ? `Detected x-forwarded-for / x-forwarded-proto` : "No proxy headers — app is directly exposed", autoDetected: true },
+      { id: "pm2", label: "PM2 process manager", status: isPm2Managed ? "ok" : "missing", detail: isPm2Managed ? `Managed by PM2 (PM2_HOME=${process.env.PM2_HOME ? "set" : "n/a"})` : "Not running under PM2 — restarts won't auto-recover", autoDetected: true },
+      { id: "cron_health", label: "Cron scheduler active", status: cronRecentRun ? "ok" : "missing", detail: cronLastRunAgo ? `Last run: ${cronLastRunAgo}` : "No cron runs in the last 2 hours — check cron-job.org or system crontab", autoDetected: true },
+      { id: "backup_recent", label: "Recent DB backup", status: backupStatus.exists && (backupStatus.ageHours ?? 999) <= 30 ? "ok" : backupStatus.exists ? "optional" : "missing", detail: backupStatus.latestFile ? `${backupStatus.latestFile} (${backupStatus.ageHours}h old)` : "No backup found in /backups — run scripts/backup-db.sh", autoDetected: true },
+      // Optional integrations
       { id: "sentry", label: "Sentry error tracking (optional)", status: process.env.SENTRY_DSN ? "ok" : "optional", detail: process.env.SENTRY_DSN ? "Configured" : "Not set — recommended for production", autoDetected: true },
-      { id: "redis", label: "Redis cache (optional)", status: process.env.REDIS_URL ? "ok" : "optional", detail: process.env.REDIS_URL ? "Configured" : "Not set — falls back to in-memory", autoDetected: true },
-      { id: "app_url", label: "NEXT_PUBLIC_APP_URL set", status: process.env.NEXT_PUBLIC_APP_URL ? "ok" : "missing", detail: process.env.NEXT_PUBLIC_APP_URL || "Not set — email links won't work", autoDetected: true },
-      // Manual steps (can't auto-detect)
-      { id: "domain", label: "Domain DNS pointing to server", status: "manual", detail: "Point your domain A record to your Hostinger VPS IP", autoDetected: false },
-      { id: "ssl", label: "SSL certificate installed", status: "manual", detail: "Use Let's Encrypt (free) via Caddy or Certbot", autoDetected: false },
-      { id: "pm2", label: "PM2 process manager running", status: "manual", detail: "Install: npm install -g pm2, then: pm2 start npm --name inventoryos -- start", autoDetected: false },
-      { id: "reverse_proxy", label: "Reverse proxy configured (Caddy/Nginx)", status: "manual", detail: "Configure Caddy or Nginx to proxy :3000 to :80/:443", autoDetected: false },
-      { id: "firewall", label: "Firewall configured (ports 80, 443)", status: "manual", detail: "ufw allow 80,443/tcp — block 3000 from public access", autoDetected: false },
-      { id: "backup_cron", label: "Database backup cron configured", status: "manual", detail: "Run scripts/backup/backup.sh daily via crontab", autoDetected: false },
-      { id: "cron_scheduler", label: "External cron scheduler configured", status: "manual", detail: "Set up cron-job.org or Vercel Cron to trigger /api/cron/* endpoints", autoDetected: false },
+      { id: "redis", label: "Redis cache (optional)", status: process.env.REDIS_URL ? "ok" : "optional", detail: process.env.REDIS_URL ? "Configured" : "Not set — falls back to in-memory cache", autoDetected: true },
     ];
 
-    const autoOk = checklist.filter(s => s.autoDetected && s.status === "ok").length;
-    const autoTotal = checklist.filter(s => s.autoDetected && s.status !== "optional").length;
-    const manualDone = checklist.filter(s => !s.autoDetected && s.status === "done").length;
-    const manualTotal = checklist.filter(s => !s.autoDetected).length;
+    const autoOk = checklist.filter(s => s.status === "ok").length;
+    const autoTotal = checklist.filter(s => s.status !== "optional").length;
+    // No more "manual" items — every check is real
+    const manualDone = 0;
+    const manualTotal = 0;
 
     return NextResponse.json({
       success: true,
       systemInfo,
-      envVars,
       dbStatus,
       smtpStatus,
       buildStatus,
@@ -173,7 +211,7 @@ export async function GET(req: NextRequest) {
         autoTotal,
         manualDone,
         manualTotal,
-        overallPercent: Math.round(((autoOk + manualDone) / (autoTotal + manualTotal)) * 100),
+        overallPercent: autoTotal > 0 ? Math.round((autoOk / autoTotal) * 100) : 0,
       },
     });
   } catch (error) {
