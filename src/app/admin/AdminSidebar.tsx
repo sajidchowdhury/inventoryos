@@ -1,7 +1,9 @@
 "use client";
 
 // AdminSidebar — left sidebar navigation for the super admin panel.
-// 5 sections: Global Dashboard, API Setup, Pharmacy, MobileShop, Others (placeholder).
+// Structure: Command Center → Clients → Business Modules (1 menu each) → System.
+// Each business module is a single consolidated entry whose page contains
+//   both an Overview tab and a Catalog tab.
 // On mobile, collapses to a bottom tab bar.
 
 import Link from "next/link";
@@ -24,40 +26,26 @@ const NAV_ITEMS = [
     icon: Users,
     description: "Subscriptions + revenue tracking",
   },
-  // ── Business Modules ──
+  // ── Business Modules (one menu per business) ──
   {
-    label: "CCTV Catalog",
-    href: "/admin/catalog/cctv",
-    icon: Camera,
-    description: "CCTV Shop master product catalog",
-    badge: "Live",
-  },
-  {
-    label: "CCTV Dashboard",
+    label: "CCTV Shop",
     href: "/admin/cctv",
     icon: Camera,
-    description: "CCTV business overview",
+    description: "CCTV business — overview + master catalog",
     badge: "Live",
   },
   {
-    label: "Pharmacy Catalog",
-    href: "/admin/catalog",
-    icon: Package,
-    description: "Pharmacy master product catalog (14K+)",
-    badge: "Live",
-  },
-  {
-    label: "Pharmacy Dashboard",
+    label: "Pharmacy",
     href: "/admin/pharmacy",
     icon: Pill,
-    description: "Pharmacy dashboard",
+    description: "Pharmacy business — overview + 14K catalog",
     badge: "Live",
   },
   {
     label: "Mobile Shop",
     href: "/admin/mobile-shop",
     icon: Smartphone,
-    description: "Mobile shop module",
+    description: "Mobile shop business module",
     badge: "Soon",
     disabled: true,
   },
@@ -163,7 +151,7 @@ export function AdminSidebar() {
         {/* Footer */}
         <div className="p-3 border-t border-slate-800">
           <div className="text-xs text-slate-600 px-3">
-            v1.5.0 · Phase 1 Redesign
+            v1.6.0 · 1 menu per business
           </div>
         </div>
       </aside>

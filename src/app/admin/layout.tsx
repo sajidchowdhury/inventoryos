@@ -29,8 +29,11 @@ const PAGE_TITLES: Record<string, { title: string; subtitle: string }> = {
   "/admin/clients": { title: "Client Monitor", subtitle: "Subscriptions + revenue tracking" },
   "/admin/api-setup": { title: "System Config", subtitle: "AI, SMTP, Cron, Kill Switches" },
   "/admin/deploy": { title: "Deploy", subtitle: "Build + deploy guide" },
-  "/admin/catalog": { title: "Master Catalog", subtitle: "14K+ pharmaceutical products" },
-  "/admin/pharmacy": { title: "Pharmacy", subtitle: "Pharmacy-specific dashboard" },
+  // Each business has one consolidated menu (Overview + Catalog tabs).
+  "/admin/cctv": { title: "CCTV Shop", subtitle: "CCTV business — overview + master catalog" },
+  "/admin/catalog/cctv": { title: "CCTV Shop", subtitle: "CCTV master product catalog" },
+  "/admin/pharmacy": { title: "Pharmacy", subtitle: "Pharmacy business — overview + 14K catalog" },
+  "/admin/catalog": { title: "Pharmacy", subtitle: "Pharmacy master product catalog (14K+)" },
 };
 
 function getPageTitle(pathname: string): { title: string; subtitle: string } {
