@@ -34,7 +34,7 @@ import {
   Home, Package, ShoppingCart, Users, Building2, Receipt,
   BarChart3, Settings, Camera, Plus, TrendingUp, AlertTriangle, Boxes, ArrowLeftRight,
   Search, Wrench, RefreshCw, Shield, FileText, Tag, Upload, ChevronDown, ChevronRight,
-  Calendar, Heart,
+  Calendar, Heart, LogOut,
 } from 'lucide-react';
 import { useCCTVNavStore } from '@/stores/cctv-nav-store-simple';
 import { useAuthStore } from '@/stores/auth-store';
@@ -122,6 +122,7 @@ function isViewInGroup(view: string, group: MenuGroup): boolean {
 export function CCTVShell() {
   const { activeView, navigate } = useCCTVNavStore();
   const session = useAuthStore((s) => s.session);
+  const logout = useAuthStore((s) => s.logout);
   const businessName = session?.business?.name || 'CCTV Shop';
 
   // Auto-expand the group containing the active view
@@ -237,7 +238,14 @@ export function CCTVShell() {
           </button>
         </nav>
 
-        <div className="p-3 border-t border-violet-50">
+        <div className="p-3 border-t border-violet-50 space-y-2">
+          <button
+            onClick={() => { logout(); }}
+            className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium w-full text-left text-red-500 hover:bg-red-50 transition-colors"
+          >
+            <LogOut className="h-5 w-5 shrink-0" />
+            Logout
+          </button>
           <div className="text-xs text-gray-400 px-3">InventoryOS · CCTV Module</div>
         </div>
       </aside>
@@ -314,6 +322,7 @@ export function CCTVShell() {
 function CCTVDashboard() {
   const { navigate } = useCCTVNavStore();
   const session = useAuthStore((s) => s.session);
+  const logout = useAuthStore((s) => s.logout);
   const businessName = session?.business?.name || 'CCTV Shop';
   const [stats, setStats] = useState<any>(null);
   const [recentSales, setRecentSales] = useState<any[]>([]);
@@ -456,6 +465,15 @@ function CCTVDashboard() {
           </button>
         ))}
       </div>
+
+      {/* Logout button — visible on all devices */}
+      <button
+        onClick={() => { logout(); }}
+        className="w-full h-11 rounded-xl bg-red-50 border border-red-200 text-red-600 text-sm font-semibold flex items-center justify-center gap-2 hover:bg-red-100 transition-colors"
+      >
+        <LogOut className="w-4 h-4" />
+        Logout
+      </button>
     </motion.div>
   );
 }
