@@ -1,8 +1,10 @@
 "use client";
 
-// /admin/deploy/page.tsx — Deployment Checklist & System Info
-// Shows exactly what's configured, what's missing, and what manual steps
-// are needed to deploy to Hostinger (or any VPS).
+// /admin/deploy/page.tsx — Deployment Status & System Info
+// Shows live status of system info, DB/SMTP/Build, and the auto-detected
+// configuration checklist. Manual Hostinger setup steps, environment
+// variables table, and the quick deploy guide were removed to keep this
+// page focused on live server status.
 
 import { useEffect, useState, useCallback } from "react";
 import { motion } from "framer-motion";
@@ -13,8 +15,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   CheckCircle2, XCircle, AlertCircle, Loader2, RefreshCw,
-  Server, Database, Mail, Clock, ShieldCheck, Globe,
-  Lock, Terminal, Zap, HardDrive, Cpu, Activity, Rocket,
+  Server, Database, Mail, Clock, ShieldCheck,
+  Terminal, Zap, HardDrive, Cpu, Activity, Rocket,
 } from "lucide-react";
 import { useAdmin } from "../AdminContext";
 
@@ -87,13 +89,13 @@ export default function DeployPage() {
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="flex items-center gap-2">
-                <Rocket className="h-5 w-5 text-purple-600" />
+                <Rocket className="h-5 w-5 text-primary" />
                 Deployment Readiness
               </CardTitle>
               <CardDescription>
                 {data?.summary.overallPercent === 100
                   ? "All checks passed. Ready to go live!"
-                  : "Complete these steps before going live on Hostinger."}
+                  : "Complete these checks before going live."}
               </CardDescription>
             </div>
             <div className="text-right">
@@ -106,7 +108,7 @@ export default function DeployPage() {
             </div>
           </div>
           {/* Progress bar */}
-          <div className="mt-2 h-2 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
+          <div className="mt-2 h-2 rounded-full bg-muted overflow-hidden">
             <motion.div
               className={`h-full rounded-full ${data?.summary.overallPercent === 100 ? "bg-emerald-500" : "bg-amber-500"}`}
               initial={{ width: 0 }}
@@ -127,7 +129,7 @@ export default function DeployPage() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
-                <Server className="h-5 w-5 text-purple-600" />
+                <Server className="h-5 w-5 text-primary" />
                 System Information
               </CardTitle>
             </CardHeader>
@@ -159,7 +161,7 @@ export default function DeployPage() {
               status={data.smtpStatus.configured ? "ok" : "missing"}
               detail={data.smtpStatus.configured
                 ? `Configured via ${data.smtpStatus.source}`
-                : "Not configured — set up in API Setup → SMTP tab"}
+                : "Not configured — set up in System Config → SMTP tab"}
             />
             <StatusTile
               icon={Zap}
@@ -173,21 +175,21 @@ export default function DeployPage() {
             />
           </div>
 
-          {/* Auto-Detected Checklist */}
+          {/* Configuration Checklist (full list — manual Hostinger steps + env vars + deploy guide were removed to keep this page focused on live status) */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
                 <CheckCircle2 className="h-5 w-5 text-emerald-600" />
-                Auto-Detected Checks
+                Configuration Checklist
                 <Badge variant="outline" className="ml-auto">
                   {data.summary.autoOk}/{data.summary.autoTotal} passed
                 </Badge>
               </CardTitle>
-              <CardDescription>These are checked automatically from the running application.</CardDescription>
+              <CardDescription>Live status of every check the server can detect automatically.</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
-                {data.checklist.filter(c => c.autoDetected).map((item, i) => {
+                {data.checklist.map((item, i) => {
                   const meta = STATUS_META[item.status] || STATUS_META.manual;
                   const Icon = meta.icon;
                   return (
@@ -211,142 +213,6 @@ export default function DeployPage() {
             </CardContent>
           </Card>
 
-          {/* Manual Checklist (Hostinger-specific) */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Terminal className="h-5 w-5 text-amber-600" />
-                Manual Setup Steps (Hostinger VPS)
-                <Badge variant="outline" className="ml-auto">
-                  {data.summary.manualDone}/{data.summary.manualTotal} done
-                </Badge>
-              </CardTitle>
-              <CardDescription>These steps can't be auto-detected. Complete them on your Hostinger server.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {data.checklist.filter(c => !c.autoDetected).map((item, i) => {
-                  const meta = STATUS_META[item.status] || STATUS_META.manual;
-                  const Icon = meta.icon;
-                  return (
-                    <motion.div
-                      key={item.id}
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: i * 0.05 }}
-                      className={`rounded-lg border p-4 ${meta.bg}`}
-                    >
-                      <div className="flex items-start gap-3">
-                        <Icon className={`h-5 w-5 shrink-0 mt-0.5 ${meta.color}`} />
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-medium">{item.label}</span>
-                            <Badge className={`${meta.bg} ${meta.color} text-xs border-0`}>{meta.label}</Badge>
-                          </div>
-                          <div className="text-xs text-muted-foreground mt-1 font-mono bg-slate-100 dark:bg-slate-900 rounded p-2">
-                            {item.detail}
-                          </div>
-                        </div>
-                      </div>
-                    </motion.div>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Environment Variables */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Terminal className="h-5 w-5 text-blue-600" />
-                Environment Variables
-              </CardTitle>
-              <CardDescription>Check which env vars are set on this server. Required vars must be set for production.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800">
-                <table className="w-full text-sm">
-                  <thead className="bg-muted/50">
-                    <tr>
-                      <th className="text-left p-2 font-medium">Variable</th>
-                      <th className="text-left p-2 font-medium">Status</th>
-                      <th className="text-left p-2 font-medium">Required?</th>
-                      <th className="text-left p-2 font-medium">Description</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {data.envVars.map((v) => (
-                      <tr key={v.name} className="border-t border-slate-100 dark:border-slate-800">
-                        <td className="p-2 font-mono text-xs font-bold">{v.name}</td>
-                        <td className="p-2">
-                          {v.configured ? (
-                            <Badge className="bg-emerald-100 text-emerald-700 text-xs">✓ Set</Badge>
-                          ) : v.required ? (
-                            <Badge className="bg-red-100 text-red-700 text-xs">✗ Missing</Badge>
-                          ) : (
-                            <Badge variant="secondary" className="text-xs">Not set</Badge>
-                          )}
-                        </td>
-                        <td className="p-2">
-                          {v.required ? (
-                            <Badge className="bg-red-100 text-red-700 text-xs">Required</Badge>
-                          ) : (
-                            <Badge variant="outline" className="text-xs">Optional</Badge>
-                          )}
-                        </td>
-                        <td className="p-2 text-xs text-muted-foreground">{v.description}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Hostinger Quick Deploy Guide */}
-          <Card className="border-purple-200 dark:border-purple-900">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Rocket className="h-5 w-5 text-purple-600" />
-                Hostinger VPS Quick Deploy Guide
-              </CardTitle>
-              <CardDescription>Step-by-step commands to deploy InventoryOS on a Hostinger VPS</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {[
-                  { step: 1, title: "SSH into your Hostinger VPS", cmd: "ssh root@your-server-ip" },
-                  { step: 2, title: "Install Node.js 20+ (if not pre-installed)", cmd: "curl -fsSL https://deb.nodesource.com/setup_20.x | bash -\napt-get install -y nodejs" },
-                  { step: 3, title: "Clone the repository", cmd: "cd /var/www\ngit clone https://github.com/sajidchowdhury/inventoryos.git\ncd inventoryos" },
-                  { step: 4, title: "Install dependencies", cmd: "npm install" },
-                  { step: 5, title: "Set up environment variables", cmd: "cp .env.example .env\nnano .env  # Edit with your values" },
-                  { step: 6, title: "Set up PostgreSQL database", cmd: "# Install PostgreSQL 16+:\n# apt install postgresql postgresql-contrib\n# Create database and user:\n# sudo -u postgres psql\n#   CREATE USER inventoryos WITH PASSWORD 'your_password';\n#   CREATE DATABASE inventoryos OWNER inventoryos;\n#   \\q\n# Set DATABASE_URL in .env:\n# DATABASE_URL=postgresql://inventoryos:your_password@localhost:5432/inventoryos?schema=public" },
-                  { step: 7, title: "Run database migration + seed", cmd: "# Apply the migration baseline (creates all 104 tables):\nnpx prisma migrate deploy\n# Generate Prisma Client:\nnpx prisma generate\n# Seed reference data + super-admin:\nnpx prisma db seed\n# Or use the cutover script (does all of the above):\n# bash scripts/production-cutover.sh" },
-                  { step: 8, title: "Build the project", cmd: "npm run build" },
-                  { step: 9, title: "Install PM2 (process manager)", cmd: "npm install -g pm2\npm2 start npm --name inventoryos -- start\npm2 save\npm2 startup  # Follow instructions" },
-                  { step: 10, title: "Install Caddy (reverse proxy + SSL)", cmd: "apt install caddy\n# Edit /etc/caddy/Caddyfile:\n# yourdomain.com {\n#   reverse_proxy localhost:3000\n# }\nsystemctl restart caddy" },
-                  { step: 11, title: "Set up cron jobs", cmd: "# Edit crontab:\ncrontab -e\n# Add these lines:\n# */2 * * * * curl -X POST -H 'x-cron-secret: YOUR_SECRET' http://localhost:3000/api/cron/report-worker\n# 0 * * * * curl -X POST -H 'x-cron-secret: YOUR_SECRET' http://localhost:3000/api/cron/report-schedule-checker\n# 0 * * * * curl -X POST -H 'x-cron-secret: YOUR_SECRET' http://localhost:3000/api/cron/hourly-subscriptions\n# 0 1 * * * curl -X POST -H 'x-cron-secret: YOUR_SECRET' http://localhost:3000/api/cron/nightly-stats\n# 30 1 * * * curl -X POST -H 'x-cron-secret: YOUR_SECRET' http://localhost:3000/api/cron/daily-maintenance" },
-                  { step: 12, title: "Configure SMTP (from admin panel)", cmd: "# After deployment:\n# 1. Go to https://yourdomain.com/admin\n# 2. Login as superadmin\n# 3. Go to API Setup → SMTP tab\n# 4. Enter your Gmail SMTP credentials\n# 5. Click 'Save SMTP Configuration'" },
-                  { step: 13, title: "Set up database backups", cmd: "# Add to crontab:\n# 0 2 * * * /var/www/inventoryos/scripts/backup/backup.sh" },
-                  { step: 14, title: "Verify deployment", cmd: "curl http://localhost:3000/api/health\n# Should return {\"status\":\"ok\",...}" },
-                ].map((s) => (
-                  <div key={s.step} className="flex gap-3">
-                    <div className="w-8 h-8 rounded-full bg-purple-100 dark:bg-purple-950/30 flex items-center justify-center shrink-0 font-bold text-purple-600 text-sm">
-                      {s.step}
-                    </div>
-                    <div className="flex-1">
-                      <div className="text-sm font-medium">{s.title}</div>
-                      <pre className="mt-1 text-xs font-mono bg-slate-900 text-slate-300 rounded-lg p-3 overflow-x-auto whitespace-pre-wrap">
-                        {s.cmd}
-                      </pre>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
           <Button variant="outline" size="sm" onClick={() => void load()}>
             <RefreshCw className="h-4 w-4 mr-1" /> Refresh Status
           </Button>
@@ -365,7 +231,7 @@ export default function DeployPage() {
 // ── Sub-components ──
 function InfoTile({ icon: Icon, label, value }: { icon: any; label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-slate-200 dark:border-slate-800 p-3">
+    <div className="rounded-lg border border-border p-3">
       <div className="flex items-center gap-1.5 mb-1">
         <Icon className="h-3.5 w-3.5 text-muted-foreground" />
         <span className="text-xs text-muted-foreground">{label}</span>
