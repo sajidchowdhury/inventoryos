@@ -16,7 +16,6 @@ import { Pill, LayoutDashboard, Package, Calendar, FileText, TrendingUp } from "
 import { cn } from "@/lib/utils";
 import { ScheduleManagerCard } from "../ScheduleManagerCard";
 import { GeneratedReportsViewer } from "../GeneratedReportsViewer";
-import { ContactsCard } from "../ContactsCard";
 import { useAdmin } from "../AdminContext";
 import { PharmacyCatalogContent } from "../catalog/PharmacyCatalogContent";
 
@@ -103,7 +102,6 @@ export default function PharmacyDashboard() {
       {tab === "overview" ? (
         <>
           <ScheduleManagerCard token={token!} />
-          <ContactsCard token={token!} />
           <GeneratedReportsViewer token={token!} />
         </>
       ) : (

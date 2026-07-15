@@ -3,6 +3,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getTierConfig } from "@/lib/feature-gate";
+import { updateBusinessContact } from "@/lib/business-contacts";
 
 async function verifySuperAdmin(req: NextRequest) {
   const authHeader = req.headers.get("authorization") || "";
@@ -175,7 +176,9 @@ export async function GET(
 }
 
 // PATCH /api/super-admin/clients/[id]
-// Update custom monthly fee or other fields
+// Update custom monthly fee, owner email, or owner WhatsApp number.
+// Super admins use this from the client detail dialog to set contact info
+// per-client (replaces the old global ContactsCard on the Pharmacy page).
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -188,22 +191,41 @@ export async function PATCH(
 
   try {
     const updateData: Record<string, unknown> = {};
+    const contactUpdates: { ownerEmail?: string | null; ownerWhatsapp?: string | null } = {};
 
     if (body.customMonthlyFee !== undefined) {
       // null means reset to tier default, number means custom price
       updateData.customMonthlyFee = body.customMonthlyFee === null ? null : parseFloat(body.customMonthlyFee);
     }
 
-    if (Object.keys(updateData).length === 0) {
+    // Owner contact info — validated via the shared business-contacts helper
+    // so email/whatsapp format rules stay consistent across the whole platform.
+    if (body.ownerEmail !== undefined) {
+      contactUpdates.ownerEmail = body.ownerEmail === null || body.ownerEmail === "" ? null : body.ownerEmail;
+    }
+    if (body.ownerWhatsapp !== undefined) {
+      contactUpdates.ownerWhatsapp = body.ownerWhatsapp === null || body.ownerWhatsapp === "" ? null : body.ownerWhatsapp;
+    }
+
+    if (Object.keys(contactUpdates).length > 0) {
+      const result = await updateBusinessContact(businessId, contactUpdates);
+      if (!result.success) {
+        return NextResponse.json({ error: result.error }, { status: 400 });
+      }
+    }
+
+    if (Object.keys(updateData).length === 0 && Object.keys(contactUpdates).length === 0) {
       return NextResponse.json({ error: "No fields to update" }, { status: 400 });
     }
 
-    const updated = await db.business.update({
-      where: { id: businessId },
-      data: updateData,
-    });
+    if (Object.keys(updateData).length > 0) {
+      await db.business.update({
+        where: { id: businessId },
+        data: updateData,
+      });
+    }
 
-    return NextResponse.json({ success: true, business: updated });
+    return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Client update error:", error);
     return NextResponse.json({ error: "Failed to update client" }, { status: 500 });

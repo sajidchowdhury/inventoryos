@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/dialog";
 import {
   Users, Search, TrendingUp, DollarSign, AlertTriangle,
-  Loader2, ChevronRight, Calendar, Phone, RotateCcw, ArrowLeft,
+  Loader2, ChevronRight, Calendar, Phone, RotateCcw, ArrowLeft, Mail, MessageCircle, Save,
 } from "lucide-react";
 import { useAdmin } from "../AdminContext";
 import { cn } from "@/lib/utils";
@@ -68,6 +68,10 @@ export default function ClientsPage() {
   const [extending, setExtending] = useState(false);
   const [customFee, setCustomFee] = useState("");
   const [savingFee, setSavingFee] = useState(false);
+  // Owner contact fields — super admin can set/edit per client
+  const [ownerEmail, setOwnerEmail] = useState("");
+  const [ownerWhatsapp, setOwnerWhatsapp] = useState("");
+  const [savingContact, setSavingContact] = useState(false);
 
   const fetchClients = useCallback(async () => {
     if (!token) return;
@@ -113,6 +117,8 @@ export default function ClientsPage() {
     setSelectedClient(client);
     setClientDetail(null);
     setCustomFee("");
+    setOwnerEmail("");
+    setOwnerWhatsapp("");
     setDetailLoading(true);
     try {
       const res = await fetch(`/api/super-admin/clients/${client.id}`, {
@@ -124,6 +130,9 @@ export default function ClientsPage() {
         if (data.client?.customMonthlyFee) {
           setCustomFee(String(data.client.customMonthlyFee));
         }
+        // Pre-populate contact fields from the business record
+        setOwnerEmail(data.client?.ownerEmail || "");
+        setOwnerWhatsapp(data.client?.ownerWhatsapp || "");
       }
     } catch (err) {
       console.error("Client detail error:", err);
@@ -151,6 +160,36 @@ export default function ClientsPage() {
       console.error("Save fee error:", err);
     } finally {
       setSavingFee(false);
+    }
+  };
+
+  // Save owner email + WhatsApp number for this client.
+  // Empty string clears the field (sets to null in DB).
+  const handleSaveContact = async () => {
+    if (!token || !selectedClient) return;
+    setSavingContact(true);
+    try {
+      const res = await fetch(`/api/super-admin/clients/${selectedClient.id}`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ownerEmail: ownerEmail.trim() || null,
+          ownerWhatsapp: ownerWhatsapp.trim() || null,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        // Refresh detail so the dialog reflects the saved values
+        openClientDetail(selectedClient);
+      } else {
+        // Show the validation error inline (simple alert for now)
+        alert(data.error || "Failed to save contact");
+      }
+    } catch (err) {
+      console.error("Save contact error:", err);
+      alert("Failed to save contact");
+    } finally {
+      setSavingContact(false);
     }
   };
 
@@ -421,6 +460,60 @@ export default function ClientsPage() {
                       </div>
                     </div>
                   )}
+
+                  {/* Owner Contact — super admin can set email + WhatsApp per client */}
+                  <div className="rounded-lg border border-border bg-accent/40 p-3 space-y-3">
+                    <p className="text-xs font-semibold flex items-center gap-1.5">
+                      <Mail className="h-3.5 w-3.5 text-primary" /> Owner Contact
+                    </p>
+                    <p className="text-[10px] text-muted-foreground -mt-1">
+                      Used for report delivery, subscription notices, and onboarding emails. Leave blank to clear.
+                    </p>
+
+                    {/* Email */}
+                    <div className="space-y-1">
+                      <Label className="text-[10px] text-muted-foreground uppercase tracking-wide flex items-center gap-1">
+                        <Mail className="h-3 w-3" /> Email
+                      </Label>
+                      <Input
+                        type="email"
+                        value={ownerEmail}
+                        onChange={(e) => setOwnerEmail(e.target.value)}
+                        className="h-9"
+                        placeholder="owner@business.com"
+                      />
+                    </div>
+
+                    {/* WhatsApp */}
+                    <div className="space-y-1">
+                      <Label className="text-[10px] text-muted-foreground uppercase tracking-wide flex items-center gap-1">
+                        <MessageCircle className="h-3 w-3" /> WhatsApp Number
+                      </Label>
+                      <Input
+                        type="tel"
+                        value={ownerWhatsapp}
+                        onChange={(e) => setOwnerWhatsapp(e.target.value)}
+                        className="h-9"
+                        placeholder="+8801712345678"
+                      />
+                      <p className="text-[9px] text-muted-foreground">
+                        Must start with + and be 10–15 digits.
+                      </p>
+                    </div>
+
+                    <Button
+                      size="sm"
+                      className="w-full"
+                      disabled={savingContact}
+                      onClick={handleSaveContact}
+                    >
+                      {savingContact ? (
+                        <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Saving...</>
+                      ) : (
+                        <><Save className="h-3.5 w-3.5" /> Save Contact</>
+                      )}
+                    </Button>
+                  </div>
 
                   {/* Custom Pricing */}
                   <div className="rounded-lg border border-violet-200 bg-violet-50/50 p-3 space-y-2">
