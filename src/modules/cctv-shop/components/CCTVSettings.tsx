@@ -440,122 +440,13 @@ function PermissionsTab({ businessId }: { businessId?: string }) {
 
 // ── Subscription Tab ──
 function SubscriptionTab({ businessId }: { businessId?: string }) {
-  const [sub, setSub] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (!businessId) return;
-    fetch(`/api/businesses/${businessId}/subscription`)
-      .then((r) => r.json())
-      .then((data) => { setSub(data); setLoading(false); })
-      .catch(() => setLoading(false));
-  }, [businessId]);
-
-  if (loading) {
-    return <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-violet-400" /></div>;
-  }
-
-  if (!sub) return null;
-
   return (
-    <div className="space-y-3">
-      {/* Plan card */}
-      <div className="bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl p-5 text-white shadow-lg shadow-violet-500/20">
-        <div className="flex items-start justify-between">
-          <div>
-            <p className="text-xs text-white/70 uppercase tracking-wider">Current Plan</p>
-            <p className="text-2xl font-bold mt-1 capitalize">{sub.tier || 'Free'}</p>
-          </div>
-          <CreditCard className="w-8 h-8 text-white/50" />
-        </div>
-        {sub.status && (
-          <div className="mt-3 flex items-center gap-2">
-            <span className={cn(
-              'px-2 py-0.5 rounded text-[10px] font-bold',
-              sub.status === 'active' ? 'bg-emerald-400/30 text-emerald-50' : 'bg-white/20 text-white'
-            )}>
-              {sub.status.toUpperCase()}
-            </span>
-            {sub.currentPeriodEnd && (
-              <span className="text-[10px] text-white/70">
-                Renews: {new Date(sub.currentPeriodEnd).toLocaleDateString('en-GB')}
-              </span>
-            )}
-          </div>
-        )}
+    <div className="bg-white rounded-2xl border border-gray-100 p-8 shadow-sm text-center">
+      <div className="w-16 h-16 rounded-2xl bg-violet-50 flex items-center justify-center mx-auto mb-4">
+        <CreditCard className="w-8 h-8 text-violet-400" />
       </div>
-
-      {/* Usage */}
-      {sub.usage && (
-        <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
-          <h3 className="text-sm font-bold text-gray-800 mb-3">Usage</h3>
-          <div className="space-y-3">
-            {sub.usage.products !== undefined && (
-              <UsageBar
-                label="Products"
-                used={sub.usage.products}
-                limit={sub.limits?.maxProducts}
-              />
-            )}
-            {sub.usage.users !== undefined && (
-              <UsageBar
-                label="Users"
-                used={sub.usage.users}
-                limit={sub.limits?.maxUsers}
-              />
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Features */}
-      {sub.features && Object.keys(sub.features).length > 0 && (
-        <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
-          <h3 className="text-sm font-bold text-gray-800 mb-3">Plan Features</h3>
-          <div className="space-y-1.5">
-            {Object.entries(sub.features).map(([key, value]) => (
-              <div key={key} className="flex items-center gap-2">
-                <div className={cn(
-                  'w-4 h-4 rounded-full flex items-center justify-center shrink-0',
-                  value ? 'bg-emerald-100' : 'bg-gray-200'
-                )}>
-                  {value ? <Check className="w-2.5 h-2.5 text-emerald-600" /> : <X className="w-2.5 h-2.5 text-gray-400" />}
-                </div>
-                <span className="text-xs text-gray-600 capitalize">{key.replace(/_/g, ' ').replace(/([A-Z])/g, ' $1')}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Upgrade button */}
-      <button className="w-full h-12 rounded-2xl bg-gradient-to-r from-violet-500 to-purple-600 text-white font-semibold text-sm shadow-lg flex items-center justify-center gap-2 active:scale-95 transition-transform">
-        <CreditCard className="w-4 h-4" /> Upgrade Plan
-      </button>
-    </div>
-  );
-}
-
-function UsageBar({ label, used, limit }: { label: string; used: number; limit?: number | null }) {
-  const pct = limit && limit > 0 ? Math.min(100, (used / limit) * 100) : 0;
-  const isWarning = limit && used >= limit * 0.8;
-
-  return (
-    <div>
-      <div className="flex justify-between text-xs mb-1">
-        <span className="text-gray-500">{label}</span>
-        <span className={cn('font-medium', isWarning ? 'text-amber-600' : 'text-gray-700')}>
-          {used}{limit ? ` / ${limit}` : ''}
-        </span>
-      </div>
-      {limit && limit > 0 && (
-        <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
-          <div
-            className={cn('h-full rounded-full', isWarning ? 'bg-amber-500' : 'bg-violet-500')}
-            style={{ width: `${pct}%` }}
-          />
-        </div>
-      )}
+      <p className="text-sm font-semibold text-gray-700">Subscription Management</p>
+      <p className="text-xs text-gray-400 mt-1">Coming soon</p>
     </div>
   );
 }
