@@ -24,16 +24,16 @@ export default function CCTVPage() {
   return (
     <>
       {/* Header card with status + tab switcher */}
-      <Card className="border-violet-200 dark:border-violet-900">
+      <Card>
         <CardHeader>
           <div className="flex items-center justify-between flex-wrap gap-3">
             <div>
-              <CardTitle className="flex items-center gap-2 text-violet-700 dark:text-violet-400">
-                <Camera className="h-5 w-5" />
+              <CardTitle className="flex items-center gap-2 tracking-tight">
+                <Camera className="h-5 w-5 text-primary" />
                 CCTV Shop
-                <Badge variant="outline" className="bg-emerald-500/20 text-emerald-600 border-emerald-500/30">
+                <Badge variant="success">
                   <span className="inline-flex items-center gap-1">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    <span className="h-1.5 w-1.5 rounded-full bg-success-foreground/80 animate-pulse" />
                     Live
                   </span>
                 </Badge>
@@ -47,7 +47,7 @@ export default function CCTVPage() {
                 size="sm"
                 variant={tab === "overview" ? "default" : "ghost"}
                 onClick={() => setTab("overview")}
-                className={cn("gap-1.5", tab === "overview" && "bg-violet-600 hover:bg-violet-700")}
+                className={cn("gap-1.5", tab === "overview" && "bg-primary text-primary-foreground hover:bg-primary/90")}
               >
                 <LayoutDashboard className="h-4 w-4" />
                 Overview
@@ -56,7 +56,7 @@ export default function CCTVPage() {
                 size="sm"
                 variant={tab === "catalog" ? "default" : "ghost"}
                 onClick={() => setTab("catalog")}
-                className={cn("gap-1.5", tab === "catalog" && "bg-violet-600 hover:bg-violet-700")}
+                className={cn("gap-1.5", tab === "catalog" && "bg-primary text-primary-foreground hover:bg-primary/90")}
               >
                 <Package className="h-4 w-4" />
                 Catalog
@@ -68,10 +68,10 @@ export default function CCTVPage() {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div className="rounded-lg border p-3">
               <div className="flex items-center gap-1.5 mb-1">
-                <Activity className="h-3.5 w-3.5 text-violet-600" />
+                <Activity className="h-3.5 w-3.5 text-primary" />
                 <span className="text-xs text-muted-foreground">Module Status</span>
               </div>
-              <div className="text-lg font-bold text-emerald-600">Live</div>
+              <div className="text-lg font-bold text-emerald-600 dark:text-emerald-400">Live</div>
               <div className="text-xs text-muted-foreground">Production-ready</div>
             </div>
             <div className="rounded-lg border p-3">
@@ -84,7 +84,7 @@ export default function CCTVPage() {
             </div>
             <div className="rounded-lg border p-3">
               <div className="flex items-center gap-1.5 mb-1">
-                <Package className="h-3.5 w-3.5 text-purple-600" />
+                <Package className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
                 <span className="text-xs text-muted-foreground">Catalog</span>
               </div>
               <div className="text-lg font-bold">Master</div>
@@ -92,7 +92,7 @@ export default function CCTVPage() {
             </div>
             <div className="rounded-lg border p-3">
               <div className="flex items-center gap-1.5 mb-1">
-                <Camera className="h-3.5 w-3.5 text-pink-600" />
+                <Camera className="h-3.5 w-3.5 text-pink-600 dark:text-pink-400" />
                 <span className="text-xs text-muted-foreground">Features</span>
               </div>
               <div className="text-lg font-bold">Full</div>
@@ -105,7 +105,7 @@ export default function CCTVPage() {
       {/* Tab content */}
       {tab === "overview" ? (
         <>
-          <Card className="border-violet-200 dark:border-violet-900">
+          <Card>
             <CardHeader>
               <CardTitle className="text-base">CCTV Module Overview</CardTitle>
               <CardDescription>
@@ -115,9 +115,9 @@ export default function CCTVPage() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div className="rounded-lg border p-4">
+                <div className="rounded-lg border border-border p-4">
                   <h4 className="text-sm font-semibold mb-2 flex items-center gap-1.5">
-                    <Package className="h-4 w-4 text-violet-600" /> Operational Features
+                    <Package className="h-4 w-4 text-primary" /> Operational Features
                   </h4>
                   <ul className="text-xs text-muted-foreground space-y-1.5">
                     <li>• Purchase entry with serial number scanning and warranty declaration</li>
@@ -128,9 +128,9 @@ export default function CCTVPage() {
                     <li>• Supplier replacements with new serial number assignment</li>
                   </ul>
                 </div>
-                <div className="rounded-lg border p-4">
+                <div className="rounded-lg border border-border p-4">
                   <h4 className="text-sm font-semibold mb-2 flex items-center gap-1.5">
-                    <Activity className="h-4 w-4 text-emerald-600" /> Reports & Ledger
+                    <Activity className="h-4 w-4 text-emerald-600 dark:text-emerald-400" /> Reports & Ledger
                   </h4>
                   <ul className="text-xs text-muted-foreground space-y-1.5">
                     <li>• Daily summary and weekly health report</li>
@@ -143,8 +143,8 @@ export default function CCTVPage() {
                 </div>
               </div>
 
-              <div className="mt-4 p-3 bg-violet-50 dark:bg-violet-950/30 rounded-lg border border-violet-200 dark:border-violet-900">
-                <p className="text-xs text-violet-700 dark:text-violet-400">
+              <div className="mt-4 p-3 bg-accent rounded-lg border border-border">
+                <p className="text-xs text-accent-foreground">
                   <strong>Tip:</strong> Switch to the <strong>Catalog</strong> tab above to manage the CCTV
                   master product catalog — add products manually, import CSV in bulk, or download the
                   template file. The catalog feeds every CCTV business tenant that subscribes to products.
