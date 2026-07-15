@@ -113,17 +113,31 @@ export async function POST(req: NextRequest) {
             dosageForm: p.dosageform?.trim() || p.dosageForm?.trim() || null,
             manufacturerId,
             manufacturerStr,
-            categoryName: p.categoryname?.trim() || p.categoryName?.trim() || null,
-            defaultMrp: parseFloat(p.defaultmrp || p.defaultMrp || "0") || null,
+            categoryName: p.categoryname?.trim() || p.categoryName?.trim() || p.category?.trim() || null,
+            brand: p.brand?.trim() || manufacturerStr,
+            model: p.model?.trim() || null,
+            description: p.description?.trim() || null,
+            hsnCode: p.hsncode?.trim() || p.hsnCode?.trim() || null,
+            defaultWarrantyMonths: parseInt(p.defaultwarrantymonths || p.warrantyMonths || p.warrantymonths || "0") || 0,
+            defaultSerialTracked: p.defaultserialtracked?.toLowerCase() === "true" || p.serialtracked?.toLowerCase() === "true",
+            defaultVatRate: parseFloat(p.defaultvatrate || p.vatrate || "0") || 0,
+            defaultMrp: parseFloat(p.defaultmrp || p.defaultMrp || p.sellingprice || p.sellingPrice || "0") || null,
+            defaultUnit: p.defaultunit?.trim() || p.unit?.trim() || "piece",
+            defaultImageUrl: p.defaultimageurl?.trim() || null,
             unit: p.unit?.trim() || "piece",
             stripSize: parseInt(p.stripsize || p.stripSize || "0") || null,
             boxSize: parseInt(p.boxsize || p.boxSize || "0") || null,
             barcode: p.barcode?.trim() || null,
           };
 
-          // Check if product exists by name + manufacturerStr
+          // Check if product exists by name + manufacturerStr (or brand + model for CCTV)
           const existing = await db.masterProduct.findFirst({
-            where: { name: data.name, manufacturerStr: data.manufacturerStr },
+            where: {
+              OR: [
+                { name: data.name, manufacturerStr: data.manufacturerStr },
+                { brand: data.brand, model: data.model },
+              ],
+            },
           });
 
           if (existing) {

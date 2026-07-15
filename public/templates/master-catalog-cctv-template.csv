@@ -1,0 +1,11 @@
+name,brand,model,category,description,hsnCode,defaultWarrantyMonths,defaultSerialTracked,defaultUnit,defaultVatRate,defaultMrp
+"DS-2CD2143G2-I 4MP Bullet Camera","Hikvision","DS-2CD2143G2-I","Cameras","4MP AcuSense Gen-2 Bullet Network Camera, 2.8mm lens, DarkFighter, IR up to 40m","8525.89.00",12,true,piece,15,6500
+"DS-7608NI-K2/8P 8-Ch 4K NVR","Hikvision","DS-7608NI-K2/8P","DVR/NVR","8-Channel 4K NVR, 8 PoE ports, supports up to 8MP cameras, 2x HDD bays","8517.62.00",24,true,piece,15,11500
+"IPC-HFW2431S 4MP Bullet Camera","Dahua","IPC-HFW2431S","Cameras","4MP Starlight Bullet Camera, 2.8mm fixed lens, IR LED up to 50m, ePoE","8525.89.00",12,true,piece,15,5500
+"VIGI C400HP 4MP Bullet Camera","TP-Link","VIGI-C400HP","Cameras","4MP Bullet Camera, 2.8mm lens, Smart Detection, IR up to 30m, PoE","8525.89.00",12,true,piece,15,4200
+"RG59 Siamese Cable 100m Roll","Generic","RG59-100M","Cables","RG59 Siamese Coaxial + 2C Power Cable, 100m roll, for CCTV installations","8544.70.00",0,false,roll,15,1200
+"16GB MicroSD Card Class 10","Generic","SD-16GB","Accessories","16GB Class 10 MicroSD card for NVR/DVR storage","8523.51.00",12,false,piece,15,550
+"4TB Surveillance HDD","Seagate","ST4000VX007","Storage","4TB surveillance-grade HDD for NVR/DVR","8471.70.00",36,false,piece,15,8500
+"Power Supply 12V 5A","Generic","PSU-12V5A","Accessories","12V 5A DC power supply for CCTV cameras","8504.40.00",12,false,piece,15,700
+"DS-2CE16D0T-LPFS 4MP Bullet Camera","Hikvision","DS-2CE16D0T-LPFS","Cameras","4MP Bullet with ColorVu, IR 25m, audio","8525.89.00",12,true,piece,15,5500
+"DS-2CE76D0T-LPFS 4MP Dome Camera","Hikvision","DS-2CE76D0T-LPFS","Cameras","4MP Dome with ColorVu, IR 20m, audio","8525.89.00",12,true,piece,15,4400

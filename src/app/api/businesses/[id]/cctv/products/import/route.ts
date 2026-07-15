@@ -137,9 +137,45 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     let importedCount = 0;
     let skippedCount = 0;
+    let masterCatalogLinked = 0;
 
     for (const row of importable) {
       try {
+        // Check if product already exists in this business (by name + brand)
+        const existingProduct = await db.cCTVProduct.findFirst({
+          where: {
+            businessId,
+            name: row.data.name,
+            brand: row.data.brand,
+          },
+        });
+
+        if (existingProduct) {
+          skippedCount++;
+          continue;
+        }
+
+        // Check master catalog for matching product (by brand + model or name)
+        let masterProductId = null;
+        const masterMatch = await db.masterProduct.findFirst({
+          where: {
+            OR: [
+              {
+                brand: row.data.brand,
+                model: row.data.model || undefined,
+              },
+              {
+                name: { contains: row.data.name, mode: "insensitive" },
+              },
+            ],
+          },
+          select: { id: true },
+        });
+        if (masterMatch) {
+          masterProductId = masterMatch.id;
+          masterCatalogLinked++;
+        }
+
         await db.cCTVProduct.create({
           data: {
             businessId,
@@ -168,6 +204,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       success: true,
       importedCount,
       skippedCount,
+      masterCatalogLinked,
     });
   }
 

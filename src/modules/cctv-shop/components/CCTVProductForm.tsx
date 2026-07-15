@@ -35,7 +35,7 @@ export function CCTVProductForm() {
     if (!businessId) return;
     fetch(`/api/businesses/${businessId}/cctv/categories`)
       .then((r) => r.json())
-      .then((data) => setCategories(Array.isArray(data) ? data : []))
+      .then((data) => setCategories(Array.isArray(data) ? data : (data.categories || [])))
       .catch(() => {});
   }, [businessId]);
 
