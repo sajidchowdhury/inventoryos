@@ -17,12 +17,12 @@ export async function GET(
     const statusFilter = url.searchParams.get("status") || "";
 
     // ── Summary stats ──
-    const totalProducts = await db.cCTVProduct.count({
+    const totalProducts = await db.mSProduct.count({
       where: { businessId, isActive: true },
     });
 
     // Count serial items by status
-    const serialStatusCounts = await db.cCTVSerialItem.groupBy({
+    const serialStatusCounts = await db.mSSerialItem.groupBy({
       by: ["status"],
       where: { businessId, isActive: true },
       _count: { id: true },
@@ -37,7 +37,7 @@ export async function GET(
     }
 
     // Total stock value
-    const serialValueAgg = await db.cCTVSerialItem.aggregate({
+    const serialValueAgg = await db.mSSerialItem.aggregate({
       where: {
         businessId,
         isActive: true,
@@ -49,7 +49,7 @@ export async function GET(
     const totalSellValue = serialValueAgg._sum.sellPrice || 0;
 
     // Non-serial products value
-    const nonSerialProducts = await db.cCTVProduct.findMany({
+    const nonSerialProducts = await db.mSProduct.findMany({
       where: { businessId, isActive: true, serialTracked: false },
       select: { stock: true, costPrice: true, sellPrice: true },
     });
@@ -66,7 +66,7 @@ export async function GET(
     const grandSellValue = totalSellValue + nonSerialSellValue;
 
     // ── Category breakdown ──
-    const categories = await db.cCTVCategory.findMany({
+    const categories = await db.mSCategory.findMany({
       where: { businessId, isActive: true },
       select: {
         id: true,
@@ -93,7 +93,7 @@ export async function GET(
     });
 
     // Build product stock data with serial counts
-    const serialCountsByProduct = await db.cCTVSerialItem.groupBy({
+    const serialCountsByProduct = await db.mSSerialItem.groupBy({
       by: ["productId", "status"],
       where: {
         businessId,
@@ -227,7 +227,7 @@ export async function GET(
     }
 
     // Uncategorized products
-    const uncatProducts = await db.cCTVProduct.findMany({
+    const uncatProducts = await db.mSProduct.findMany({
       where: { businessId, isActive: true, categoryId: null },
       select: {
         id: true,

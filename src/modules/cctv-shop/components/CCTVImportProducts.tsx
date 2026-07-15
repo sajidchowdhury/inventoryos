@@ -1,13 +1,14 @@
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useRef } from 'react';
+import { motion } from 'framer-motion';
 import {
-  ArrowLeft, Upload, Download, FileSpreadsheet, AlertCircle,
-  CheckCircle2, Loader2, X, AlertTriangle, Package,
+  ArrowLeft, Upload, FileText, Loader2, CheckCircle2, X, Download,
+  AlertCircle, FileSpreadsheet,
 } from 'lucide-react';
-import { useCCTVNavStore } from '@/stores/cctv-nav-store';
-import { useCctvBusinessId } from '@/modules/cctv-shop/hooks/use-cctv-business-id';
+import { useCCTVNavStore } from '@/stores/cctv-nav-store-simple';
+import { useAuthStore } from '@/stores/auth-store';
+import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
 const fadeUp = {
@@ -15,9 +16,7 @@ const fadeUp = {
   animate: { opacity: 1, y: 0, transition: { duration: 0.35, ease: 'easeOut' } },
 };
 
-// ── Types ──
-
-interface CSVRowResult {
+interface CSVRow {
   rowIndex: number;
   data: Record<string, string>;
   errors: string[];
@@ -25,436 +24,284 @@ interface CSVRowResult {
   status: 'valid' | 'warning' | 'error';
 }
 
-interface ImportResult {
-  rows: CSVRowResult[];
-  totalRows: number;
-  validCount: number;
-  warningCount: number;
-  errorCount: number;
-}
-
-type Phase = 'upload' | 'preview' | 'importing' | 'done';
-
 export function CCTVImportProducts() {
   const { goBack } = useCCTVNavStore();
-  const businessId = useCctvBusinessId();
+  const businessId = useAuthStore((s) => s.session?.business?.id);
+  const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [phase, setPhase] = useState<Phase>('upload');
-  const [file, setFile] = useState<File | null>(null);
-  const [dragOver, setDragOver] = useState(false);
-  const [error, setError] = useState('');
-  const [result, setResult] = useState<ImportResult | null>(null);
-  const [importMsg, setImportMsg] = useState('');
-  const [importErrors, setImportErrors] = useState<string[]>([]);
-  const fileRef = useRef<HTMLInputElement>(null);
+  const [stage, setStage] = useState<'upload' | 'preview' | 'importing' | 'done'>('upload');
+  const [csvFile, setCsvFile] = useState<File | null>(null);
+  const [rows, setRows] = useState<CSVRow[]>([]);
+  const [importResult, setImportResult] = useState<any>(null);
+  const [parsing, setParsing] = useState(false);
 
-  // ── File handling ──
-  const handleFile = (f: File) => {
-    if (!f.name.endsWith('.csv') && f.type !== 'text/csv') {
-      setError('Please select a .csv file');
+  const handleFileSelect = (file: File) => {
+    if (!file.name.endsWith('.csv')) {
+      toast({ title: 'Invalid file', description: 'Please upload a .csv file', variant: 'destructive' });
       return;
     }
-    if (f.size > 5 * 1024 * 1024) {
-      setError('File too large (max 5MB)');
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: 'File too large', description: 'Max 5MB', variant: 'destructive' });
       return;
     }
-    setFile(f);
-    setError('');
+    setCsvFile(file);
+    parseCSV(file);
   };
 
-  const onDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setDragOver(false);
-    const f = e.dataTransfer.files[0];
-    if (f) handleFile(f);
-  }, []);
-
-  const onDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setDragOver(true);
-  }, []);
-
-  // ── Upload & Parse ──
-  const handleUpload = async () => {
-    if (!file) return;
-    setError('');
-    setImportMsg('');
-
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-
-      const res = await fetch(`/api/businesses/${businessId}/cctv/products/import`, {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (res.ok) {
-        const data: ImportResult = await res.json();
-        setResult(data);
-        if (data.validCount > 0) {
-          setPhase('preview');
-        } else {
-          setError('No valid rows found. Please check your CSV file.');
-        }
-      } else {
-        const data = await res.json().catch(() => ({}));
-        setError(data.error || 'Failed to parse CSV');
-      }
-    } catch {
-      setError('Network error. Please try again.');
-    }
-  };
-
-  // ── Execute Import ──
-  const handleImport = async () => {
-    if (!result) return;
-    setPhase('importing');
-    setError('');
-    setImportMsg('');
-    setImportErrors([]);
-
-    const validRows = result.rows.filter(
-      (r) => r.status === 'valid' || r.status === 'warning'
-    );
-
+  const parseCSV = async (file: File) => {
+    setParsing(true);
+    const text = await file.text();
     try {
       const res = await fetch(`/api/businesses/${businessId}/cctv/products/import`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'execute',
-          rows: validRows,
-        }),
+        body: JSON.stringify({ action: 'parse', csvText: text }),
       });
-
-      if (res.ok) {
-        const data = await res.json();
-        setImportMsg(data.message);
-        if (data.errors) setImportErrors(data.errors);
-        setPhase('done');
+      const data = await res.json();
+      if (data.success || data.rows) {
+        setRows(data.rows || []);
+        setStage('preview');
       } else {
-        const data = await res.json().catch(() => ({}));
-        setError(data.error || 'Import failed');
-        setPhase('preview');
+        toast({ title: data.error || 'Parse failed', variant: 'destructive' });
       }
     } catch {
-      setError('Network error. Please try again.');
-      setPhase('preview');
+      toast({ title: 'Network error', variant: 'destructive' });
+    } finally {
+      setParsing(false);
     }
   };
 
-  // ── Helpers ──
-  const reset = () => {
-    setPhase('upload');
-    setFile(null);
-    setResult(null);
-    setError('');
-    setImportMsg('');
-    setImportErrors([]);
+  const handleImport = async () => {
+    setStage('importing');
+    try {
+      const res = await fetch(`/api/businesses/${businessId}/cctv/products/import`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'import', rows }),
+      });
+      const data = await res.json();
+      setImportResult(data);
+      setStage('done');
+      if (data.success) {
+        toast({ title: `Imported ${data.importedCount} products` });
+      }
+    } catch {
+      toast({ title: 'Network error', variant: 'destructive' });
+      setStage('preview');
+    }
   };
 
+  const reset = () => {
+    setStage('upload');
+    setCsvFile(null);
+    setRows([]);
+    setImportResult(null);
+  };
+
+  const validCount = rows.filter(r => r.status === 'valid').length;
+  const warningCount = rows.filter(r => r.status === 'warning').length;
+  const errorCount = rows.filter(r => r.status === 'error').length;
+
   return (
-    <div className="space-y-4 pb-4 animate-in fade-in">
-      {/* Header */}
+    <motion.div {...fadeUp} className="space-y-4 pb-4">
       <div className="flex items-center gap-3 pt-1">
-        <button
-          onClick={phase === 'done' ? goBack : reset}
-          className="w-9 h-9 rounded-xl bg-white border border-gray-100 flex items-center justify-center active:bg-gray-50 transition-colors shadow-sm"
-        >
+        <button onClick={goBack} className="w-9 h-9 rounded-xl bg-white border border-gray-100 flex items-center justify-center">
           <ArrowLeft className="w-5 h-5 text-gray-600" />
         </button>
-        <h1 className="text-lg font-bold text-gray-900 flex-1">
-          {phase === 'done' ? 'Import Complete' : 'Import Products'}
-        </h1>
+        <h1 className="text-lg font-bold text-gray-900">Import Products</h1>
       </div>
 
-      {/* Error */}
-      {error && (
-        <div className="bg-red-50 border border-red-100 rounded-2xl p-3.5 text-xs text-red-600 font-medium flex items-start gap-2">
-          <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-          {error}
+      {stage === 'upload' && (
+        <>
+          <div className="bg-blue-50 rounded-2xl border border-blue-200 p-4">
+            <h3 className="text-sm font-bold text-blue-800 mb-1">How it works</h3>
+            <ol className="text-xs text-blue-700 space-y-1 list-decimal list-inside">
+              <li>Download the CSV template</li>
+              <li>Fill in your product details (name, brand, price, stock, etc.)</li>
+              <li>Upload the file — we will preview and validate</li>
+              <li>Confirm to import all products at once</li>
+            </ol>
+          </div>
+
+          <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
+            <a
+              href="/templates/product-import-template.csv"
+              download
+              className="flex items-center gap-3 p-3 rounded-xl bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 transition-colors"
+            >
+              <div className="w-10 h-10 rounded-xl bg-emerald-500 flex items-center justify-center shrink-0">
+                <Download className="w-5 h-5 text-white" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-emerald-800">Download Template</p>
+                <p className="text-xs text-emerald-600">CSV file with sample columns</p>
+              </div>
+            </a>
+          </div>
+
+          <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
+            <div
+              onClick={() => fileInputRef.current?.click()}
+              className="border-2 border-dashed border-gray-200 rounded-2xl p-8 text-center hover:border-violet-300 hover:bg-violet-50/30 transition-colors cursor-pointer"
+            >
+              {parsing ? (
+                <Loader2 className="w-10 h-10 text-violet-400 mx-auto mb-2 animate-spin" />
+              ) : (
+                <Upload className="w-10 h-10 text-gray-300 mx-auto mb-2" />
+              )}
+              <p className="text-sm font-medium text-gray-700">
+                {parsing ? 'Parsing...' : 'Click to upload CSV file'}
+              </p>
+              <p className="text-xs text-gray-400 mt-1">Max 5MB · .csv only</p>
+            </div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".csv"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleFileSelect(file);
+              }}
+            />
+          </div>
+
+          {/* Column reference */}
+          <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
+            <h3 className="text-xs font-bold text-gray-700 mb-2">CSV Columns</h3>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              {[
+                { name: 'name', req: true, desc: 'Product name' },
+                { name: 'brand', req: true, desc: 'Brand/manufacturer' },
+                { name: 'sku', req: false, desc: 'Product code' },
+                { name: 'category', req: false, desc: 'Category name' },
+                { name: 'costPrice', req: true, desc: 'Buy price (৳)' },
+                { name: 'sellingPrice', req: true, desc: 'Sell price (৳)' },
+                { name: 'stock', req: false, desc: 'Current stock' },
+                { name: 'warrantyMonths', req: false, desc: 'Warranty period' },
+                { name: 'serialTracked', req: false, desc: 'true/false' },
+                { name: 'unit', req: false, desc: 'piece/box/etc' },
+              ].map((col) => (
+                <div key={col.name} className="flex items-center gap-1.5">
+                  <span className="font-mono font-semibold text-violet-600">{col.name}</span>
+                  {col.req && <span className="text-[9px] text-red-500">*</span>}
+                  <span className="text-gray-400 text-[10px]">— {col.desc}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+
+      {stage === 'preview' && (
+        <>
+          <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <p className="text-sm font-semibold text-gray-900">{csvFile?.name}</p>
+                <p className="text-xs text-gray-400">{rows.length} rows found</p>
+              </div>
+              <button onClick={reset} className="text-xs text-gray-500 hover:text-red-500">
+                Choose different file
+              </button>
+            </div>
+
+            {/* Summary */}
+            <div className="grid grid-cols-3 gap-2">
+              <div className="bg-emerald-50 rounded-lg p-2 text-center">
+                <p className="text-lg font-bold text-emerald-600">{validCount}</p>
+                <p className="text-[10px] text-emerald-700">Valid</p>
+              </div>
+              <div className="bg-amber-50 rounded-lg p-2 text-center">
+                <p className="text-lg font-bold text-amber-600">{warningCount}</p>
+                <p className="text-[10px] text-amber-700">Warnings</p>
+              </div>
+              <div className="bg-red-50 rounded-lg p-2 text-center">
+                <p className="text-lg font-bold text-red-600">{errorCount}</p>
+                <p className="text-[10px] text-red-700">Errors</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Preview table */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+            <div className="overflow-x-auto max-h-96 overflow-y-auto">
+              <table className="w-full text-xs">
+                <thead className="bg-gray-50 sticky top-0">
+                  <tr>
+                    <th className="p-2 text-left font-semibold text-gray-700">#</th>
+                    <th className="p-2 text-left font-semibold text-gray-700">Name</th>
+                    <th className="p-2 text-left font-semibold text-gray-700">Brand</th>
+                    <th className="p-2 text-right font-semibold text-gray-700">Cost</th>
+                    <th className="p-2 text-right font-semibold text-gray-700">Sell</th>
+                    <th className="p-2 text-center font-semibold text-gray-700">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((row, i) => (
+                    <tr key={i} className={cn(
+                      'border-b border-gray-50',
+                      row.status === 'error' ? 'bg-red-50/50' : row.status === 'warning' ? 'bg-amber-50/50' : ''
+                    )}>
+                      <td className="p-2 text-gray-400">{i + 1}</td>
+                      <td className="p-2 text-gray-800">{row.data.name || '—'}</td>
+                      <td className="p-2 text-gray-600">{row.data.brand || '—'}</td>
+                      <td className="p-2 text-right text-gray-600">{row.data.costPrice || '—'}</td>
+                      <td className="p-2 text-right text-gray-600">{row.data.sellingPrice || '—'}</td>
+                      <td className="p-2 text-center">
+                        {row.status === 'valid' && <CheckCircle2 className="w-4 h-4 text-emerald-500 mx-auto" />}
+                        {row.status === 'warning' && <AlertCircle className="w-4 h-4 text-amber-500 mx-auto" />}
+                        {row.status === 'error' && <X className="w-4 h-4 text-red-500 mx-auto" />}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <button
+            onClick={handleImport}
+            disabled={validCount === 0}
+            className="w-full h-12 rounded-2xl bg-gradient-to-r from-violet-500 to-purple-600 text-white font-semibold text-sm shadow-lg flex items-center justify-center gap-2 active:scale-95 transition-transform disabled:opacity-50"
+          >
+            <Upload className="w-4 h-4" />
+            Import {validCount + warningCount} Products
+          </button>
+        </>
+      )}
+
+      {stage === 'importing' && (
+        <div className="bg-white rounded-2xl border border-gray-100 p-8 shadow-sm text-center">
+          <Loader2 className="w-10 h-10 text-violet-400 mx-auto mb-3 animate-spin" />
+          <p className="text-sm font-medium text-gray-700">Importing products...</p>
+          <p className="text-xs text-gray-400 mt-1">Please wait</p>
         </div>
       )}
 
-      {/* ═══ UPLOAD PHASE ═══ */}
-      {phase === 'upload' && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="space-y-4"
-        >
-          {/* Upload area */}
-          <div
-            onDrop={onDrop}
-            onDragOver={onDragOver}
-            onDragLeave={() => setDragOver(false)}
-            onClick={() => fileRef.current?.click()}
-            className={cn(
-              'border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-all',
-              dragOver
-                ? 'border-violet-400 bg-violet-50'
-                : file
-                  ? 'border-emerald-300 bg-emerald-50/50'
-                  : 'border-gray-200 bg-gray-50/50 hover:border-violet-300 hover:bg-violet-50/50'
-            )}
-          >
-            <input
-              ref={fileRef}
-              type="file"
-              accept=".csv,text/csv"
-              className="hidden"
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) handleFile(f);
-              }}
-            />
-
-            {file ? (
-              <>
-                <div className="w-12 h-12 rounded-2xl bg-emerald-100 flex items-center justify-center mx-auto mb-3">
-                  <FileSpreadsheet className="w-6 h-6 text-emerald-600" />
-                </div>
-                <p className="text-sm font-semibold text-gray-900">{file.name}</p>
-                <p className="text-xs text-gray-400 mt-1">
-                  {(file.size / 1024).toFixed(1)} KB
-                </p>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setFile(null);
-                  }}
-                  className="mt-3 text-xs text-red-500 font-medium hover:text-red-600"
-                >
-                  Remove file
-                </button>
-              </>
-            ) : (
-              <>
-                <div className="w-12 h-12 rounded-2xl bg-violet-100 flex items-center justify-center mx-auto mb-3">
-                  <Upload className="w-6 h-6 text-violet-600" />
-                </div>
-                <p className="text-sm font-semibold text-gray-700">
-                  Drop CSV file here
-                </p>
-                <p className="text-xs text-gray-400 mt-1">
-                  or click to browse
-                </p>
-              </>
-            )}
-          </div>
-
-          {/* Download template */}
-          <a
-            href="/templates/product-import-template.csv"
-            download
-            className="flex items-center gap-2.5 px-4 py-3 bg-white rounded-2xl border border-gray-100 shadow-sm text-sm font-medium text-gray-700 active:bg-gray-50 transition-colors"
-          >
-            <Download className="w-4 h-4 text-violet-500" />
-            <span className="flex-1">Download Template</span>
-            <span className="text-[10px] text-gray-400">12 sample products</span>
-          </a>
-
-          {/* Column info */}
-          <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
-            <p className="text-xs font-semibold text-gray-700 mb-2">Required Columns</p>
-            <div className="flex flex-wrap gap-1.5">
-              {[
-                'name', 'brand', 'costPrice', 'sellingPrice',
-              ].map((col) => (
-                <span key={col} className="text-[10px] font-mono px-2 py-0.5 rounded bg-red-50 text-red-600 border border-red-100">
-                  {col} *
-                </span>
-              ))}
-              {[
-                'sku', 'category', 'unit', 'stock', 'lowStockAlert', 'warrantyMonths', 'description',
-              ].map((col) => (
-                <span key={col} className="text-[10px] font-mono px-2 py-0.5 rounded bg-gray-100 text-gray-500">
-                  {col}
-                </span>
-              ))}
-            </div>
-          </div>
-
-          {/* Upload button */}
-          <button
-            onClick={handleUpload}
-            disabled={!file}
-            className={cn(
-              'w-full py-3.5 rounded-2xl text-sm font-semibold shadow-lg flex items-center justify-center gap-2 active:scale-[0.98] transition-transform',
-              file
-                ? 'bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-lg shadow-violet-500/20'
-                : 'bg-gray-100 text-gray-400 shadow-none'
-            )}
-          >
-            <Upload className="w-4 h-4" />
-            Parse & Preview
-          </button>
-        </motion.div>
-      )}
-
-      {/* ═══ PREVIEW PHASE ═══ */}
-      {phase === 'preview' && result && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="space-y-4"
-        >
-          {/* Stats */}
-          <div className="flex items-center gap-3 bg-white rounded-2xl border border-gray-100 p-3.5 shadow-sm">
-            <div className="flex-1 text-center">
-              <p className="text-lg font-bold text-emerald-600">{result.validCount}</p>
-              <p className="text-[10px] text-gray-400 font-medium">Valid</p>
-            </div>
-            {result.warningCount > 0 && (
-              <div className="flex-1 text-center">
-                <p className="text-lg font-bold text-amber-600">{result.warningCount}</p>
-                <p className="text-[10px] text-gray-400 font-medium">Warnings</p>
-              </div>
-            )}
-            {result.errorCount > 0 && (
-              <div className="flex-1 text-center">
-                <p className="text-lg font-bold text-red-500">{result.errorCount}</p>
-                <p className="text-[10px] text-gray-400 font-medium">Errors</p>
-              </div>
-            )}
-            <div className="flex-1 text-center">
-              <p className="text-lg font-bold text-gray-700">{result.totalRows}</p>
-              <p className="text-[10px] text-gray-400 font-medium">Total</p>
-            </div>
-          </div>
-
-          {/* Row preview table */}
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-            <div className="px-4 py-3 border-b border-gray-50">
-              <p className="text-xs font-semibold text-gray-700">Preview ({result.rows.length} rows)</p>
-            </div>
-            <div className="max-h-80 overflow-y-auto">
-              {result.rows.map((row) => (
-                <div
-                  key={row.rowIndex}
-                  className={cn(
-                    'px-4 py-2.5 border-b border-gray-50 last:border-b-0',
-                    row.status === 'error' && 'bg-red-50/50',
-                    row.status === 'warning' && 'bg-amber-50/50'
-                  )}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-[10px] text-gray-400 font-mono w-5 text-right shrink-0">
-                          {row.rowIndex}
-                        </span>
-                        <p className="text-xs font-medium text-gray-900 truncate">
-                          {row.data.name || '<no name>'}
-                        </p>
-                        {row.data.sku && (
-                          <span className="text-[9px] font-mono text-gray-400 ml-1 shrink-0">
-                            ({row.data.sku})
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-[10px] text-gray-500 mt-0.5 ml-6.5">
-                        {row.data.brand} · {row.data.category || 'No category'} · ৳{(row.data.sellingprice || '0')} · {row.data.stock || '0'} {row.data.unit || 'piece'}
-                      </p>
-                    </div>
-                    <div className="shrink-0">
-                      {row.status === 'error' && (
-                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-red-100 text-red-600">
-                          ERROR
-                        </span>
-                      )}
-                      {row.status === 'warning' && (
-                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-600">
-                          WARN
-                        </span>
-                      )}
-                      {row.status === 'valid' && (
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Error/warning messages */}
-                  {(row.errors.length > 0 || row.warnings.length > 0) && (
-                    <div className="ml-6.5 mt-1 space-y-0.5">
-                      {row.errors.map((e, i) => (
-                        <p key={i} className="text-[10px] text-red-500 flex items-center gap-1">
-                          <X className="w-2.5 h-2.5" />
-                          {e}
-                        </p>
-                      ))}
-                      {row.warnings.map((w, i) => (
-                        <p key={i} className="text-[10px] text-amber-600 flex items-center gap-1">
-                          <AlertTriangle className="w-2.5 h-2.5" />
-                          {w}
-                        </p>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Import button */}
-          <button
-            onClick={handleImport}
-            disabled={result.validCount === 0}
-            className={cn(
-              'w-full py-3.5 rounded-2xl text-sm font-semibold shadow-lg flex items-center justify-center gap-2 active:scale-[0.98] transition-transform',
-              result.validCount > 0
-                ? 'bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-lg shadow-violet-500/20'
-                : 'bg-gray-100 text-gray-400 shadow-none'
-            )}
-          >
-            <Package className="w-4 h-4" />
-            Import {result.validCount} Product{result.validCount !== 1 ? 's' : ''}
-          </button>
-        </motion.div>
-      )}
-
-      {/* ═══ IMPORTING PHASE ═══ */}
-      {phase === 'importing' && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="flex flex-col items-center justify-center py-16"
-        >
-          <Loader2 className="w-8 h-8 text-violet-500 animate-spin mb-4" />
-          <p className="text-sm font-semibold text-gray-700">Importing products...</p>
-          <p className="text-xs text-gray-400 mt-1">Please wait</p>
-        </motion.div>
-      )}
-
-      {/* ═══ DONE PHASE ═══ */}
-      {phase === 'done' && (
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="text-center py-12"
-        >
-          <CheckCircle2 className="w-16 h-16 text-emerald-500 mx-auto mb-4" />
+      {stage === 'done' && importResult && (
+        <div className="bg-white rounded-2xl border border-gray-100 p-8 shadow-sm text-center">
+          <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto mb-3" />
           <p className="text-base font-bold text-gray-900">Import Complete!</p>
-          <p className="text-sm text-gray-500 mt-1">{importMsg}</p>
-
-          {importErrors.length > 0 && (
-            <div className="mt-4 mx-auto max-w-sm bg-amber-50 border border-amber-100 rounded-2xl p-3.5 text-left">
-              <p className="text-xs font-semibold text-amber-700 mb-1">Some batches had issues:</p>
-              {importErrors.map((e, i) => (
-                <p key={i} className="text-[10px] text-amber-600">{e}</p>
-              ))}
+          <div className="grid grid-cols-2 gap-3 mt-4">
+            <div className="bg-emerald-50 rounded-xl p-3">
+              <p className="text-2xl font-bold text-emerald-600">{importResult.importedCount || 0}</p>
+              <p className="text-xs text-emerald-700">Imported</p>
             </div>
-          )}
-
+            <div className="bg-amber-50 rounded-xl p-3">
+              <p className="text-2xl font-bold text-amber-600">{importResult.skippedCount || 0}</p>
+              <p className="text-xs text-amber-700">Skipped</p>
+            </div>
+          </div>
           <button
-            onClick={goBack}
-            className="mt-6 px-6 py-2.5 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 text-white text-sm font-semibold shadow-sm"
+            onClick={() => goBack()}
+            className="mt-4 w-full h-11 rounded-xl bg-violet-500 text-white font-semibold text-sm"
           >
-            Done
+            Back to Products
           </button>
-        </motion.div>
+        </div>
       )}
-    </div>
+    </motion.div>
   );
 }

@@ -154,61 +154,83 @@ model Business {
   subscriptionAdjustments SubscriptionAdjustment[]  // P6: audit trail
 
   // CCTV Module (Phase 1A: Serialized Inventory Foundation)
-  cctvCategories          CCTVCategory[]
-  cctvProducts            CCTVProduct[]
-  cctvSerialItems         CCTVSerialItem[]
-  cctvKitDefinitions      CCTVKitDefinition[]
-  cctvSerialItemHistories CCTVSerialItemHistory[]
+  cctvCategories          MSCategory[]
+  cctvProducts            MSProduct[]
+  cctvSerialItems         MSSerialItem[]
+  cctvKitDefinitions      MSKitDefinition[]
+  cctvSerialItemHistories MSSerialItemHistory[]
 
   // CCTV Module (Phase 1D: Multi-Branch Inventory and Transfers)
-  cctvBranches            CCTVBranch[]
-  cctvTransfers           CCTVTransfer[]
+  cctvBranches            MSBranch[]
+  cctvTransfers           MSTransfer[]
 
   // CCTV Module (Phase 2A: Job Card Management)
-  cctvJobCards            CCTVJobCard[]
-  cctvJobCardParts        CCTVJobCardPart[]
+  cctvJobCards            MSJobCard[]
+  cctvJobCardParts        MSJobCardPart[]
 
   // CCTV Module (Phase 2C: Technician Performance and Commissions)
-  cctvTechnicians         CCTVTechnician[]
-  cctvCommissionRules     CCTVCommissionRule[]
-  cctvCommissionRecords   CCTVCommissionRecord[]
-  cctvOutsourcedVendors   CCTVOutsourcedVendor[]
-  cctvSales               CCTVSale[]
-  cctvSaleItems           CCTVSaleItem[]
-  cctvPayments            CCTVPayment[]
-  cctvEmiPlans            CCTVEmiPlan[]
-  cctvEmiInstallments     CCTVEmiInstallment[]
-  cctvReturns             CCTVReturn[]
-  cctvReturnItems         CCTVReturnItem[]
-  cctvExpenses            CCTVExpense[]
+  cctvTechnicians         MSTechnician[]
+  cctvCommissionRules     MSCommissionRule[]
+  cctvCommissionRecords   MSCommissionRecord[]
+  cctvOutsourcedVendors   MSOutsourcedVendor[]
+  cctvSales               MSSale[]
+  cctvSaleItems           MSSaleItem[]
+  cctvPayments            MSPayment[]
+  cctvEmiPlans            MSEmiPlan[]
+  cctvEmiInstallments     MSEmiInstallment[]
+  cctvReturns             MSReturn[]
+  cctvReturnItems         MSReturnItem[]
+  cctvExpenses            MSExpense[]
 
   // CCTV Module (Phase 3C: Customer Loyalty and CRM)
-  cctvLoyaltyConfigs      CCTVLoyaltyConfig[]
-  cctvLoyaltyTransactions CCTVLoyaltyTransaction[]
-  cctvLoyaltyOffers       CCTVLoyaltyOffer[]
-  cctvWarrantyClaims      CCTVWarrantyClaim[]
+  cctvLoyaltyConfigs      MSLoyaltyConfig[]
+  cctvLoyaltyTransactions MSLoyaltyTransaction[]
+  cctvLoyaltyOffers       MSLoyaltyOffer[]
+  cctvWarrantyClaims      MSWarrantyClaim[]
 
   // CCTV Module (Phase 4A: Project and Site Survey Management)
-  cctvProjects            CCTVProject[]
-  cctvSiteSurveys         CCTVSiteSurvey[]
-  cctvCameraPositions     CCTVCameraPosition[]
-  cctvCableRoutes         CCTVCableRoute[]
-  cctvAmcContracts        CCTVAmcContract[]
-  cctvInstallationTasks   CCTVInstallationTask[]
-  cctvTaskChecklists      CCTVTaskChecklist[]
+  cctvProjects            MSProject[]
+  cctvSiteSurveys         MSSiteSurvey[]
+  cctvCameraPositions     MSCameraPosition[]
+  cctvCableRoutes         MSCableRoute[]
+  cctvAmcContracts        MSAmcContract[]
+  cctvInstallationTasks   MSInstallationTask[]
+  cctvTaskChecklists      MSTaskChecklist[]
 
   // CCTV Module (Phase 5A: NBR Compliance - BIN Setup)
-  cctvNbrConfigs          CCTVNbrConfig[]
+  cctvNbrConfigs          MSNbrConfig[]
 
   // CCTV Module (Phase 5B: Mushak 6.3 Tax Invoice)
-  cctvMushakInvoices      CCTVMushakInvoice[]
+  cctvMushakInvoices      MSMushakInvoice[]
 
   // CCTV Module (Phase 5D: Monthly VAT Return)
-  cctvVatReturns          CCTVVatReturn[]
+  cctvVatReturns          MSVatReturn[]
 
   // CCTV Module (Phase 1B: Purchase Orders)
-  cctvPurchases           CCTVPurchase[]
-  cctvPurchaseItems       CCTVPurchaseItem[]
+  cctvPurchases           MSPurchase[]
+  cctvPurchaseItems       MSPurchaseItem[]
+
+  // ── NEW CCTV Module (Simple, Clean) ──
+  newCctvCategories       CCTVCategory[]
+  newCctvProducts         CCTVProduct[]
+  newCctvCustomers        CCTVCustomer[]
+  newCctvSuppliers        CCTVSupplier[]
+  newCctvPurchases        CCTVPurchase[]
+  newCctvSales            CCTVSale[]
+  newCctvExpenses         CCTVExpense[]
+  // Phase 2: Add reverse relations for orphaned CCTV models (fixes C-5)
+  newCctvPurchaseItems      CCTVPurchaseItem[]    @relation("newCctvPurchaseItems")
+  newCctvSaleItems          CCTVSaleItem[]          @relation("newCctvSaleItems")
+  newCctvPayments           CCTVPayment[]           @relation("newCctvPayments")
+  newCctvReturns            CCTVReturn[]            @relation("newCctvReturns")
+  newCctvReturnItems        CCTVReturnItem[]        @relation("newCctvReturnItems")
+  newCctvWarrantyClaims     CCTVWarrantyClaim[]     @relation("newCctvWarrantyClaims")
+  newCctvSerialHistories    CCTVSerialHistory[]     @relation("newCctvSerialHistories")
+  newCctvRepairs            CCTVRepair[]            @relation("newCctvRepairs")
+  newCctvSupplierReplacements CCTVSupplierReplacement[] @relation("newCctvSupplierReplacements")
+  newCctvEstimateItems      CCTVEstimateItem[]      @relation("newCctvEstimateItems")
+  newCctvStockMovements     CCTVStockMovement[]     @relation("newCctvStockMovements")
+  newCctvLedgerEntries      CCTVLedgerEntry[]       @relation("newCctvLedgerEntries")
 
   @@index([userId])
   @@index([businessTypeId])
@@ -736,7 +758,7 @@ model Supplier {
 
   business  Business   @relation(fields: [businessId], references: [id], onDelete: Cascade)
   purchases Purchase[]
-  cctvPurchases CCTVPurchase[]
+  cctvPurchases MSPurchase[]
   batches   Batch[]
 
   @@index([businessId])
@@ -1442,7 +1464,7 @@ model MasterManufacturer {
   updatedAt    DateTime @updatedAt
 
   products      MasterProduct[]
-  cctvProducts  CCTVMasterProduct[]
+  cctvProducts  MSMasterProduct[]
 
   @@map("master_manufacturers")
 }
@@ -1742,7 +1764,7 @@ model AiProvider {
 // ═══════════════════════════════════════════════════════════════
 
 // ── CCTV Categories ──
-model CCTVCategory {
+model MSCategory {
   id         String   @id @default(cuid())
   businessId String
   name       String               // "Cameras", "DVR/NVR", "Accessories", "Cables"
@@ -1755,19 +1777,19 @@ model CCTVCategory {
   updatedAt  DateTime @updatedAt
 
   business  Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  products  CCTVProduct[]
+  products  MSProduct[]
 
   @@unique([businessId, slug])
   @@index([businessId])
-  @@map("cctv_categories")
+  @@map("mobile_shop_categories")
 }
 
 // ── CCTV Master Product Catalog ──
 // The shared CCTV product catalog, curated by super-admin.
 // Mirrors the pharmacy MasterProduct pattern but with CCTV-specific fields.
-// CCTV shops subscribe to these via CCTVProduct.masterProductId.
+// CCTV shops subscribe to these via MSProduct.masterProductId.
 // No businessId — this is platform-level reference data.
-model CCTVMasterProduct {
+model MSMasterProduct {
   id                    String   @id @default(cuid())
   manufacturerId        String?              // FK to master_manufacturers (shared with pharmacy)
   name                  String               // "DS-2CD2143G2-I 4MP Bullet Camera" (full product name)
@@ -1777,7 +1799,7 @@ model CCTVMasterProduct {
   description           String?              // Short description
   hsnCode               String?              // VAT HSN code
 
-  // CCTV-specific defaults (inherited by shop-level CCTVProduct on subscribe)
+  // CCTV-specific defaults (inherited by shop-level MSProduct on subscribe)
   defaultCategoryName   String?              // "Cameras" (suggested category name)
   defaultWarrantyMonths Int      @default(0)
   defaultSerialTracked  Boolean  @default(false)
@@ -1796,7 +1818,7 @@ model CCTVMasterProduct {
 
   // Relations
   manufacturer  MasterManufacturer? @relation(fields: [manufacturerId], references: [id], onDelete: SetNull)
-  products      CCTVProduct[]       // Shop-level products linked to this master
+  products      MSProduct[]       // Shop-level products linked to this master
 
   @@unique([brand, model])  // Prevent duplicates — (brand, model) is the natural key
   @@index([brand])
@@ -1804,15 +1826,15 @@ model CCTVMasterProduct {
   @@index([manufacturerId])
   @@index([isActive])
   @@index([isApproved])
-  @@map("cctv_master_products")
+  @@map("mobile_shop_master_products")
 }
 
 // ── CCTV Products ──
-model CCTVProduct {
+model MSProduct {
   id           String   @id @default(cuid())
   businessId   String
   categoryId   String?
-  masterProductId String?           // Optional link to CCTVMasterProduct (master catalog)
+  masterProductId String?           // Optional link to MSMasterProduct (master catalog)
   name         String               // "DS-2CD2143G2" (model name)
   brand        String               // "Hikvision", "Dahua", "TP-Link"
   model        String?              // Full model: "Hikvision DS-2CD2143G2-I 4MP"
@@ -1844,12 +1866,12 @@ model CCTVProduct {
   updatedAt    DateTime @updatedAt
 
   business  Business            @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  category  CCTVCategory?       @relation(fields: [categoryId], references: [id])
-  masterProduct  CCTVMasterProduct?  @relation(fields: [masterProductId], references: [id], onDelete: SetNull)
-  serialItems     CCTVSerialItem[]
-  kitComponents   CCTVKitComponent[]
-  saleItems       CCTVSaleItem[]
-  purchaseItems   CCTVPurchaseItem[]
+  category  MSCategory?       @relation(fields: [categoryId], references: [id])
+  masterProduct  MSMasterProduct?  @relation(fields: [masterProductId], references: [id], onDelete: SetNull)
+  serialItems     MSSerialItem[]
+  kitComponents   MSKitComponent[]
+  saleItems       MSSaleItem[]
+  purchaseItems   MSPurchaseItem[]
 
   @@index([businessId])
   @@index([categoryId])
@@ -1857,14 +1879,14 @@ model CCTVProduct {
   @@index([brand])
   @@index([name])
   @@index([serialTracked])
-  @@map("cctv_products")
+  @@map("mobile_shop_products")
 }
 
 // ── CCTV Serial Items (1A Core: Serialized Asset Tracking) ──
 // Each individually tracked unit — the heart of the CCTV inventory system.
 // For high-value electronics, every unit is tracked by serial/IMEI, not bulk count.
 // Stock count is DERIVED by counting units with status IN_STOCK (no aggregate field).
-model CCTVSerialItem {
+model MSSerialItem {
   id             String   @id @default(cuid())
   businessId     String
   productId      String
@@ -1916,7 +1938,7 @@ model CCTVSerialItem {
   // ── Sale / Job / Project References ──
   saleId         String?              // Reference to Sale when sold
   jobCardId      String?              // Reference to future JobCard model (Phase 2)
-  projectId      String?              // Reference to future CCTVProject model (Phase 4)
+  projectId      String?              // Reference to future MSProject model (Phase 4)
 
   // ── Location Tracking ──
   branchId       String?              // Current branch (Phase 1D: multi-branch)
@@ -1932,14 +1954,14 @@ model CCTVSerialItem {
   updatedAt      DateTime @updatedAt
 
   business      Business              @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  product       CCTVProduct           @relation(fields: [productId], references: [id], onDelete: Cascade)
-  branch        CCTVBranch?           @relation(fields: [branchId], references: [id])
-  history       CCTVSerialItemHistory[]
-  transferItems CCTVTransferItem[]
-  jobCards      CCTVJobCard[]
-  jobCardParts  CCTVJobCardPart[]
-  saleItems     CCTVSaleItem[]
-  warrantyClaims CCTVWarrantyClaim[]
+  product       MSProduct           @relation(fields: [productId], references: [id], onDelete: Cascade)
+  branch        MSBranch?           @relation(fields: [branchId], references: [id])
+  history       MSSerialItemHistory[]
+  transferItems MSTransferItem[]
+  jobCards      MSJobCard[]
+  jobCardParts  MSJobCardPart[]
+  saleItems     MSSaleItem[]
+  warrantyClaims MSWarrantyClaim[]
 
   @@unique([businessId, serialNumber])
   @@index([businessId])
@@ -1952,14 +1974,14 @@ model CCTVSerialItem {
   @@index([purchaseId])
   @@index([branchId])
   @@index([source])
-  @@map("cctv_serial_items")
+  @@map("mobile_shop_serial_items")
 }
 
 // ── CCTV Serial Item History (1A: Append-Only Audit Log) ──
 // Every status change on a SerialUnit is recorded here.
 // This is the single source of truth for the unit's lifecycle.
 // NEVER update or delete rows — always INSERT new entries.
-model CCTVSerialItemHistory {
+model MSSerialItemHistory {
   id             String   @id @default(cuid())
   businessId     String
   serialItemId   String
@@ -1991,13 +2013,13 @@ model CCTVSerialItemHistory {
   createdAt      DateTime @default(now())
 
   business   Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  serialItem CCTVSerialItem  @relation(fields: [serialItemId], references: [id], onDelete: Cascade)
+  serialItem MSSerialItem  @relation(fields: [serialItemId], references: [id], onDelete: Cascade)
 
   @@index([businessId])
   @@index([serialItemId])
   @@index([toStatus])
   @@index([createdAt])
-  @@map("cctv_serial_item_history")
+  @@map("mobile_shop_serial_item_history")
 }
 
 // ── CCTV Kit Definition (1A: Product Bundles) ──
@@ -2005,7 +2027,7 @@ model CCTVSerialItemHistory {
 // 4× Camera + 1× NVR + 1× HDD + 4× Cable + 1× Power Supply.
 // Kits do NOT hold physical stock — they reference component products.
 // When a kit is sold, the system validates all component SerialUnits are available.
-model CCTVKitDefinition {
+model MSKitDefinition {
   id           String   @id @default(cuid())
   businessId   String
   name         String                 // "4-Camera Home Security Kit"
@@ -2024,13 +2046,13 @@ model CCTVKitDefinition {
   updatedAt    DateTime @updatedAt
 
   business   Business              @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  components CCTVKitComponent[]
-  saleItems CCTVSaleItem[]         // Phase 6: which sale items came from this kit
+  components MSKitComponent[]
+  saleItems MSSaleItem[]         // Phase 6: which sale items came from this kit
 
   @@unique([businessId, slug])
   @@index([businessId])
   @@index([isActive])
-  @@map("cctv_kit_definitions")
+  @@map("mobile_shop_kit_definitions")
 }
 
 // ── CCTV Kit Component (1A: Items Within a Bundle) ──
@@ -2038,11 +2060,11 @@ model CCTVKitDefinition {
 // When selling a kit, the system checks that for each component,
 // there are enough IN_STOCK SerialUnits (if serial-tracked) or sufficient
 // stock quantity (if not serial-tracked).
-model CCTVKitComponent {
+model MSKitComponent {
   id               String   @id @default(cuid())
   kitId            String
   businessId       String
-  productId        String             // References CCTVProduct
+  productId        String             // References MSProduct
 
   // How many of this product are needed in the kit
   quantity         Int      @default(1)
@@ -2057,20 +2079,20 @@ model CCTVKitComponent {
   sortOrder        Int      @default(0)
   createdAt        DateTime @default(now())
 
-  kit     CCTVKitDefinition @relation(fields: [kitId], references: [id], onDelete: Cascade)
-  product CCTVProduct       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  kit     MSKitDefinition @relation(fields: [kitId], references: [id], onDelete: Cascade)
+  product MSProduct       @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@index([kitId])
   @@index([businessId])
   @@index([productId])
-  @@map("cctv_kit_components")
+  @@map("mobile_shop_kit_components")
 }
 
 // ── CCTV Branch (1D: Multi-Branch Inventory) ──
 // Electronics retailers often operate from multiple locations.
 // A Branch represents a physical location: warehouse, showroom, service center.
 // Serial items are assigned to a branch to track stock per location.
-model CCTVBranch {
+model MSBranch {
   id           String   @id @default(cuid())
   businessId   String
 
@@ -2085,20 +2107,20 @@ model CCTVBranch {
   updatedAt    DateTime @updatedAt
 
   business       Business          @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  serialItems    CCTVSerialItem[]  // Items currently at this branch
-  transfersFrom  CCTVTransfer[]    @relation("TransferFrom")
-  transfersTo    CCTVTransfer[]    @relation("TransferTo")
+  serialItems    MSSerialItem[]  // Items currently at this branch
+  transfersFrom  MSTransfer[]    @relation("TransferFrom")
+  transfersTo    MSTransfer[]    @relation("TransferTo")
 
   @@unique([businessId, code])
   @@index([businessId])
   @@index([isActive])
-  @@map("cctv_branches")
+  @@map("mobile_shop_branches")
 }
 
 // ── CCTV Transfer (1D: Stock Movement Between Branches) ──
 // When stock moves from one branch to another, a Transfer record is created.
 // Status lifecycle: DRAFT → IN_TRANSIT → RECEIVED  (or CANCELLED)
-model CCTVTransfer {
+model MSTransfer {
   id             String   @id @default(cuid())
   businessId     String
   transferCode   String                 // Auto-generated: "TRF-2025-001"
@@ -2122,9 +2144,9 @@ model CCTVTransfer {
   updatedAt      DateTime @updatedAt
 
   business     Business             @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  fromBranch   CCTVBranch           @relation("TransferFrom", fields: [fromBranchId], references: [id])
-  toBranch     CCTVBranch           @relation("TransferTo", fields: [toBranchId], references: [id])
-  items        CCTVTransferItem[]
+  fromBranch   MSBranch           @relation("TransferFrom", fields: [fromBranchId], references: [id])
+  toBranch     MSBranch           @relation("TransferTo", fields: [toBranchId], references: [id])
+  items        MSTransferItem[]
 
   @@unique([businessId, transferCode])
   @@index([businessId])
@@ -2132,12 +2154,12 @@ model CCTVTransfer {
   @@index([toBranchId])
   @@index([status])
   @@index([createdAt])
-  @@map("cctv_transfers")
+  @@map("mobile_shop_transfers")
 }
 
 // ── CCTV Transfer Item (1D: Individual Items in a Transfer) ──
 // Each serial item being moved in a transfer gets its own row.
-model CCTVTransferItem {
+model MSTransferItem {
   id             String   @id @default(cuid())
   transferId     String
   businessId     String
@@ -2150,14 +2172,14 @@ model CCTVTransferItem {
 
   createdAt      DateTime @default(now())
 
-  transfer   CCTVTransfer    @relation(fields: [transferId], references: [id], onDelete: Cascade)
-  serialItem CCTVSerialItem  @relation(fields: [serialItemId], references: [id])
+  transfer   MSTransfer    @relation(fields: [transferId], references: [id], onDelete: Cascade)
+  serialItem MSSerialItem  @relation(fields: [serialItemId], references: [id])
 
   @@unique([transferId, serialItemId])
   @@index([transferId])
   @@index([businessId])
   @@index([serialItemId])
-  @@map("cctv_transfer_items")
+  @@map("mobile_shop_transfer_items")
 }
 
 // ── CCTV Job Card (2A: Central Repair Document) ──
@@ -2165,7 +2187,7 @@ model CCTVTransferItem {
 // Created from stock-in screen, customer purchase history, or manual entry.
 // Full lifecycle: RECEIVED → DIAGNOSING → AWAITING_PARTS → IN_PROGRESS → TESTING → READY_FOR_DELIVERY → DELIVERED
 // Special status: OUTSOURCED (sent to external vendor)
-model CCTVJobCard {
+model MSJobCard {
   id             String   @id @default(cuid())
   businessId     String
   jobCode        String                 // Auto-generated: "JC-2025-001"
@@ -2237,7 +2259,7 @@ model CCTVJobCard {
   satisfactionRating Int?               // 1-5 customer satisfaction (Phase 2C)
 
   // ── Outsourcing (Phase 2E) ──
-  vendorId       String?                // Link to CCTVOutsourcedVendor
+  vendorId       String?                // Link to MSOutsourcedVendor
   vendorName     String?                // External vendor name (denormalized)
   vendorPhone    String?                // Vendor contact (denormalized)
   vendorCost     Float?                 // Cost quoted by vendor
@@ -2254,10 +2276,10 @@ model CCTVJobCard {
   updatedAt      DateTime @updatedAt
 
   business    Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  serialItem  CCTVSerialItem?  @relation(fields: [serialItemId], references: [id])
-  parts       CCTVJobCardPart[]
-  commissionRecord CCTVCommissionRecord?
-  outsourcedVendor CCTVOutsourcedVendor? @relation(fields: [vendorId], references: [id])
+  serialItem  MSSerialItem?  @relation(fields: [serialItemId], references: [id])
+  parts       MSJobCardPart[]
+  commissionRecord MSCommissionRecord?
+  outsourcedVendor MSOutsourcedVendor? @relation(fields: [vendorId], references: [id])
 
   @@unique([businessId, jobCode])
   @@index([businessId])
@@ -2270,14 +2292,14 @@ model CCTVJobCard {
   @@index([receivedAt])
   @@index([priority])
   @@index([vendorId])
-  @@map("cctv_job_cards")
+  @@map("mobile_shop_job_cards")
 }
 
 // ── CCTV Job Card Part (2B: Spare Parts Integration) ──
 // Junction table linking a consumed spare part (SerialItem) to a JobCard.
 // When a technician logs a part, the serial item status changes to CONSUMED
 // and its cost is added to the repair bill.
-model CCTVJobCardPart {
+model MSJobCardPart {
   id            String   @id @default(cuid())
   businessId    String
   jobCardId     String
@@ -2293,19 +2315,19 @@ model CCTVJobCardPart {
   updatedAt     DateTime @updatedAt
 
   business   Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  jobCard    CCTVJobCard     @relation(fields: [jobCardId], references: [id], onDelete: Cascade)
-  serialItem CCTVSerialItem  @relation(fields: [serialItemId], references: [id])
+  jobCard    MSJobCard     @relation(fields: [jobCardId], references: [id], onDelete: Cascade)
+  serialItem MSSerialItem  @relation(fields: [serialItemId], references: [id])
 
   @@unique([jobCardId, serialItemId])
   @@index([businessId])
   @@index([jobCardId])
   @@index([serialItemId])
-  @@map("cctv_job_card_parts")
+  @@map("mobile_shop_job_card_parts")
 }
 
 // ── CCTV Technician (2C: Technician Performance and Commissions) ──
 // Links a BusinessUser to a technician profile for performance tracking.
-model CCTVTechnician {
+model MSTechnician {
   id             String   @id @default(cuid())
   businessId     String
   userId         String?              // Optional link to BusinessUser
@@ -2317,16 +2339,16 @@ model CCTVTechnician {
   updatedAt      DateTime @updatedAt
 
   business       Business              @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  commissionRecords CCTVCommissionRecord[]
+  commissionRecords MSCommissionRecord[]
 
   @@index([businessId])
   @@index([userId])
-  @@map("cctv_technicians")
+  @@map("mobile_shop_technicians")
 }
 
 // ── CCTV Commission Rule (2C) ──
 // Configurable per business. Determines how commission is calculated.
-model CCTVCommissionRule {
+model MSCommissionRule {
   id             String   @id @default(cuid())
   businessId     String
   name           String               // "Camera repair - fixed", "Labor 15%"
@@ -2340,15 +2362,15 @@ model CCTVCommissionRule {
   updatedAt      DateTime @updatedAt
 
   business       Business              @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  commissionRecords CCTVCommissionRecord[]
+  commissionRecords MSCommissionRecord[]
 
   @@index([businessId])
-  @@map("cctv_commission_rules")
+  @@map("mobile_shop_commission_rules")
 }
 
 // ── CCTV Commission Record (2C) ──
 // Auto-calculated when a job card is delivered. Stores the snapshot for reporting.
-model CCTVCommissionRecord {
+model MSCommissionRecord {
   id               String   @id @default(cuid())
   businessId       String
   technicianId     String
@@ -2364,22 +2386,22 @@ model CCTVCommissionRecord {
   createdAt        DateTime @default(now())
 
   business         Business              @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  technician       CCTVTechnician        @relation(fields: [technicianId], references: [id], onDelete: Cascade)
-  rule             CCTVCommissionRule?   @relation(fields: [ruleId], references: [id])
-  jobCard          CCTVJobCard           @relation(fields: [jobCardId], references: [id])
+  technician       MSTechnician        @relation(fields: [technicianId], references: [id], onDelete: Cascade)
+  rule             MSCommissionRule?   @relation(fields: [ruleId], references: [id])
+  jobCard          MSJobCard           @relation(fields: [jobCardId], references: [id])
 
   @@unique([jobCardId])                // One commission record per job card
   @@index([businessId])
   @@index([technicianId])
   @@index([month])
   @@index([createdAt])
-  @@map("cctv_commission_records")
+  @@map("mobile_shop_commission_records")
 }
 
 // ── CCTV Outsourced Vendor (2E: Outsourced Repair Tracking) ──
 // Reusable vendor directory for outsourced repairs.
 // Vendors like Motalib Plaza specialists can be referenced from JobCards.
-model CCTVOutsourcedVendor {
+model MSOutsourcedVendor {
   id             String   @id @default(cuid())
   businessId     String
   name           String               // "Motalib Plaza Chip Repair"
@@ -2392,16 +2414,16 @@ model CCTVOutsourcedVendor {
   updatedAt      DateTime @updatedAt
 
   business       Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  jobCards       CCTVJobCard[]
+  jobCards       MSJobCard[]
 
   @@index([businessId])
-  @@map("cctv_outsourced_vendors")
+  @@map("mobile_shop_outsourced_vendors")
 }
 
 // ── CCTV Sale (3A: Payment Integration) ──
-// Sale header. Payment status auto-calculated from linked CCTVPayment rows.
+// Sale header. Payment status auto-calculated from linked MSPayment rows.
 // Supports split payment across multiple methods.
-model CCTVSale {
+model MSSale {
   id              String   @id @default(cuid())
   businessId      String
   saleCode        String                  // "SAL-2025-001"
@@ -2425,23 +2447,23 @@ model CCTVSale {
   updatedAt       DateTime @updatedAt
 
   business        Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  payments        CCTVPayment[]
-  emiPlan         CCTVEmiPlan?
-  items           CCTVSaleItem[]
-  project         CCTVProject?    // If this sale is linked to a project (Phase 4A)
-  mushakInvoices  CCTVMushakInvoice[]  // Phase 5B
-  returns         CCTVReturn[]         // 2A: Sales returns
+  payments        MSPayment[]
+  emiPlan         MSEmiPlan?
+  items           MSSaleItem[]
+  project         MSProject?    // If this sale is linked to a project (Phase 4A)
+  mushakInvoices  MSMushakInvoice[]  // Phase 5B
+  returns         MSReturn[]         // 2A: Sales returns
 
   @@unique([businessId, saleCode])
   @@index([businessId])
   @@index([status])
-  @@map("cctv_sales")
+  @@map("mobile_shop_sales")
 }
 
 // ── CCTV Sale Item (3A: Payment Integration) ──
 // Individual product line in a sale. For serial-tracked products, optionally
 // links to a specific serial item (which gets marked SOLD).
-model CCTVSaleItem {
+model MSSaleItem {
   id              String   @id @default(cuid())
   businessId      String
   saleId          String
@@ -2457,22 +2479,22 @@ model CCTVSaleItem {
   createdAt       DateTime @default(now())
 
   business        Business            @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  sale            CCTVSale            @relation(fields: [saleId], references: [id], onDelete: Cascade)
-  product         CCTVProduct         @relation(fields: [productId], references: [id])
-  serialItem      CCTVSerialItem?     @relation(fields: [serialItemId], references: [id])
-  kit             CCTVKitDefinition? @relation(fields: [kitId], references: [id])
-  returnItems    CCTVReturnItem[]    // 2A: Return items referencing this sale item
+  sale            MSSale            @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  product         MSProduct         @relation(fields: [productId], references: [id])
+  serialItem      MSSerialItem?     @relation(fields: [serialItemId], references: [id])
+  kit             MSKitDefinition? @relation(fields: [kitId], references: [id])
+  returnItems    MSReturnItem[]    // 2A: Return items referencing this sale item
 
   @@index([businessId])
   @@index([saleId])
   @@index([kitId])
-  @@map("cctv_sale_items")
+  @@map("mobile_shop_sale_items")
 }
 
 // ── CCTV Payment (3A: Payment Integration) ──
 // Individual payment row. A single sale can have multiple payments (split payment).
 // Method types: CASH, CARD, BKASH, NAGAD, ROCKET
-model CCTVPayment {
+model MSPayment {
   id              String   @id @default(cuid())
   businessId      String
   saleId          String
@@ -2485,21 +2507,21 @@ model CCTVPayment {
   createdAt       DateTime @default(now())
 
   business        Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  sale            CCTVSale        @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  sale            MSSale        @relation(fields: [saleId], references: [id], onDelete: Cascade)
 
   @@index([businessId])
   @@index([saleId])
-  @@map("cctv_payments")
+  @@map("mobile_shop_payments")
 }
 
 // ── CCTV EMI Plan (3B: EMI Sales Management) ──
 // Equated Monthly Installment plan for high-value items.
 // Interest calculated at plan creation using reducing balance or flat rate method.
 // Installments are generated upfront as individual rows for tracking.
-model CCTVEmiPlan {
+model MSEmiPlan {
   id              String   @id @default(cuid())
   businessId      String
-  saleId          String?                 // optional link to the CCTVSale that created this EMI (one-to-one)
+  saleId          String?                 // optional link to the MSSale that created this EMI (one-to-one)
 
   // Customer info (denormalised)
   customerName    String
@@ -2539,20 +2561,20 @@ model CCTVEmiPlan {
   updatedAt       DateTime @updatedAt
 
   business        Business              @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  sale            CCTVSale?             @relation(fields: [saleId], references: [id])
-  installments    CCTVEmiInstallment[]
+  sale            MSSale?             @relation(fields: [saleId], references: [id])
+  installments    MSEmiInstallment[]
 
   @@index([businessId])
   @@index([status])
   @@index([customerPhone])
   @@unique([saleId])
-  @@map("cctv_emi_plans")
+  @@map("mobile_shop_emi_plans")
 }
 
 // ── CCTV EMI Installment (3B: EMI Sales Management) ──
 // Individual installment row. Generated at plan creation.
 // Status: PENDING, PAID, OVERDUE, WAIVED
-model CCTVEmiInstallment {
+model MSEmiInstallment {
   id              String   @id @default(cuid())
   businessId      String
   emiPlanId       String
@@ -2571,20 +2593,20 @@ model CCTVEmiInstallment {
   updatedAt       DateTime @updatedAt
 
   business        Business     @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  emiPlan         CCTVEmiPlan  @relation(fields: [emiPlanId], references: [id], onDelete: Cascade)
+  emiPlan         MSEmiPlan  @relation(fields: [emiPlanId], references: [id], onDelete: Cascade)
 
   @@unique([emiPlanId, installmentNo])
   @@index([businessId])
   @@index([emiPlanId])
   @@index([status])
   @@index([dueDate])
-  @@map("cctv_emi_installments")
+  @@map("mobile_shop_emi_installments")
 }
 
 // ── CCTV Loyalty Config (3C: Customer Loyalty and CRM) ──
 // Per-business loyalty program settings. One config per business.
 // Controls earn rates, redemption rates, and tier thresholds.
-model CCTVLoyaltyConfig {
+model MSLoyaltyConfig {
   id              String   @id @default(cuid())
   businessId      String   @unique
 
@@ -2607,16 +2629,16 @@ model CCTVLoyaltyConfig {
   updatedAt       DateTime @updatedAt
 
   business        Business              @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  offers          CCTVLoyaltyOffer[]
+  offers          MSLoyaltyOffer[]
 
   @@index([businessId])
-  @@map("cctv_loyalty_configs")
+  @@map("mobile_shop_loyalty_configs")
 }
 
 // ── CCTV Loyalty Transaction (3C: Customer Loyalty and CRM) ──
 // Append-only ledger of all points movements for a customer.
 // Types: EARN (from purchase), REDEEM (spent at checkout), BONUS (from offer), ADJUST (manual)
-model CCTVLoyaltyTransaction {
+model MSLoyaltyTransaction {
   id              String   @id @default(cuid())
   businessId      String
   customerId      String
@@ -2625,8 +2647,8 @@ model CCTVLoyaltyTransaction {
   points          Int      // positive = earn/bonus, negative = redeem
   balanceAfter    Int      // running balance snapshot after this transaction
 
-  saleId          String?  // link to CCTVSale when earned from purchase
-  offerId         String?  // link to CCTVLoyaltyOffer when from a promotion
+  saleId          String?  // link to MSSale when earned from purchase
+  offerId         String?  // link to MSLoyaltyOffer when from a promotion
   description     String?
   createdById     String?
   createdAt       DateTime @default(now())
@@ -2636,14 +2658,14 @@ model CCTVLoyaltyTransaction {
   @@index([businessId])
   @@index([customerId])
   @@index([type])
-  @@map("cctv_loyalty_transactions")
+  @@map("mobile_shop_loyalty_transactions")
 }
 
 // ── CCTV Loyalty Offer (3C: Customer Loyalty and CRM) ──
 // Time-limited promotional offers configured by shop owner.
 // DOUBLE_POINTS: 2x points on all purchases during the period.
 // BONUS_POINTS: flat bonus points on next purchase.
-model CCTVLoyaltyOffer {
+model MSLoyaltyOffer {
   id              String   @id @default(cuid())
   businessId      String
   configId        String
@@ -2660,17 +2682,17 @@ model CCTVLoyaltyOffer {
   updatedAt       DateTime @updatedAt
 
   business        Business          @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  config          CCTVLoyaltyConfig  @relation(fields: [configId], references: [id], onDelete: Cascade)
+  config          MSLoyaltyConfig  @relation(fields: [configId], references: [id], onDelete: Cascade)
 
   @@index([businessId])
   @@index([configId])
-  @@map("cctv_loyalty_offers")
+  @@map("mobile_shop_loyalty_offers")
 }
 
 // ── CCTV Warranty Claim (3D: Warranty Tracking and Alerts) ──
 // Records warranty claims when customers bring in items for warranty repair/service.
 // A claim tracks the issue, approval status, and any linked repair job card.
-model CCTVWarrantyClaim {
+model MSWarrantyClaim {
   id              String   @id @default(cuid())
   businessId      String
   serialItemId    String                   // which serial item is claimed
@@ -2695,19 +2717,19 @@ model CCTVWarrantyClaim {
   updatedAt       DateTime @updatedAt
 
   business        Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  serialItem      CCTVSerialItem  @relation(fields: [serialItemId], references: [id])
+  serialItem      MSSerialItem  @relation(fields: [serialItemId], references: [id])
 
   @@index([businessId])
   @@index([serialItemId])
   @@index([status])
   @@index([customerPhone])
-  @@map("cctv_warranty_claims")
+  @@map("mobile_shop_warranty_claims")
 }
 
 // ── CCTV Project (4A: Project and Site Survey Management) ──
 // Represents a CCTV installation project linked to a customer and optionally a sale.
 // Tracks the full lifecycle: Planning → Survey → Procurement → Installation → Testing → Handover → Completed.
-model CCTVProject {
+model MSProject {
   id              String   @id @default(cuid())
   businessId      String
 
@@ -2751,22 +2773,22 @@ model CCTVProject {
   updatedAt       DateTime @updatedAt
 
   business        Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  sale            CCTVSale?       @relation(fields: [saleId], references: [id])
-  surveys         CCTVSiteSurvey[]
-  installationTasks CCTVInstallationTask[]
+  sale            MSSale?       @relation(fields: [saleId], references: [id])
+  surveys         MSSiteSurvey[]
+  installationTasks MSInstallationTask[]
 
   @@unique([businessId, projectCode])
   @@index([businessId])
   @@index([status])
   @@index([clientId])
   @@index([deadline])
-  @@map("cctv_projects")
+  @@map("mobile_shop_projects")
 }
 
 // ── CCTV Site Survey (4A: Project and Site Survey Management) ──
 // A survey captures the pre-installation site assessment: floor plan,
 // camera positions, cable routes, and blind spot analysis.
-model CCTVSiteSurvey {
+model MSSiteSurvey {
   id              String   @id @default(cuid())
   businessId      String
   projectId       String
@@ -2787,19 +2809,19 @@ model CCTVSiteSurvey {
   updatedAt       DateTime @updatedAt
 
   business        Business            @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  project         CCTVProject         @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  cameraPositions CCTVCameraPosition[]
-  cableRoutes     CCTVCableRoute[]
+  project         MSProject         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  cameraPositions MSCameraPosition[]
+  cableRoutes     MSCableRoute[]
 
   @@index([businessId])
   @@index([projectId])
-  @@map("cctv_site_surveys")
+  @@map("mobile_shop_site_surveys")
 }
 
 // ── CCTV Camera Position (4A: Site Survey — Camera Placement) ──
 // Represents a camera marker pin-dropped on the floor plan.
 // Coordinates are 0-100 percentage values relative to the floor plan image.
-model CCTVCameraPosition {
+model MSCameraPosition {
   id              String   @id @default(cuid())
   businessId      String
   surveyId        String
@@ -2818,17 +2840,17 @@ model CCTVCameraPosition {
   createdAt       DateTime @default(now())
 
   business        Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  survey          CCTVSiteSurvey @relation(fields: [surveyId], references: [id], onDelete: Cascade)
+  survey          MSSiteSurvey @relation(fields: [surveyId], references: [id], onDelete: Cascade)
 
   @@index([businessId])
   @@index([surveyId])
-  @@map("cctv_camera_positions")
+  @@map("mobile_shop_camera_positions")
 }
 
 // ── CCTV Cable Route (4A: Site Survey — Cable Route Annotation) ──
 // A cable route drawn on the floor plan as a polyline of points.
 // Points stored as JSON string: [{"x":10,"y":20},{"x":30,"y":40},...]
-model CCTVCableRoute {
+model MSCableRoute {
   id              String   @id @default(cuid())
   businessId      String
   surveyId        String
@@ -2844,16 +2866,16 @@ model CCTVCableRoute {
   createdAt       DateTime @default(now())
 
   business        Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  survey          CCTVSiteSurvey @relation(fields: [surveyId], references: [id], onDelete: Cascade)
+  survey          MSSiteSurvey @relation(fields: [surveyId], references: [id], onDelete: Cascade)
 
   @@index([businessId])
   @@index([surveyId])
-  @@map("cctv_cable_routes")
+  @@map("mobile_shop_cable_routes")
 }
 
 // ── 4C: Annual Maintenance Contracts ──
 
-model CCTVAmcContract {
+model MSAmcContract {
   id              String   @id @default(cuid())
   businessId      String
   contractCode    String                    // e.g., AMC-001
@@ -2885,15 +2907,15 @@ model CCTVAmcContract {
   updatedAt       DateTime @updatedAt
 
   business        Business         @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  visits          CCTVAmcVisit[]
+  visits          MSAmcVisit[]
 
   @@index([businessId])
   @@index([clientId])
   @@index([status])
-  @@map("cctv_amc_contracts")
+  @@map("mobile_shop_amc_contracts")
 }
 
-model CCTVAmcVisit {
+model MSAmcVisit {
   id              String   @id @default(cuid())
   businessId      String
   contractId      String
@@ -2912,16 +2934,16 @@ model CCTVAmcVisit {
   isActive        Boolean  @default(true)
   createdAt       DateTime @default(now())
 
-  contract        CCTVAmcContract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  contract        MSAmcContract @relation(fields: [contractId], references: [id], onDelete: Cascade)
 
   @@index([businessId])
   @@index([contractId])
-  @@map("cctv_amc_visits")
+  @@map("mobile_shop_amc_visits")
 }
 
 // ── 4D: Installation Task Scheduling ──
 
-model CCTVInstallationTask {
+model MSInstallationTask {
   id              String   @id @default(cuid())
   businessId      String
   projectId       String
@@ -2932,7 +2954,7 @@ model CCTVInstallationTask {
   completedDate   DateTime?                 // When actually completed
 
   // Assignment
-  assignedToId    String?                   // Link to CCTVTechnician
+  assignedToId    String?                   // Link to MSTechnician
   assignedToName  String?                   // Denormalized for quick display
 
   // Location
@@ -2955,18 +2977,18 @@ model CCTVInstallationTask {
   updatedAt       DateTime @updatedAt
 
   business        Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  project         CCTVProject     @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  checklists      CCTVTaskChecklist[]
+  project         MSProject     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  checklists      MSTaskChecklist[]
 
   @@index([businessId])
   @@index([projectId])
   @@index([status])
   @@index([scheduledDate])
   @@index([assignedToId])
-  @@map("cctv_installation_tasks")
+  @@map("mobile_shop_installation_tasks")
 }
 
-model CCTVTaskChecklist {
+model MSTaskChecklist {
   id              String   @id @default(cuid())
   businessId      String
   taskId          String
@@ -2984,16 +3006,16 @@ model CCTVTaskChecklist {
   createdAt       DateTime @default(now())
 
   business        Business             @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  task            CCTVInstallationTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  task            MSInstallationTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
 
   @@index([businessId])
   @@index([taskId])
-  @@map("cctv_task_checklists")
+  @@map("mobile_shop_task_checklists")
 }
 
 // ── 5A: NBR Compliance – BIN & Tax Configuration ──
 // One config per business; created on first access.
-model CCTVNbrConfig {
+model MSNbrConfig {
   id                   String   @id @default(cuid())
   businessId           String   @unique
 
@@ -3020,15 +3042,15 @@ model CCTVNbrConfig {
   updatedAt            DateTime @updatedAt
 
   business             Business              @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  hsCodeMappings       CCTVHsCodeMapping[]
+  hsCodeMappings       MSHsCodeMapping[]
 
   @@index([businessId])
-  @@map("cctv_nbr_configs")
+  @@map("mobile_shop_nbr_configs")
 }
 
 // ── 5A: HS Code Mappings per Product Category ──
 // Pre-populated with BD electronics defaults; editable per business.
-model CCTVHsCodeMapping {
+model MSHsCodeMapping {
   id                   String   @id @default(cuid())
   businessId           String
   configId             String
@@ -3042,17 +3064,17 @@ model CCTVHsCodeMapping {
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 
-  config               CCTVNbrConfig        @relation(fields: [configId], references: [id], onDelete: Cascade)
+  config               MSNbrConfig        @relation(fields: [configId], references: [id], onDelete: Cascade)
 
   @@unique([configId, category])
   @@index([businessId])
   @@index([configId])
-  @@map("cctv_hs_code_mappings")
+  @@map("mobile_shop_hs_code_mappings")
 }
 
 // ── 5B: Mushak 6.3 Tax Invoice ──
 // Immutable snapshot of a tax invoice for audit trail.
-model CCTVMushakInvoice {
+model MSMushakInvoice {
   id              String   @id @default(cuid())
   businessId      String
   saleId          String                       // source sale
@@ -3084,19 +3106,19 @@ model CCTVMushakInvoice {
   createdAt       DateTime @default(now())
 
   business        Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  sale            CCTVSale        @relation(fields: [saleId], references: [id])
-  lineItems       CCTVMushakLineItem[]
+  sale            MSSale        @relation(fields: [saleId], references: [id])
+  lineItems       MSMushakLineItem[]
 
   @@unique([businessId, invoiceNumber])
   @@index([businessId])
   @@index([saleId])
   @@index([issueDate])
-  @@map("cctv_mushak_invoices")
+  @@map("mobile_shop_mushak_invoices")
 }
 
 // ── 5B: Mushak 6.3 Line Item ──
 // One row per product in the invoice (denormalized snapshot).
-model CCTVMushakLineItem {
+model MSMushakLineItem {
   id              String   @id @default(cuid())
   businessId      String
   invoiceId       String
@@ -3113,16 +3135,16 @@ model CCTVMushakLineItem {
   isActive        Boolean  @default(true)
   createdAt       DateTime @default(now())
 
-  invoice         CCTVMushakInvoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  invoice         MSMushakInvoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
 
   @@index([businessId])
   @@index([invoiceId])
-  @@map("cctv_mushak_line_items")
+  @@map("mobile_shop_mushak_line_items")
 }
 
 // ── 5D: Monthly VAT Return (Mushak 9.1) ──
 // Stores monthly VAT return data; auto-calculated from Mushak 6.1/6.3 data.
-model CCTVVatReturn {
+model MSVatReturn {
   id              String   @id @default(cuid())
   businessId      String
 
@@ -3179,14 +3201,14 @@ model CCTVVatReturn {
   @@unique([businessId, taxYear, taxMonth])
   @@index([businessId])
   @@index([taxYear, taxMonth])
-  @@map("cctv_vat_returns")
+  @@map("mobile_shop_vat_returns")
 }
 
 // ── CCTV Purchases (1B: Purchase Order Flow) ──
 // Records incoming stock from suppliers. Unlike pharmacy batch-based purchases,
 // CCTV purchases can create serial items (IN_STOCK) for serial-tracked products
 // or increment stock count for non-serial products.
-model CCTVPurchase {
+model MSPurchase {
   id              String   @id @default(cuid())
   businessId      String
   supplierId      String?
@@ -3211,18 +3233,18 @@ model CCTVPurchase {
 
   business  Business            @relation(fields: [businessId], references: [id], onDelete: Cascade)
   supplier  Supplier?           @relation(fields: [supplierId], references: [id], onDelete: SetNull)
-  items     CCTVPurchaseItem[]
+  items     MSPurchaseItem[]
 
   @@unique([businessId, purchaseNo])
   @@index([businessId])
   @@index([supplierId])
   @@index([status])
   @@index([createdAt])
-  @@map("cctv_purchases")
+  @@map("mobile_shop_purchases")
 }
 
 // ── CCTV Purchase Items ──
-model CCTVPurchaseItem {
+model MSPurchaseItem {
   id              String   @id @default(cuid())
   purchaseId      String
   businessId      String
@@ -3234,14 +3256,14 @@ model CCTVPurchaseItem {
   unitCost        Float    // purchase price per unit
   totalPrice      Float    // quantity * unitCost
 
-  purchase CCTVPurchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  purchase MSPurchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
   business Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  product  CCTVProduct    @relation(fields: [productId], references: [id])
+  product  MSProduct    @relation(fields: [productId], references: [id])
 
   @@index([purchaseId])
   @@index([productId])
   @@index([businessId])
-  @@map("cctv_purchase_items")
+  @@map("mobile_shop_purchase_items")
   serialNumbers PurchaseOrderSerialNumber[]
 }
 
@@ -3255,7 +3277,7 @@ model PurchaseOrderSerialNumber {
 
   createdAt            DateTime @default(now())
 
-  purchaseItem         CCTVPurchaseItem @relation(fields: [purchaseOrderItemId], references: [id], onDelete: Cascade)
+  purchaseItem         MSPurchaseItem @relation(fields: [purchaseOrderItemId], references: [id], onDelete: Cascade)
 
   @@unique([purchaseOrderItemId, serialNumber])
   @@index([purchaseOrderItemId])
@@ -3264,9 +3286,9 @@ model PurchaseOrderSerialNumber {
 }
 
 // ── CCTV Returns (2A: Sales Return Flow) ──
-// Partial or full return of a sale. Each return creates a CCTVReturn record
+// Partial or full return of a sale. Each return creates a MSReturn record
 // with individual items. Serial items get restored to IN_STOCK or RETURNED.
-model CCTVReturn {
+model MSReturn {
   id              String   @id @default(cuid())
   businessId      String
   saleId          String                // Original sale being returned against
@@ -3292,16 +3314,16 @@ model CCTVReturn {
   updatedAt       DateTime @updatedAt
 
   business        Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  sale            CCTVSale        @relation(fields: [saleId], references: [id])
-  items           CCTVReturnItem[]
+  sale            MSSale        @relation(fields: [saleId], references: [id])
+  items           MSReturnItem[]
 
   @@unique([businessId, returnCode])
   @@index([businessId])
   @@index([saleId])
-  @@map("cctv_returns")
+  @@map("mobile_shop_returns")
 }
 
-model CCTVReturnItem {
+model MSReturnItem {
   id              String   @id @default(cuid())
   businessId      String
   returnId        String
@@ -3323,20 +3345,20 @@ model CCTVReturnItem {
   isActive        Boolean  @default(true)
   createdAt       DateTime @default(now())
 
-  return          CCTVReturn   @relation(fields: [returnId], references: [id], onDelete: Cascade)
+  return          MSReturn   @relation(fields: [returnId], references: [id], onDelete: Cascade)
   business        Business     @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  saleItem        CCTVSaleItem @relation(fields: [saleItemId], references: [id])
+  saleItem        MSSaleItem @relation(fields: [saleItemId], references: [id])
 
   @@index([returnId])
   @@index([saleItemId])
   @@index([businessId])
-  @@map("cctv_return_items")
+  @@map("mobile_shop_return_items")
 }
 
 // ── CCTV Expenses (2D: Expense / Other Costing Tracker) ──
 // Tracks operating expenses (rent, salary, utilities, transport, misc).
 // Used for P&L reporting and cost analysis.
-model CCTVExpense {
+model MSExpense {
   id            String   @id @default(cuid())
   businessId    String
   date          DateTime                    // Expense date (can differ from createdAt)
@@ -3354,5 +3376,554 @@ model CCTVExpense {
   @@index([businessId])
   @@index([businessId, date])
   @@index([businessId, category])
+  @@map("mobile_shop_expenses")
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// CCTV MODULE — Clean, Simple Schema (14 tables)
+// Designed for Bangladeshi CCTV shops. Desktop-first. Simple.
+// Separate from MobileShop module. No shared tables.
+// ════════════════════════════════════════════════════════════════════════════
+
+// ── 1. CCTV Categories ──
+model CCTVCategory {
+  id         String   @id @default(cuid())
+  businessId String
+  name       String
+  slug       String
+  icon       String   @default("Package")
+  color      String   @default("#7c3aed")
+  sortOrder  Int      @default(0)
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  business Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  products CCTVProduct[]
+
+  @@unique([businessId, slug])
+  @@index([businessId])
+  @@map("cctv_categories")
+}
+
+// ── 2. CCTV Products ──
+model CCTVProduct {
+  id              String   @id @default(cuid())
+  businessId      String
+  categoryId      String?
+  name            String
+  brand           String
+  model           String?
+  sku             String?
+  description     String?
+  costPrice       Decimal  @default(0) @db.Decimal(12, 2)
+  sellPrice       Decimal  @default(0) @db.Decimal(12, 2)
+  stock           Int      @default(0)
+  unit            String   @default("piece")
+  minStock        Int      @default(0)
+  serialTracked   Boolean  @default(false)
+  warrantyMonths  Int      @default(0)
+  imageUrl        String?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  business    Business         @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  category    CCTVCategory?    @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  serialItems CCTVSerialItem[]
+  purchaseItems CCTVPurchaseItem[]
+  saleItems   CCTVSaleItem[]
+
+  @@index([businessId])
+  @@index([categoryId])
+  @@index([brand])
+  @@index([name])
+  @@map("cctv_products")
+}
+
+// ── 3. CCTV Serial Items ──
+model CCTVSerialItem {
+  id            String   @id @default(cuid())
+  businessId    String
+  productId     String
+  serialNumber  String
+  status        String   @default("IN_STOCK") // IN_STOCK, SOLD, RETURNED, IN_REPAIR,
+                                                // SENT_TO_SUPPLIER, REPLACED, RETURNED_TO_CUSTOMER
+  costPrice     Decimal  @default(0) @db.Decimal(12, 2)
+  sellPrice     Decimal? @db.Decimal(12, 2)
+  purchaseDate  DateTime?
+  saleDate      DateTime?
+  warrantyMonths Int?    // warranty period in months (from purchase item or product default)
+  warrantyEnd   DateTime?
+  customerId    String?
+  customerName  String?
+  replacesSerialId String? // if this is a replacement, points to the original serial item
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  product CCTVProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+  history CCTVSerialHistory[]
+
+  @@index([businessId])
+  @@index([productId])
+  @@index([serialNumber])
+  @@index([status])
+  @@index([businessId, status])
+  @@unique([businessId, serialNumber])
+  @@map("cctv_serial_items")
+}
+
+// ── 4. CCTV Customers ──
+model CCTVCustomer {
+  id             String   @id @default(cuid())
+  businessId     String
+  name           String
+  phone          String
+  address        String?
+  openingBalance Decimal  @default(0) @db.Decimal(12, 2)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  business Business     @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  sales    CCTVSale[]
+
+  @@index([businessId])
+  @@index([phone])
+  @@map("cctv_customers")
+}
+
+// ── 5. CCTV Suppliers ──
+model CCTVSupplier {
+  id             String   @id @default(cuid())
+  businessId     String
+  name           String
+  phone          String
+  address        String?
+  openingBalance Decimal  @default(0) @db.Decimal(12, 2)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  business  Business         @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  purchases CCTVPurchase[]
+
+  @@index([businessId])
+  @@index([phone])
+  @@map("cctv_suppliers")
+}
+
+// ── 6. CCTV Purchases ──
+model CCTVPurchase {
+  id           String   @id @default(cuid())
+  businessId   String
+  supplierId   String?
+  supplierName String?
+  invoiceNo    String?
+  totalAmount  Decimal  @default(0) @db.Decimal(12, 2)
+  paidAmount   Decimal  @default(0) @db.Decimal(12, 2)
+  dueAmount    Decimal  @default(0) @db.Decimal(12, 2)
+  purchaseDate DateTime @default(now())
+  notes        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  business  Business           @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  supplier CCTVSupplier?       @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  items    CCTVPurchaseItem[]
+
+  @@index([businessId])
+  @@index([supplierId])
+  @@index([purchaseDate])
+  @@index([businessId, purchaseDate])
+  @@map("cctv_purchases")
+}
+
+// ── 7. CCTV Purchase Items ──
+model CCTVPurchaseItem {
+  id          String   @id @default(cuid())
+  purchaseId  String
+  businessId  String
+  productId   String
+  productName String
+  quantity    Int      @default(1)
+  costPrice   Decimal  @default(0) @db.Decimal(12, 2)
+  sellPrice   Decimal  @default(0) @db.Decimal(12, 2) // suggested sell price at time of purchase
+  serialNumbers String? // comma-separated or newline-separated serials
+  warrantyMonths Int?  // override product default at purchase time
+  createdAt   DateTime @default(now())
+
+  purchase CCTVPurchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  product  CCTVProduct  @relation(fields: [productId], references: [id], onDelete: Restrict)
+  business Business     @relation("newCctvPurchaseItems", fields: [businessId], references: [id], onDelete: Cascade)
+  @@index([productId])
+  @@index([businessId])
+  @@map("cctv_purchase_items")
+}
+
+// ── 8. CCTV Sales ──
+model CCTVSale {
+  id              String   @id @default(cuid())
+  businessId      String
+  customerId      String?
+  customerName    String?
+  invoiceNo       String?
+  subtotal        Decimal  @default(0) @db.Decimal(12, 2)
+  discount        Decimal  @default(0) @db.Decimal(12, 2) // invoice-level discount
+  totalAmount     Decimal  @default(0) @db.Decimal(12, 2) // subtotal - discount
+  paidAmount      Decimal  @default(0) @db.Decimal(12, 2)
+  dueAmount       Decimal  @default(0) @db.Decimal(12, 2)
+  paymentType     String   @default("cash") // cash, credit
+  saleDate        DateTime @default(now())
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  business Business     @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  customer CCTVCustomer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  items    CCTVSaleItem[]
+
+  @@index([businessId])
+  @@index([customerId])
+  @@index([saleDate])
+  @@index([businessId, saleDate])
+  @@unique([businessId, invoiceNo])
+  @@map("cctv_sales")
+}
+
+// ── 9. CCTV Sale Items ──
+model CCTVSaleItem {
+  id           String   @id @default(cuid())
+  saleId       String
+  businessId   String
+  productId    String
+  productName  String
+  quantity     Int      @default(1)
+  sellPrice    Decimal  @default(0) @db.Decimal(12, 2)
+  costPrice    Decimal  @default(0) @db.Decimal(12, 2)
+  discount     Decimal  @default(0) @db.Decimal(12, 2) // per-item discount amount
+  serialNumber String?
+  createdAt    DateTime @default(now())
+
+  sale    CCTVSale    @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  product CCTVProduct @relation(fields: [productId], references: [id], onDelete: Restrict)
+  business Business   @relation("newCctvSaleItems", fields: [businessId], references: [id], onDelete: Cascade)
+  @@index([productId])
+  @@index([businessId])
+  @@map("cctv_sale_items")
+}
+
+// ── 10. CCTV Payments ──
+model CCTVPayment {
+  id          String   @id @default(cuid())
+  businessId  String
+  type        String   // sale, purchase, customer_payment, supplier_payment
+  referenceId String?  // sale or purchase ID
+  customerId  String?
+  supplierId  String?
+  amount      Decimal  @default(0) @db.Decimal(12, 2)
+  paymentMethod String @default("cash") // cash, bank, mobile
+  paymentDate DateTime @default(now())
+  notes       String?
+  createdAt   DateTime @default(now())
+
+  business Business @relation("newCctvPayments", fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@index([type])
+  @@index([paymentDate])
+  @@index([businessId, paymentDate])
+  @@index([businessId, type])
+  @@map("cctv_payments")
+}
+
+// ── 11. CCTV Expenses ──
+model CCTVExpense {
+  id          String   @id @default(cuid())
+  businessId  String
+  category    String   // rent, electricity, transport, tea, other
+  description String?
+  amount      Decimal  @default(0) @db.Decimal(12, 2)
+  expenseDate DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@index([expenseDate])
+  @@index([businessId, expenseDate])
+  @@index([businessId, category])
   @@map("cctv_expenses")
+}
+
+// ── 12. CCTV Returns ──
+model CCTVReturn {
+  id          String   @id @default(cuid())
+  businessId  String
+  saleId      String?
+  customerName String?
+  totalAmount Decimal  @default(0) @db.Decimal(12, 2)
+  reason      String?
+  returnDate  DateTime @default(now())
+  createdAt   DateTime @default(now())
+
+  business Business     @relation("newCctvReturns", fields: [businessId], references: [id], onDelete: Cascade)
+  items CCTVReturnItem[]
+
+  @@index([businessId])
+  @@index([saleId])
+  @@index([returnDate])
+  @@map("cctv_returns")
+}
+
+// ── 13. CCTV Return Items ──
+model CCTVReturnItem {
+  id          String   @id @default(cuid())
+  returnId    String
+  businessId  String
+  productId   String
+  productName String
+  quantity    Int      @default(1)
+  sellPrice   Decimal  @default(0) @db.Decimal(12, 2)
+  serialNumber String?
+  createdAt   DateTime @default(now())
+
+  return CCTVReturn @relation(fields: [returnId], references: [id], onDelete: Cascade)
+  business Business @relation("newCctvReturnItems", fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([returnId])
+  @@index([businessId])
+  @@map("cctv_return_items")
+}
+
+// ── 14. CCTV Warranty Claims (Simplified) ──
+model CCTVWarrantyClaim {
+  id            String   @id @default(cuid())
+  businessId    String
+  serialNumber  String
+  productId     String?
+  productName   String?
+  customerName  String?
+  customerPhone String?
+  issue         String?
+  status        String   @default("pending") // pending, in_repair, resolved, rejected
+  claimDate     DateTime @default(now())
+  resolvedDate  DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  business Business @relation("newCctvWarrantyClaims", fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@index([serialNumber])
+  @@index([status])
+  @@map("cctv_warranty_claims")
+}
+
+// ── 15. CCTV Serial History (audit log for every serial event) ──
+// Foundation for warranty tracking: search by serial → see full timeline
+model CCTVSerialHistory {
+  id            String   @id @default(cuid())
+  businessId    String
+  serialItemId  String?
+  serialNumber  String
+  productId     String?
+  productName   String?
+  eventType     String   // PURCHASED, SOLD, REPAIR_RECEIVED, REPAIR_DONE, RETURNED_TO_CUSTOMER,
+                         // SENT_TO_SUPPLIER, REPLACEMENT_RECEIVED, REPLACED, NOTE
+  description   String?
+  performedBy   String?
+  referenceId   String?  // repair ID, sale ID, purchase ID, replacement ID
+  referenceType String?  // repair, sale, purchase, replacement
+  notes         String?
+  eventDate     DateTime @default(now())
+  createdAt     DateTime @default(now())
+
+  serialItem CCTVSerialItem? @relation(fields: [serialItemId], references: [id], onDelete: SetNull)
+  business Business @relation("newCctvSerialHistories", fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@index([serialItemId])
+  @@index([serialNumber])
+  @@index([eventType])
+  @@index([businessId, serialNumber])
+  @@map("cctv_serial_history")
+}
+
+// ── 16. CCTV Repairs ──
+// Receive product from customer → repair in-house → return to customer
+// OR → send to supplier → get replacement → give new serial to customer
+model CCTVRepair {
+  id              String   @id @default(cuid())
+  businessId      String
+  tokenNo         String?  @unique // printable token for customer (e.g. R26071401)
+  serialNumber    String
+  serialItemId    String?
+  productId       String?
+  productName     String?
+  customerId      String?
+  customerName    String?
+  customerPhone   String?
+  issue           String
+  status          String   @default("received") // received, in_repair, ready, returned,
+                                                   // sent_to_supplier, replaced, closed
+  underWarranty   Boolean  @default(false) // true = free warranty repair
+  warrantyExpiryDate DateTime? // snapshot of warranty end at time of repair
+  receivedDate    DateTime @default(now())
+  repairStartDate DateTime?
+  readyDate       DateTime?
+  returnedDate    DateTime?
+  repairNotes     String?
+  repairCost      Decimal  @default(0) @db.Decimal(12, 2)
+  replacementId   String?  // links to CCTVSupplierReplacement if sent to supplier
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  business Business @relation("newCctvRepairs", fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@index([serialNumber])
+  @@index([customerId])
+  @@index([status])
+  @@index([tokenNo])
+  @@index([underWarranty])
+  @@index([businessId, status])
+  @@map("cctv_repairs")
+}
+
+// ── 17. CCTV Supplier Replacements ──
+// Send defective product to supplier → receive replacement with new serial
+// → link old serial to new → give new serial to customer
+model CCTVSupplierReplacement {
+  id                   String   @id @default(cuid())
+  businessId           String
+  repairId             String?
+  supplierId           String?
+  supplierName         String?
+  originalSerialNumber String?  // null for non-serial products
+  originalSerialItemId String?
+  newSerialNumber      String?  // null for non-serial products
+  newSerialItemId      String?
+  productId            String?
+  productName          String?
+  quantity             Int      @default(1) // for non-serial: how many damaged items sent
+  isSerialTracked      Boolean  @default(true) // true=serial flow, false=stock quantity flow
+  status               String   @default("sent") // sent, received, cancelled
+  sentDate             DateTime @default(now())
+  receivedDate         DateTime?
+  notes                String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  business Business @relation("newCctvSupplierReplacements", fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@index([repairId])
+  @@index([originalSerialNumber])
+  @@index([newSerialNumber])
+  @@index([productId])
+  @@map("cctv_supplier_replacements")
+}
+
+// ── 18. CCTV Estimates (Quotations) ──
+// Create estimate for a project → add products (no serials) →
+// client agrees → convert to real invoice (sale)
+model CCTVEstimate {
+  id           String   @id @default(cuid())
+  businessId   String
+  estimateNo   String?  // e.g. EST-2607-001
+  customerId   String?
+  customerName String?
+  customerPhone String?
+  projectTitle String?  // e.g. "6-camera CCTV installation at home"
+  totalAmount  Decimal  @default(0) @db.Decimal(12, 2)
+  status       String   @default("draft") // draft, sent, accepted, converted, rejected
+  notes        String?
+  convertedSaleId String? // links to CCTVSale when converted
+  validUntil   DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  items CCTVEstimateItem[]
+
+  @@index([businessId])
+  @@index([customerId])
+  @@index([status])
+  @@unique([businessId, estimateNo])
+  @@map("cctv_estimates")
+}
+
+// ── 19. CCTV Estimate Items ──
+model CCTVEstimateItem {
+  id          String   @id @default(cuid())
+  estimateId  String
+  businessId  String
+  productId   String?
+  productName String
+  quantity    Int      @default(1)
+  unitPrice   Decimal  @default(0) @db.Decimal(12, 2)
+  notes       String?
+  createdAt   DateTime @default(now())
+
+  estimate CCTVEstimate @relation(fields: [estimateId], references: [id], onDelete: Cascade)
+  business Business @relation("newCctvEstimateItems", fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([estimateId])
+  @@index([productId])
+  @@index([businessId])
+  @@map("cctv_estimate_items")
+}
+
+// ── 20. CCTV Stock Movements (audit trail for every stock change) ──
+// Every stock change (purchase, sale, return, adjustment, replacement)
+// creates a movement record. This provides complete traceability:
+// "who changed stock from 50 to 45 on July 14th, and why?"
+model CCTVStockMovement {
+  id              String   @id @default(cuid())
+  businessId      String
+  productId       String
+  productName     String?
+  movementType    String   // PURCHASE, SALE, RETURN, ADJUSTMENT, REPLACEMENT_SEND, REPLACEMENT_RECEIVE
+  quantityChange  Int      // signed: +5 for stock in, -3 for stock out
+  balanceAfter    Int      // stock balance after this movement
+  referenceId     String?  // sale ID, purchase ID, replacement ID, etc.
+  referenceType   String?  // sale, purchase, replacement, manual
+  performedBy     String?  // user who made the change
+  notes           String?
+  createdAt       DateTime @default(now())
+
+  business Business @relation("newCctvStockMovements", fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@index([productId])
+  @@index([businessId, productId])
+  @@index([movementType])
+  @@index([createdAt])
+  @@map("cctv_stock_movements")
+}
+
+// ── 21. CCTV Ledger Entries (double-entry accounting) ──
+// Every financial transaction creates balanced debit + credit entries.
+// Sum of all debits = sum of all credits per business (trial balance).
+// Accounts: cash, bank, bkash, nagad, sales_revenue, purchase_cost,
+// customer_receivable, supplier_payable, expense, discount_given
+model CCTVLedgerEntry {
+  id              String   @id @default(cuid())
+  businessId      String
+  accountId       String   // cash, bank, bkash, nagad, sales_revenue, etc.
+  entryType       String   // DEBIT or CREDIT
+  amount          Decimal  @default(0) @db.Decimal(12, 2)
+  referenceId     String?  // sale ID, purchase ID, payment ID, expense ID
+  referenceType   String?  // sale, purchase, payment, expense
+  description     String?
+  performedBy     String?
+  createdAt       DateTime @default(now())
+
+  business Business @relation("newCctvLedgerEntries", fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@index([accountId])
+  @@index([businessId, accountId])
+  @@index([referenceId])
+  @@index([createdAt])
+  @@map("cctv_ledger_entries")
 }

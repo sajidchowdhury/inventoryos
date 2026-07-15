@@ -1,98 +1,70 @@
 // GET /api/businesses/[id]/cctv/warranties
+// Returns warranty dashboard data:
+//  - Stats: active, expiring soon (30 days), expired, repairs in progress
+//  - List of warranty-tracked serial items with status
+//  - Active repairs under warranty
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 
-const MS_PER_DAY = 1000 * 60 * 60 * 24;
-
-function computeWarrantyStatus(warrantyEnd: Date, now: Date, expiringDays: number) {
-  const endMs = warrantyEnd.getTime();
-  const nowMs = now.getTime();
-  const expiringThreshold = nowMs + expiringDays * MS_PER_DAY;
-
-  if (endMs <= nowMs) return "EXPIRED" as const;
-  if (endMs <= expiringThreshold) return "EXPIRING_SOON" as const;
-  return "ACTIVE" as const;
-}
-
-type WarrantyStatus = "ACTIVE" | "EXPIRING_SOON" | "EXPIRED";
-
-// GET: List warranties (serial items that have been sold with warrantyEnd set)
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  try {
-    const { id: businessId } = await params;
-    const url = new URL(req.url);
-    const search = url.searchParams.get("search")?.trim() || "";
-    const status = url.searchParams.get("status")?.trim() || "";
-    const days = parseInt(url.searchParams.get("days") || "90", 10) || 90;
+  const { id: businessId } = await params;
+  const { searchParams } = new URL(req.url);
+  const filter = searchParams.get("filter"); // active, expiring, expired, all
 
-    const now = new Date();
+  const now = new Date();
+  const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
 
-    // Base where clause: sold/installed serial items with warrantyEnd
-    const where: Record<string, unknown> = {
+  // Fetch all SOLD serial items that have warranty end date
+  const allSerials = await db.cCTVSerialItem.findMany({
+    where: {
       businessId,
-      isActive: true,
       warrantyEnd: { not: null },
-      status: { in: ["SOLD", "WARRANTY_ACTIVE", "WARRANTY_EXPIRED", "INSTALLED"] },
-    };
-
-    // Search filter on serialNumber/imei/customerName + product.name
-    if (search) {
-      where.OR = [
-        { serialNumber: { contains: search, mode: "insensitive" } },
-        { imei: { contains: search, mode: "insensitive" } },
-        { customerName: { contains: search, mode: "insensitive" } },
-        { product: { name: { contains: search, mode: "insensitive" } } },
-      ];
-    }
-
-    // Fetch matching items with product relation and claim count
-    const items = await db.cCTVSerialItem.findMany({
-      where,
-      include: {
-        product: {
-          select: { name: true, brand: true },
-        },
-        _count: {
-          select: { warrantyClaims: true },
-        },
+      status: { in: ["SOLD", "IN_REPAIR", "SENT_TO_SUPPLIER", "RETURNED_TO_CUSTOMER"] },
+    },
+    include: {
+      product: {
+        select: { id: true, name: true, brand: true, model: true },
       },
-      orderBy: { warrantyEnd: "asc" },
-    });
+    },
+    orderBy: { warrantyEnd: "asc" },
+  });
 
-    // Compute warranty status for each item, then filter/sort in memory
-    const warranties = items
-      .map((item) => {
-        const warrantyEnd = item.warrantyEnd!;
-        const warrantyStatus = computeWarrantyStatus(warrantyEnd, now, days);
-        const daysRemaining = Math.ceil((warrantyEnd.getTime() - now.getTime()) / MS_PER_DAY);
+  // Categorize
+  const active = allSerials.filter((s) => s.warrantyEnd && new Date(s.warrantyEnd) > now);
+  const expiring = active.filter((s) => s.warrantyEnd && new Date(s.warrantyEnd) <= thirtyDaysFromNow);
+  const expired = allSerials.filter((s) => s.warrantyEnd && new Date(s.warrantyEnd) <= now);
 
-        return {
-          id: item.id,
-          serialNumber: item.serialNumber,
-          imei: item.imei,
-          customerName: item.customerName,
-          customerPhone: item.customerPhone,
-          saleId: item.saleId,
-          status: item.status,
-          warrantyMonths: item.warrantyMonths,
-          warrantyStart: item.warrantyStart,
-          warrantyEnd,
-          warrantyStatus,
-          daysRemaining,
-          product: item.product,
-          _count: item._count,
-          createdAt: item.createdAt,
-          updatedAt: item.updatedAt,
-        };
-      })
-      .filter((w) => {
-        if (!status) return true;
-        return w.warrantyStatus === status;
-      });
+  // Active repairs under warranty
+  const repairsInProgress = await db.cCTVRepair.findMany({
+    where: {
+      businessId,
+      status: { in: ["received", "in_repair", "ready", "sent_to_supplier"] },
+    },
+    orderBy: { receivedDate: "desc" },
+    take: 50,
+  });
 
-    return NextResponse.json(warranties);
-  } catch (error) {
-    console.error("List warranties error:", error);
-    return NextResponse.json({ error: "Failed to list warranties" }, { status: 500 });
+  // Apply filter to serial list if provided
+  let filteredSerials = allSerials;
+  if (filter === "active") {
+    filteredSerials = active;
+  } else if (filter === "expiring") {
+    filteredSerials = expiring;
+  } else if (filter === "expired") {
+    filteredSerials = expired;
   }
+
+  return NextResponse.json({
+    success: true,
+    stats: {
+      total: allSerials.length,
+      active: active.length,
+      expiring: expiring.length,
+      expired: expired.length,
+      repairsInProgress: repairsInProgress.length,
+      warrantyRepairsInProgress: repairsInProgress.filter((r) => r.underWarranty).length,
+    },
+    serials: filteredSerials,
+    repairs: repairsInProgress,
+  });
 }

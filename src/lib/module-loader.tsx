@@ -6,10 +6,10 @@ import { useAuthStore } from '@/stores/auth-store';
 import { moduleRegistry } from '@/lib/modules';
 
 /* ─── Lazy-loaded module shells ─── */
-const CCTVDashboard = dynamic(
-  () => import('@/modules/cctv-shop/components/CCTVShell').then((mod) => {
-    const Comp = mod.CCTVShell ?? mod.default;
-    if (!Comp) console.error('[module-loader] CCTVShell export not found. Available:', Object.keys(mod));
+const MSDashboard = dynamic(
+  () => import('@/modules/mobile-shop/components/MSShell').then((mod) => {
+    const Comp = mod.MSShell ?? mod.default;
+    if (!Comp) console.error('[module-loader] MSShell export not found. Available:', Object.keys(mod));
     return { default: Comp };
   }),
   { loading: () => <ModuleLoadingSkeleton />, ssr: false }
@@ -18,6 +18,13 @@ const CCTVDashboard = dynamic(
 const PharmacyDashboard = dynamic(
   () => import('@/modules/pharmacy/components/PharmacyShell').then((mod) => ({
     default: mod.PharmacyShell ?? mod.default,
+  })),
+  { loading: () => <ModuleLoadingSkeleton />, ssr: false }
+);
+
+const CCTVDashboard = dynamic(
+  () => import('@/modules/cctv-shop/components/CCTVShell').then((mod) => ({
+    default: mod.CCTVShell ?? mod.default,
   })),
   { loading: () => <ModuleLoadingSkeleton />, ssr: false }
 );
@@ -32,10 +39,12 @@ export function ModuleShellRenderer() {
   const slug = session.business.businessType.slug;
 
   switch (slug) {
-    case 'cctv-shop':
-      return <CCTVDashboard />;
+    case 'mobile-shop':
+      return <MSDashboard />;
     case 'pharmacy':
       return <PharmacyDashboard />;
+    case 'cctv-shop':
+      return <CCTVDashboard />;
     default: {
       const mod = moduleRegistry.find((m) => m.slug === slug);
       return (

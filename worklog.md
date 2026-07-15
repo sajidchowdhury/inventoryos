@@ -1911,3 +1911,111 @@ Stage Summary:
 - Auth flows verified and restructured: staff (direct), admin (phone OTP), new user (type → phone → OTP → details)
 - Session persists across page refresh via Zustand persist + validate-session API
 - Stock Report fully functional with API, component, and navigation wiring
+
+---
+Task ID: 8
+Agent: Main Agent
+Task: Build 4-phase feature set for CCTV module — Payment system verification, Serial history + search, Repair flow, Supplier replacement flow
+
+Work Log:
+
+Phase 0 — Verification of already-built features:
+- Audited CCTVLedger.tsx — found that customer & supplier payment system is ALREADY fully built:
+  • "Payment" button on customer/supplier ledger opens dialog with amount, method (cash/bank/mobile), date, notes
+  • POST /api/businesses/[id]/cctv/payments creates customer_payment or supplier_payment
+  • Customer ledger API includes customer_payment entries (credit)
+  - Supplier ledger API includes supplier_payment entries (credit)
+  • Cash book API includes customer payments (in) + supplier payments (out) + purchase payments (out) + expenses (out)
+- Audited CCTVPurchase.tsx — confirmed scan mode (Enter key auto-adds serial) and paste mode already work as user wants. User previously said "great serial no is good".
+
+Phase 1 — Schema migration:
+- Added CCTVSerialHistory model (audit log for every serial event):
+  • Fields: id, businessId, serialItemId, serialNumber, productId, productName, eventType, description, performedBy, referenceId, referenceType, notes, eventDate, createdAt
+  • Event types: PURCHASED, SOLD, REPAIR_RECEIVED, REPAIR_DONE, RETURNED_TO_CUSTOMER, SENT_TO_SUPPLIER, REPLACEMENT_RECEIVED, REPLACED, NOTE
+  • Relations: serialItem (CCTVSerialItem?) with SetNull on delete
+  • Indexes: businessId, serialItemId, serialNumber, eventType, [businessId, serialNumber]
+  • Table: cctv_serial_history
+
+- Added CCTVRepair model (repair jobs):
+  • Fields: id, businessId, serialNumber, serialItemId, productId, productName, customerId, customerName, customerPhone, issue, status, receivedDate, repairStartDate, readyDate, returnedDate, repairNotes, repairCost, replacementId, createdAt, updatedAt
+  • Status flow: received → in_repair → ready → returned (in-house)
+                received → sent_to_supplier → replaced → closed (supplier replacement)
+  • Table: cctv_repairs
+
+- Added CCTVSupplierReplacement model:
+  • Fields: id, businessId, repairId, supplierId, supplierName, originalSerialNumber, originalSerialItemId, newSerialNumber, newSerialItemId, productId, productName, status, sentDate, receivedDate, notes, createdAt, updatedAt
+  • Status: sent, received, cancelled
+  • Table: cctv_supplier_replacements
+
+- Added replacesSerialId field on CCTVSerialItem (links replacement serial to original)
+- Added history reverse-relation on CCTVSerialItem
+- Updated CCTVSerialItem.status comment to list all new statuses: IN_STOCK, SOLD, RETURNED, IN_REPAIR, SENT_TO_SUPPLIER, REPLACED, RETURNED_TO_CUSTOMER
+- Generated Prisma client successfully
+
+Phase 2 — Serial history + search:
+- Updated purchases/route.ts POST to create CCTVSerialHistory entry (eventType=PURCHASED) for every serial item created
+- Updated sales/route.ts POST to create CCTVSerialHistory entry (eventType=SOLD) when serial is marked SOLD, with customer name + warranty info in description
+- Created GET /api/businesses/[id]/cctv/serial-history?search=xxx — searches serial items case-insensitive, returns full timeline + replacement info + "is replacement for" info
+- Created CCTVSerialSearch.tsx — debounced serial search with auto-expand first result
+  • Each result shows: serial number, product name, status badge, purchase/sale dates, customer, warranty status, replacement info
+  • Expanded timeline shows all history entries with color-coded event icons and vertical timeline
+  • Color-coded event types: PURCHASED (blue), SOLD (emerald), REPAIR_RECEIVED (amber), REPAIR_DONE (amber), RETURNED_TO_CUSTOMER (violet), SENT_TO_SUPPLIER (orange), REPLACEMENT_RECEIVED (cyan), REPLACED (red)
+  • Price details footer (cost/sell/warranty months)
+
+Phase 3 — Repair flow:
+- Created GET/POST /api/businesses/[id]/cctv/repairs:
+  • POST: receive product from customer. Auto-looks up serial item, attaches product info. Auto-creates customer if phone+name provided and not existing. Sets serial status to IN_REPAIR. Creates REPAIR_RECEIVED history entry.
+  • GET: list repairs with optional status filter
+- Created GET/PATCH /api/businesses/[id]/cctv/repairs/[repairId]:
+  • PATCH: update status with proper timestamp tracking (repairStartDate, readyDate, returnedDate)
+  • Status transitions create appropriate history entries: REPAIR_DONE (in_repair, ready), RETURNED_TO_CUSTOMER (returned), SENT_TO_SUPPLIER (sent_to_supplier), REPLACED (replaced)
+  • Updates serial status based on repair status: IN_REPAIR, IN_STOCK (ready), RETURNED_TO_CUSTOMER, SENT_TO_SUPPLIER, REPLACED
+- Created CCTVRepairs.tsx — full repair management UI:
+  • List view with filter pills (All / Open / Closed), status badges, customer info
+  • "New Repair" dialog with serial lookup (auto-finds product), customer name/phone, issue, notes
+  • Detail view with status flow buttons:
+    - received → Start Repair | Send to Supplier
+    - in_repair → Mark Ready
+    - ready → Return to Customer
+    - sent_to_supplier → link to Replacements page
+    - replaced → link to view replacement
+  • Optional repair cost + notes input before status update
+
+Phase 4 — Supplier replacement flow:
+- Created GET/POST /api/businesses/[id]/cctv/supplier-replacements:
+  • POST: send defective product to supplier. Looks up original serial, attaches product info, marks serial as SENT_TO_SUPPLIER, creates SENT_TO_SUPPLIER history entry. If linked to repair, updates repair status + replacementId.
+  • GET: list replacements with optional status filter
+- Created PATCH /api/businesses/[id]/cctv/supplier-replacements/[replacementId]:
+  • When newSerialNumber provided: creates new CCTVSerialItem with replacesSerialId pointing to original, inherits cost/sell/product, marks as IN_STOCK, marks original as REPLACED, creates REPLACED + REPLACEMENT_RECEIVED history entries, updates linked repair to "replaced" status
+  • Checks for duplicate new serial number
+- Created CCTVSupplierReplacements.tsx — full replacement tracking UI:
+  • List view with original serial → new serial (after received) with arrow indicator
+  • "New" dialog: serial lookup, supplier selection, notes, linked repair ID
+  • "Receive Replacement" dialog: enter new serial number, optional notes, creates new stock item
+  • Status badges: Sent (orange), Received (emerald), Cancelled (gray)
+
+Wiring:
+- Added new view types to cctv-shop/types: 'serial-search', 'repairs', 'repair-detail', 'replacements'
+- Imported CCTVSerialSearch, CCTVRepairs, CCTVSupplierReplacements in CCTVShell
+- Added 3 new sidebar nav items: Serial Search, Repairs, Replacements (with Search, Wrench, RefreshCw icons)
+- Wired all new views in main content switch
+- Updated dashboard Quick Actions: replaced "Add Product" + "Cash Book" with "Serial Search" + "New Repair"
+- Updated Quick Links grid: added Serial Search, Repairs, Replacements at top
+
+Verification:
+- Prisma generate: success
+- TypeScript: no new errors (only pre-existing framer-motion `fadeUp` type issues that affect ALL CCTV components equally)
+- ESLint: zero new errors on all 8 new/modified files
+- Next.js build: compiled successfully in 54s
+- Mobile + desktop responsive layouts preserved
+
+Stage Summary:
+- 3 new schema models: CCTVSerialHistory, CCTVRepair, CCTVSupplierReplacement
+- 1 new field: replacesSerialId on CCTVSerialItem
+- 6 new API routes: serial-history, repairs (list+create), repairs/[id] (get+update), supplier-replacements (list+create), supplier-replacements/[id] (update)
+- 3 new UI components: CCTVSerialSearch, CCTVRepairs, CCTVSupplierReplacements
+- 2 existing APIs updated to write serial history: purchases, sales
+- 1 type file updated: added 4 new view types
+- 1 shell file updated: imports, sidebar nav, view routing, dashboard quick actions/links
+- User needs to run `bunx prisma db push` on their local machine to apply schema changes
+- Full warranty tracking foundation: every serial now has a complete audit trail from purchase → sale → repair → supplier replacement → return to customer

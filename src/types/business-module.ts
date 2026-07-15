@@ -8,7 +8,7 @@ export type BusinessSlug =
   | "pharmacy"
   | "grocery"
   | "restaurant"
-  | "cctv"
+  | "mobile-shop"
   | "electric"
   | "mobile"
   | "bakery";

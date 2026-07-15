@@ -10,10 +10,10 @@ async function main() {
   // Seed business types
   const businessTypes = [
     { slug: "pharmacy", name: "Pharmacy", icon: "Pill", color: "#16A34A", isActive: true, sortOrder: 1 },
-    { slug: "cctv-shop", name: "CCTV Shop", icon: "Camera", color: "#7C3AED", isActive: true, sortOrder: 2 },
-    { slug: "mobile-shop", name: "Mobile Shop", icon: "Smartphone", color: "#0891B2", isActive: true, sortOrder: 3 },
-    { slug: "grocery", name: "Grocery Shop", icon: "ShoppingCart", color: "#EA580C", isActive: false, sortOrder: 4 },
-    { slug: "restaurant", name: "Restaurant", icon: "UtensilsCrossed", color: "#DC2626", isActive: false, sortOrder: 5 },
+    { slug: "grocery", name: "Grocery Shop", icon: "ShoppingCart", color: "#EA580C", isActive: false, sortOrder: 2 },
+    { slug: "restaurant", name: "Restaurant", icon: "UtensilsCrossed", color: "#DC2626", isActive: false, sortOrder: 3 },
+    { slug: "mobile-shop", name: "Mobile Shop", icon: "Smartphone", color: "#0891B2", isActive: true, sortOrder: 4 },
+    { slug: "mobile", name: "Mobile Repair", icon: "Smartphone", color: "#0891B2", isActive: false, sortOrder: 5 },
     { slug: "electric", name: "Electric Shop", icon: "Zap", color: "#CA8A04", isActive: false, sortOrder: 6 },
     { slug: "bakery", name: "Bakery", icon: "Cake", color: "#DB2777", isActive: false, sortOrder: 7 },
   ];
@@ -102,89 +102,85 @@ async function main() {
     console.log(`Super-admin "${superAdminUsername}" already exists — password left unchanged`);
   }
 
-  // ── Seed CCTV Master Products (catalog) ──
-  // Skip if table doesn't exist or model not available
-  try {
-    const cctvMasterProducts = [
-      {
-        name: "DS-2CD2143G2-I 4MP Bullet Camera",
-        brand: "Hikvision",
-        model: "DS-2CD2143G2-I",
-        description: "4MP AcuSense Gen-2 Bullet Network Camera, 2.8mm lens, DarkFighter, IR up to 40m",
-        hsnCode: "8525.89.00",
-        defaultCategoryName: "Cameras",
-        defaultWarrantyMonths: 12,
-        defaultSerialTracked: true,
-        defaultUnit: "piece",
-        defaultVatRate: 15,
-        defaultMrp: 6500,
-      },
-      {
-        name: "DS-7608NI-K2/8P 8-Ch 4K NVR",
-        brand: "Hikvision",
-        model: "DS-7608NI-K2/8P",
-        description: "8-Channel 4K NVR, 8 PoE ports, supports up to 8MP cameras, 2x HDD bays",
-        hsnCode: "8517.62.00",
-        defaultCategoryName: "DVR/NVR",
-        defaultWarrantyMonths: 24,
-        defaultSerialTracked: true,
-        defaultUnit: "piece",
-        defaultVatRate: 15,
-        defaultMrp: 11500,
-      },
-      {
-        name: "IPC-HFW2431S 4MP Bullet Camera",
-        brand: "Dahua",
-        model: "IPC-HFW2431S",
-        description: "4MP Starlight Bullet Camera, 2.8mm fixed lens, IR LED up to 50m, ePoE",
-        hsnCode: "8525.89.00",
-        defaultCategoryName: "Cameras",
-        defaultWarrantyMonths: 12,
-        defaultSerialTracked: true,
-        defaultUnit: "piece",
-        defaultVatRate: 15,
-        defaultMrp: 5500,
-      },
-      {
-        name: "VIGI C400HP 4MP Bullet Camera",
-        brand: "TP-Link",
-        model: "VIGI-C400HP",
-        description: "4MP Bullet Camera, 2.8mm lens, Smart Detection, IR up to 30m, PoE",
-        hsnCode: "8525.89.00",
-        defaultCategoryName: "Cameras",
-        defaultWarrantyMonths: 12,
-        defaultSerialTracked: true,
-        defaultUnit: "piece",
-        defaultVatRate: 15,
-        defaultMrp: 4200,
-      },
-      {
-        name: "RG59 Siamese Cable 100m Roll",
-        brand: "Generic",
-        model: "RG59-100M",
-        description: "RG59 Siamese Coaxial + 2C Power Cable, 100m roll, for CCTV installations",
-        hsnCode: "8544.70.00",
-        defaultCategoryName: "Cables",
-        defaultWarrantyMonths: 0,
-        defaultSerialTracked: false,
-        defaultUnit: "roll",
-        defaultVatRate: 15,
-        defaultMrp: 1200,
-      },
-    ];
+  // ── Seed MobileShop Master Products (catalog) ──
+  // A small starter catalog so the master catalog is not empty on first run.
+  // Super-admin can add more via /admin/catalog/mobile-shop (Phase 3B (MobileShop)).
+  const mobileShopMasterProducts = [
+    {
+      name: "DS-2CD2143G2-I 4MP Bullet Camera",
+      brand: "Hikvision",
+      model: "DS-2CD2143G2-I",
+      description: "4MP AcuSense Gen-2 Bullet Network Camera, 2.8mm lens, DarkFighter, IR up to 40m",
+      hsnCode: "8525.89.00",
+      defaultCategoryName: "Cameras",
+      defaultWarrantyMonths: 12,
+      defaultSerialTracked: true,
+      defaultUnit: "piece",
+      defaultVatRate: 15,
+      defaultMrp: 6500,
+    },
+    {
+      name: "DS-7608NI-K2/8P 8-Ch 4K NVR",
+      brand: "Hikvision",
+      model: "DS-7608NI-K2/8P",
+      description: "8-Channel 4K NVR, 8 PoE ports, supports up to 8MP cameras, 2x HDD bays",
+      hsnCode: "8517.62.00",
+      defaultCategoryName: "DVR/NVR",
+      defaultWarrantyMonths: 24,
+      defaultSerialTracked: true,
+      defaultUnit: "piece",
+      defaultVatRate: 15,
+      defaultMrp: 11500,
+    },
+    {
+      name: "IPC-HFW2431S 4MP Bullet Camera",
+      brand: "Dahua",
+      model: "IPC-HFW2431S",
+      description: "4MP Starlight Bullet Camera, 2.8mm fixed lens, IR LED up to 50m, ePoE",
+      hsnCode: "8525.89.00",
+      defaultCategoryName: "Cameras",
+      defaultWarrantyMonths: 12,
+      defaultSerialTracked: true,
+      defaultUnit: "piece",
+      defaultVatRate: 15,
+      defaultMrp: 5500,
+    },
+    {
+      name: "VIGI C400HP 4MP Bullet Camera",
+      brand: "TP-Link",
+      model: "VIGI-C400HP",
+      description: "4MP Bullet Camera, 2.8mm lens, Smart Detection, IR up to 30m, PoE",
+      hsnCode: "8525.89.00",
+      defaultCategoryName: "Cameras",
+      defaultWarrantyMonths: 12,
+      defaultSerialTracked: true,
+      defaultUnit: "piece",
+      defaultVatRate: 15,
+      defaultMrp: 4200,
+    },
+    {
+      name: "RG59 Siamese Cable 100m Roll",
+      brand: "Generic",
+      model: "RG59-100M",
+      description: "RG59 Siamese Coaxial + 2C Power Cable, 100m roll, for mobile shop installations",
+      hsnCode: "8544.70.00",
+      defaultCategoryName: "Cables",
+      defaultWarrantyMonths: 0,
+      defaultSerialTracked: false,
+      defaultUnit: "roll",
+      defaultVatRate: 15,
+      defaultMrp: 1200,
+    },
+  ];
 
-    // Use masterProduct table (renamed from cctvMasterProduct)
-    for (const mp of cctvMasterProducts) {
-      await db.masterProduct.upsert({
-        where: { brand_model: { brand: mp.brand, model: mp.model } },
-        update: {},
-        create: mp,
-      });
-    }
-    console.log(`Seeded ${cctvMasterProducts.length} CCTV master products`);
-  } catch (err) {
-    console.log("Skipping CCTV master products (table not available):", (err as Error).message?.slice(0, 100));
+  for (const mp of mobileShopMasterProducts) {
+    await db.cCTVMasterProduct.upsert({
+      where: { brand_model: { brand: mp.brand, model: mp.model } },
+      update: {},
+      create: mp,
+    });
   }
+  console.log(`Seeded ${mobileShopMasterProducts.length} MobileShop master products`);
 
   console.log("Done!");
 }

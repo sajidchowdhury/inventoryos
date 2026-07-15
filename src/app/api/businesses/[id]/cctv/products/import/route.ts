@@ -1,9 +1,8 @@
 // POST /api/businesses/[id]/cctv/products/import
-// Phase 7: CSV Product Import — Parse, Validate, Preview, Execute
+// Action 'parse': parse CSV text, validate rows, return preview
+// Action 'import': import validated rows into database
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-
-// ── Types ──
 
 interface CSVRow {
   rowIndex: number;
@@ -13,364 +12,164 @@ interface CSVRow {
   status: "valid" | "warning" | "error";
 }
 
-interface ImportResult {
-  rows: CSVRow[];
-  totalRows: number;
-  validCount: number;
-  warningCount: number;
-  errorCount: number;
-}
-
-interface CategoryMap {
-  [name: string]: string | null; // categoryName → categoryId
-}
-
-// ── CSV Parser (simple, no external dependency) ──
-
-function parseCSV(text: string): string[][] {
-  const lines: string[][] = [];
-  let current: string[] = [];
-  let field = "";
+// Simple CSV parser
+function parseCSVLine(line: string): string[] {
+  const result: string[] = [];
+  let current = "";
   let inQuotes = false;
-
-  for (let i = 0; i < text.length; i++) {
-    const ch = text[i];
-    const next = text[i + 1];
-
-    if (inQuotes) {
-      if (ch === '"' && next === '"') {
-        field += '"';
-        i++; // skip escaped quote
-      } else if (ch === '"') {
-        inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    if (char === '"') {
+      if (inQuotes && line[i + 1] === '"') {
+        current += '"';
+        i++;
       } else {
-        field += ch;
+        inQuotes = !inQuotes;
       }
+    } else if (char === "," && !inQuotes) {
+      result.push(current.trim());
+      current = "";
     } else {
-      if (ch === '"') {
-        inQuotes = true;
-      } else if (ch === ",") {
-        current.push(field);
-        field = "";
-      } else if (ch === "\r" && next === "\n") {
-        current.push(field);
-        field = "";
-        lines.push(current);
-        current = [];
-        i++; // skip \n
-      } else if (ch === "\n" || ch === "\r") {
-        current.push(field);
-        field = "";
-        lines.push(current);
-        current = [];
-      } else {
-        field += ch;
-      }
+      current += char;
     }
   }
-
-  // Last field/line
-  if (field || current.length > 0) {
-    current.push(field);
-    lines.push(current);
-  }
-
-  return lines;
+  result.push(current.trim());
+  return result;
 }
 
-// ── Validators ──
+function parseCSV(text: string): string[][] {
+  const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0);
+  return lines.map(parseCSVLine);
+}
 
-function validateRow(
-  row: string[],
-  headers: string[],
-  rowIndex: number,
-  categories: CategoryMap,
-  existingSKUs: Set<string>
-): CSVRow {
-  const obj: Record<string, string> = {};
+function validateRow(headers: string[], values: string[], rowIndex: number): CSVRow {
+  const data: Record<string, string> = {};
+  headers.forEach((h, i) => { data[h] = values[i] || ""; });
+
   const errors: string[] = [];
   const warnings: string[] = [];
 
-  // Map headers to values
-  for (let i = 0; i < headers.length; i++) {
-    const key = headers[i].trim().toLowerCase();
-    const val = (row[i] || "").trim();
-    obj[key] = val;
-  }
+  // Required fields
+  if (!data.name) errors.push("Name is required");
+  if (!data.brand) errors.push("Brand is required");
+  if (!data.costPrice) errors.push("Cost price is required");
+  if (!data.sellingPrice) errors.push("Selling price is required");
 
-  const name = obj["name"] || "";
-  const sku = obj["sku"] || "";
-  const category = obj["category"] || "";
-  const brand = obj["brand"] || "";
-  const unit = obj["unit"] || "piece";
-  const costPrice = obj["costprice"] || "0";
-  const sellingPrice = obj["sellingprice"] || "0";
-  const stock = obj["stock"] || "0";
-  const lowStockAlert = obj["lowstockalert"] || "0";
-  const warrantyMonths = obj["warrantymonths"] || "0";
-  const description = obj["description"] || "";
+  // Numeric validation
+  if (data.costPrice && isNaN(parseFloat(data.costPrice))) errors.push("Cost price must be a number");
+  if (data.sellingPrice && isNaN(parseFloat(data.sellingPrice))) errors.push("Selling price must be a number");
+  if (data.stock && isNaN(parseInt(data.stock))) warnings.push("Stock is not a number, defaulting to 0");
+  if (data.warrantyMonths && isNaN(parseInt(data.warrantyMonths))) warnings.push("Warranty months is not a number");
 
-  // Required: name
-  if (!name) {
-    errors.push("Product name is required");
-  } else if (name.length > 200) {
-    errors.push("Product name too long (max 200 chars)");
-  }
+  // Warning for missing optional fields
+  if (!data.category) warnings.push("No category specified");
 
-  // Brand required
-  if (!brand) {
-    errors.push("Brand is required");
-  }
+  let status: "valid" | "warning" | "error" = "valid";
+  if (errors.length > 0) status = "error";
+  else if (warnings.length > 0) status = "warning";
 
-  // Cost price
-  const cp = parseFloat(costPrice);
-  if (isNaN(cp) || cp < 0) {
-    errors.push("costPrice must be a valid number >= 0");
-  }
-
-  // Selling price
-  const sp = parseFloat(sellingPrice);
-  if (isNaN(sp) || sp < 0) {
-    errors.push("sellingPrice must be a valid number >= 0");
-  }
-
-  // Stock
-  const st = parseInt(stock, 10);
-  if (isNaN(st) || st < 0) {
-    errors.push("stock must be a non-negative integer");
-  }
-
-  // Low stock alert
-  const lsa = parseInt(lowStockAlert, 10);
-  if (isNaN(lsa) || lsa < 0) {
-    warnings.push("lowStockAlert must be a non-negative integer (defaulting to 0)");
-  }
-
-  // Warranty
-  const wm = parseInt(warrantyMonths, 10);
-  if (isNaN(wm) || wm < 0) {
-    warnings.push("warrantyMonths must be a non-negative integer (defaulting to 0)");
-  }
-
-  // SKU duplicate check
-  if (sku && existingSKUs.has(sku.toLowerCase())) {
-    errors.push(`Duplicate SKU "${sku}" already exists in file`);
-  }
-  if (sku) existingSKUs.add(sku.toLowerCase());
-
-  // Category validation (warning only — we'll create if missing)
-  if (category && !categories[category.toLowerCase()]) {
-    warnings.push(`Category "${category}" not found — will be created`);
-  }
-
-  // Unit
-  const validUnits = ["piece", "box", "pair", "set", "roll", "meter", "pack"];
-  if (!validUnits.includes(unit.toLowerCase())) {
-    warnings.push(`Unit "${unit}" is non-standard (valid: ${validUnits.join(", ")})`);
-  }
-
-  const status: "valid" | "warning" | "error" =
-    errors.length > 0 ? "error" : warnings.length > 0 ? "warning" : "valid";
-
-  return { rowIndex, data: obj, errors, warnings, status };
+  return { rowIndex, data, errors, warnings, status };
 }
 
-// ── POST: Parse & Validate (preview) ──
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  try {
-    const { id: businessId } = await params;
-    const contentType = req.headers.get("content-type") || "";
+  const { id: businessId } = await params;
+  const body = await req.json();
 
-    // Check if this is a multipart form with a file, or JSON with csvData
-    let csvText: string | null = null;
-
-    if (contentType.includes("multipart/form-data")) {
-      const formData = await req.formData();
-      const file = formData.get("file") as File | null;
-
-      if (!file) {
-        return NextResponse.json({ error: "No file uploaded" }, { status: 400 });
-      }
-
-      // Validate file type
-      if (!file.name.endsWith(".csv") && file.type !== "text/csv") {
-        return NextResponse.json({ error: "File must be a .csv file" }, { status: 400 });
-      }
-
-      // Validate file size (max 5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        return NextResponse.json({ error: "File too large (max 5MB)" }, { status: 400 });
-      }
-
-      csvText = await file.text();
-    } else {
-      // JSON body with csvData for preview step
-      const body = await req.json();
-
-      // If it has an "action" field, it's an execution request
-      if (body.action === "execute" && Array.isArray(body.rows)) {
-        return executeImport(businessId, body.rows, body);
-      }
-
-      // Otherwise it's raw CSV text
-      csvText = body.csvData;
-      if (!csvText) {
-        return NextResponse.json({ error: "No CSV data provided" }, { status: 400 });
-      }
-    }
-
+  // ── PARSE action ──
+  if (body.action === "parse") {
+    const csvText: string = body.csvText;
     if (!csvText) {
-      return NextResponse.json({ error: "No CSV data" }, { status: 400 });
+      return NextResponse.json({ error: "CSV text is required" }, { status: 400 });
     }
 
-    // Parse CSV
-    const lines = parseCSV(csvText);
-    if (lines.length < 2) {
+    const rows = parseCSV(csvText);
+    if (rows.length < 2) {
       return NextResponse.json({ error: "CSV must have a header row and at least one data row" }, { status: 400 });
     }
 
-    const headers = lines[0].map((h) => h.trim());
-    const dataLines = lines.slice(1).filter((l) => l.some((cell) => cell.trim()));
+    const headers = rows[0].map((h) => h.trim());
+    const dataRows = rows.slice(1);
 
-    if (dataLines.length === 0) {
-      return NextResponse.json({ error: "No data rows found in CSV" }, { status: 400 });
-    }
+    const validatedRows: CSVRow[] = dataRows.map((values, i) => validateRow(headers, values, i + 1));
 
-    // Load existing categories for validation
-    const cats = await db.cCTVCategory.findMany({
-      where: { businessId, isActive: true },
-      select: { id: true, name: true },
+    return NextResponse.json({
+      success: true,
+      rows: validatedRows,
+      totalRows: validatedRows.length,
+      validCount: validatedRows.filter(r => r.status === "valid").length,
+      warningCount: validatedRows.filter(r => r.status === "warning").length,
+      errorCount: validatedRows.filter(r => r.status === "error").length,
     });
-    const categoryMap: CategoryMap = {};
-    for (const cat of cats) {
-      categoryMap[cat.name.toLowerCase()] = cat.id;
+  }
+
+  // ── IMPORT action ──
+  if (body.action === "import") {
+    const rows: CSVRow[] = body.rows;
+    if (!rows || !Array.isArray(rows)) {
+      return NextResponse.json({ error: "Rows are required" }, { status: 400 });
     }
 
-    // Track SKUs within file for duplicate detection
-    const fileSKUs = new Set<string>();
+    // Only import valid + warning rows
+    const importable = rows.filter(r => r.status !== "error");
 
-    // Validate each row
-    const rows: CSVRow[] = dataLines.map((line, idx) =>
-      validateRow(line, headers, idx + 2, categoryMap, fileSKUs)
-    );
-
-    const validCount = rows.filter((r) => r.status === "valid" || r.status === "warning").length;
-    const warningCount = rows.filter((r) => r.status === "warning").length;
-    const errorCount = rows.filter((r) => r.status === "error").length;
-
-    const result: ImportResult = {
-      rows,
-      totalRows: rows.length,
-      validCount,
-      warningCount,
-      errorCount,
-    };
-
-    return NextResponse.json(result);
-  } catch (error) {
-    console.error("CSV import error:", error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to process CSV" },
-      { status: 500 }
-    );
-  }
-}
-
-// ── Execute Import ──
-
-async function executeImport(
-  businessId: string,
-  rows: Array<{ data: Record<string, string>; status: string }>,
-  body: Record<string, unknown>
-) {
-  const validRows = rows.filter(
-    (r) => r.status === "valid" || r.status === "warning"
-  );
-
-  if (validRows.length === 0) {
-    return NextResponse.json({ error: "No valid rows to import" }, { status: 400 });
-  }
-
-  // Collect categories that need to be created
-  const categoryNames = new Set<string>();
-  for (const row of validRows) {
-    const cat = (row.data["category"] || "").trim();
-    if (cat) categoryNames.add(cat);
-  }
-
-  // Create missing categories
-  const existingCats = await db.cCTVCategory.findMany({
-    where: { businessId, isActive: true },
-    select: { id: true, name: true },
-  });
-  const catMap: Record<string, string> = {};
-  for (const c of existingCats) {
-    catMap[c.name.toLowerCase()] = c.id;
-  }
-
-  for (const catName of categoryNames) {
-    if (!catMap[catName.toLowerCase()]) {
-      const slug = catName
-        .toLowerCase()
-        .trim()
-        .replace(/[^\w\s-]/g, "")
-        .replace(/\s+/g, "-");
-      const created = await db.cCTVCategory.create({
-        data: {
-          businessId,
-          name: catName,
-          slug,
-          isActive: true,
-          sortOrder: 0,
-        },
-      });
-      catMap[catName.toLowerCase()] = created.id;
+    // Get or create categories
+    const categoryMap: Record<string, string> = {};
+    for (const row of importable) {
+      const catName = row.data.category;
+      if (catName && !categoryMap[catName]) {
+        let cat = await db.cCTVCategory.findFirst({
+          where: { businessId, name: { equals: catName, mode: "insensitive" } },
+        });
+        if (!cat) {
+          cat = await db.cCTVCategory.create({
+            data: {
+              businessId,
+              name: catName,
+              slug: catName.toLowerCase().replace(/\s+/g, "-"),
+              icon: "Package",
+              color: "#7c3aed",
+            },
+          });
+        }
+        categoryMap[catName] = cat.id;
+      }
     }
-  }
 
-  // Batch insert products (chunks of 100)
-  const BATCH_SIZE = 100;
-  let imported = 0;
-  const errors: string[] = [];
+    let importedCount = 0;
+    let skippedCount = 0;
 
-  for (let i = 0; i < validRows.length; i += BATCH_SIZE) {
-    const batch = validRows.slice(i, i + BATCH_SIZE);
-
-    try {
-      await db.cCTVProduct.createMany({
-        data: batch.map((row) => {
-          const catName = (row.data["category"] || "").trim();
-          return {
+    for (const row of importable) {
+      try {
+        await db.cCTVProduct.create({
+          data: {
             businessId,
-            name: (row.data["name"] || "").trim(),
-            brand: (row.data["brand"] || "").trim(),
-            sku: (row.data["sku"] || "").trim() || null,
-            description: (row.data["description"] || "").trim() || null,
-            costPrice: parseFloat(row.data["costprice"]) || 0,
-            sellPrice: parseFloat(row.data["sellingprice"]) || 0,
-            stock: parseInt(row.data["stock"]) || 0,
-            minStock: parseInt(row.data["lowstockalert"]) || 0,
-            warrantyMonths: parseInt(row.data["warrantymonths"]) || 0,
-            unit: (row.data["unit"] || "piece").trim().toLowerCase(),
-            serialTracked: false,
-            categoryId: catName ? catMap[catName.toLowerCase()] || null : null,
-            isActive: true,
-          };
-        }),
-        skipDuplicates: false,
-      });
-      imported += batch.length;
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Batch insert failed";
-      errors.push(`Rows ${i + 1}-${i + batch.length}: ${msg}`);
+            categoryId: row.data.category ? categoryMap[row.data.category] : null,
+            name: row.data.name,
+            brand: row.data.brand,
+            model: row.data.model || null,
+            sku: row.data.sku || null,
+            costPrice: parseFloat(row.data.costPrice) || 0,
+            sellPrice: parseFloat(row.data.sellingPrice) || 0,
+            stock: parseInt(row.data.stock) || 0,
+            minStock: parseInt(row.data.lowStockAlert) || 0,
+            warrantyMonths: parseInt(row.data.warrantyMonths) || 0,
+            serialTracked: row.data.serialTracked === "true" || row.data.serialTracked === "1",
+            unit: row.data.unit || "piece",
+          },
+        });
+        importedCount++;
+      } catch (err) {
+        console.error("[import] Failed to create product:", err);
+        skippedCount++;
+      }
     }
+
+    return NextResponse.json({
+      success: true,
+      importedCount,
+      skippedCount,
+    });
   }
 
-  return NextResponse.json({
-    success: true,
-    imported,
-    skipped: rows.length - imported,
-    errors: errors.length > 0 ? errors : undefined,
-    message: `${imported} product(s) imported successfully${errors.length > 0 ? `, ${errors.length} error(s)` : ""}`,
-  });
+  return NextResponse.json({ error: "Unknown action. Use 'parse' or 'import'." }, { status: 400 });
 }
