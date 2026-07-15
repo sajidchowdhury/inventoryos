@@ -24,18 +24,60 @@ const NAV_ITEMS = [
     icon: Users,
     description: "Subscriptions + revenue tracking",
   },
-  {
-    label: "Pharmacy Catalog",
-    href: "/admin/catalog",
-    icon: Package,
-    description: "Pharmacy master product catalog (14K+)",
-  },
+  // ── Business Modules ──
   {
     label: "CCTV Catalog",
     href: "/admin/catalog/cctv",
     icon: Camera,
     description: "CCTV Shop master product catalog",
+    badge: "Live",
   },
+  {
+    label: "CCTV Dashboard",
+    href: "/admin/cctv",
+    icon: Camera,
+    description: "CCTV business overview",
+    badge: "Live",
+  },
+  {
+    label: "Pharmacy Catalog",
+    href: "/admin/catalog",
+    icon: Package,
+    description: "Pharmacy master product catalog (14K+)",
+    badge: "Live",
+  },
+  {
+    label: "Pharmacy Dashboard",
+    href: "/admin/pharmacy",
+    icon: Pill,
+    description: "Pharmacy dashboard",
+    badge: "Live",
+  },
+  {
+    label: "Mobile Shop",
+    href: "/admin/mobile-shop",
+    icon: Smartphone,
+    description: "Mobile shop module",
+    badge: "Soon",
+    disabled: true,
+  },
+  {
+    label: "Grocery",
+    href: "/admin/grocery",
+    icon: Package,
+    description: "Grocery shop module",
+    badge: "Soon",
+    disabled: true,
+  },
+  {
+    label: "Restaurant",
+    href: "/admin/restaurant",
+    icon: Package,
+    description: "Restaurant module",
+    badge: "Soon",
+    disabled: true,
+  },
+  // ── System ──
   {
     label: "System Config",
     href: "/admin/api-setup",
@@ -47,13 +89,6 @@ const NAV_ITEMS = [
     href: "/admin/deploy",
     icon: Rocket,
     description: "Build + deploy guide",
-  },
-  {
-    label: "Pharmacy",
-    href: "/admin/pharmacy",
-    icon: Pill,
-    description: "Pharmacy dashboard",
-    badge: "Active",
   },
 ];
 
@@ -113,7 +148,9 @@ export function AdminSidebar() {
                 {item.badge && (
                   <span className={cn(
                     "text-xs px-1.5 py-0.5 rounded",
-                    item.badge === "Active" ? "bg-emerald-500/20 text-emerald-400" : "bg-slate-800 text-slate-500"
+                    item.badge === "Live" ? "bg-emerald-500/20 text-emerald-400" :
+                    item.badge === "Active" ? "bg-emerald-500/20 text-emerald-400" :
+                    "bg-slate-800 text-slate-500"
                   )}>
                     {item.badge}
                   </span>

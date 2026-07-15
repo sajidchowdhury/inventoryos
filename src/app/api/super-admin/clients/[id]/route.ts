@@ -87,24 +87,125 @@ export async function GET(
       _sum: { amount: true },
     });
 
+    // ── Business-specific data based on type ──
+    let businessStats: any = {};
+
+    if (business.businessType.slug === "cctv-shop") {
+      const [cctvProducts, cctvSales, cctvCustomers, cctvRepairs] = await Promise.all([
+        db.cCTVProduct.count({ where: { businessId } }),
+        db.cCTVSale.count({ where: { businessId } }),
+        db.cCTVCustomer.count({ where: { businessId } }),
+        db.cCTVRepair.count({ where: { businessId } }),
+      ]);
+
+      const cctvSalesData = await db.cCTVSale.aggregate({
+        where: { businessId },
+        _sum: { totalAmount: true, paidAmount: true, dueAmount: true },
+      });
+
+      // Get recent products (what client is using)
+      const recentProducts = await db.cCTVProduct.findMany({
+        where: { businessId },
+        select: { id: true, name: true, brand: true, stock: true, sellPrice: true, createdAt: true },
+        orderBy: { createdAt: "desc" },
+        take: 10,
+      });
+
+      businessStats = {
+        products: cctvProducts,
+        sales: cctvSales,
+        customers: cctvCustomers,
+        repairs: cctvRepairs,
+        totalSalesAmount: cctvSalesData._sum.totalAmount ?? 0,
+        totalPaid: cctvSalesData._sum.paidAmount ?? 0,
+        totalDue: cctvSalesData._sum.dueAmount ?? 0,
+        recentProducts,
+      };
+    } else if (business.businessType.slug === "pharmacy") {
+      const [pharmProducts, pharmSales, pharmCustomers] = await Promise.all([
+        db.product.count({ where: { businessId } }),
+        db.sale.count({ where: { businessId } }),
+        db.customer.count({ where: { businessId } }),
+      ]);
+
+      const pharmSalesData = await db.sale.aggregate({
+        where: { businessId },
+        _sum: { totalAmount: true, paidAmount: true },
+      });
+
+      const recentProducts = await db.product.findMany({
+        where: { businessId },
+        select: { id: true, name: true, brand: true, stock: true, sellingPrice: true, createdAt: true },
+        orderBy: { createdAt: "desc" },
+        take: 10,
+      });
+
+      businessStats = {
+        products: pharmProducts,
+        sales: pharmSales,
+        customers: pharmCustomers,
+        totalSalesAmount: pharmSalesData._sum.totalAmount ?? 0,
+        totalPaid: pharmSalesData._sum.paidAmount ?? 0,
+        recentProducts,
+      };
+    }
+
     return NextResponse.json({
       success: true,
       client: {
         ...business,
         tierLabel: tierConfig.label,
-        monthlyAmount: tierConfig.price,
+        monthlyAmount: business.customMonthlyFee ? Number(business.customMonthlyFee) : tierConfig.price,
         annualAmount: tierConfig.annualPrice,
+        customMonthlyFee: business.customMonthlyFee ? Number(business.customMonthlyFee) : null,
       },
       payments,
       invoices,
       revenue: {
         totalReceived: totalReceived._sum.amount ?? 0,
         receivedThisMonth: receivedThisMonth._sum.amount ?? 0,
-        expectedMonthly: tierConfig.price,
+        expectedMonthly: business.customMonthlyFee ? Number(business.customMonthlyFee) : tierConfig.price,
       },
+      businessStats,
     });
   } catch (error) {
     console.error("Client detail error:", error);
     return NextResponse.json({ error: "Failed to load client" }, { status: 500 });
+  }
+}
+
+// PATCH /api/super-admin/clients/[id]
+// Update custom monthly fee or other fields
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await verifySuperAdmin(req);
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { id: businessId } = await params;
+  const body = await req.json();
+
+  try {
+    const updateData: Record<string, unknown> = {};
+
+    if (body.customMonthlyFee !== undefined) {
+      // null means reset to tier default, number means custom price
+      updateData.customMonthlyFee = body.customMonthlyFee === null ? null : parseFloat(body.customMonthlyFee);
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      return NextResponse.json({ error: "No fields to update" }, { status: 400 });
+    }
+
+    const updated = await db.business.update({
+      where: { id: businessId },
+      data: updateData,
+    });
+
+    return NextResponse.json({ success: true, business: updated });
+  } catch (error) {
+    console.error("Client update error:", error);
+    return NextResponse.json({ error: "Failed to update client" }, { status: 500 });
   }
 }

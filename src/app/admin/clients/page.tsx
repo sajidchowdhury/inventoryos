@@ -66,6 +66,8 @@ export default function ClientsPage() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [extendDays, setExtendDays] = useState("30");
   const [extending, setExtending] = useState(false);
+  const [customFee, setCustomFee] = useState("");
+  const [savingFee, setSavingFee] = useState(false);
 
   const fetchClients = useCallback(async () => {
     if (!token) return;
@@ -110,6 +112,7 @@ export default function ClientsPage() {
   const openClientDetail = async (client: Client) => {
     setSelectedClient(client);
     setClientDetail(null);
+    setCustomFee("");
     setDetailLoading(true);
     try {
       const res = await fetch(`/api/super-admin/clients/${client.id}`, {
@@ -118,11 +121,36 @@ export default function ClientsPage() {
       const data = await res.json();
       if (data.success) {
         setClientDetail(data);
+        if (data.client?.customMonthlyFee) {
+          setCustomFee(String(data.client.customMonthlyFee));
+        }
       }
     } catch (err) {
       console.error("Client detail error:", err);
     } finally {
       setDetailLoading(false);
+    }
+  };
+
+  const handleSaveFee = async () => {
+    if (!token || !selectedClient) return;
+    setSavingFee(true);
+    try {
+      const fee = customFee.trim() === "" ? null : parseFloat(customFee);
+      const res = await fetch(`/api/super-admin/clients/${selectedClient.id}`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ customMonthlyFee: fee }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        // Refresh detail
+        openClientDetail(selectedClient);
+      }
+    } catch (err) {
+      console.error("Save fee error:", err);
+    } finally {
+      setSavingFee(false);
     }
   };
 
@@ -332,6 +360,95 @@ export default function ClientsPage() {
                       <p className="text-[10px] text-muted-foreground uppercase">Total Received</p>
                       <p className="text-sm font-semibold mt-1 text-emerald-600">৳{clientDetail.revenue.totalReceived.toLocaleString()}</p>
                     </div>
+                  </div>
+
+                  {/* Business Stats */}
+                  {clientDetail.businessStats && (
+                    <div className="space-y-2">
+                      <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Business Summary</p>
+                      <div className="grid grid-cols-3 gap-2">
+                        <div className="rounded-lg bg-muted/50 p-2 text-center">
+                          <p className="text-lg font-bold">{clientDetail.businessStats.products || 0}</p>
+                          <p className="text-[9px] text-muted-foreground">Products</p>
+                        </div>
+                        <div className="rounded-lg bg-muted/50 p-2 text-center">
+                          <p className="text-lg font-bold">{clientDetail.businessStats.sales || 0}</p>
+                          <p className="text-[9px] text-muted-foreground">Sales</p>
+                        </div>
+                        <div className="rounded-lg bg-muted/50 p-2 text-center">
+                          <p className="text-lg font-bold">{clientDetail.businessStats.customers || 0}</p>
+                          <p className="text-[9px] text-muted-foreground">Customers</p>
+                        </div>
+                      </div>
+                      {clientDetail.businessStats.totalSalesAmount > 0 && (
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="rounded-lg bg-emerald-50 p-2 text-center">
+                            <p className="text-sm font-bold text-emerald-700">৳{clientDetail.businessStats.totalSalesAmount.toLocaleString()}</p>
+                            <p className="text-[9px] text-muted-foreground">Total Sales</p>
+                          </div>
+                          {clientDetail.businessStats.totalDue !== undefined && (
+                            <div className="rounded-lg bg-rose-50 p-2 text-center">
+                              <p className="text-sm font-bold text-rose-700">৳{clientDetail.businessStats.totalDue.toLocaleString()}</p>
+                              <p className="text-[9px] text-muted-foreground">Total Due</p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      {clientDetail.businessStats.repairs !== undefined && (
+                        <div className="rounded-lg bg-muted/50 p-2 text-center">
+                          <p className="text-sm font-bold">{clientDetail.businessStats.repairs} repairs</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Recent Products (what client is using) */}
+                  {clientDetail.businessStats?.recentProducts?.length > 0 && (
+                    <div className="space-y-1.5">
+                      <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Recent Products</p>
+                      <div className="max-h-40 overflow-y-auto space-y-1">
+                        {clientDetail.businessStats.recentProducts.map((p: any) => (
+                          <div key={p.id} className="flex items-center justify-between text-xs py-1 border-b border-dashed last:border-0">
+                            <div className="flex-1 min-w-0">
+                              <span className="font-medium truncate">{p.name}</span>
+                              <span className="text-muted-foreground ml-1.5">{p.brand}</span>
+                            </div>
+                            <div className="text-right shrink-0 ml-2">
+                              <span className="font-semibold">Stock: {p.stock}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Custom Pricing */}
+                  <div className="rounded-lg border border-violet-200 bg-violet-50/50 p-3 space-y-2">
+                    <p className="text-xs font-semibold text-violet-800 flex items-center gap-1.5">
+                      <DollarSign className="h-3.5 w-3.5" /> Custom Monthly Fee
+                    </p>
+                    <div className="flex gap-2">
+                      <Input
+                        type="number"
+                        value={customFee}
+                        onChange={(e) => setCustomFee(e.target.value)}
+                        className="h-9"
+                        placeholder={String(clientDetail.client.monthlyAmount)}
+                      />
+                      <Button
+                        size="sm"
+                        className="bg-violet-600 hover:bg-violet-700"
+                        disabled={savingFee}
+                        onClick={handleSaveFee}
+                      >
+                        {savingFee ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Set"}
+                      </Button>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">
+                      {clientDetail.client.customMonthlyFee
+                        ? `Custom: ৳${clientDetail.client.customMonthlyFee}/mo (overrides tier default)`
+                        : `Using tier default: ৳${clientDetail.client.monthlyAmount}/mo`}
+                    </p>
                   </div>
 
                   {/* Manual extend */}

@@ -95,6 +95,7 @@ model Business {
 
   // ── Subscription & AI Control ──
   subscriptionTier   String   @default("free")    // "free" / "pro" / "pro_ai"
+  customMonthlyFee   Decimal? @db.Decimal(10, 2) // admin can override subscription price per client
   subscriptionStatus String   @default("trial")   // "trial" / "active" / "suspended" / "cancelled"
   subscriptionStart  DateTime?
   subscriptionEnd    DateTime?
