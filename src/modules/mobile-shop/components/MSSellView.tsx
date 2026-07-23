@@ -315,9 +315,14 @@ export function MSSellView() {
   // ── Submit sale ──
   const completeSale = async () => {
     if (cart.length === 0 || isSubmitting) return;
+    if (!customerName.trim()) {
+      toast({ title: 'Customer name is required', description: 'Please enter a customer name for invoice generation.', variant: 'destructive' });
+      return;
+    }
     setIsSubmitting(true);
     try {
       const body: Record<string, unknown> = {
+        customerName: customerName.trim(),
         items: cart.map((item) => ({
           productId: item.productId,
           quantity: item.quantity,
@@ -331,7 +336,6 @@ export function MSSellView() {
         })),
         discountAmount: Math.round(discountAmount),
       };
-      if (customerName.trim()) body.customerName = customerName.trim();
       if (customerPhone.trim()) body.customerPhone = customerPhone.trim();
 
       const res = await fetch(`/api/businesses/${businessId}/mobile-shop/sales`, {
@@ -387,11 +391,14 @@ export function MSSellView() {
               <User className="w-4 h-4 text-cyan-500" />
             </div>
             <Input
-              placeholder="Customer name (optional)"
+              placeholder="Customer name (required)"
               value={customerName}
               onChange={(e) => setCustomerName(e.target.value)}
               className="h-9 rounded-xl bg-gray-50 border-gray-100 text-sm focus:ring-cyan-400/40 focus:border-cyan-400"
             />
+            {!customerName.trim() && (
+              <span className="text-xs text-red-500 font-medium">* Required</span>
+            )}
           </div>
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-cyan-50 flex items-center justify-center shrink-0">
@@ -407,8 +414,8 @@ export function MSSellView() {
           </div>
         </div>
         {!customerName && !customerPhone && (
-          <p className="text-[10px] text-gray-400 mt-2 ml-10.5 flex items-center gap-1">
-            <User className="w-3 h-3" /> Walk-in Customer
+          <p className="text-[10px] text-red-400 mt-2 ml-10.5 flex items-center gap-1">
+            <User className="w-3 h-3" /> Customer name required for invoice
           </p>
         )}
       </div>

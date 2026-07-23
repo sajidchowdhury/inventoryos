@@ -81,6 +81,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       payments?: { method: string; amount: number; referenceNumber?: string; receivedBy?: string }[];
     };
 
+    // Validate customer name (mandatory for Mushak invoice compliance)
+    if (!customerName?.trim()) {
+      return NextResponse.json({ error: "Customer name is required for invoice generation" }, { status: 400 });
+    }
+
     // Validate items
     if (!items || !Array.isArray(items) || items.length === 0) {
       return NextResponse.json({ error: "At least one sale item is required" }, { status: 400 });
@@ -190,7 +195,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           businessId,
           saleCode,
           status: "PENDING",
-          customerName: customerName?.trim() || "Walk-in Customer",
+          customerName: customerName.trim(),
           customerPhone: customerPhone?.trim() || null,
           customerId: customerId || null,
           subtotal,
@@ -227,7 +232,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
             data: {
               status: "SOLD",
               saleId: createdSale.id,
-              customerName: customerName?.trim() || "Walk-in Customer",
+              customerName: customerName.trim(),
               customerPhone: customerPhone?.trim() || null,
             },
           });
@@ -295,7 +300,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       // 3C: Auto-create/lookup customer + earn loyalty points
       let linkedCustomerId = customerId || null;
       const trimmedPhone = customerPhone?.trim() || null;
-      const trimmedName = customerName?.trim() || "Walk-in Customer";
+      const trimmedName = customerName.trim();
 
       if (trimmedPhone && !linkedCustomerId) {
         // Look up existing customer by phone

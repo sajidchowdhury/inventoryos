@@ -62,6 +62,7 @@ export function ThermalReceipt({ invoice, width = '80mm', footerExtra }: Thermal
   // ── Invoice Info ──
   lines.push({ text: `Invoice: ${invoice.invoiceNumber}`, bold: true });
   lines.push({ text: `Date:    ${new Date(invoice.issueDate).toLocaleDateString('en-BD')}` });
+  lines.push({ text: `Time:    ${new Date(invoice.issueDate).toLocaleTimeString('en-BD', { hour: '2-digit', minute: '2-digit' })}` });
   if (invoice.tradeLicenseNo) {
     lines.push({ text: `License: ${invoice.tradeLicenseNo}` });
   }
@@ -168,7 +169,8 @@ export function printThermalReceipt(
   if (invoice.sellerBin) text += center(`BIN: ${invoice.sellerBin}`, W) + '\n';
   text += dashLine(W) + '\n';
   text += `Invoice: ${invoice.invoiceNumber}\n`;
-  text += `Date:    ${new Date(invoice.issueDate).toLocaleDateString('en-BD')}\n\n`;
+  text += `Date:    ${new Date(invoice.issueDate).toLocaleDateString('en-BD')}\n`;
+  text += `Time:    ${new Date(invoice.issueDate).toLocaleTimeString('en-BD', { hour: '2-digit', minute: '2-digit' })}\n\n`;
   text += `Customer: ${invoice.buyerName}\n`;
   if (invoice.buyerBin) text += `BIN:      ${invoice.buyerBin}\n`;
   text += '\n' + dashLine(W) + '\n';

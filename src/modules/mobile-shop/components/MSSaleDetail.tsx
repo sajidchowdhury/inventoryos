@@ -381,7 +381,7 @@ export function MSSaleDetail() {
             </div>
             <div className="flex-1 min-w-0">
               <p className="font-semibold text-gray-900 truncate">
-                {sale.customerName || 'Walk-in Customer'}
+                {sale.customerName}
               </p>
               {sale.customerPhone ? (
                 <a
@@ -392,7 +392,7 @@ export function MSSaleDetail() {
                   {sale.customerPhone}
                 </a>
               ) : (
-                <p className="text-sm text-gray-400 mt-0.5">Walk-in Customer</p>
+                <p className="text-sm text-gray-400 mt-0.5">No phone provided</p>
               )}
             </div>
           </div>
