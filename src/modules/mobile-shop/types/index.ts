@@ -1047,6 +1047,9 @@ export interface MSMushakLineItem {
   totalPrice: number;
   vatRate: number;
   vatAmount: number;
+  warrantyMonths?: number;    // Warranty duration in months
+  warrantyEnd?: string;       // ISO date string for warranty expiry
+  warrantyNote?: string;      // Human-readable warranty note
   isActive: boolean;
   createdAt: string;
 }

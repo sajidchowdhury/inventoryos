@@ -56,10 +56,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       return NextResponse.json({ success: false, error: 'Sale ID is required' }, { status: 400 });
     }
 
-    // Fetch the sale with items
+    // Fetch the sale with items (include serialItemId for warranty lookup)
     const sale = await db.mSSale.findFirst({
       where: { id: saleId, businessId, isActive: true },
-      include: { items: { where: { isActive: true } } },
+      include: { items: { where: { isActive: true }, select: { id: true, productId: true, serialItemId: true, productName: true, productBrand: true, quantity: true, unitPrice: true, totalPrice: true, isActive: true } } } },
     });
     if (!sale) {
       return NextResponse.json({ success: false, error: 'Sale not found' }, { status: 404 });
@@ -95,7 +95,27 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const prefix = nbrConfig?.mushakInvoicePrefix || 'MUSHAK';
     const invoiceNumber = `${prefix}-${String(nextSeq).padStart(4, '0')}`;
 
-    // Build line items with VAT
+    // ── Pre-fetch warranty data for each sale item ──
+    // Serial items: get warrantyMonths + warrantyEnd directly
+    // Non-serial products: get warrantyMonths, calculate warrantyEnd from sale date
+    const serialItemIds = sale.items.filter(it => it.serialItemId).map(it => it.serialItemId!);
+    const productIds = sale.items.map(it => it.productId);
+
+    const serialItems = serialItemIds.length > 0
+      ? await db.mSSerialItem.findMany({
+          where: { id: { in: serialItemIds }, businessId, isActive: true },
+          select: { id: true, warrantyMonths: true, warrantyEnd: true },
+        })
+      : [];
+    const serialWarrantyMap = new Map(serialItems.map(si => [si.id, si]));
+
+    const products = await db.mSProduct.findMany({
+      where: { id: { in: productIds }, businessId, isActive: true },
+      select: { id: true, warrantyMonths: true },
+    });
+    const productWarrantyMap = new Map(products.map(p => [p.id, p.warrantyMonths]));
+
+    // Build line items with VAT + warranty
     let subtotal = 0;
     let totalVat = 0;
     const invoiceLines = sale.items.map((item, idx) => {
@@ -130,6 +150,28 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       subtotal += lineTotal;
       totalVat += lineVat;
 
+      // ── Warranty lookup ──
+      let warrantyMonths = 0;
+      let warrantyEnd: Date | null = null;
+      let warrantyNote: string | null = null;
+
+      if (item.serialItemId) {
+        // Serial-tracked item: use serial item warranty data
+        const serialWarranty = serialWarrantyMap.get(item.serialItemId);
+        warrantyMonths = serialWarranty?.warrantyMonths ?? productWarrantyMap.get(item.productId) ?? 0;
+        warrantyEnd = serialWarranty?.warrantyEnd ?? null;
+      } else {
+        // Non-serial product: use product warrantyMonths, calculate expiry from sale date
+        warrantyMonths = productWarrantyMap.get(item.productId) ?? 0;
+        if (warrantyMonths > 0) {
+          warrantyEnd = new Date(new Date(sale.createdAt).getTime() + warrantyMonths * 30 * 24 * 60 * 60 * 1000);
+        }
+      }
+
+      if (warrantyMonths > 0) {
+        warrantyNote = `${warrantyMonths} months warranty from purchase date`;
+      }
+
       return {
         businessId,
         slNo: idx + 1,
@@ -140,6 +182,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         totalPrice: lineTotal,
         vatRate: lineVatRate,
         vatAmount: lineVat,
+        warrantyMonths: warrantyMonths > 0 ? warrantyMonths : null,
+        warrantyEnd,
+        warrantyNote,
       };
     });
 

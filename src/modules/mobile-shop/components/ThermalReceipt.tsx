@@ -95,6 +95,13 @@ export function ThermalReceipt({ invoice, width = '80mm', footerExtra }: Thermal
     const vatLabel = `${item.vatRate}% VAT`;
     const totalLabel = fmt(item.totalPrice);
     lines.push({ text: padRight(`  HS:${hs}  ${vatLabel}`, W - totalLabel.length) + totalLabel });
+    // Warranty display
+    if (item.warrantyMonths && item.warrantyMonths > 0) {
+      lines.push({ text: `  Warranty: ${item.warrantyMonths} months` });
+      if (item.warrantyEnd) {
+        lines.push({ text: `  Expires: ${new Date(item.warrantyEnd).toLocaleDateString('en-BD')}` });
+      }
+    }
     lines.push({ text: '' });
   }
 
@@ -179,7 +186,14 @@ export function printThermalReceipt(
     text += `${item.productName}\n`;
     text += `  ${item.quantity} x ${formatBDT(item.unitPrice)} = ${formatBDT(item.totalPrice)}`;
     if (item.hsCode) text += `  HS:${item.hsCode}`;
-    text += '\n\n';
+    text += '\n';
+    if (item.warrantyMonths && item.warrantyMonths > 0) {
+      text += `  Warranty: ${item.warrantyMonths} months\n`;
+      if (item.warrantyEnd) {
+        text += `  Expires: ${new Date(item.warrantyEnd).toLocaleDateString('en-BD')}\n`;
+      }
+    }
+    text += '\n';
   }
 
   text += dashLine(W) + '\n';

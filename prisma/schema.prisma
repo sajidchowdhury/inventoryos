@@ -3136,6 +3136,11 @@ model MSMushakLineItem {
   vatRate         Float                        // VAT % for this line
   vatAmount       Float                        // VAT for this line
 
+  // Warranty fields (carried from product/serial item to invoice)
+  warrantyMonths  Int?      @default(0)                 // Warranty duration in months
+  warrantyEnd     DateTime?                             // Calculated warranty expiry date
+  warrantyNote    String?                               // E.g. "6 months from purchase date"
+
   isActive        Boolean  @default(true)
   createdAt       DateTime @default(now())
 
