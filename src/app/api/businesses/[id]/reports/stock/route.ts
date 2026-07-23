@@ -163,7 +163,7 @@ export async function GET(
           sellValue,
           minStock: product.minStock,
           isLowStock: product.minStock > 0 && availableCount <= product.minStock,
-          isOutOfStock: availableCount === 0 && totalSerials === 0,
+          isOutOfStock: availableCount === 0,
         };
       } else if (product.serialTracked) {
         // Serial tracked but no serial items yet

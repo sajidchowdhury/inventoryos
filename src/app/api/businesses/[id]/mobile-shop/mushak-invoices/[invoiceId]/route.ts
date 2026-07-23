@@ -1,14 +1,12 @@
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 
-const BUSINESS_ID = 'bus_placeholder';
-
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string; invoiceId: string }> }) {
   try {
-    const { invoiceId } = await params;
+    const { id: businessId, invoiceId } = await params;
 
     const invoice = await db.mSMushakInvoice.findFirst({
-      where: { id: invoiceId, businessId: BUSINESS_ID, isActive: true },
+      where: { id: invoiceId, businessId, isActive: true },
       include: {
         lineItems: { where: { isActive: true }, orderBy: { slNo: 'asc' } },
       },

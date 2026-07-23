@@ -2,18 +2,16 @@ import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 import { Prisma } from '@prisma/client';
 
-const BUSINESS_ID = 'bus_placeholder';
-
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { id: _businessId } = await params;
+    const { id: businessId } = await params;
     const { searchParams } = new URL(_req.url);
     const page = parseInt(searchParams.get('page') || '1', 10);
     const limit = parseInt(searchParams.get('limit') || '20', 10);
     const search = searchParams.get('search') || '';
 
     const where: Prisma.MSMushakInvoiceWhereInput = {
-      businessId: BUSINESS_ID,
+      businessId,
       isActive: true,
       ...(search && {
         OR: [
@@ -50,7 +48,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { id: _businessId } = await params;
+    const { id: businessId } = await params;
     const body = await req.json();
     const { saleId, buyerName, buyerAddress, buyerBin, lineItems: customLineItems } = body;
 
@@ -60,7 +58,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     // Fetch the sale with items
     const sale = await db.mSSale.findFirst({
-      where: { id: saleId, businessId: BUSINESS_ID, isActive: true },
+      where: { id: saleId, businessId, isActive: true },
       include: { items: { where: { isActive: true } } },
     });
     if (!sale) {
@@ -69,14 +67,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     // Check for existing invoice for this sale
     const existing = await db.mSMushakInvoice.findFirst({
-      where: { saleId, businessId: BUSINESS_ID, isActive: true },
+      where: { saleId, businessId, isActive: true },
     });
     if (existing) {
       return NextResponse.json({ success: false, error: 'Mushak invoice already exists for this sale', existingInvoiceId: existing.id, invoiceNumber: existing.invoiceNumber }, { status: 409 });
     }
 
     // Get NBR config for seller details + HS codes
-    const nbrConfig = await db.mSNbrConfig.findUnique({ where: { businessId: BUSINESS_ID } });
+    const nbrConfig = await db.mSNbrConfig.findUnique({ where: { businessId } });
     const hsMappings = nbrConfig
       ? await db.mSHsCodeMapping.findMany({ where: { configId: nbrConfig.id, isActive: true } })
       : [];
@@ -133,7 +131,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       totalVat += lineVat;
 
       return {
-        businessId: BUSINESS_ID,
+        businessId,
         slNo: idx + 1,
         productName: item.productName,
         hsCode: hsCode || null,
@@ -172,7 +170,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const invoice = await db.$transaction(async (tx) => {
       const inv = await tx.cCTVMushakInvoice.create({
         data: {
-          businessId: BUSINESS_ID,
+          businessId,
           saleId,
           invoiceNumber,
           sellerName,

@@ -10,12 +10,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     const url = req.nextUrl;
     const search = (url.searchParams.get("search") || "").trim();
 
-    // Fetch all PARTIALLY_PAID sales with payments
+    // Fetch all PARTIALLY_PAID and PENDING sales with payments
     const sales = await db.mSSale.findMany({
       where: {
         businessId,
         isActive: true,
-        status: "PARTIALLY_PAID",
+        status: { in: ["PARTIALLY_PAID", "PENDING"] },
         ...(search
           ? {
               OR: [
