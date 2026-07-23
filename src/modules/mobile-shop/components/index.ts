@@ -65,6 +65,8 @@ export { MSCreateSupplierDialog } from './MSCreateSupplierDialog';
 export { MSSupplierPaymentDialog } from './MSSupplierPaymentDialog';
 export { MSPurchaseOrderView } from './MSPurchaseOrderView';
 export { MSCreatePurchase } from './MSCreatePurchase';
+export { PurchaseReceipt, printPurchaseReceipt } from './PurchaseReceipt';
+export { PurchaseInvoiceDialog } from './PurchaseInvoiceDialog';
 export { SerialPickerDialog } from './SerialPickerDialog';
 export { SerialStatusChangeDialog } from './SerialStatusChangeDialog';
 export { MSCreateCustomerDialog } from './MSCreateCustomerDialog';

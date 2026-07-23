@@ -591,6 +591,45 @@ export type EmiStatus = 'ACTIVE' | 'COMPLETED' | 'DEFAULTED' | 'CANCELLED';
 export type EmiInterestType = 'REDUCING' | 'FLAT';
 export type InstallmentStatus = 'PENDING' | 'PAID' | 'OVERDUE' | 'WAIVED';
 
+// ── Purchase Order Types ──
+export type PurchaseStatus = 'draft' | 'ordered' | 'received' | 'cancelled';
+export type PurchasePaymentStatus = 'paid' | 'partial' | 'unpaid';
+
+export interface MSPurchase {
+  id: string;
+  businessId: string;
+  supplierId?: string;
+  purchaseNo: string;
+  status: PurchaseStatus;
+  subtotal: number;
+  discountAmount: number;
+  totalAmount: number;
+  paidAmount: number;
+  paymentStatus: PurchasePaymentStatus;
+  invoiceNo?: string;
+  invoiceDate?: string;
+  receivedDate?: string;
+  notes?: string;
+  createdBy?: string;
+  createdAt: string;
+  updatedAt: string;
+  supplier?: { id: string; name: string; code?: string };
+  items?: MSPurchaseItem[];
+}
+
+export interface MSPurchaseItem {
+  id: string;
+  purchaseId: string;
+  businessId: string;
+  productId: string;
+  productName: string;
+  productBrand?: string;
+  quantity: number;
+  receivedQty: number;
+  unitCost: number;
+  totalPrice: number;
+}
+
 export interface MSEmiPlan {
   id: string;
   businessId: string;

@@ -8,9 +8,11 @@ import {
   Tag, ShoppingCart, Percent, Shield, ChevronDown, ChevronUp,
 } from 'lucide-react';
 import { SerialNumberEntry } from './SerialNumberEntry';
+import { PurchaseInvoiceDialog } from './PurchaseInvoiceDialog';
 import { useMSNavStore } from '@/stores/ms-nav-store';
 import { useMSBusinessId } from '@/modules/mobile-shop/hooks/use-ms-business-id';
 import { cn } from '@/lib/utils';
+import type { MSPurchase } from '@/modules/mobile-shop/types';
 
 const fadeUp = {
   initial: { opacity: 0, y: 16 },
@@ -88,6 +90,9 @@ export function MSCreatePurchase() {
   const [serialErrors, setSerialErrors] = useState<Record<string, string>>({});
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [createdPurchase, setCreatedPurchase] = useState<MSPurchase | null>(null);
+  const [serialResults, setSerialResults] = useState<{ productId: string; productName: string; created: number; method: string; serialNumbers?: string[] }[] | null>(null);
+  const [showInvoiceDialog, setShowInvoiceDialog] = useState(false);
 
   // Debounce refs
   const supplierTimer = useRef<ReturnType<typeof setTimeout>>();
@@ -250,8 +255,11 @@ export function MSCreatePurchase() {
         }),
       });
       if (res.ok) {
+        const data = await res.json();
+        setCreatedPurchase(data.purchase);
+        setSerialResults(data.serialResults || null);
         setSuccess(true);
-        setTimeout(() => goBack(), 1000);
+        setShowInvoiceDialog(true);
       } else {
         const data = await res.json().catch(() => ({}));
         const msg = data.error || data.message || 'Failed to create purchase order';
@@ -354,9 +362,9 @@ export function MSCreatePurchase() {
         })}
       </div>
 
-      {/* Success overlay */}
+      {/* Success overlay — shown only when dialog is not open */}
       <AnimatePresence>
-        {success && (
+        {success && !showInvoiceDialog && (
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -369,6 +377,19 @@ export function MSCreatePurchase() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Purchase Invoice Dialog */}
+      {createdPurchase && (
+        <PurchaseInvoiceDialog
+          purchase={createdPurchase}
+          serialResults={serialResults}
+          open={showInvoiceDialog}
+          onClose={() => {
+            setShowInvoiceDialog(false);
+            goBack();
+          }}
+        />
+      )
 
       {/* Error */}
       {error && (
