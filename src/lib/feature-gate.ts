@@ -103,8 +103,8 @@ const TIER_CONFIGS: Record<SubscriptionTier, TierConfig> = {
 
   pro: {
     label: "Pro",
-    price: 800,
-    annualPrice: 8000,  // pay 10 months, get 12
+    price: 500,
+    annualPrice: 5000,  // pay 10 months, get 12
     limits: {
       maxProducts: null, // unlimited
       aiEnabled: false,

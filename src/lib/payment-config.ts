@@ -3,6 +3,10 @@
 // Reads/writes the PaymentConfig singleton (SSL Commerz creds, method toggles,
 // account numbers, editable tier prices). Falls back to env vars + feature-gate.ts
 // defaults if no DB row exists.
+//
+// SUB-3 (commit on this change): Pro tier monthly price is ৳500/month
+// (was ৳800). Annual is ৳5000 (was ৳8000). The ৳500 price matches the
+// user's intended subscription model. Pro AI is unchanged at ৳1500/month.
 
 import { db } from "@/lib/db";
 
@@ -30,8 +34,8 @@ const DEFAULTS: PaymentConfigValue = {
   sslActive: false,
   bkashNumber: null,
   nagadNumber: null,
-  proMonthly: 800,
-  proAnnual: 8000,
+  proMonthly: 500,
+  proAnnual: 5000,
   proAiMonthly: 1500,
   proAiAnnual: 15000,
 };

@@ -1396,8 +1396,9 @@ model PaymentConfig {
   bkashNumber     String?
   nagadNumber     String?
   // Tier prices (editable from admin, falls back to feature-gate.ts defaults)
-  proMonthly      Float    @default(800)
-  proAnnual       Float    @default(8000)
+  // SUB-3: Pro monthly = ৳500 (was ৳800), annual = ৳5000 (was ৳8000)
+  proMonthly      Float    @default(500)
+  proAnnual       Float    @default(5000)
   proAiMonthly    Float    @default(1500)
   proAiAnnual     Float    @default(15000)
   updatedAt       DateTime @updatedAt
