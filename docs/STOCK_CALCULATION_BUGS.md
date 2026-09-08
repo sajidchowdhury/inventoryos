@@ -183,25 +183,18 @@ After this fix, the `stock` column will always reflect reality. The per-reader o
 5. ✅ Ledger entries via `createLedgerEntries` — CREDIT `sales_revenue` + DEBIT `customer_receivable` (credit) or DEBIT `cash` (paid).
 6. ✅ Recomputes `subtotal`/`totalAmount`/`dueAmount` respecting `sale.discount` (was ignored before).
 
-### Fix 3 — Make `PurchaseItem.quantity` and `serials.length` consistent
+### Fix 3 — Make `PurchaseItem.quantity` and `serials.length` consistent ✅ DONE
 
-In `src/app/api/businesses/[id]/cctv/purchases/route.ts`, after parsing serials (around line 104), enforce consistency:
+~~In `src/app/api/businesses/[id]/cctv/purchases/route.ts`, after parsing serials (around line 104), enforce consistency:~~
 
-```ts
-// If serials were provided, quantity MUST equal serials.length
-if (item.serialNumbers && item.serialNumbers.trim()) {
-  const serials = item.serialNumbers
-    .split(/[\n,]/).map((s: string) => s.trim()).filter(Boolean);
-  // Either trust serials.length and overwrite quantity...
-  item.quantity = serials.length;
-  // ...or reject if frontend sent a different quantity:
-  // if (item.quantity && item.quantity !== serials.length) {
-  //   throw new Error(`Product ${item.productName}: quantity (${item.quantity}) does not match serial count (${serials.length})`);
-  // }
-}
-```
+**Done (commit `f70f89f`)**. Serials are now pre-parsed before the loop into a `parsedItems` array, and `effectiveQuantity` is set to `serials.length` for serial items (or `item.quantity || 1` for non-serial items). Three things use the corrected quantity:
+1. `PurchaseItem.quantity = effectiveQuantity` (was `item.quantity || 1`)
+2. `totalAmount = sum(costPrice × effectiveQuantity)` (was `sum(costPrice × item.quantity || 1)`) — so the purchase total also reflects the serial count
+3. The serial loop uses `item.parsedSerials` directly (no re-parsing)
 
-Pick one strategy (auto-correct is friendlier; reject is stricter). After this fix, Purchase Report and Stock Report can never disagree.
+This ensures the Purchase Report (sums `PurchaseItem.quantity`) always agrees with the Stock Report (counts `IN_STOCK` serials) and `CCTVProduct.stock` (incremented by `serials.length`). The purchase `totalAmount` is also now correct for serial items (was understated if frontend sent `quantity < serials.length`), which means `paidAmount`/`dueAmount` are correct too.
+
+Chose the auto-correct strategy (overwrite `quantity` with `serials.length`) rather than the reject strategy — it's friendlier and the frontend doesn't need to send a matching `quantity` field.
 
 ### Fix 4 — Make Product Movement running balance match actual stock for serial items
 
