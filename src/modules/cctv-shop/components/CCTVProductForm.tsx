@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Loader2, Save, Package } from 'lucide-react';
+import { ArrowLeft, Loader2, Save, Package, Trash2 } from 'lucide-react';
 import { useCCTVNavStore } from '@/stores/cctv-nav-store-simple';
 import { useAuthStore } from '@/stores/auth-store';
 import { useToast } from '@/hooks/use-toast';
@@ -19,11 +19,17 @@ const fadeUp = {
 const UNITS = ['piece', 'box', 'pair', 'set', 'roll', 'meter'];
 
 export function CCTVProductForm() {
-  const { goBack } = useCCTVNavStore();
+  const { goBack, activeView, contextId } = useCCTVNavStore();
   const businessId = useAuthStore((s) => s.session?.business?.id);
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
+
+  // F-1: edit mode — when activeView is 'edit-product' and contextId
+  // is set, we're editing an existing product. Otherwise, add mode.
+  const isEdit = activeView === 'edit-product' && !!contextId;
+  const productId = isEdit ? contextId : null;
 
   const [form, setForm] = useState({
     name: '', brand: '', model: '', sku: '', description: '',
@@ -31,6 +37,7 @@ export function CCTVProductForm() {
     unit: 'piece', minStock: '', serialTracked: false, warrantyMonths: '',
   });
 
+  // Load categories (always)
   useEffect(() => {
     if (!businessId) return;
     fetch(`/api/businesses/${businessId}/cctv/categories`)
@@ -39,6 +46,38 @@ export function CCTVProductForm() {
       .catch(() => {});
   }, [businessId]);
 
+  // F-1: In edit mode, load the existing product via GET
+  useEffect(() => {
+    if (!isEdit || !productId || !businessId) return;
+    setLoading(true);
+    fetch(`/api/businesses/${businessId}/cctv/products/${productId}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.success && data.product) {
+          const p = data.product;
+          setForm({
+            name: p.name || '',
+            brand: p.brand || '',
+            model: p.model || '',
+            sku: p.sku || '',
+            description: p.description || '',
+            categoryId: p.categoryId || '',
+            costPrice: String(p.costPrice ?? ''),
+            sellPrice: String(p.sellPrice ?? ''),
+            stock: String(p.stock ?? ''), // shown read-only in edit mode
+            unit: p.unit || 'piece',
+            minStock: String(p.minStock ?? ''),
+            serialTracked: p.serialTracked ?? false,
+            warrantyMonths: String(p.warrantyMonths ?? ''),
+          });
+        } else {
+          toast({ title: data.error || 'Failed to load product', variant: 'destructive' });
+        }
+      })
+      .catch(() => toast({ title: 'Network error', variant: 'destructive' }))
+      .finally(() => setLoading(false));
+  }, [isEdit, productId, businessId]);
+
   const handleSubmit = async () => {
     if (!form.name.trim() || !form.brand.trim()) {
       toast({ title: 'Name and brand are required', variant: 'destructive' });
@@ -46,27 +85,35 @@ export function CCTVProductForm() {
     }
     setSaving(true);
     try {
-      const res = await fetch(`/api/businesses/${businessId}/cctv/products`, {
-        method: 'POST',
+      const payload = {
+        name: form.name.trim(),
+        brand: form.brand.trim(),
+        model: form.model.trim() || null,
+        sku: form.sku.trim() || null,
+        description: form.description.trim() || null,
+        categoryId: form.categoryId || null,
+        costPrice: parseFloat(form.costPrice) || 0,
+        sellPrice: parseFloat(form.sellPrice) || 0,
+        unit: form.unit,
+        minStock: parseInt(form.minStock) || 0,
+        serialTracked: form.serialTracked,
+        warrantyMonths: parseInt(form.warrantyMonths) || 0,
+        // stock is only sent in add mode (not editable in edit mode per F-1 fix)
+        ...(isEdit ? {} : { stock: parseInt(form.stock) || 0 }),
+      };
+
+      const url = isEdit
+        ? `/api/businesses/${businessId}/cctv/products/${productId}`
+        : `/api/businesses/${businessId}/cctv/products`;
+      const method = isEdit ? 'PATCH' : 'POST';
+
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: form.name.trim(),
-          brand: form.brand.trim(),
-          model: form.model.trim() || null,
-          sku: form.sku.trim() || null,
-          description: form.description.trim() || null,
-          categoryId: form.categoryId || null,
-          costPrice: parseFloat(form.costPrice) || 0,
-          sellPrice: parseFloat(form.sellPrice) || 0,
-          stock: parseInt(form.stock) || 0,
-          unit: form.unit,
-          minStock: parseInt(form.minStock) || 0,
-          serialTracked: form.serialTracked,
-          warrantyMonths: parseInt(form.warrantyMonths) || 0,
-        }),
+        body: JSON.stringify(payload),
       });
       if (res.ok) {
-        toast({ title: 'Product created' });
+        toast({ title: isEdit ? 'Product updated' : 'Product created' });
         goBack();
       } else {
         const data = await res.json();
@@ -79,9 +126,40 @@ export function CCTVProductForm() {
     }
   };
 
+  const handleDelete = async () => {
+    if (!isEdit || !productId || !businessId) return;
+    if (!confirm('Delete this product? If it has sales, purchases, or serials, it will be deactivated instead of permanently deleted.')) return;
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/businesses/${businessId}/cctv/products/${productId}`, {
+        method: 'DELETE',
+      });
+      if (res.ok) {
+        const data = await res.json();
+        toast({ title: data.deleted ? 'Product permanently deleted' : 'Product deactivated', description: data.message });
+        goBack();
+      } else {
+        const data = await res.json();
+        toast({ title: data.error || 'Failed to delete', variant: 'destructive' });
+      }
+    } catch {
+      toast({ title: 'Network error', variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const update = (field: string, value: string | boolean) => {
     setForm((prev) => ({ ...prev, [field]: value }));
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="w-6 h-6 animate-spin text-violet-400" />
+      </div>
+    );
+  }
 
   return (
     <motion.div {...fadeUp} className="space-y-4 pb-4 max-w-2xl">
@@ -89,7 +167,7 @@ export function CCTVProductForm() {
         <button onClick={goBack} className="w-9 h-9 rounded-xl bg-white border border-gray-100 flex items-center justify-center">
           <ArrowLeft className="w-5 h-5 text-gray-600" />
         </button>
-        <h1 className="text-lg font-bold text-gray-900">Add Product</h1>
+        <h1 className="text-lg font-bold text-gray-900">{isEdit ? 'Edit Product' : 'Add Product'}</h1>
       </div>
 
       {/* Basic Info */}
@@ -162,11 +240,11 @@ export function CCTVProductForm() {
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
-            <Label className="text-xs text-gray-600">Stock (non-serial)</Label>
+            <Label className="text-xs text-gray-600">Stock {isEdit && '(managed by purchases/sales)'}</Label>
             <Input type="number" value={form.stock}
               onChange={(e) => update('stock', e.target.value)}
               placeholder="0" className="h-10 rounded-xl" min="0"
-              disabled={form.serialTracked} />
+              disabled={form.serialTracked || isEdit} />
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs text-gray-600">Min Stock Alert</Label>
@@ -205,15 +283,27 @@ export function CCTVProductForm() {
         </div>
       </div>
 
-      {/* Submit */}
-      <button
-        onClick={handleSubmit}
-        disabled={saving}
-        className="w-full h-12 rounded-2xl bg-gradient-to-r from-violet-500 to-purple-600 text-white font-semibold text-sm shadow-lg shadow-violet-500/20 flex items-center justify-center gap-2 active:scale-[0.98] transition-transform disabled:opacity-60"
-      >
-        {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-4 h-4" />}
-        {saving ? 'Saving...' : 'Create Product'}
-      </button>
+      {/* Submit + Delete */}
+      <div className="space-y-2">
+        <button
+          onClick={handleSubmit}
+          disabled={saving}
+          className="w-full h-12 rounded-2xl bg-gradient-to-r from-violet-500 to-purple-600 text-white font-semibold text-sm shadow-lg shadow-violet-500/20 flex items-center justify-center gap-2 active:scale-[0.98] transition-transform disabled:opacity-60"
+        >
+          {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-4 h-4" />}
+          {saving ? 'Saving...' : isEdit ? 'Update Product' : 'Create Product'}
+        </button>
+        {isEdit && (
+          <button
+            onClick={handleDelete}
+            disabled={saving}
+            className="w-full h-11 rounded-2xl bg-red-50 border border-red-200 text-red-600 font-semibold text-sm flex items-center justify-center gap-2 hover:bg-red-100 transition-colors disabled:opacity-60"
+          >
+            <Trash2 className="w-4 h-4" />
+            Delete Product
+          </button>
+        )}
+      </div>
     </motion.div>
   );
 }
