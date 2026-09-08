@@ -153,6 +153,48 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
               eventDate: new Date(),
             },
           });
+
+          // ── FIX §1: Decrement product stock for serial-tracked items ──
+          // Previously, only the non-serial branch decremented
+          // CCTVProduct.stock. The serial branch marked the serial SOLD
+          // but left the product's stock column inflated — every report
+          // that reads CCTVProduct.stock directly (Products List, etc.)
+          // showed wrong numbers after any serial sale.
+          //
+          // Now we atomically decrement by 1 (each serial sale is qty 1,
+          // enforced by the POS UI) using updateMany with stock >= 1 —
+          // same race-safe pattern as the non-serial branch. If the
+          // product's stock is already 0 (edge case: stock was manually
+          // edited down after the serial was purchased), we skip the
+          // decrement rather than throwing — the serial was already
+          // verified as IN_STOCK above, so the sale is legitimate. The
+          // stock column just needs to catch up.
+          await tx.cCTVProduct.updateMany({
+            where: {
+              id: item.productId,
+              stock: { gte: 1 },
+            },
+            data: { stock: { decrement: 1 } },
+          });
+
+          // Create stock movement audit record (mirrors the non-serial branch)
+          const productAfter = await tx.cCTVProduct.findUnique({
+            where: { id: item.productId },
+            select: { name: true, stock: true },
+          });
+          await tx.cCTVStockMovement.create({
+            data: {
+              businessId,
+              productId: item.productId,
+              productName: productAfter?.name || item.productName,
+              movementType: "SALE",
+              quantityChange: -1,
+              balanceAfter: productAfter?.stock || 0,
+              referenceId: createdSale.id,
+              referenceType: "sale",
+              notes: `Sale to ${body.customerName || "walk-in customer"} (serial: ${item.serialNumber})`,
+            },
+          });
         } else {
           // Non-serial product: ATOMIC stock check + decrement
           // This prevents race conditions — the WHERE clause ensures we only
