@@ -10,25 +10,39 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
   if (!customerId) {
     // List all customers with their balances
+    // CL-4 fix: replaced N+1 queries (one findMany per customer) with
+    // a single groupBy aggregation. 5000 customers = 2 queries instead
+    // of 5001.
     const customers = await db.cCTVCustomer.findMany({
       where: { businessId },
       orderBy: { name: "asc" },
       select: { id: true, name: true, phone: true, openingBalance: true },
     });
 
-    // For each customer, calculate current balance
-    const customersWithBalance = await Promise.all(
-      customers.map(async (c) => {
-        const sales = await db.cCTVSale.findMany({
-          where: { businessId, customerId: c.id },
-          select: { totalAmount: true, paidAmount: true },
+    // Single aggregation query: group sales by customerId
+    const salesByCustomer = await db.cCTVSale.groupBy({
+      by: ["customerId"],
+      where: { businessId },
+      _sum: { totalAmount: true, paidAmount: true },
+    });
+
+    // Build a lookup map: customerId → { totalPurchases, totalPaid }
+    const balanceMap = new Map<string, { totalPurchases: number; totalPaid: number }>();
+    for (const row of salesByCustomer) {
+      if (row.customerId) {
+        balanceMap.set(row.customerId, {
+          totalPurchases: Number(row._sum.totalAmount) || 0,
+          totalPaid: Number(row._sum.paidAmount) || 0,
         });
-        const totalPurchases = sales.reduce((s, sale) => s + Number(sale.totalAmount), 0);
-        const totalPaid = sales.reduce((s, sale) => s + Number(sale.paidAmount), 0);
-        const balance = Number(c.openingBalance) + totalPurchases - totalPaid;
-        return { ...c, balance, totalPurchases, totalPaid };
-      })
-    );
+      }
+    }
+
+    // Merge customer data with balances
+    const customersWithBalance = customers.map((c) => {
+      const sales = balanceMap.get(c.id) || { totalPurchases: 0, totalPaid: 0 };
+      const balance = Number(c.openingBalance) + sales.totalPurchases - sales.totalPaid;
+      return { ...c, balance, totalPurchases: sales.totalPurchases, totalPaid: sales.totalPaid };
+    });
 
     return NextResponse.json({ success: true, customers: customersWithBalance });
   }

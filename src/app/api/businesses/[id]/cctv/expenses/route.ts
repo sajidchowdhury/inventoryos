@@ -54,6 +54,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           category: body.category || "other",
           description: body.description || null,
           amount: parseFloat(body.amount),
+          paymentMethod: body.paymentMethod || "cash", // EX-2: store the method
           expenseDate: body.expenseDate ? new Date(body.expenseDate) : new Date(),
         },
       });

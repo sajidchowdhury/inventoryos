@@ -10,24 +10,39 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
   if (!supplierId) {
     // List all suppliers with their balances
+    // SL-4 fix: replaced N+1 queries (one findMany per supplier) with
+    // a single groupBy aggregation. 500 suppliers = 2 queries instead
+    // of 501.
     const suppliers = await db.cCTVSupplier.findMany({
       where: { businessId },
       orderBy: { name: "asc" },
       select: { id: true, name: true, phone: true, openingBalance: true },
     });
 
-    const suppliersWithBalance = await Promise.all(
-      suppliers.map(async (s) => {
-        const purchases = await db.cCTVPurchase.findMany({
-          where: { businessId, supplierId: s.id },
-          select: { totalAmount: true, paidAmount: true },
+    // Single aggregation query: group purchases by supplierId
+    const purchasesBySupplier = await db.cCTVPurchase.groupBy({
+      by: ["supplierId"],
+      where: { businessId },
+      _sum: { totalAmount: true, paidAmount: true },
+    });
+
+    // Build a lookup map: supplierId → { totalPurchases, totalPaid }
+    const balanceMap = new Map<string, { totalPurchases: number; totalPaid: number }>();
+    for (const row of purchasesBySupplier) {
+      if (row.supplierId) {
+        balanceMap.set(row.supplierId, {
+          totalPurchases: Number(row._sum.totalAmount) || 0,
+          totalPaid: Number(row._sum.paidAmount) || 0,
         });
-        const totalPurchases = purchases.reduce((sum, p) => sum + p.totalAmount, 0);
-        const totalPaid = purchases.reduce((sum, p) => sum + p.paidAmount, 0);
-        const balance = Number(s.openingBalance) + totalPurchases - totalPaid;
-        return { ...s, balance, totalPurchases, totalPaid };
-      })
-    );
+      }
+    }
+
+    // Merge supplier data with balances
+    const suppliersWithBalance = suppliers.map((s) => {
+      const purchases = balanceMap.get(s.id) || { totalPurchases: 0, totalPaid: 0 };
+      const balance = Number(s.openingBalance) + purchases.totalPurchases - purchases.totalPaid;
+      return { ...s, balance, totalPurchases: purchases.totalPurchases, totalPaid: purchases.totalPaid };
+    });
 
     return NextResponse.json({ success: true, suppliers: suppliersWithBalance });
   }

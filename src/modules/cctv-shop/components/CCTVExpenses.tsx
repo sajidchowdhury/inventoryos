@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
+import { PaymentMethodSelector } from './PaymentMethodSelector';
 
 const fadeUp = {
   initial: { opacity: 0, y: 16 },
@@ -53,6 +54,7 @@ export function CCTVExpenses() {
     description: '',
     amount: '',
     expenseDate: new Date().toISOString().split('T')[0],
+    paymentMethod: 'cash', // EX-2: default to cash
   });
 
   useEffect(() => {
@@ -82,7 +84,7 @@ export function CCTVExpenses() {
       if (res.ok) {
         toast({ title: 'Expense recorded' });
         setShowForm(false);
-        setForm({ category: 'rent', description: '', amount: '', expenseDate: new Date().toISOString().split('T')[0] });
+        setForm({ category: 'rent', description: '', amount: '', expenseDate: new Date().toISOString().split('T')[0], paymentMethod: 'cash' });
         // Reload
         const data = await fetch(`/api/businesses/${businessId}/cctv/expenses`).then((r) => r.json());
         setExpenses(data.expenses || []);
@@ -237,6 +239,13 @@ export function CCTVExpenses() {
                   rows={2}
                 />
               </div>
+
+              {/* EX-2: Payment method selector */}
+              <PaymentMethodSelector
+                value={form.paymentMethod}
+                onChange={(method) => setForm({ ...form, paymentMethod: method })}
+                label="Payment Method"
+              />
             </div>
 
             <div className="flex gap-2 mt-5">
