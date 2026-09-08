@@ -2104,3 +2104,52 @@ Stage Summary:
 - Bonus: exposed the CL-5/SL-3 date-range filter UI which was orphaned (API supported it, UI didn't)
 - Both Customer and Supplier ledgers get all the fixes (same CCTVLedger component handles both via the `type` prop)
 - The "Show more" progressive disclosure keeps the DOM light for 1000+ entry ledgers without adding a virtualization library dep
+
+---
+Task ID: medium-batch-5
+Agent: main (continuation)
+Task: EX-4 / EX-5 / EX-7 / EX-8 — expense polish (filters + custom categories + payee + attachments)
+
+Work Log:
+- Read CCTVExpenses.tsx, expenses POST/GET route, expenses [expenseId] PATCH/DELETE route, schema for CCTVExpense
+- Confirmed existing EX-2 migration pattern (TEXT column with default)
+- Schema migration (new file prisma/migrations/20260910000000_ex7_ex8_add_paid_to_and_attachment_to_expenses/migration.sql):
+  - ALTER TABLE cctv_expenses ADD COLUMN paidTo TEXT (nullable, for backward compat)
+  - ALTER TABLE cctv_expenses ADD COLUMN attachmentUrl TEXT (nullable)
+  - CREATE INDEX cctv_expenses_businessId_paidTo_idx ON (businessId, paidTo)
+- prisma/schema.prisma: added paidTo + attachmentUrl fields + new composite index; regenerated Prisma client
+- EX-4 (filters):
+  - GET /cctv/expenses accepts ?from=&to=&category=&paidTo= (all optional, case-insensitive)
+  - The aggregate _sum.amount uses the same `where` so totalAmount reflects the filtered set, not full history
+  - Response echoes the active filter object
+  - UI: new filter bar above the list — two date inputs + category dropdown + "Clear filters" link
+  - List re-fetches server-side whenever any filter changes (useEffect deps)
+  - Total card switches from red (all-time) to violet (filtered) so user knows the number is scoped
+- EX-5 (custom categories):
+  - API no longer validates against hardcoded enum — any trimmed non-empty string accepted (empty → "other")
+  - UI keeps STARTER_CATEGORIES as a dropdown but adds a "+ Custom…" option that reveals a free-text input
+  - Custom categories discovered in the loaded expenses are merged into the dropdown automatically (with "(custom)" suffix)
+  - The Expense Summary report already groups dynamically by exp.category, so custom categories flow through with no extra work
+- EX-7 (paidTo):
+  - Schema + migration: paidTo TEXT (nullable)
+  - POST + PATCH accept paidTo (trimmed, capped at 200 chars)
+  - Ledger entry description now includes "· paid to {name}" when set, so audit trail records the payee
+  - UI: "Paid To (optional)" input in the form with a hint ("e.g. employee name, driver, vendor")
+  - List rows render a small User icon + the payee name next to the category badge
+- EX-8 (attachmentUrl):
+  - Schema + migration: attachmentUrl TEXT (nullable)
+  - POST + PATCH accept attachmentUrl; server validates it starts with http:// or https:// (400 otherwise)
+  - UI: "Receipt / Attachment URL (optional)" input in the form with hint (Google Drive / Dropbox / your storage)
+  - List rows render a clickable Paperclip + "receipt" link with ExternalLink icon — opens in new tab
+  - The UI doesn't implement file upload itself — the user pastes a URL (the shop is responsible for hosting)
+- Expenses PATCH endpoint: now also accepts paidTo + attachmentUrl updates (with the same validation), and the new ledger entry description includes paidTo
+- TypeScript: only 5 pre-existing mobile-shop errors (mushak-invoices, MSCreatePurchase) — none in CCTV code
+- Updated docs/STOCK_CALCULATION_BUGS.md: marked EX-4, EX-5, EX-7, EX-8 FIXED; refreshed "Still open (Medium)" summary
+
+Stage Summary:
+- 4 Medium-priority bugs closed (EX-4, EX-5, EX-7, EX-8) — the entire "expense polish" cluster
+- Cumulative CCTV bugs fixed across all batches: ~95 (91 prior + 4 new)
+- New schema migration required (run `prisma migrate deploy` on production)
+- New indices: (businessId, paidTo) for auditor-style "expenses by payee" query
+- Both Customer-facing flows benefit: expense list filterable by date/category/payee, form supports custom categories + payee + receipt attachment
+- Backward compat: all new columns are nullable so existing rows keep working with no backfill needed

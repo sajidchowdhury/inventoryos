@@ -51,11 +51,35 @@ export async function PATCH(
   }
 
   const updateData: Record<string, unknown> = {};
-  if (body.category !== undefined) updateData.category = body.category;
+  if (body.category !== undefined) {
+    // EX-5: allow custom categories; just trim + fall back to "other".
+    updateData.category = String(body.category || "").trim() || "other";
+  }
   if (body.description !== undefined) updateData.description = body.description || null;
   if (body.amount !== undefined) updateData.amount = body.amount;
   if (body.paymentMethod !== undefined) updateData.paymentMethod = body.paymentMethod;
   if (body.expenseDate !== undefined) updateData.expenseDate = new Date(body.expenseDate);
+  // EX-7: payee can be set / cleared via PATCH
+  if (body.paidTo !== undefined) {
+    updateData.paidTo = body.paidTo !== null
+      ? String(body.paidTo).trim().slice(0, 200) || null
+      : null;
+  }
+  // EX-8: attachment URL can be set / cleared via PATCH. Validate shape.
+  if (body.attachmentUrl !== undefined) {
+    if (body.attachmentUrl !== null) {
+      const url = String(body.attachmentUrl).trim();
+      if (url && !/^https?:\/\//i.test(url)) {
+        return NextResponse.json(
+          { error: "attachmentUrl must start with http:// or https://" },
+          { status: 400 },
+        );
+      }
+      updateData.attachmentUrl = url || null;
+    } else {
+      updateData.attachmentUrl = null;
+    }
+  }
 
   if (Object.keys(updateData).length === 0) {
     return NextResponse.json({ error: "No fields to update" }, { status: 400 });
@@ -94,7 +118,14 @@ export async function PATCH(
           },
         ]);
 
-        // Create new entries: DEBIT expense, CREDIT new payment account
+        // Create new entries: DEBIT expense, CREDIT new payment account.
+        // EX-7: include `paidTo` in the description if set, so the ledger
+        // entry's narrative matches the POST's narrative.
+        const newCategory = (body.category !== undefined ? String(body.category) : existing.category) || "other";
+        const newDescription = body.description !== undefined ? body.description : existing.description;
+        const newPaidTo = body.paidTo !== undefined
+          ? (body.paidTo !== null ? String(body.paidTo).trim() : null)
+          : existing.paidTo;
         const newPaymentAccount = paymentMethodToAccount(newMethod);
         await createLedgerEntries(tx, [
           {
@@ -104,7 +135,7 @@ export async function PATCH(
             amount: newAmount,
             referenceId: expenseId,
             referenceType: "expense",
-            description: `Expense (edited): ${body.category || existing.category}${body.description ? ` — ${body.description}` : ""}`,
+            description: `Expense (edited): ${newCategory}${newDescription ? ` — ${newDescription}` : ""}${newPaidTo ? ` · paid to ${newPaidTo}` : ""}`,
           },
           {
             businessId,

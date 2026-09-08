@@ -3649,10 +3649,18 @@ model CCTVPayment {
 model CCTVExpense {
   id            String   @id @default(cuid())
   businessId    String
-  category      String   // rent, electricity, transport, tea, other
+  category      String   // rent, electricity, transport, tea, other, or any custom string the shop configures
   description   String?
   amount        Decimal  @default(0) @db.Decimal(12, 2)
   paymentMethod String   @default("cash") // EX-2: cash, bank, bkash, nagad
+  // EX-7: who was paid (salary → employee name, transport → driver, etc.).
+  // Useful for audit. Nullable for backward compat with pre-EX-7 rows.
+  paidTo        String?
+  // EX-8: receipt / invoice attachment URL. Bangladesh tax audit may
+  // require receipts for expenses above a threshold. Stored as a URL
+  // (the UI uploads to whatever object storage the business uses, then
+  // stores the link here). Nullable for backward compat.
+  attachmentUrl String?
   expenseDate   DateTime @default(now())
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -3663,6 +3671,7 @@ model CCTVExpense {
   @@index([expenseDate])
   @@index([businessId, expenseDate])
   @@index([businessId, category])
+  @@index([businessId, paidTo])
   @@map("cctv_expenses")
 }
 
