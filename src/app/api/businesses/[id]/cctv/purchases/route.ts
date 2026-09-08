@@ -49,10 +49,41 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   try {
     // ── PHASE 1: All operations in a single transaction ──
     const purchase = await db.$transaction(async (tx) => {
-      // Calculate total
+      // ── Fix 3: Pre-parse serials to determine the correct quantity ──
+      // For serial-tracked items, the quantity MUST equal the number of
+      // serials parsed from the serialNumbers string. This ensures the
+      // Purchase Report (which sums PurchaseItem.quantity) always agrees
+      // with the Stock Report (which counts IN_STOCK serials) and the
+      // CCTVProduct.stock column (which is incremented by serials.length).
+      //
+      // Previously, item.quantity (from the frontend) was stored as-is on
+      // the PurchaseItem, while stock was incremented by serials.length.
+      // If the frontend sent quantity: 1 with 3 serials, the Purchase
+      // Report showed 1 unit but stock went up by 3 — silent divergence.
+      const parsedItems = body.items.map((item: any) => {
+        let effectiveQuantity: number;
+        let parsedSerials: string[] = [];
+
+        if (item.serialNumbers && item.serialNumbers.trim()) {
+          parsedSerials = item.serialNumbers
+            .split(/[\n,]/)
+            .map((s: string) => s.trim())
+            .filter((s: string) => s.length > 0);
+          // For serial items: quantity = number of serials (override
+          // whatever the frontend sent). Each serial = 1 unit.
+          effectiveQuantity = parsedSerials.length;
+        } else {
+          // Non-serial: use the frontend's quantity (default 1)
+          effectiveQuantity = item.quantity || 1;
+        }
+
+        return { ...item, effectiveQuantity, parsedSerials };
+      });
+
+      // Calculate total using the corrected quantities
       let totalAmount = 0;
-      for (const item of body.items) {
-        totalAmount += (item.costPrice || 0) * (item.quantity || 1);
+      for (const item of parsedItems) {
+        totalAmount += (item.costPrice || 0) * item.effectiveQuantity;
       }
 
       // 1. Create purchase record
@@ -71,7 +102,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       });
 
       // 2. Create items + serials + update stock
-      for (const item of body.items) {
+      for (const item of parsedItems) {
         // Create purchase item
         await tx.cCTVPurchaseItem.create({
           data: {
@@ -79,7 +110,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
             businessId,
             productId: item.productId,
             productName: item.productName,
-            quantity: item.quantity || 1,
+            quantity: item.effectiveQuantity, // Fix 3: serials.length for serial items
             costPrice: item.costPrice || 0,
             sellPrice: item.sellPrice != null ? parseFloat(item.sellPrice) : 0,
             serialNumbers: item.serialNumbers || null,
@@ -104,11 +135,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         }
 
         // Parse serial numbers (newline or comma separated)
-        if (item.serialNumbers && item.serialNumbers.trim()) {
-          const serials = item.serialNumbers
-            .split(/[\n,]/)
-            .map((s: string) => s.trim())
-            .filter((s: string) => s.length > 0);
+        // Fix 3: use pre-parsed serials from parsedItems (already
+        // computed before the loop). The effectiveQuantity was set to
+        // serials.length, so PurchaseItem.quantity, stock increment,
+        // and Purchase Report all agree.
+        if (item.parsedSerials.length > 0) {
+          const serials = item.parsedSerials;
 
           // Get product name + default warranty
           const product = await tx.cCTVProduct.findUnique({
