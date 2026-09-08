@@ -102,11 +102,19 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     });
   }
 
-  // Returns (credit — customer gets money back)
-  const returns = await db.cCTVReturn.findMany({
-    where: { businessId },
-    include: { items: { where: { productId: { in: sales.flatMap(s => [s.id]) } } } },
-  });
+  // CL-1 fix: removed the broken returns query.
+  // The old code did db.cCTVReturn.findMany({ where: { businessId },
+  //   include: { items: { where: { productId: { in: sales.flatMap(s => [s.id]) } } } } })
+  // which had TWO bugs: (1) it filtered items by productId IN [sale IDs]
+  //   (should be saleId, not productId — they're different fields);
+  // (2) the result was never appended to the entries array even if it
+  //   matched. So returns were silently invisible.
+  // Since there is no /cctv/returns/ endpoint (no way to create CCTV
+  // returns from the CCTV module), and the query was broken + unused,
+  // it's dead code. Removed it entirely. If a CCTV returns feature is
+  // added in the future, a new returns query should be written from
+  // scratch with the correct join (saleId, not productId) and the
+  // results should be appended to entries as credit entries.
 
   // Sort by date
   entries.sort((a, b) => a.date.localeCompare(b.date));
