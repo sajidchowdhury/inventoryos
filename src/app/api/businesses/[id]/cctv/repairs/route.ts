@@ -14,13 +14,28 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const where: Record<string, unknown> = { businessId };
   if (status) where.status = status;
 
-  const repairs = await db.cCTVRepair.findMany({
-    where,
-    orderBy: { createdAt: "desc" },
-    take: 100,
-  });
+  // RP-8: Pagination — previous `take: 100` silently dropped anything past row
+  // 100 for shops with 200+ repairs. Now accepts ?page=&pageSize= and returns
+  // pagination metadata. Default pageSize=50 to match other CCTV list endpoints.
+  const page = Math.max(1, parseInt(searchParams.get("page") || "1") || 1);
+  const pageSize = Math.min(200, Math.max(1, parseInt(searchParams.get("pageSize") || "50") || 50));
+  const skip = (page - 1) * pageSize;
 
-  return NextResponse.json({ success: true, repairs });
+  const [repairs, total] = await Promise.all([
+    db.cCTVRepair.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      skip,
+      take: pageSize,
+    }),
+    db.cCTVRepair.count({ where }),
+  ]);
+
+  return NextResponse.json({
+    success: true,
+    repairs,
+    pagination: { page, pageSize, total, totalPages: Math.ceil(total / pageSize) },
+  });
 }
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

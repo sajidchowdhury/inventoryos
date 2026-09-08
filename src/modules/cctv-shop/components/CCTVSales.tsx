@@ -216,12 +216,47 @@ export function CCTVSales() {
 
   const subtotal = cart.reduce((sum, item) => sum + (item.sellPrice * item.quantity), 0);
   const invoiceDiscount = parseFloat(invoiceDiscountInput) || 0;
+  // SL-6 (UI guard): backend now rejects discount > subtotal, but we should
+  // warn inline so the cashier sees the issue before clicking "Complete Sale".
+  const discountExceedsSubtotal = invoiceDiscount > subtotal;
   const totalAmount = Math.max(0, subtotal - invoiceDiscount);
+
+  // SL-7(POS) UI guard: parse paidAmount; reject negative. The backend also
+  // rejects but we surface inline so the cashier doesn't see a 500.
+  const parsedPaid = paidAmount === '' ? totalAmount : (parseFloat(paidAmount) || 0);
+  const paidAmountInvalid = parsedPaid < 0;
 
   const handleSave = async () => {
     if (cart.length === 0) {
       toast({ title: 'Error', description: 'Add at least one product', variant: 'destructive' });
       return;
+    }
+    // SL-4 / SL-6 / SL-7(POS): client-side guards mirroring the backend.
+    if (discountExceedsSubtotal) {
+      toast({
+        title: 'Invalid discount',
+        description: `Discount (৳${invoiceDiscount}) cannot exceed subtotal (৳${subtotal})`,
+        variant: 'destructive',
+      });
+      return;
+    }
+    if (paidAmountInvalid) {
+      toast({
+        title: 'Invalid payment',
+        description: 'Amount paid cannot be negative',
+        variant: 'destructive',
+      });
+      return;
+    }
+    for (const [i, item] of cart.entries()) {
+      if (!Number.isFinite(item.quantity) || item.quantity <= 0 || !Number.isInteger(item.quantity)) {
+        toast({
+          title: `Invalid quantity on row ${i + 1}`,
+          description: 'Quantity must be a positive whole number',
+          variant: 'destructive',
+        });
+        return;
+      }
     }
 
     setSaving(true);
@@ -541,10 +576,21 @@ export function CCTVSales() {
               ৳{totalAmount.toLocaleString()}
             </span>
           </div>
+          {/* SL-6 / SL-7(POS) inline warnings */}
+          {discountExceedsSubtotal && (
+            <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg p-2 mb-3">
+              Discount (৳{invoiceDiscount.toLocaleString()}) exceeds subtotal (৳{subtotal.toLocaleString()}). Reduce the discount to proceed.
+            </p>
+          )}
+          {paidAmountInvalid && (
+            <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg p-2 mb-3">
+              Amount paid cannot be negative. Clear the field for full payment.
+            </p>
+          )}
           <button
             onClick={handleSave}
-            disabled={saving}
-            className="w-full h-12 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-semibold text-sm shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2 active:scale-[0.98] transition-transform disabled:opacity-60"
+            disabled={saving || discountExceedsSubtotal || paidAmountInvalid}
+            className="w-full h-12 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-semibold text-sm shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2 active:scale-[0.98] transition-transform disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {saving ? (
               <Loader2 className="w-5 h-5 animate-spin" />

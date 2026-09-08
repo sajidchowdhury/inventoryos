@@ -55,7 +55,11 @@ export function CCTVStockReport() {
 
   const [data, setData] = useState<StockData | null>(null);
   const [loading, setLoading] = useState(false);
-  const [hasSearched, setHasSearched] = useState(false);
+  // R-1: Auto-load on mount. Previously the user had to click "Load Stock"
+  // to see anything — every other CCTV report auto-loads. `hasSearched`
+  // stays true from first mount so the empty state never shows the "Click
+  // to load" hint; instead we show the spinner until data arrives.
+  const [hasSearched, setHasSearched] = useState(true);
 
   const handleSearch = () => {
     if (!businessId) return;
@@ -66,6 +70,12 @@ export function CCTVStockReport() {
       .then((d) => { setData(d); setLoading(false); })
       .catch(() => setLoading(false));
   };
+
+  // R-1: auto-load on mount + when businessId changes
+  useEffect(() => {
+    if (businessId) handleSearch();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [businessId]);
 
   const handlePrint = () => window.print();
 
@@ -79,7 +89,7 @@ export function CCTVStockReport() {
         <button onClick={handleSearch} disabled={loading}
           className="h-9 px-4 rounded-xl bg-gradient-to-r from-violet-500 to-purple-600 text-white text-xs font-semibold flex items-center gap-1.5 active:scale-95 transition-transform disabled:opacity-50">
           {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
-          {loading ? 'Loading...' : 'Load Stock'}
+          {loading ? 'Loading...' : 'Refresh'}
         </button>
         {data && (
           <button onClick={handlePrint}
@@ -101,13 +111,16 @@ export function CCTVStockReport() {
       ) : !hasSearched ? (
         <div className="bg-white rounded-2xl border border-gray-100 p-12 shadow-sm text-center">
           <Package className="w-12 h-12 text-gray-200 mx-auto mb-3" />
-          <p className="text-sm font-medium text-gray-700">Click "Load Stock" to view inventory</p>
+          <p className="text-sm font-medium text-gray-700">Loading inventory…</p>
           <p className="text-xs text-gray-400 mt-1">Shows all products with current stock levels and values</p>
         </div>
       ) : data && data.products.length > 0 ? (
         <>
           {/* Summary cards */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 print:hidden">
+          {/* R-2: Added the missing "Out of Stock" card. The API already
+              returns `summary.outOfStockCount` but the UI only rendered 4
+              of the 5 cards. */}
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3 print:hidden">
             <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
               <span className="text-xs text-gray-500 font-medium">Total Products</span>
               <p className="text-xl font-bold text-gray-900 mt-1">{data.summary.totalProducts}</p>
@@ -120,9 +133,13 @@ export function CCTVStockReport() {
               <span className="text-xs text-violet-700 font-medium">Stock Value (Sell)</span>
               <p className="text-xl font-bold text-violet-700 mt-1">{formatBDT(data.summary.totalSellValue)}</p>
             </div>
+            <div className="bg-amber-50 rounded-2xl border border-amber-100 p-4">
+              <span className="text-xs text-amber-700 font-medium">Low Stock</span>
+              <p className="text-xl font-bold text-amber-700 mt-1">{data.summary.lowStockCount}</p>
+            </div>
             <div className="bg-red-50 rounded-2xl border border-red-100 p-4">
-              <span className="text-xs text-red-700 font-medium">Low Stock</span>
-              <p className="text-xl font-bold text-red-700 mt-1">{data.summary.lowStockCount}</p>
+              <span className="text-xs text-red-700 font-medium">Out of Stock</span>
+              <p className="text-xl font-bold text-red-700 mt-1">{data.summary.outOfStockCount ?? 0}</p>
             </div>
           </div>
 

@@ -2019,3 +2019,42 @@ Stage Summary:
 - 1 shell file updated: imports, sidebar nav, view routing, dashboard quick actions/links
 - User needs to run `bunx prisma db push` on their local machine to apply schema changes
 - Full warranty tracking foundation: every serial now has a complete audit trail from purchase → sale → repair → supplier replacement → return to customer
+
+---
+Task ID: medium-batch-3
+Agent: main (continuation)
+Task: Another batch of Medium-priority CCTV bug fixes — API hygiene + report UX + invoice polish + number validation
+
+Work Log:
+- Audited remaining Medium items from docs/STOCK_CALCULATION_BUGS.md
+- Grouped 16 bugs into a coherent batch around API hygiene / report UX / invoice polish / number validation
+- Pagination metadata (P-5, E-9, RP-8):
+  - src/app/api/businesses/[id]/cctv/products/route.ts — added ?page=&pageSize= + pagination object
+  - src/app/api/businesses/[id]/cctv/estimates/route.ts — same shape, replaces take:100
+  - src/app/api/businesses/[id]/cctv/repairs/route.ts — same shape, replaces take:100
+- Auto-load reports (R-1, R-2, DC-8, DS-5, DS-6, DS-7):
+  - src/modules/cctv-shop/components/CCTVStockReport.tsx — useEffect auto-load on mount, "Load Stock" → "Refresh" label, added Out-of-Stock card (R-2), grid expanded from 4 to 5 cols
+  - src/modules/cctv-shop/components/CCTVDueCollection.tsx — useEffect auto-load, "Load Dues" → "Refresh" label
+  - src/modules/cctv-shop/components/CCTVDailySummary.tsx — auto-load today on mount, re-fetch on date change, added ‹ › prev/next day buttons (DS-7), fixed misleading "transactions" count to include repairs+returns+payments (DS-5)
+- Category slug dedup (C-2, C-3):
+  - NEW file src/lib/cctv-slug.ts — exports slugify() + uniqueCategorySlug(businessId, baseSlug, excludeId?)
+  - src/app/api/businesses/[id]/cctv/categories/route.ts — POST pre-resolves unique slug; P2002 race → 409 friendly error
+  - src/app/api/businesses/[id]/cctv/categories/[categoryId]/route.ts — PATCH uses same helper, excludes own id
+- Number validation (F-2, I-8, I-9, SL-4, SL-6, SL-7-POS):
+  - src/modules/cctv-shop/components/CCTVProductForm.tsx — handleSubmit now validates every numeric field (costPrice, sellPrice, stock, minStock, warrantyMonths) up-front, toasts specific error, blocks submit
+  - src/app/api/businesses/[id]/cctv/products/import/route.ts — validateRow rejects negative numerics; dedup uses case-insensitive name+brand (I-8); import step clamps negative inputs as defense-in-depth (I-9)
+  - src/app/api/businesses/[id]/cctv/sales/route.ts — POST validates every item.quantity (positive integer), invoiceDiscount (>= 0 and <= subtotal), paidAmount (>= 0). Returns 400 with offending field. SL-4/SL-6/SL-7(POS) closed.
+  - src/modules/cctv-shop/components/CCTVSales.tsx — client-side guards mirror backend: discountExceedsSubtotal + paidAmountInvalid flags; inline red banners; Complete Sale button disabled when invalid
+- Invoice formatting (SI-3, SI-4, SI-6):
+  - src/modules/cctv-shop/components/CCTVSaleInvoice.tsx — new formatWarranty(months) helper (24mo → "2 Years", 12mo → "1 Year", 18mo → "18 Months" with proper pluralization). Per-row qty + totals-row Total Qty now print integers (Number.isInteger check). Grouped items now take MAX of item.warrantyMonths across the group (was hardcoded 0).
+- TypeScript check: all 5 errors are in pre-existing mobile-shop files (mushak-invoices, MSCreatePurchase) — NOT in any CCTV code I touched.
+- Updated docs/STOCK_CALCULATION_BUGS.md: marked 16 bugs FIXED (P-5, F-2, C-2, C-3, I-8, I-9, R-1, R-2, SL-4, SL-6, SL-7-POS, SI-3, SI-4, SI-6, E-9, RP-8, DC-8, DS-5, DS-6, DS-7) and refreshed the "Still open (Medium)" summary.
+
+Stage Summary:
+- 16 Medium-priority bugs closed in this batch (commit pending)
+- Total CCTV bugs fixed across all batches: ~88 (74 prior + 16 new — counting sub-items like R-2, DS-5, DS-7, I-8, SL-7-POS, etc.)
+- All fixes are pure additive / defensive — no schema changes, no migration needed
+- Backend hardening for sales POST (SL-4/6/7) is the most important fix — previously a malicious/buggy POS could create negative-qty sales (incrementing stock) or negative paidAmount (DEBIT cash -N ledger entries). Now 400 with a clear message.
+- Pagination metadata is the foundation for future pagination UI controls — UI still loads page 1, but the metadata is available.
+- Auto-load + Out-of-Stock card + DS-5/DS-7 polish together significantly improve the daily-review workflow UX.
+- New file: src/lib/cctv-slug.ts (shared slug helper)

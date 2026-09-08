@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Search, Loader2, Users, AlertTriangle, Phone } from 'lucide-react';
 import { useCCTVNavStore } from '@/stores/cctv-nav-store-simple';
@@ -28,7 +28,8 @@ export function CCTVDueCollection() {
   const businessId = useAuthStore((s) => s.session?.business?.id);
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
-  const [hasSearched, setHasSearched] = useState(false);
+  // DC-8: auto-load on mount (same pattern as R-1 Stock Report).
+  const [hasSearched, setHasSearched] = useState(true);
 
   const handleSearch = async () => {
     setLoading(true);
@@ -44,6 +45,12 @@ export function CCTVDueCollection() {
     }
   };
 
+  // DC-8: auto-load on mount + when businessId changes
+  useEffect(() => {
+    if (businessId) handleSearch();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [businessId]);
+
   return (
     <motion.div {...fadeUp} className="space-y-4 pb-4">
       <div className="flex items-center gap-3 pt-1">
@@ -57,7 +64,7 @@ export function CCTVDueCollection() {
         <button onClick={handleSearch} disabled={loading}
           className="h-10 px-5 rounded-xl bg-gradient-to-r from-violet-500 to-purple-600 text-white text-xs font-semibold flex items-center gap-1.5 active:scale-95 transition-transform disabled:opacity-50">
           {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
-          {loading ? 'Loading...' : 'Load Dues'}
+          {loading ? 'Loading...' : 'Refresh'}
         </button>
       </div>
 
@@ -122,7 +129,7 @@ export function CCTVDueCollection() {
       ) : (
         <div className="bg-white rounded-2xl border border-gray-100 p-12 shadow-sm text-center">
           <AlertTriangle className="w-12 h-12 text-amber-200 mx-auto mb-3" />
-          <p className="text-sm font-medium text-gray-700">Click "Load Dues" to see who owes you</p>
+          <p className="text-sm font-medium text-gray-700">Loading dues…</p>
           <p className="text-xs text-gray-400 mt-1">Shows all customers with outstanding balances + aging</p>
         </div>
       )}
