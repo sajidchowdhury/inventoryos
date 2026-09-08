@@ -28,5 +28,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const category = await db.cCTVCategory.create({
     data: { businessId, name, slug, icon: body.icon || "Package", color: body.color || "#7c3aed" },
   });
-  return NextResponse.json(category, { status: 201 });
+  // C-1 fix: wrap response in { success: true, category } for consistency
+  return NextResponse.json({ success: true, category }, { status: 201 });
 }

@@ -93,10 +93,11 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   // Calculate net cash flow
   // DS-1 fix: moneyIn = salesPaid (includes linked standalone payments via PM-3)
   //   + unlinked customer payments (not in any sale's paidAmount)
+  // DS-2 fix: moneyOut now includes returns (refunds to customers)
   // moneyOut = purchasePaid (includes linked standalone supplier payments via PM-3)
-  //   + unlinked supplier payments + expenses
+  //   + unlinked supplier payments + expenses + returns
   const moneyIn = salesPaid + unlinkedCustomerPaymentTotal;
-  const moneyOut = purchasePaid + unlinkedSupplierPaymentTotal + expenseTotal;
+  const moneyOut = purchasePaid + unlinkedSupplierPaymentTotal + expenseTotal + returnTotal;
   const netCashFlow = moneyIn - moneyOut;
 
   return NextResponse.json({
