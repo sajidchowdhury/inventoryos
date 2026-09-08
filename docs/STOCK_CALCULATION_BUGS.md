@@ -5,6 +5,7 @@
 >   - Sections 1–7: Stock-calculation audit (purchase / sale / stock-report / product-movement / purchase-report / sales-report)
 >   - Section 8: Inventory-section feature audit (products list, product form, categories, CSV import, serial search, stock report UI)
 >   - Section 9: Sales-section feature audit (POS, sales invoice, estimates, payments)
+>   - Section 10: Repairs & Service feature audit (repairs, repair token, warranty dashboard)
 > **Status:** Open — fixes not yet applied
 
 ---
@@ -29,6 +30,13 @@ The Sales-section audit (Section 9) found 6 more critical/high bugs:
 - **Standalone payments don't update the linked sale's `paidAmount`/`dueAmount`** — the sale still shows "Due 1000" forever even after the customer paid (PM-3).
 - **Standalone payments don't enforce `referenceId` linkage** — customer payments "float" with no sale to credit, so the invoice's "previous due" math double-counts (PM-1).
 - **POS uses `?limit=100` but API caps at 50** — products past row 50 can't be added to a cart (SL-1).
+
+The Repairs & Service audit (Section 10) found 5 more critical/high bugs:
+- **Repair POST allows receiving a serial that's currently `IN_REPAIR` elsewhere** — no status check before transitioning to IN_REPAIR; a serial can be in two open repairs at once (RP-1).
+- **Repair PATCH has no state-machine validation** — can skip `received → returned` directly, or move a `returned` repair back to `received`, leaving the serial stuck in `RETURNED_TO_CUSTOMER` forever (RP-3).
+- **Repair PATCH sets serial to `IN_STOCK` on `ready`** — a serial still owned by the customer is now indistinguishable from sellable inventory; can be re-sold (RP-4).
+- **Warranty Dashboard includes `RETURNED_TO_CUSTOMER` items in active/expiring/expired counts** — a returned product shouldn't be on the warranty dashboard at all, and once it is, it pollutes all three stats (W-1).
+- **Repair `repairCost` is stored but never invoiced** — no payment is collected and no ledger entry is written; the shop's books silently miss all repair revenue (RP-7).
 
 ---
 
@@ -567,6 +575,140 @@ Bug IDs are prefixed with the feature letter: **SL** (Sell/POS), **SI** (Sales I
 | `src/lib/ledger-helper.ts` | PM-4 (validate method) |
 | `src/modules/cctv-shop/components/PaymentMethodSelector.tsx` | PM-7 |
 | `src/modules/cctv-shop/components/QuickPartyDialog.tsx` | (no bugs found — clean) |
+
+---
+
+## 10. Repairs & Service Feature Audit
+
+This section audits the three Repairs & Service features (Repairs, Repair Token, Warranty Dashboard) end-to-end (API + UI).
+
+Bug IDs are prefixed: **RP** (Repairs), **RT** (Repair Token), **W** (Warranty Dashboard).
+
+The `CCTVRepair` model is at `prisma/schema.prisma` and the relevant API routes are `src/app/api/businesses/[id]/cctv/repairs/route.ts` (POST = receive), `src/app/api/businesses/[id]/cctv/repairs/[repairId]/route.ts` (GET / PATCH), and `src/app/api/businesses/[id]/cctv/warranties/route.ts` (warranty dashboard GET).
+
+### 10.1 Repairs — POST /repairs (receive)
+
+**Files:** `src/app/api/businesses/[id]/cctv/repairs/route.ts` · `src/modules/cctv-shop/components/CCTVRepairs.tsx`
+
+| ID | Severity | Bug |
+|---|---|---|
+| **RP-1** | **Critical** | **No status check on the serial item before transitioning to `IN_REPAIR`.** POST line 39–42 looks up the serial item by `serialNumber` only — it does NOT filter by `status: "SOLD"` or exclude `IN_REPAIR`. If a serial is already `IN_REPAIR` (an open repair exists), another receive will find the same serial and overwrite its status to `IN_REPAIR` again. This means: (a) the same serial can be in two open repairs at once, (b) a serial that's `RETURNED_TO_CUSTOMER` can be "received for repair" again, (c) a serial that's `SENT_TO_SUPPLIER` can be received for repair while still in transit. Should require `status: "SOLD"` (or `"RETURNED_TO_CUSTOMER"` if you allow re-repairs) and reject otherwise. |
+| **RP-2** | High | POST creates a `CCTVCustomer` if `customerPhone` is provided and not found (lines 60–69). Schema requires `phone` to be non-null on `CCTVCustomer`, but the lookup uses `phone` only. If `customerName` is provided but `customerPhone` is empty, no customer is created and `customerId` stays null — so a named customer on the repair isn't linked to the customer master. The customer ledger later won't show this repair's history. |
+| **RP-3** | High | PATCH has **no state-machine validation** (lines 52–69). Accepts any `body.status` string and applies it. You can move `received → returned` directly (skipping `in_repair` and `ready`), or move a `returned` repair back to `received` (reviving a closed job). Worse: if you transition `returned → received`, the serial's status goes from `RETURNED_TO_CUSTOMER` back to `IN_REPAIR` (line 123) — fine for a re-repair scenario — but the repair's `returnedDate` stays populated (line 67 condition `if (!repair.returnedDate)` is false), so the new receive date isn't recorded. Status machine should be enforced. |
+| **RP-4** | **Critical** | PATCH sets the serial to `IN_STOCK` on `ready` (line 124). A serial that's been received for repair is still owned by the customer — it's NOT in the shop's sellable inventory. By marking it `IN_STOCK`, the Stock Report (which counts `IN_STOCK` serials) inflates by 1, and the sale POS can find this serial via `?status=IN_STOCK` and add it to a cart → **the shop can sell a customer's property**. Should add a new status `READY_FOR_PICKUP` or keep `IN_REPAIR` and surface it as "Ready" in the UI. |
+| **RP-5** | High | POST does not validate `receivedDate` is not in the future. User can back-date or forward-date the repair. A future-dated repair shows up in "today's repairs" today; a back-dated repair skews monthly stats. `body.receivedDate ? new Date(body.receivedDate) : new Date()` (line 107) accepts any date. |
+| **RP-6** | Medium | Token number generation race condition (lines 79–89). `todayCount = COUNT(receivedDate in [startOfDay, endOfDay])`, then `tokenNo = R{yy}{mm}{dd}{NN}`. Two concurrent POSTs both see `count = N`, both generate the same token number. Schema has `@unique` on `tokenNo`, so the second one throws P2002 — surfaced as generic "Failed to create repair". Should retry with N+1, or use a sequence table. |
+| **RP-7** | High | `repairCost` is stored but never invoiced. PATCH accepts `repairCost` (line 58) and stores it on the repair record. UI shows it on the detail view (lines 379–384 of CCTVRepairs.tsx) and on the repair token (CCTVRepairToken.tsx line 206–212). **But there is no sale or payment created, no ledger entry written, no customer receivable increased.** A ৳500 repair charge is invisible to the P&L, the Customer Ledger, and the Cash Book. The shop is doing free repairs on the books even when the customer paid cash. |
+| **RP-8** | Medium | GET `/repairs` (route.ts line 17) caps at 100 with `take: 100` and no pagination metadata. Same shape problem as `estimates` (E-9) and `products` (P-1). A shop with 200+ repairs silently loses the oldest 100. |
+| **RP-9** | Medium | PATCH does not enforce that `serialItemId` is set before updating the serial status (line 130). If a repair was created with a free-text serial (no matching `CCTVSerialItem` row), `repair.serialItemId` is null. The `updateMany({ where: { id: repair.serialItemId } })` then runs `updateMany({ where: { id: null } })` which updates 0 rows silently — fine in this case, but the code should guard explicitly. |
+| **RP-10** | Medium | No DELETE endpoint. A repair created in error cannot be deleted — only "closed". Once a token number is generated, it's permanently in the audit trail. No soft-delete either. Not necessarily a bug — audit integrity matters — but it should be a deliberate design decision, documented. |
+| **RP-11** | Low | `underWarranty` is a snapshot at receive time (line 105 + 106). If the warranty expires during the repair, the snapshot stays `true`. UI shows "Under Warranty" forever, even after warranty expired. Should re-evaluate on PATCH to `returned` (charge post-warranty if it expired during the repair). |
+| **RP-12** | Low | PATCH with the same status as current (`newStatus === previousStatus`) skips all serial update + history logic (line 80 condition `if (newStatus !== previousStatus)`). Updating `repairCost` alone — common scenario: "tech added cost after starting" — won't write a history entry. Only status changes are audited. |
+| **RP-13** | Low | UI "Open" filter (line 258 of CCTVRepairs.tsx) treats `replaced` as closed, but the API doesn't — `replaced` is a terminal status. Fine, but the open/closed split should live in the API as a query param, not just the client. Currently the API doesn't expose `?filter=open|closed`. |
+| **RP-14** | Low | No notes/history entry on cost-only update. If the tech updates `repairCost` from ৳500 to ৳700 without changing status, no audit trail. |
+
+### 10.2 Repair Token
+
+**Files:** `src/modules/cctv-shop/components/CCTVRepairToken.tsx`
+
+| ID | Severity | Bug |
+|---|---|---|
+| **RT-1** | High | Token uses `repair.status` directly (line 204), printed at receive time as "received" — but the token is re-printable later. If the user prints the token after the status has moved to `in_repair`, the printed token says "IN REPAIR", which is confusing to the customer who already has the original "received" token. Should print the status at receive time, not current status. |
+| **RT-2** | High | "Out of Warranty — PAID" hardcoded (line 142) regardless of whether the shop actually charges for out-of-warranty repairs. Some shops do free out-of-warranty repairs too. Combined with RP-7 (no payment flow), the "PAID" label is also factually wrong — no payment was collected. |
+| **RT-3** | Medium | Token doesn't include the estimated completion date. Customer walks away with a token but no idea when to come back. The schema doesn't have an `estimatedReadyDate` field either. |
+| **RT-4** | Medium | `repairCost` is shown on the token if > 0 (lines 206–212), but as noted in RP-7, `repairCost` is recorded by the tech AFTER the customer drops off the product. At intake, the cost is unknown. So the printed token either shows the cost the tech happened to enter before printing, or hides it. Confusing. |
+| **RT-5** | Low | No barcode/QR code on the token. The token number is a plain string. A scanner can't read it back when the customer returns — the shop must type the token number to look up the repair. Adding a QR encoding the token number would speed up pickup. |
+| **RT-6** | Low | Token prints all on one page with no cut-line guidance. The dashed border at the bottom (lines 216–228) says "Cut along the dashed line" in the helper text (line 233) but the actual cut line is the same border as the rest. Should have an explicit `border-t-2 border-dashed` between the "token" portion and the "claim instructions" portion to indicate where to cut. |
+| **RT-7** | Low | No shop logo on the token (uses a hardcoded `Camera` icon, line 111). The business likely has a `logo` field on the Business model — should use it if present. |
+| **RT-8** | Low | Token doesn't show the shop's BIN/TIN — relevant for Bangladesh if the shop is VAT-registered. (Echoes SI-7 from Section 9.) |
+
+### 10.3 Warranty Dashboard
+
+**Files:** `src/app/api/businesses/[id]/cctv/warranties/route.ts` · `src/modules/cctv-shop/components/CCTVWarrantyDashboard.tsx`
+
+| ID | Severity | Bug |
+|---|---|---|
+| **W-1** | **Critical** | **`RETURNED_TO_CUSTOMER` items are included in the warranty list and stats.** API line 22: `status: { in: ["SOLD", "IN_REPAIR", "SENT_TO_SUPPLIER", "RETURNED_TO_CUSTOMER"] }`. A serial that was returned to the customer after a previous repair is still being tracked here — its warranty end date is the original sale date + warranty months. The active/expiring/expired buckets are computed on `warrantyEnd` regardless of status (lines 33–35). So a returned serial with an active warranty shows in the "Active" count, even though it's already been returned to the customer and is none of the shop's concern. The dashboard should filter to `["SOLD", "IN_REPAIR", "SENT_TO_SUPPLIER"]` only. |
+| **W-2** | High | "Expiring" count is computed from the "active" set (line 34), so it's correct relative to active — but the UI badge (CCTVWarrantyDashboard.tsx line 289–296) recomputes "expiring" as `days >= 0 && days <= 30`, which double-counts items that are already counted in "active". The four stats cards (lines 141–176) sum to more than `total` if you add `active + expiring + expired` — because `expiring` is a subset of `active`, not a separate bucket. Misleading. Either rename the card to "Expiring Soon (subset of Active)" or make it a separate bucket. |
+| **W-3** | High | Warranty Dashboard does NOT include repairs in the warranty counts. A serial in `IN_REPAIR` status is in `allSerials` (line 22 includes it), so its warranty is tracked. But the "Repairs In Progress" count (line 38–45) is a separate query against `cctv_repairs` filtered by status. The two sources can disagree: a serial `SOLD` with active warranty, but a `received` repair with `underWarranty=false` (e.g. warranty already expired when received). The UI shows the repair count under a separate stat but doesn't reconcile. |
+| **W-4** | High | No pagination on serials. `allSerials` returns every warranty-tracked serial with no `take:`. A shop that's sold 5,000 cameras has 5,000 rows in the response. UI renders them all (CCTVWarrantyDashboard.tsx line 286 `filteredSerials.map`). Browser memory + render time hit. Should paginate. |
+| **W-5** | Medium | The filter query param `?filter=active|expiring|expired` is applied to the serials list (lines 49–55), but the **stats are computed from `allSerials` regardless of filter**. So if a user clicks the "Expired" filter pill, the stats cards still show active/expiring/repair counts. Confusing — either hide the cards when filtered, or note that stats reflect all items. |
+| **W-6** | Medium | UI search (lines 114–121) filters the client-side serials list by `serialNumber`, `product.name`, `product.brand`, `customerName`. Doesn't search by `customerPhone`. A shop trying to find a warranty item by customer phone can't. |
+| **W-7** | Medium | UI "Receive for Repair" button (lines 348–359) navigates to the `repairs` view without any context — it just lands on the repairs list. The user has to manually open the New Repair form and type the serial number again. Should pass the serial number as context: `navigate('repairs', { serialNumber: s.serialNumber })` or add a query param. |
+| **W-8** | Medium | The "Expiring Soon" badge on a serial (lines 334–336) shows `{days}d left`. But if the warranty end is in the past, `daysUntil()` returns a negative number and the expired branch takes precedence (line 330). However, `daysUntil` uses `Math.ceil` (line 83) which gives `0` for "expires today in less than 24h" — and the UI then shows "0d left" in the active branch (line 340) which is misleading (the warranty is effectively expired). Should use `Math.floor` for "days left" semantics. |
+| **W-9** | Low | The dashboard doesn't show warranty _claims_ — only repairs in progress. A serial could have had 3 prior repairs under warranty and the dashboard gives no hint. The history is in `cctv_serial_history`, not surfaced. |
+| **W-10** | Low | No "expiring this month" or "expiring this week" granularity — just a single 30-day window. Some shops want a 7-day alert for proactive service calls. |
+| **W-11** | Low | The "Warranty Tracked Items" header (line 233) shows the total count via the filter pills (line 246) but the actual count shown is `data.stats.total` — which includes `RETURNED_TO_CUSTOMER` per W-1. Inflated. |
+| **W-12** | Low | No CSV export. A shop with 200 warranties and 30 expiring this month has no way to export the "expiring" list for proactive calling. |
+
+### 10.4 Recommended fixes (prioritized)
+
+#### P0 — blocks normal use
+
+- **RP-1**: In `repairs/route.ts` POST, change the serial lookup (line 39) to also filter by `status: "SOLD"`. Reject with a 400 if the serial is `IN_REPAIR`, `SENT_TO_SUPPLIER`, `RETURNED_TO_CUSTOMER`, or `REPLACED`:
+  ```ts
+  const serialItem = await tx.cCTVSerialItem.findFirst({
+    where: { businessId, serialNumber: body.serialNumber, status: "SOLD" },
+  });
+  // If not found, fall back to RETURNED_TO_CUSTOMER (re-repair scenario) with a warning.
+  ```
+- **RP-4**: In `repairs/[repairId]/route.ts` PATCH line 124, do NOT set serial to `IN_STOCK` on `ready`. Either keep it `IN_REPAIR` and surface the "ready" state via the repair's status, or add a new `READY_FOR_PICKUP` status. Update the Stock Report's IN_STOCK count override accordingly.
+- **W-1**: In `warranties/route.ts` line 22, change `status: { in: [...] }` to remove `RETURNED_TO_CUSTOMER`:
+  ```ts
+  status: { in: ["SOLD", "IN_REPAIR", "SENT_TO_SUPPLIER"] }
+  ```
+
+#### P1 — data correctness
+
+- **RP-3**: Add an allowed-transitions map in PATCH:
+  ```ts
+  const ALLOWED: Record<string, string[]> = {
+    received: ["in_repair", "sent_to_supplier", "closed"],
+    in_repair: ["ready", "sent_to_supplier", "closed"],
+    ready: ["returned", "closed"],
+    sent_to_supplier: ["replaced", "closed"],
+    replaced: ["closed"],
+    returned: [],
+    closed: [],
+  };
+  if (!ALLOWED[previousStatus]?.includes(newStatus)) {
+    return NextResponse.json({ error: `Cannot transition ${previousStatus} → ${newStatus}` }, { status: 400 });
+  }
+  ```
+- **RP-7**: Build a repair-invoice flow. Either (a) create a `CCTVSale` with `paymentType: "repair"` and a single sale item referencing the repair, or (b) add a `repairInvoiceId` column on `CCTVRepair` and create the invoice + ledger entries on PATCH to `returned`. Either way, the repair cost must hit the ledger (DEBIT cash/receivable, CREDIT service_revenue).
+- **RP-2**: If `customerName` is provided but no `customerPhone`, either require phone, or look up customer by name within the business. Don't silently drop the link.
+- **RT-2**: Make the warranty banner configurable. Add a `repairChargePolicy` field on the business (`free_under_warranty | charge_out_of_warranty | always_free | always_charge`). Drive the token text from that.
+
+#### P2 — UX / consistency
+
+- **RP-6**: Handle P2002 on `tokenNo` with a retry loop (up to 3 times).
+- **RP-8**: Add pagination to GET `/repairs` (same shape as `purchases/route.ts`).
+- **W-2**: Rename the "Expiring Soon" stat card to "Expiring Soon (active, ≤30 days)" or split into mutually exclusive buckets.
+- **W-4**: Paginate the warranties endpoint. UI can use "Load more".
+- **W-5**: Either freeze stats when a filter is applied, or note "Showing X of Y" near the cards.
+- **W-7**: Pass serial context when navigating to repairs:
+  ```ts
+  navigate('repairs', { serialNumber: s.serialNumber })
+  ```
+  And in CCTVRepairs.tsx, pre-fill the serialNumber form field if `contextId` is an object with a serialNumber.
+
+#### P3 — polish
+
+- **RP-5**, **RP-9**, **RP-10**, **RP-11**, **RP-12**, **RP-13**, **RP-14**: validation hardening, soft delete, warranty re-eval, cost-update audit.
+- **RT-3**, **RT-4**, **RT-5**, **RT-6**, **RT-7**, **RT-8**: estimated ready date, conditional cost display, QR code, cut line, logo, BIN.
+- **W-6**, **W-8**, **W-9**, **W-10**, **W-11**, **W-12**: phone search, days-left floor, repair history, configurable window, accurate total, CSV export.
+
+### 10.5 Files to touch for Section 10 fixes
+
+| File | Fix IDs |
+|---|---|
+| `src/app/api/businesses/[id]/cctv/repairs/route.ts` | RP-1, RP-2, RP-5, RP-6, RP-8 |
+| `src/app/api/businesses/[id]/cctv/repairs/[repairId]/route.ts` | RP-3, RP-4, RP-7, RP-9, RP-11, RP-12, RP-13, RP-14 |
+| `src/app/api/businesses/[id]/cctv/warranties/route.ts` | W-1, W-3, W-4, W-5, W-11 |
+| `src/modules/cctv-shop/components/CCTVRepairs.tsx` | RP-13, W-7 |
+| `src/modules/cctv-shop/components/CCTVRepairToken.tsx` | RT-1, RT-2, RT-3, RT-4, RT-5, RT-6, RT-7, RT-8 |
+| `src/modules/cctv-shop/components/CCTVWarrantyDashboard.tsx` | W-2, W-6, W-7, W-8, W-9, W-10, W-12 |
+| `prisma/schema.prisma` + new migration | RP-7 (`repairInvoiceId`), RT-3 (`estimatedReadyDate`), RT-2 (`repairChargePolicy` on `Business`), RP-4 (new `READY_FOR_PICKUP` status if chosen) |
 
 ---
 
