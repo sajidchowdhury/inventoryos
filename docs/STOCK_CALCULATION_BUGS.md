@@ -4,6 +4,7 @@
 > **Scope:** CCTV module
 >   - Sections 1–7: Stock-calculation audit (purchase / sale / stock-report / product-movement / purchase-report / sales-report)
 >   - Section 8: Inventory-section feature audit (products list, product form, categories, CSV import, serial search, stock report UI)
+>   - Section 9: Sales-section feature audit (POS, sales invoice, estimates, payments)
 > **Status:** Open — fixes not yet applied
 
 ---
@@ -20,6 +21,14 @@ The Inventory-section audit (Section 8) found 6 more critical/high bugs:
 - **CSV-imported serial-tracked products get a `stock=N` field but zero serial items** — Stock Report then shows 0, contradicting the imported value (I-1).
 - **Products List API ignores `?limit=` and caps at 50** — UI asks for 100, gets 50, and then filters client-side on those 50, hiding products past row 50 from search results (P-1, P-3).
 - **CSV import is not transactional and doesn't re-validate rows server-side** — partial imports and frontend-bypass are both possible (I-3, I-4).
+
+The Sales-section audit (Section 9) found 6 more critical/high bugs:
+- **Estimate→Sale convert is NOT wrapped in a transaction** — partial failures leave an estimate un-converted but a sale is created, allowing duplicate conversions (E-1).
+- **Estimate→Sale convert creates sale items with `costPrice: 0`** — P&L reports overstate profit by 100% margin on every converted sale (E-6).
+- **Estimate→Sale convert skips ledger entries entirely** — books go out of balance whenever an estimate is converted (E-4).
+- **Standalone payments don't update the linked sale's `paidAmount`/`dueAmount`** — the sale still shows "Due 1000" forever even after the customer paid (PM-3).
+- **Standalone payments don't enforce `referenceId` linkage** — customer payments "float" with no sale to credit, so the invoice's "previous due" math double-counts (PM-1).
+- **POS uses `?limit=100` but API caps at 50** — products past row 50 can't be added to a cart (SL-1).
 
 ---
 
@@ -402,6 +411,162 @@ Bug IDs are prefixed with the feature letter: **P**roducts List, **F**orm, **C**
 | `src/app/api/businesses/[id]/cctv/reports/stock/route.ts` | (already covered in Section 2) |
 | `src/modules/cctv-shop/components/CCTVStockReport.tsx` | R-1, R-2, R-4 |
 | `src/app/globals.css` or `src/modules/cctv-shop/components/CCTVShell.tsx` | R-3 |
+
+---
+
+## 9. Sales Section Feature Audit
+
+This section audits the four Sales-section features (POS, Sales Invoice, Estimates, Payments) end-to-end (API + UI component). The core stock bug for the sale flow is already covered in Section 1, and the unsafe "add item to existing sale" flow is covered in Section 3 — those are NOT re-listed here.
+
+Bug IDs are prefixed with the feature letter: **SL** (Sell/POS), **SI** (Sales Invoice), **E** (Estimates), **PM** (Payments).
+
+### 9.1 Sell Products (POS)
+
+**Files:** `src/modules/cctv-shop/components/CCTVSales.tsx` · `src/modules/cctv-shop/components/PaymentMethodSelector.tsx` · `src/modules/cctv-shop/components/QuickPartyDialog.tsx`
+
+| ID | Severity | Bug |
+|---|---|---|
+| **SL-1** | High | POS loads products with `?limit=100` (line 103), but the API caps at 50 (`take: 50` in `products/route.ts` line 23). Products past row 50 can't be added to a cart via product-name search — the user types "HDD-4TB" and gets "No matching serial or product found" even though the product exists. |
+| **SL-2** | High | Product-name search filters the cached (max 50) products client-side (lines 141–148). Serial-item search DOES hit the API (`/serial-items?search=...&status=IN_STOCK` line 128), so serial-search works regardless of cache. But the product-name branch silently misses anything past row 50. |
+| **SL-3** | High | No atomic reservation of serial items. User adds serial S3 to cart on Terminal A; clerk on Terminal B adds S3 to cart on Terminal B; both carts look fine. Both submit; first succeeds, second gets "Serial S3 is not in stock or already sold" error from the backend atomic check. UX problem — clerk has already prepared the entire cart before discovering the conflict. |
+| **SL-4** | Medium | Quantity input for non-serial items has `min="1"` HTML attribute (line 463) but no JS validation. User can type `0` or `-3` — `parseInt(e.target.value) \|\| 1` coerces `0` to `1` (because `0 \|\| 1 = 1` in JS) but accepts `-3` as `-3`. Backend doesn't validate `quantity > 0` either. Negative sale quantity would `increment` stock via the `decrement: -3` operation, letting a "sale" silently add inventory. |
+| **SL-5** | Medium | UI doesn't check `quantity <= stock` before submit. User can add a non-serial product (stock=3), type qty=10, fill the rest of the cart, then click "Complete Sale" — gets an `Insufficient stock` error from the backend, but the cart state is already lost UX-wise. Should warn inline. |
+| **SL-6** | Medium | No clamp on `invoiceDiscount`. UI computes `totalAmount = Math.max(0, subtotal - invoiceDiscount)` (line 219). If user types discount=৳5000 with subtotal=৳2000, total=৳0, "Due"=৳0. Sale goes through with `totalAmount=0` — a free sale. Backend also uses `Math.max(0, ...)` (sales/route.ts line 50), so this is consistent but probably unintended. |
+| **SL-7** | Medium | No validation on `paidAmount`. UI accepts negative input (line 518 has `min="0"` HTML attribute but no JS guard). If user types `-100`, `parseFloat("-100") = -100`, the sale POST sends `paidAmount: -100`. Backend creates a `cCTVPayment` with `amount: -100` and a ledger entry DEBIT cash -100, CREDIT receivable -100. The "Less: cash -100" means cash on hand goes UP and receivable goes UP — both directions wrong. |
+| **SL-8** | Low | After successful sale, POS navigates to `sale-invoice` view (line 253) but doesn't reset the cart, customer, or payment form state. If user clicks "back" from the invoice, the cart still has the sold items. Easy to accidentally re-submit. |
+| **SL-9** | Low | POS doesn't display product stock in the cart. User adds product P (stock=3), increments qty to 10, sees no warning. The cart UI (lines 408–484) doesn't show available stock. |
+| **SL-10** | Low | POS doesn't show the selected customer's previous due before completing the sale. The invoice GET endpoint computes `previousDue` (sales/[saleId]/route.ts lines 39–48), but it's only visible AFTER the sale is created. For credit customers, the POS should show "This customer already owes ৳X" before the user clicks Complete Sale. |
+
+**Recommended fixes:**
+- For **SL-1/SL-2**: Honor `?limit=` in `products/route.ts` (also Fixes P-1, P-3 from Section 8). Push product search to the server (`?search=` query).
+- For **SL-3**: Add a "soft hold" API endpoint `POST /cctv/serial-items/[id]/hold` that marks a serial as `RESERVED` with a TTL (e.g. 10 minutes). POS calls this on add-to-cart. If hold expires, serial returns to `IN_STOCK`. Sale POST clears the hold. Alternative: just document that the POS isn't safe for concurrent clerks.
+- For **SL-4**: Add JS guard: `if (parseInt(e.target.value) < 1) return;` and skip empty/zero values.
+- For **SL-5**: Show inline warning in cart row when `item.quantity > product.stock`.
+- For **SL-6**: Clamp `invoiceDiscount` to `[0, subtotal]` in both UI and API.
+- For **SL-7**: Validate `paidAmount >= 0` in UI and API. Reject negative.
+- For **SL-8**: Reset cart/customer/payment state in the `if (res.ok)` block of `handleSave` (line 248) before navigating.
+- For **SL-10**: Fetch customer's outstanding due when selected; show as a small banner in the customer card.
+
+### 9.2 Sales Invoice
+
+**Files:** `src/app/api/businesses/[id]/cctv/sales/[saleId]/route.ts` · `src/modules/cctv-shop/components/CCTVSaleInvoice.tsx`
+
+| ID | Severity | Bug |
+|---|---|---|
+| **SI-1** | High | `previousDue` is computed by summing ALL prior sales' `(totalAmount - paidAmount)` for that customer (route lines 39–48). This ignores standalone payments the customer made after those sales. If a customer has 3 sales (each ৳1000 due) and then paid ৳500 via the standalone `/payments` endpoint, the `previousDue` shown on the next invoice is still ৳3000, not ৳2500. The payment reduced the customer's receivable ledger balance but didn't update any specific sale's `paidAmount`. Result: invoice overstates previous due by the amount of unallocated payments. (Root cause is PM-1/PM-3 in §9.4.) |
+| **SI-2** | High | "Sales Person: —" is hardcoded (UI line 209). Sale creation doesn't capture a salesperson. Field is dead on every invoice. |
+| **SI-3** | Medium | Warranty display: `${item.warrantyMonths} ${item.warrantyMonths >= 12 ? 'Year' : 'Month'}` (line 283). 24 months prints as "24 Year", 36 months as "36 Year". Should divide: `>= 12 ? ${warrantyMonths/12} Year${warrantyMonths/12 > 1 ? 's' : ''}` or always show "X Month(s)". |
+| **SI-4** | Medium | `totalQty.toFixed(2)` (line 285) — quantities are integers in the schema but the invoice prints "1.00", "5.00". Looks unprofessional for CCTV products sold in whole units. |
+| **SI-5** | Medium | `numberToWords()` (lines 33–78) caps at 99 Crore. For ৳100,00,00,000+ the algorithm produces an empty string then `+ ' Only'`. Also: it doesn't handle `0` correctly when reached via the integer path (the `if (num === 0) return 'Zero'` short-circuits OK, but a ৳0.50 amount would print "and Fifty Paisa Only" with no Taka part — edge case). |
+| **SI-6** | Medium | Grouping by `productId` (UI lines 240–256) loses per-item warranty info. `grouped[key].warrantyMonths` is initialized to `0` and never read from the actual items. So if a sale has 3 serials of a product, all with `warrantyMonths=12`, the invoice shows "—" for warranty on that row. |
+| **SI-7** | Medium | VAT/AIT row hardcoded to `formatBDT(0)` (line 352). Bangladesh VAT invoices typically include Mushak 6.3 VAT. The mobile-shop module has full Mushak support; the CCTV invoice has no VAT field at all. If CCTV shops ever need to issue VAT-compliant invoices, this requires building out a VAT engine (which already exists in mobile-shop — could be ported). |
+| **SI-8** | Low | The "Add VAT & AIT" row is always shown (line 351) even when the shop isn't VAT-registered. Should be conditional on business having a BIN. |
+| **SI-9** | Low | "Prepared By: System" hardcoded (line 197). No user attribution on invoices. Multi-user shops can't tell which clerk created the sale. |
+| **SI-10** | Low | Empty fill rows (lines 293–308) pad the table to 8 rows. If a sale has 12 line items, no fill rows; if 2, six fill rows. Cosmetic but inconsistent visual density. |
+
+**Recommended fixes:**
+- For **SI-1**: Depends on fixing PM-3 (link payments to sales). Once payments are linked, recompute `previousDue` as `Σ(totalAmount) − Σ(paymentsAllocatedToThoseSales)` instead of `Σ(totalAmount − saleInlinePaidAmount)`.
+- For **SI-2 / SI-9**: Capture `userId` from session on sale POST; store as `salespersonId` on `cCTVSale`. Render on invoice.
+- For **SI-3**: Replace with `${warrantyMonths >= 12 ? `${warrantyMonths/12} Year${warrantyMonths/12 > 1 ? 's' : ''}` : `${warrantyMonths} Month${warrantyMonths > 1 ? 's' : ''}`}`.
+- For **SI-4**: Use `{item.totalQty}` (integer) instead of `{item.totalQty.toFixed(2)}` unless the unit is "meter" or "kg".
+- For **SI-6**: When grouping, read `warrantyMonths` from the first item of that product group, not the literal `0`.
+- For **SI-7**: Port the mobile-shop Mushak engine to CCTV, or at minimum expose a `vatEnabled` flag on the business and conditionally render the VAT row.
+
+### 9.3 Estimates / Quotes
+
+**Files:** `src/app/api/businesses/[id]/cctv/estimates/route.ts` · `src/app/api/businesses/[id]/cctv/estimates/[estimateId]/route.ts` · `src/app/api/businesses/[id]/cctv/estimates/[estimateId]/convert/route.ts` · `src/modules/cctv-shop/components/CCTVEstimates.tsx`
+
+| ID | Severity | Bug |
+|---|---|---|
+| **E-1** | **Critical** | **Convert endpoint is NOT wrapped in `$transaction`.** Four separate writes happen sequentially (convert/route.ts lines 33–110): (1) create sale, (2) loop creating sale items + decrementing stock, (3) create payment if `paidAmount > 0`, (4) mark estimate as "converted". If step 3 or 4 fails, the sale is already created, items are created, stock is decremented, but the estimate is NOT marked converted → the user can re-click Convert → **duplicate sale + double stock decrement**. No rollback path. |
+| **E-2** | High | Convert's stock decrement is wrapped in `try/catch {}` that silently swallows errors (lines 81–83). If `db.cCTVProduct.update` fails (e.g. Prisma connection error), the sale still goes through with stock NOT decremented. Also no `CCTVStockMovement` audit row is written. The Product Movement report will miss this sale's stock-out event. |
+| **E-3** | High | Convert passes `item.productId \|\| "unknown"` to the new `CCTVSaleItem` (line 54). If an estimate item has no linked product (just a free-text line), the sale item's `productId` becomes the literal string `"unknown"` — not a valid product ID. Reports that group by `productId` (Purchase Report, Sales Report top products, Product Movement) will create an `"unknown"` bucket. The Sales Report `topProducts` aggregation keys by `productName` (line 67 of sales-report route), so this doesn't break the report, but the Product Movement report (which filters by `productId`) will silently drop these items. |
+| **E-4** | High | Convert uses `cCTVSale.create` directly (line 33) instead of routing through the main sale POST flow (`sales/route.ts` POST). This skips: `CCTVStockMovement` audit row, `CCTVSerialHistory` entry (OK — estimates have no serials), ledger entries (DEBIT cash/receivable + CREDIT sales_revenue + DEBIT discount_given). **Convert creates a sale and a payment but writes ZERO ledger entries.** Books go out of balance every time an estimate is converted. P&L report under-counts revenue; balance sheet doesn't move cash or receivable. |
+| **E-5** | High | Convert's stock check (line 71) is `if (product.stock < item.quantity)`. Non-atomic — read-then-write. Two concurrent converts of the same product can both pass the check and both decrement, driving stock negative. The main sale flow uses `updateMany` with `where: { stock: { gte: qty } }` which is atomic — convert should do the same. |
+| **E-6** | High | Convert hardcodes `costPrice: 0` for all sale items (line 58). Comment says "estimates don't track cost". This means: P&L report shows revenue − 0 = 100% margin on every converted sale. COGS is understated, profit is overstated. Should fetch the product's current `costPrice` at convert time. |
+| **E-7** | Medium | POST `/estimates` (lines 31–40) generates `estimateNo` as `EST-{YYMM}-{NNN}` based on a count of estimates this month. Race condition: two concurrent POSTs both see `count = N`, both generate `EST-2609-001`. No `@@unique([businessId, estimateNo])` constraint in the schema, so both insert successfully with duplicate numbers. |
+| **E-8** | Medium | PATCH `/estimates/[id]` with `items` (lines 43–63) does `deleteMany` on existing items then creates new ones. **Not in a transaction.** If the create loop fails halfway (e.g. bad productName), the estimate is left with 0 items (or some items, depending on where it failed). |
+| **E-9** | Medium | GET `/estimates` (line 17) caps at 100 with `take: 100` and no pagination. A business with 200+ estimates silently loses the oldest 100 from the list view. No way to page through. |
+| **E-10** | Medium | Convert creates the sale with `saleDate: new Date()` (line 43) but doesn't allow the user to specify a sale date. An estimate approved on Sept 5 but converted on Sept 20 will have a Sept 20 sale date, skewing monthly reports. |
+| **E-11** | Low | Estimate `status` accepts any string (`body.status \|\| "draft"` line 58 of POST). No enum validation in API or schema. Can set status to `"banana"`. UI enum is `draft | sent | approved | rejected | converted` but API doesn't enforce it. |
+| **E-12** | Low | DELETE has a guard against converted (lines 86–88) — good. But there's no soft-delete. A draft estimate accidentally deleted is gone forever. No undo, no audit trail. |
+
+**Recommended fixes:**
+- For **E-1**: Wrap the entire convert flow in `db.$transaction(async (tx) => { ... })`. Use `tx` for every write inside.
+- For **E-2**: Inside the transaction, use the atomic `updateMany` pattern from the main sale flow (sales/route.ts lines 152–158): `updateMany({ where: { id, stock: { gte: qty } }, data: { stock: { decrement: qty } } })`. Check `updated.count === 0` for insufficient stock. Don't swallow the error — throw, so the transaction rolls back. Also write a `CCTVStockMovement` row.
+- For **E-3**: Either reject convert if any item has no `productId`, or fall back to a placeholder behavior (skip stock decrement but record the item with `productId: null` — schema allows it).
+- For **E-4**: Either (a) call the existing sale POST logic as a function (refactor `sales/route.ts` POST into a callable helper), or (b) duplicate the ledger + stock-movement logic into convert. Option (a) is preferred to avoid drift.
+- For **E-5**: Same as E-2 — use `updateMany` with `stock: { gte: qty }`.
+- For **E-6**: Fetch `costPrice` from the product at convert time: `const product = await tx.cCTVProduct.findUnique({ where: { id: item.productId }, select: { costPrice: true } }); ... costPrice: product?.costPrice ?? 0`.
+- For **E-7**: Add `@@unique([businessId, estimateNo])` to the schema + new migration. Handle P2002 in POST by retrying with N+1.
+- For **E-8**: Wrap PATCH-with-items in a transaction.
+- For **E-9**: Add `pagination: { page, pageSize, total, totalPages }` to GET response, same shape as `purchases/route.ts`.
+- For **E-10**: Accept `saleDate` in the convert request body, default to `new Date()` if not provided.
+- For **E-11**: Validate `status` against an enum in POST and PATCH.
+
+### 9.4 Payments
+
+**Files:** `src/app/api/businesses/[id]/cctv/payments/route.ts` · `src/lib/ledger-helper.ts` · `src/modules/cctv-shop/components/PaymentMethodSelector.tsx`
+
+| ID | Severity | Bug |
+|---|---|---|
+| **PM-1** | **Critical** | **Standalone payments don't enforce linkage to a sale/purchase.** The `referenceId` field is optional — a customer payment recorded via `/payments` POST with just `customerId` (no `referenceId`) creates a payment that "floats" with no sale to credit. Customer ledger balance goes down, but no individual sale's `dueAmount` changes. When `sales/[saleId]` GET computes `previousDue` (route lines 39–48), it sums `totalAmount − paidAmount` per sale — the floating payment isn't credited to any sale, so previousDue is overstated by the unallocated amount. |
+| **PM-2** | High | Payment `type` rewriting breaks the GET filter. POST accepts `customer_discount` / `supplier_discount` (lines 55–64) but stores them as `customer_payment` / `supplier_payment` with `[DISCOUNT]` prefix in notes. The GET endpoint (line 18) filters by `type` directly. `GET /payments?type=customer_discount` returns zero rows — the type was rewritten on write. There's no way to query discount payments specifically. |
+| **PM-3** | High | **Payment doesn't update the linked sale's `paidAmount` / `dueAmount` fields.** When a customer pays ৳1000 against sale S1 (which had `paidAmount=0, dueAmount=1000`), the `/payments` POST creates a `cCTVPayment` row and ledger entries (customer receivable ↓, cash ↑), but **never updates `cCTVSale.paidAmount` or `cCTVSale.dueAmount`**. The sale's record still shows "Due ৳1000" forever. The Customer Ledger report (which aggregates from sales + payments) shows the correct balance, but the Sales History list view shows each sale as still due. Inconsistent — operator sees "Due ৳1000" on the sale but "Customer balance ৳0" on the ledger. |
+| **PM-4** | High | `paymentMethod` is free-text — schema stores any string. If user passes `paymentMethod: "monkey"`, it's stored verbatim. `paymentMethodToAccount()` in `ledger-helper.ts` (lines 77–85) silently falls back to `LEDGER_ACCOUNTS.CASH` for unknown methods. A "monkey" payment gets recorded as cash on the books but as "monkey" in the payment record — silent misclassification. |
+| **PM-5** | Medium | Discount handling is inconsistent. POST stores `type: "customer_payment"` + `notes: "[DISCOUNT] ..."` for a customer discount (lines 58–60). The customer ledger UI must parse the `[DISCOUNT]` prefix from notes to render a discount differently from a regular payment — fragile. Better: keep `type = "customer_discount"` in the DB (the schema allows any string) and let the UI filter on it. |
+| **PM-6** | Medium | GET `/payments` (lines 26–33) returns payment rows without joining the customer or supplier. UI must do N+1 fetches to display customer names in a payments list. Should `include: { customer: { select: { name: true } }, supplier: { select: { name: true } } }`. |
+| **PM-7** | Medium | `PaymentMethodSelector` exposes only 4 methods (cash, bank, bkash, nagad). No "card", no "cheque", no "due/credit" option. Bangladesh CCTV shops sometimes take card payments via POS terminals — there's no way to record those. May be intentional for the MVP but worth flagging. |
+| **PM-8** | Medium | Payments don't support partial allocation. A customer paying ৳5000 against two outstanding sales (৳3000 + ৳2000) — there's no API to allocate ৳3000 to sale A and ৳2000 to sale B. The `referenceId` field only takes one sale ID. Either the payment is "unallocated" (PM-1) or fully credited to one sale, leaving the other fully due. |
+| **PM-9** | Low | The `[DISCOUNT]` notes prefix is parsed by string matching. If a user types `"[DISCOUNT] Customer gave us 10% off for bulk buy"` in notes via a future API that doesn't set the prefix, the discount logic silently won't trigger. Should be a separate boolean column `isDiscount`. |
+| **PM-10** | Low | POST `/payments` doesn't return the updated ledger balance or the new customer/supplier balance. UI must do a separate GET to refresh the ledger view. |
+
+**Recommended fixes:**
+- For **PM-1**: Either (a) require `referenceId` for any payment with `type = customer_payment/supplier_payment` (reject if missing), or (b) implement a payment-allocation model: a `CCTVPaymentAllocation` join table linking payments to sales with amounts. Option (b) is the proper accounting solution. Option (a) is the MVP workaround.
+- For **PM-2**: Keep `type` as the original value (`customer_discount` etc.) in the DB. Either add a separate `kind: "regular" \| "discount"` column, or just trust the original `type` value. Update GET filter to pass through.
+- For **PM-3**: After creating the payment, if `referenceId` is set AND `type === "sale"`, atomically update the linked sale:
+  ```ts
+  await tx.cCTVSale.update({
+    where: { id: body.referenceId },
+    data: {
+      paidAmount: { increment: amount },
+      dueAmount: { decrement: amount },
+      paymentType: <recompute based on new dueAmount>,
+    },
+  });
+  ```
+  Wrap in the existing transaction. Same logic for purchases. If `referenceId` is null, leave the payment unallocated (and surface it in a "unallocated payments" report).
+- For **PM-4**: Validate `paymentMethod` against the `PAYMENT_METHODS` enum from `PaymentMethodSelector.tsx` in the API. Reject unknown values.
+- For **PM-5**: Add `isDiscount: Boolean @default(false)` column. Use it instead of parsing notes.
+- For **PM-6**: Add `include` to GET for customer/supplier names.
+- For **PM-8**: Build a `CCTVPaymentAllocation` model (paymentId, saleId, amount). One payment → many allocations. Document the FIFO or manual allocation strategy.
+
+### 9.5 Priority summary across the Sales section
+
+| Priority | Bug IDs | What to fix first |
+|---|---|---|
+| **P0** (blocks normal use) | E-1, E-4 | Wrap convert in transaction; create ledger entries in convert |
+| **P1** (data correctness) | PM-1, PM-3, E-2, E-3, E-5, E-6, SI-1, SL-1, SL-2 | Link payments to sales (and update sale's paidAmount), atomic stock decrement in convert, drop "unknown" productId, fetch real costPrice in convert, fix previousDue math, fix POS product limit |
+| **P2** (UX / consistency) | SL-3, SL-4, SL-5, SL-6, SL-7, SI-2, SI-3, SI-4, SI-6, E-7, E-8, E-9, E-10, PM-2, PM-4, PM-5, PM-6, PM-7, PM-8 | Serial reservation, quantity validation, paidAmount validation, salesperson capture, warranty formatting, qty formatting, warranty grouping, estimate number uniqueness, PATCH transaction, pagination, saleDate on convert, type rewriting, paymentMethod enum, discount flag, GET includes, payment allocation |
+| **P3** (polish) | SL-8, SL-9, SL-10, SI-5, SI-7, SI-8, SI-9, SI-10, E-11, E-12, PM-9, PM-10 | State reset, stock display in cart, customer due banner, numberToWords edge cases, VAT row conditional, empty fill rows, salesperson name, status enum validation, soft delete, discount notes parsing, return balance |
+
+### 9.6 Files to touch for Section 9 fixes
+
+| File | Fix IDs |
+|---|---|
+| `src/modules/cctv-shop/components/CCTVSales.tsx` | SL-1, SL-3, SL-4, SL-5, SL-6, SL-7, SL-8, SL-9, SL-10 |
+| `src/app/api/businesses/[id]/cctv/products/route.ts` | SL-1, SL-2 (shared with P-1, P-3) |
+| `src/app/api/businesses/[id]/cctv/sales/[saleId]/route.ts` | SI-1 (depends on PM-3 fix) |
+| `src/modules/cctv-shop/components/CCTVSaleInvoice.tsx` | SI-2, SI-3, SI-4, SI-5, SI-6, SI-7, SI-8, SI-9, SI-10 |
+| `src/app/api/businesses/[id]/cctv/estimates/route.ts` | E-7, E-9, E-11 |
+| `src/app/api/businesses/[id]/cctv/estimates/[estimateId]/route.ts` | E-8, E-11, E-12 |
+| `src/app/api/businesses/[id]/cctv/estimates/[estimateId]/convert/route.ts` | E-1, E-2, E-3, E-4, E-5, E-6, E-10 |
+| `src/modules/cctv-shop/components/CCTVEstimates.tsx` | (UI changes follow API contract) |
+| `prisma/schema.prisma` + new migration | E-7 (`@@unique([businessId, estimateNo])`), PM-5 (`isDiscount` column), PM-8 (`CCTVPaymentAllocation` model) |
+| `src/app/api/businesses/[id]/cctv/payments/route.ts` | PM-1, PM-2, PM-3, PM-4, PM-6, PM-10 |
+| `src/lib/ledger-helper.ts` | PM-4 (validate method) |
+| `src/modules/cctv-shop/components/PaymentMethodSelector.tsx` | PM-7 |
+| `src/modules/cctv-shop/components/QuickPartyDialog.tsx` | (no bugs found — clean) |
 
 ---
 
