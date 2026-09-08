@@ -13,7 +13,11 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const limit = 50;
   const skip = (page - 1) * limit;
 
-  const [expenses, total] = await Promise.all([
+  // EX-1 fix: use a separate aggregate query for totalAmount over ALL
+  // expenses, not just the current page. Previously, totalAmount was
+  // computed from the paginated expenses array — a shop with 200
+  // expenses (page 1 of 50) would show the sum of only 50.
+  const [expenses, total, totalAgg] = await Promise.all([
     db.cCTVExpense.findMany({
       where: { businessId },
       orderBy: { expenseDate: "desc" },
@@ -21,15 +25,20 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       take: limit,
     }),
     db.cCTVExpense.count({ where: { businessId } }),
+    db.cCTVExpense.aggregate({
+      where: { businessId },
+      _sum: { amount: true },
+    }),
   ]);
 
-  const totalAmount = expenses.reduce((s, e) => s + Number(e.amount), 0);
+  const totalAmount = Number(totalAgg._sum.amount) || 0;
 
   return NextResponse.json({
     success: true,
     expenses,
     total,
     totalAmount,
+    pagination: { page, pageSize: limit, total, totalPages: Math.ceil(total / limit) },
   });
 }
 
