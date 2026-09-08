@@ -206,16 +206,23 @@ Chose the "pull from `CCTVStockMovement`" approach (the cleaner alternative note
 
 **Fallback**: if no `CCTVStockMovement` rows exist for a product (historical data from before the §1 / §3 / Fix 3 fixes), the report falls back to the old `PurchaseItem` + `SaleItem` approach with recomputed running balance. The response includes a `source` field (`"stock_movement"` vs `"legacy_fallback"`) so the UI can indicate whether the running balance is authoritative.
 
-### Fix 5 — Add an invariant test
+### Fix 5 — Add an invariant test ✅ DONE
 
-Add a script (e.g. `scripts/stock-invariant-test.ts`) that, for every CCTV product, asserts:
+~~Add a script (e.g. `scripts/stock-invariant-test.ts`) that, for every CCTV product, asserts:~~
 
-```
-CCTVProduct.stock == COUNT(CCTVSerialItem WHERE status=IN_STOCK)   // serial-tracked
-CCTVProduct.stock == Σ(PurchaseItem.quantity) − Σ(SaleItem.quantity)  // non-serial
-```
+**Done (commit `67db9c3`)**. New file `scripts/stock-invariant-test.ts` verifies:
+- **Serial-tracked**: `CCTVProduct.stock == COUNT(CCTVSerialItem WHERE status = 'IN_STOCK')`
+- **Non-serial**: `CCTVProduct.stock == Σ(PurchaseItem.quantity) − Σ(SaleItem.quantity)`
 
-Run it in CI. Any drift is a regression.
+Features:
+- Dry-run by default; `--fix` mode auto-repairs by updating `CCTVProduct.stock` to match the computed value
+- `--verbose` mode prints every product checked (pass or fail)
+- Exit code 0 = all pass, 1 = mismatches found, 2 = fatal error (CI-ready)
+- Clear output with recorded vs computed stock and the difference for each mismatch
+
+Usage: `bunx tsx scripts/stock-invariant-test.ts` (dry-run), `--fix` (auto-repair), `--verbose` (print all).
+
+After the §1 / §3 / Fix 3 / Fix 4 fixes, all NEW data should pass. Historical data may have mismatches (pre-fix) — run with `--fix` to reconcile.
 
 ---
 
