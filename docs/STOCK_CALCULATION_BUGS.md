@@ -1,7 +1,9 @@
-# Stock Calculation Audit — Bugs & Recommended Fixes
+# CCTV Module Audit — Bugs & Recommended Fixes
 
 > **Auditor:** External review (2026-09-08)
-> **Scope:** CCTV module — purchase / sale / stock-report / product-movement / purchase-report / sales-report
+> **Scope:** CCTV module
+>   - Sections 1–7: Stock-calculation audit (purchase / sale / stock-report / product-movement / purchase-report / sales-report)
+>   - Section 8: Inventory-section feature audit (products list, product form, categories, CSV import, serial search, stock report UI)
 > **Status:** Open — fixes not yet applied
 
 ---
@@ -12,6 +14,12 @@ Stock math for **non-serial** CCTV products is correct and race-safe.
 Stock math for **serial-tracked** CCTV products is **partially broken**: the `CCTVProduct.stock` column is incremented on purchase but never decremented on sale. Reader endpoints work around this in *some* places (Stock Report, Dashboard) but not everywhere (Products List), and aggregation reports (Purchase Report, Sales Report, Product Movement running balance) are accurate only if the frontend always sends a `quantity` field that matches the actual serial count.
 
 Two related bugs exist in the "add item to existing sale" endpoint that allow double-selling the same serial and creating out-of-balance books.
+
+The Inventory-section audit (Section 8) found 6 more critical/high bugs:
+- **No product edit or delete endpoint exists** — once a product is created, it cannot be modified through the API or UI (F-1).
+- **CSV-imported serial-tracked products get a `stock=N` field but zero serial items** — Stock Report then shows 0, contradicting the imported value (I-1).
+- **Products List API ignores `?limit=` and caps at 50** — UI asks for 100, gets 50, and then filters client-side on those 50, hiding products past row 50 from search results (P-1, P-3).
+- **CSV import is not transactional and doesn't re-validate rows server-side** — partial imports and frontend-bypass are both possible (I-3, I-4).
 
 ---
 
@@ -232,6 +240,168 @@ bun run dev
 | `src/app/api/businesses/[id]/cctv/purchases/route.ts` | Fix 3 — enforce `quantity === serials.length` |
 | `src/app/api/businesses/[id]/cctv/reports/product-movement/route.ts` | Fix 4 — serial-aware running balance |
 | `scripts/stock-invariant-test.ts` (new) | Fix 5 — CI invariant check |
+| See Section 8 for Inventory-section files | Per-feature fixes (Products List, Product Form, Categories, CSV Import, Serial Search, Stock Report UI) |
+
+---
+
+## 8. Inventory Section Feature Audit
+
+This section audits the six Inventory-section features end-to-end (API + UI component), beyond the core stock-calculation bug covered in Sections 1–7.
+
+Bug IDs are prefixed with the feature letter: **P**roducts List, **F**orm, **C**ategories, **I**mport, **S**erial Search, **R**eport.
+
+### 8.1 Products List
+
+**Files:** `src/app/api/businesses/[id]/cctv/products/route.ts` · `src/modules/cctv-shop/components/CCTVProductsList.tsx`
+
+| ID | Severity | Bug |
+|---|---|---|
+| **P-1** | High | API ignores `?limit=100` query param — hardcoded `take: 50` (line 23). UI asks for 100 (line 40), gets 50. Shops with >50 products silently lose half their catalog from the list view. |
+| **P-2** | High | No pagination UI or "load more". Once 50 is hit, there is no way to see the rest of the products. |
+| **P-3** | High | Client-side filtering: `useEffect` fetches once (max 50 rows), then `useState` filter runs on that cached list (lines 46–51). If a user searches for a product that exists at row 60, they get "No products found" even though the product exists in the DB. |
+| **P-4** | High | UI shows `product.stock` directly (line 148), inheriting the core stock bug from Section 1. For serial-tracked products the displayed stock is wrong (inflated, never decremented on sale). |
+| **P-5** | Medium | API response doesn't include `pagination` metadata (only `total`). UI can't tell if more pages exist. |
+
+**Recommended fixes:**
+- Honor `?limit=` and `?offset=` in the API. Add `pagination: { page, pageSize, total, totalPages }` to the response (same shape as `purchases/route.ts` line 30).
+- Push search to the server (debounced GET with `?search=`) instead of client-side filter on cached rows.
+- For serial-tracked products, return `effectiveStock = COUNT(IN_STOCK serials)` instead of raw `cCTVProduct.stock` (same override as Stock Report route, lines 19–24). After applying Fix 1 from Section 4, this becomes a non-issue.
+
+### 8.2 Product Form
+
+**Files:** `src/app/api/businesses/[id]/cctv/products/route.ts` (POST only) · `src/modules/cctv-shop/components/CCTVProductForm.tsx`
+
+> **⚠️ There is no `src/app/api/businesses/[id]/cctv/products/[productId]/route.ts` file at all.** The `products/` directory contains only `route.ts` and `import/route.ts`. This is the root cause of F-1.
+
+| ID | Severity | Bug |
+|---|---|---|
+| **F-1** | **Critical** | **No product edit or delete endpoint exists.** Once a product is created, it cannot be modified through the API or UI. The nav store has an `edit-product` view (per `CCTVShell.tsx`), but `CCTVProductForm.tsx` has no edit logic — header always says "Add Product" (line 92) and `handleSubmit` always uses POST (line 49). There is no GET-by-id, no PATCH/PUT, no DELETE. |
+| **F-2** | Medium | `parseInt(form.stock) \|\| 0` silently coerces invalid input ("abc") to 0 instead of erroring (line 61). |
+| **F-3** | Medium | No SKU uniqueness check, and no `@@unique([businessId, sku])` constraint in `prisma/schema.prisma`. Two products with the same SKU can coexist. |
+| **F-4** | Low | Form doesn't validate `costPrice <= sellPrice` — allows negative margin by accident. |
+| **F-5** | Low | Form has no "delete" affordance anywhere. Combined with F-1, products are effectively immutable once created. |
+
+**Recommended fixes:**
+- Add `src/app/api/businesses/[id]/cctv/products/[productId]/route.ts` with:
+  - `GET` — single product by id (must verify `businessId` matches)
+  - `PATCH` — edit fields (name, brand, model, sku, categoryId, costPrice, sellPrice, minStock, warrantyMonths, unit, isActive, imageUrl)
+  - `DELETE` — soft-delete (`isActive: false`) by default; hard-delete only if no purchases/sales/serials reference it
+- Update `CCTVProductForm.tsx` to detect the `edit-product` view (read `contextId` from `useCCTVNavStore`), pre-fill the form via GET, change submit to PATCH. The header should switch between "Add Product" and "Edit Product".
+- Add `@@unique([businessId, sku])` to the `CCTVProduct` model in `prisma/schema.prisma` and create a new migration. (Optional — only if SKU uniqueness is a business requirement.)
+
+### 8.3 Categories
+
+**Files:** `src/app/api/businesses/[id]/cctv/categories/route.ts` · `src/app/api/businesses/[id]/cctv/categories/[categoryId]/route.ts` · `src/modules/cctv-shop/components/CCTVCategories.tsx`
+
+| ID | Severity | Bug |
+|---|---|---|
+| **C-1** | Medium | POST `/categories` returns the category object directly (`NextResponse.json(category, { status: 201 })`, line 24), not wrapped in `{ success: true, category }`. PATCH returns `{ success: true, category }`. Inconsistent — the UI happens to not check `success` on create so it works, but any future consumer will be confused. |
+| **C-2** | Medium | POST doesn't check for duplicate slug. Schema has `@@unique([businessId, slug])`, so a duplicate name will throw P2002 → UI shows generic "Failed" toast. Should pre-check and append `-2`, `-3`, etc. |
+| **C-3** | Medium | PATCH auto-regenerates slug from name (line 19). If you rename "Cameras" to "Cables & Accessories" and another category with that slug exists, you get P2002 on PATCH. Should use the same unique-slug helper as POST. |
+| **C-4** | Low | UI doesn't expose the `icon` picker even though `icon` is a stored field. Only color is editable in the dialog. |
+| **C-5** | Low | UI edit dialog doesn't expose `isActive` toggle — can't deactivate a category from UI (only via direct API call). |
+| **C-6** | Low | UI create request body includes `slug` (line 79 of `CCTVCategories.tsx`), but the API ignores it (auto-generates from name). Dead payload. |
+
+**Recommended fixes:**
+- Wrap POST response: `return NextResponse.json({ success: true, category }, { status: 201 })`.
+- Add a shared `ensureUniqueSlug(businessId, baseSlug)` helper in `src/lib/slug.ts` that appends `-2`, `-3`, etc. until unique. Use in both POST and PATCH.
+- Add an icon picker (or remove the `icon` column from the schema if it's unused).
+
+### 8.4 Import Products (CSV)
+
+**Files:** `src/app/api/businesses/[id]/cctv/products/import/route.ts` · `src/modules/cctv-shop/components/CCTVImportProducts.tsx` · `public/templates/product-import-template.csv`
+
+| ID | Severity | Bug |
+|---|---|---|
+| **I-1** | **Critical** | **Serial-tracked import creates products with `stock=N` but zero `CCTVSerialItem` rows.** A CSV row with `serialTracked=true, stock=5` inserts a `CCTVProduct` with `stock=5` and zero serials. Stock Report's IN_STOCK count override (Section 2) then shows **0** — direct contradiction with the imported `stock=5`. The product's `stock` field and the actual serial count disagree permanently. |
+| **I-2** | High | Import does NOT create `CCTVStockMovement` audit rows. Initial stock from CSV is invisible to the Product Movement report — the running balance starts at 0 and the first entry will be the first sale, not the initial stock-in. |
+| **I-3** | High | Import is NOT wrapped in `db.$transaction`. If row 50 of 100 fails with a database error, rows 1–49 are already committed, and `skippedCount` reports only the one failure. The shop is left in a partial-import state with no rollback path. |
+| **I-4** | High | Import doesn't re-validate `rows` server-side. It trusts the frontend's `status` field (line 113: `rows.filter(r => r.status !== "error")`). A malicious or buggy frontend can submit rows with `status: "valid"` and missing `name` — Prisma won't throw (name is non-nullable in schema, so it would throw actually), but other invalid combinations (negative stock, bad category references) will silently insert. |
+| **I-5** | High | Master catalog matching is too loose (lines 161–173): `OR: [{ brand, model }, { name: { contains: row.data.name, mode: "insensitive" } }]`. A row with brand "Generic" matches ALL master products with brand "Generic". A row named "Cat6 Cable" matches any master product whose name contains "Cat6 Cable". False positive links pollute the master-catalog relationship. |
+| **I-6** | Medium | CSV parser is hand-rolled (lines 16–43). Doesn't handle: (a) UTF-8 BOM — Excel "UTF-8" export prepends `\uFEFF` so the first header becomes `\uFEFFname` and silently fails to map; (b) multiline quoted fields — a description with an embedded newline is split into two rows; (c) escaped quotes inside quoted fields are partially handled but edge cases exist. Use a proper CSV parser (`csv-parse` or `papaparse`). |
+| **I-7** | Medium | CSV template at `public/templates/product-import-template.csv` does NOT include the `serialTracked` column, even though the UI's "CSV Columns" reference (lines 174–184 of `CCTVImportProducts.tsx`) lists it. Users downloading the template will miss this field — `serialTracked` defaults to `false` on import. |
+| **I-8** | Medium | Dedup is by exact match on `name + brand` (lines 145–151, case-sensitive). Existing "hikvision DS-2CD" doesn't match incoming "Hikvision DS-2CD" → duplicate product created. Use case-insensitive comparison. |
+| **I-9** | Medium | `parseInt(row.data.stock) \|\| 0` accepts negative numbers. `stock="-5"` becomes -5. No `>= 0` validation. |
+| **I-10** | Low | UI stores parsed `rows` only in component state — not persisted to localStorage. A page refresh during preview loses all parsed data; user must re-upload the CSV. |
+| **I-11** | Low | UI "Imported" success view only shows `importedCount` and `skippedCount` (lines 289–295). The API also returns `masterCatalogLinked` (line 207), but the UI never displays it. |
+
+**Recommended fixes:**
+- For **I-1**: If `serialTracked=true`, do NOT allow `stock > 0` from CSV — the serial-tracked workflow requires stock-in flow to add serials one by one. Either reject the row with a clear warning ("Serial-tracked products need stock added via Stock-In screen, not CSV import") or force `stock = 0` and add a note. Then create a `CCTVStockMovement` with `movementType: "INITIAL_IMPORT"` explaining the initial state.
+- For **I-2**: After each successful product insert, create a `CCTVStockMovement` with `movementType: "INITIAL_IMPORT"`, `quantityChange: stock`, `balanceAfter: stock`, and `referenceType: "csv_import"`.
+- For **I-3**: Wrap the entire `import` action in `db.$transaction(async (tx) => { ... })`. Any failure rolls back all inserts.
+- For **I-4**: Re-run `validateRow` server-side before inserting. Reject rows with `status === "error"` regardless of what the frontend sent. Don't trust the `status` field from the client.
+- For **I-5**: Tighten master catalog match: require `brand` AND `model` exact match (case-insensitive). Drop the `name contains` clause, or make it a fallback only if `brand + model` doesn't match.
+- For **I-6**: Replace the hand-rolled parser with `csv-parse/sync` (already a transitive dep via other libs) or `papaparse`.
+- For **I-7**: Add `serialTracked` column to the CSV template, or remove it from the UI's column reference list.
+
+### 8.5 Serial Search & History
+
+**Files:** `src/app/api/businesses/[id]/cctv/serial-items/route.ts` · `src/app/api/businesses/[id]/cctv/serial-history/route.ts` · `src/modules/cctv-shop/components/CCTVSerialSearch.tsx`
+
+| ID | Severity | Bug |
+|---|---|---|
+| **S-1** | Medium | UI displays the product's default warranty months (`item.product.warrantyMonths`, line 318), not the actual serial's `warrantyMonths` (which can be overridden at purchase time, see `purchases/route.ts` lines 112–114). If a serial was bought with extended warranty, the search shows the product default — misleading for warranty claims. |
+| **S-2** | Medium | API doesn't paginate history. A serial with 1000 events returns all 1000 rows; UI renders all 1000 in the timeline (line 269). Performance issue for high-volume serials. |
+| **S-3** | Medium | N+1 query pattern: for each of up to 20 serial items, 3 separate queries run (history + replacement + replacesSerialId, lines 30–66). Up to 60 queries per search. Should batch. |
+| **S-4** | Low | The "no search" branch of the API (lines 77–93) returns 50 recent history entries, but the UI never calls the endpoint without a search query. Dead code path. |
+| **S-5** | Low | `STATUS_STYLES`, `EVENT_ICONS`, and `EVENT_COLORS` maps are hardcoded in the component (lines 62–94). Any new status or event type added later renders with a raw string and default gray icon. Not future-proof. |
+| **S-6** | Low | Auto-expand first result on search (lines 144–147). If user wants to expand a different one, they must click the first to collapse, then click the one they want. Minor UX. |
+
+**Recommended fixes:**
+- For **S-1**: Change line 318 from `item.product.warrantyMonths` to `item.warrantyMonths ?? item.product.warrantyMonths`.
+- For **S-2**: Add `take: 50` to the history fetch and a "Show more" button in the UI.
+- For **S-3**: Use a single `findMany` with `include: { history: true }` and a single `findMany` for replacements with `where: { businessId, originalSerialItemId: { in: serialIds } }`. Reduces 60 queries to 2.
+- For **S-5**: Move status/event maps to `src/modules/cctv-shop/types/index.ts` and throw on missing entries in dev mode (fail fast on schema additions).
+
+### 8.6 Stock Report (UI)
+
+**Files:** `src/app/api/businesses/[id]/cctv/reports/stock/route.ts` · `src/modules/cctv-shop/components/CCTVStockReport.tsx`
+
+> The API endpoint is already covered in Section 2 (Stock Report row — verdict ✅ correct for both serial and non-serial). This subsection audits only the UI.
+
+| ID | Severity | Bug |
+|---|---|---|
+| **R-1** | Medium | UI requires manual "Load Stock" button click (line 79) — doesn't auto-load on mount. Empty state literally shows "Click 'Load Stock' to view inventory" (line 105). Unusual UX; every other report auto-loads. |
+| **R-2** | Medium | API returns `outOfStockCount` in summary (route line 48), but UI never displays it. Only 4 summary cards are rendered (lines 110–127): total products, stock value (cost), stock value (sell), low stock. Missing out-of-stock card. |
+| **R-3** | Low | `window.print()` prints the entire page, including the CCTV shell sidebar and bottom nav. `print:hidden` is applied to the report header (line 74), but not to the rest of the app shell. May print nav chrome. |
+| **R-4** | Low | No filter/sort options in the UI. API returns products sorted by `stock: asc` only. UI can't filter by category, search by name, or sort by value. |
+| **R-5** | Low | No auto-refresh. If a sale happens, the stock report still shows old data until user clicks "Load Stock" again. Acceptable for a report but worth noting. |
+
+**Recommended fixes:**
+- For **R-1**: Change the initial render to auto-load. Replace the manual `handleSearch` button click with `useEffect(() => { if (businessId) handleSearch() }, [businessId])`. Keep the button as a "Refresh" affordance.
+- For **R-2**: Add a 5th summary card showing `outOfStockCount` (red, alongside low stock).
+- For **R-3**: Add `print:hidden` to `CCTVShell.tsx`'s sidebar and bottom nav, or add a global `@media print` rule in `globals.css` that hides `.cctv-shell-nav`.
+
+### 8.7 Priority summary across the Inventory section
+
+| Priority | Bug IDs | What to fix first |
+|---|---|---|
+| **P0** (blocks normal use) | F-1, I-1 | Add product edit/delete endpoint; fix serial-tracked CSV import (reject `stock > 0` or force `stock = 0`) |
+| **P1** (data correctness) | P-1, P-3, P-4, I-2, I-3, I-4, S-1 | Honor `?limit=`, server-side search, serial-aware stock in list, stock-movement audit rows on import, transactional import, server-side re-validation, show actual serial warranty months |
+| **P2** (UX / consistency) | C-1, C-2, C-3, I-5, I-6, I-7, I-8, R-1, R-2 | Response shape consistency, slug collision handling, tighten master-catalog matching, proper CSV parser, add `serialTracked` to template, case-insensitive dedup, auto-load stock report, show out-of-stock count |
+| **P3** (polish) | F-2, F-3, F-4, F-5, C-4, C-5, C-6, I-9, I-10, I-11, S-2, S-3, S-4, S-5, S-6, R-3, R-4, R-5 | Validation hardening, missing UI affordances, performance, dead code cleanup |
+
+### 8.8 Files to touch for Section 8 fixes
+
+| File | Fix IDs |
+|---|---|
+| `src/app/api/businesses/[id]/cctv/products/route.ts` | P-1, P-3, P-4, P-5 |
+| `src/app/api/businesses/[id]/cctv/products/[productId]/route.ts` (new) | F-1, F-5 |
+| `src/modules/cctv-shop/components/CCTVProductForm.tsx` | F-1, F-2, F-4 |
+| `src/modules/cctv-shop/components/CCTVProductsList.tsx` | P-2, P-3 |
+| `prisma/schema.prisma` + new migration | F-3 (`@@unique([businessId, sku])`) |
+| `src/app/api/businesses/[id]/cctv/categories/route.ts` | C-1, C-2 |
+| `src/app/api/businesses/[id]/cctv/categories/[categoryId]/route.ts` | C-3 |
+| `src/modules/cctv-shop/components/CCTVCategories.tsx` | C-4, C-5, C-6 |
+| `src/lib/slug.ts` (new) | C-2, C-3 |
+| `src/app/api/businesses/[id]/cctv/products/import/route.ts` | I-1, I-2, I-3, I-4, I-5, I-6, I-8, I-9 |
+| `src/modules/cctv-shop/components/CCTVImportProducts.tsx` | I-7, I-10, I-11 |
+| `public/templates/product-import-template.csv` | I-7 |
+| `src/app/api/businesses/[id]/cctv/serial-history/route.ts` | S-2, S-3, S-4 |
+| `src/modules/cctv-shop/components/CCTVSerialSearch.tsx` | S-1, S-5, S-6 |
+| `src/app/api/businesses/[id]/cctv/reports/stock/route.ts` | (already covered in Section 2) |
+| `src/modules/cctv-shop/components/CCTVStockReport.tsx` | R-1, R-2, R-4 |
+| `src/app/globals.css` or `src/modules/cctv-shop/components/CCTVShell.tsx` | R-3 |
 
 ---
 
