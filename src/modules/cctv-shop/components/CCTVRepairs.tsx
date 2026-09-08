@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft, Loader2, Plus, Wrench, X, Phone, User, Package,
   CheckCircle2, Send, RefreshCw, AlertCircle, ChevronRight, Shield, Printer,
-  ShoppingCart, FileText,
+  ShoppingCart, FileText, Trash2,
 } from 'lucide-react';
 import { useCCTVNavStore } from '@/stores/cctv-nav-store-simple';
 import { useAuthStore } from '@/stores/auth-store';
@@ -243,6 +243,57 @@ export function CCTVRepairs() {
             .then((d) => setTimeline(d.history || []))
             .catch(() => {});
         }
+      } else {
+        const data = await res.json();
+        toast({ title: data.error || 'Failed', variant: 'destructive' });
+      }
+    } catch {
+      toast({ title: 'Network error', variant: 'destructive' });
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  // ── RP-10: delete a repair that was created in error ──
+  // Only `received`-status repairs with repairCost = 0 are eligible.
+  // The API enforces both; the UI just provides the button + confirm.
+  const handleDelete = async () => {
+    if (!selectedRepair) return;
+    if (selectedRepair.status !== 'received') {
+      toast({
+        title: 'Cannot delete',
+        description: `Only 'received' repairs can be deleted (this one is '${selectedRepair.status}').`,
+        variant: 'destructive',
+      });
+      return;
+    }
+    if ((selectedRepair.repairCost || 0) > 0) {
+      toast({
+        title: 'Cannot delete',
+        description: `Set repairCost to 0 first (currently ৳${selectedRepair.repairCost}).`,
+        variant: 'destructive',
+      });
+      return;
+    }
+    const ok = confirm(
+      `Delete repair ${selectedRepair.tokenNo || selectedRepair.id.slice(-8)}?\n\n` +
+      `This will:\n` +
+      `  • Restore the serial's status (back to SOLD or RETURNED_TO_CUSTOMER)\n` +
+      `  • Write an audit entry in the serial's history\n` +
+      `  • Permanently remove the repair row\n\n` +
+      `This action cannot be undone.`
+    );
+    if (!ok) return;
+    setUpdating(true);
+    try {
+      const res = await fetch(`/api/businesses/${businessId}/cctv/repairs/${selectedRepair.id}`, {
+        method: 'DELETE',
+      });
+      if (res.ok) {
+        toast({ title: 'Repair deleted', description: 'Serial status restored.' });
+        setSelectedRepair(null);
+        setStatusNotes(''); setStatusCost('');
+        loadRepairs();
       } else {
         const data = await res.json();
         toast({ title: data.error || 'Failed', variant: 'destructive' });
@@ -502,6 +553,30 @@ export function CCTVRepairs() {
             >
               View Replacement
             </button>
+          </div>
+        )}
+
+        {/* ── RP-10: Delete button — only for received-status repairs ── */}
+        {selectedRepair.status === 'received' && (
+          <div className="bg-red-50/50 rounded-2xl border border-red-200 p-4">
+            <p className="text-xs text-red-700 font-semibold mb-1">Created in error?</p>
+            <p className="text-[11px] text-red-600 mb-3">
+              Deleting a 'received' repair restores the serial to its previous status and writes
+              an audit entry. Only available before any work has started (no repairCost recorded).
+            </p>
+            <button
+              onClick={handleDelete}
+              disabled={updating || (selectedRepair.repairCost || 0) > 0}
+              className="w-full h-10 rounded-xl bg-white border border-red-300 text-red-600 text-sm font-semibold hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+            >
+              <Trash2 className="w-4 h-4" />
+              Delete this repair
+            </button>
+            {(selectedRepair.repairCost || 0) > 0 && (
+              <p className="text-[10px] text-red-500 mt-2">
+                Clear the repair cost (set to 0 via the cost input above) before deleting.
+              </p>
+            )}
           </div>
         )}
       </motion.div>

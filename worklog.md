@@ -2153,3 +2153,52 @@ Stage Summary:
 - New indices: (businessId, paidTo) for auditor-style "expenses by payee" query
 - Both Customer-facing flows benefit: expense list filterable by date/category/payee, form supports custom categories + payee + receipt attachment
 - Backward compat: all new columns are nullable so existing rows keep working with no backfill needed
+
+---
+Task ID: medium-batch-6
+Agent: main (continuation)
+Task: RP-5 / RP-6 / RP-9 / RP-10 — repair polish (date validation + token race retry + null guard + delete endpoint)
+
+Work Log:
+- Read CCTVRepairs.tsx (~700 lines), repairs POST route, repairs [repairId] PATCH/DELETE route, CCTVRepair schema
+- Confirmed RP-3 (state machine), RP-4 (IN_REPAIR on ready), RP-7 (repair cost invoicing), RP-8 (pagination) were already fixed in prior batches
+- RP-5 (date validation):
+  - POST now validates `receivedDate` up-front
+  - Rejects non-date strings with 400
+  - Rejects dates more than 1 day in the future (allows for timezone slippage)
+  - Rejects dates more than 1 year in the past (a repair dated a year ago is almost certainly a typo)
+  - Default `new Date()` preserved when `receivedDate` is omitted
+- RP-6 (token race):
+  - POST wraps the transaction in a retry loop (max 5 attempts)
+  - Each attempt recomputes `todayCount` fresh inside its own transaction
+  - The token sequence number is `todayCount + 1 + attempt` — retry #1 uses N+1, retry #2 uses N+2, etc.
+  - If the INSERT throws P2002 on `tokenNo`, the outer catch retries
+  - If all 5 attempts fail, a friendly "Failed to generate a unique repair token after 5 attempts" error is returned
+  - The `@@unique` constraint on tokenNo is the safety net; the retry loop just makes collisions rare
+- RP-9 (null serialItemId guard):
+  - PATCH now writes the history row even when `serialItemId` is null (the serialNumber + repairId are enough to identify the event for the timeline)
+  - The serial-status updateMany is now guarded by `if (serialStatus && repair.serialItemId)` — never runs with a null PK
+  - The result is the same as before (0 rows updated when null), but the intent is now explicit
+- RP-10 (DELETE endpoint):
+  - New DELETE handler on `/cctv/repairs/[repairId]`
+  - Restricted to repairs in `received` status with `repairCost = 0` (no work done, no payment collected)
+  - Within a transaction:
+    1. Restores the serial's status — looks up the most recent pre-repair history event (excluding this repair's REPAIR_RECEIVED) and restores to SOLD (default) or RETURNED_TO_CUSTOMER (if that was the most recent status)
+    2. Writes a `NOTE` history entry describing the deletion + the restored status (audit trail preserved)
+    3. Hard-deletes the repair row
+  - Returns 400 with a friendly error if the repair is too far along (any status other than `received`) or has a non-zero repairCost
+  - UI: a "Delete this repair" button appears in the detail view ONLY when `status === 'received'`
+    - Disabled when `repairCost > 0` with a hint to clear the cost first
+    - Confirm dialog explains what will happen (serial restored, audit entry written, repair row removed)
+    - On success: toast "Repair deleted. Serial status restored." → returns to list view
+- Imported `Trash2` from lucide-react for the delete button icon
+- TypeScript: only 5 pre-existing mobile-shop errors (mushak-invoices, MSCreatePurchase) — none in CCTV code
+- Updated docs/STOCK_CALCULATION_BUGS.md: marked RP-5, RP-6, RP-9, RP-10 FIXED; refreshed "Still open (Medium)" summary
+
+Stage Summary:
+- 4 Medium-priority bugs closed (RP-5, RP-6, RP-9, RP-10) — the entire "repair polish" cluster
+- Cumulative CCTV bugs fixed across all batches: ~99 (95 prior + 4 new)
+- No schema migration required (all changes are route + UI logic only)
+- The DELETE endpoint preserves audit integrity: the serial's history records the deletion event with the token number + restored status, even though the repair row itself is removed
+- RP-6's retry loop is a pragmatic fix — for true high-volume concurrency we'd want a sequence table, but the @@unique constraint + 5 retries is enough for a typical CCTV shop's 10-20 repairs/day
+- Backward compat: all existing data works with no backfill needed; the DELETE endpoint is purely additive
