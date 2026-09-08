@@ -201,7 +201,25 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   }
 
   // Sort by date (stable sort preserves insertion order within same date)
-  entries.sort((a, b) => a.date.localeCompare(b.date));
+  // Sort by date, then by type priority within the same date.
+  // CL-6 fix: previously sorted by date string only, so entries on the
+  // same day sorted arbitrarily (whatever insertion order JavaScript's
+  // sort happened to preserve). Now we use a stable secondary sort:
+  // opening → sale → purchase → payment → everything else. This ensures
+  // a customer who bought and paid on the same day sees the sale (debit)
+  // before the payment (credit), so the balance progression makes sense.
+  const TYPE_PRIORITY: Record<string, number> = {
+    opening: 0,
+    sale: 1,
+    payment: 2,
+  };
+  entries.sort((a, b) => {
+    const dateCmp = a.date.localeCompare(b.date);
+    if (dateCmp !== 0) return dateCmp;
+    const aPrio = TYPE_PRIORITY[a.type] ?? 99;
+    const bPrio = TYPE_PRIORITY[b.type] ?? 99;
+    return aPrio - bPrio;
+  });
 
   // Calculate running balance
   let runningBalance = openingBalance;

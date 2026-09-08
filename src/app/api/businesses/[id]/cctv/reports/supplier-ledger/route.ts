@@ -174,8 +174,21 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     });
   }
 
-  // Sort by date
-  entries.sort((a, b) => a.date.localeCompare(b.date));
+  // Sort by date, then by type priority within the same date.
+  // SL-7 fix: same as CL-6 — stable secondary sort by type.
+  // opening → purchase → payment → everything else.
+  const TYPE_PRIORITY: Record<string, number> = {
+    opening: 0,
+    purchase: 1,
+    payment: 2,
+  };
+  entries.sort((a, b) => {
+    const dateCmp = a.date.localeCompare(b.date);
+    if (dateCmp !== 0) return dateCmp;
+    const aPrio = TYPE_PRIORITY[a.type] ?? 99;
+    const bPrio = TYPE_PRIORITY[b.type] ?? 99;
+    return aPrio - bPrio;
+  });
 
   // Calculate running balance
   let runningBalance = openingBalance;
