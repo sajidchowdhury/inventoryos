@@ -8,6 +8,7 @@
 >   - Section 10: Repairs & Service feature audit (repairs, repair token, warranty dashboard)
 >   - Section 11: Customers & Expenses feature audit (customer ledger, due collection, expenses)
 >   - Section 12: Reports feature audit (all 13 reports — data accuracy + logic)
+>   - Section 13: Settings/Admin feature audit + Subscription model audit (the 7-day/3-day/5-day lifecycle flow)
 > **Status:** Open — fixes not yet applied
 
 ---
@@ -55,6 +56,14 @@ The Reports audit (Section 12) found 7 more critical/high bugs:
 - **Cash Book filters sales by `paymentType: "cash"` only** — credit sales are silently omitted, but the cash book is supposed to show ALL money in/out. A cash sale made with `paymentType: "credit"` (because the customer put ৳500 down on a ৳5000 sale) won't appear in the cash book even though ৳500 of cash was collected (CB-1).
 - **Profit & Loss computes COGS from `SaleItem.costPrice`, which is hardcoded to 0 for estimate-converted sales** (E-6 from §9.3) — net profit is overstated by 100% margin on every converted sale (PL-1).
 - **Top Products aggregates by `productName` (a free-text string), not `productId`** — two sales of the same product with slightly different name spellings ("Hikvision DS-2CD" vs "Hikvision DS-2CD2143G2") appear as two separate products in the ranking (TP-1).
+
+The Settings/Admin + Subscription audit (Section 13) found 6 more critical/high bugs:
+- **`requireActiveSubscription` guard is never called anywhere in the codebase** — the entire 4-stage subscription lifecycle (active → expiring_soon → read_only → data_wiped) is dead code. CCTV sale/purchase/repair routes don't enforce it. A business in `read_only` or `data_wiped` stage can still create sales, purchases, and repairs (SUB-1).
+- **CCTV Settings → Subscription tab is a "Coming Soon" placeholder** — the pay endpoint exists (`/subscription/pay`) but the CCTV UI has no payment form. Users can't submit a bKash payment from within the CCTV module (SUB-2).
+- **Price mismatch** — the user's intended price is ৳500/month, but the configured prices are ৳800/month (Pro) and ৳1500/month (Pro AI). No ৳500 tier exists (SUB-3).
+- **Timeline mismatch** — the implemented lifecycle is: 7 days BEFORE expiry (warning) → day 0 expiry (read_only, 14 days) → day 14 (data_wiped, soft-delete) → day 44 (permanent purge). The user's intended flow is: day 7 (warning) → day 10 (restricted, 3 days) → day 15 (delete, no restore). Completely different (SUB-4).
+- **Verification flow is inverted** — the user describes "user submits → super admin sees the submission → super admin verifies → marks done". The implemented flow requires the super admin to upload their bKash statement FIRST (`ReceivedPayment`), then an auto-matching engine matches by TRX ID + amount ±৳5. Manual match requires a `ReceivedPayment` to exist first. There is no "direct verify" endpoint that approves a `PaymentTransaction` without a corresponding `ReceivedPayment` (SUB-5).
+- **Soft-delete vs hard-delete** — implemented uses soft-delete + 30-day restore window (data can be recovered if payment arrives late). User wants immediate deletion at day 15 with no restore. The "no duplicate account" constraint IS satisfied — the `Business` row persists after data wipe, so the same phone can't re-register. But the restore window contradicts the user's "without backup" requirement (SUB-6).
 
 ---
 
@@ -1132,6 +1141,237 @@ This matrix shows which reports agree with each other on key financial figures. 
 | `src/app/api/businesses/[id]/cctv/suppliers/[supplierId]/route.ts` (new) | SL-5 |
 | `src/modules/cctv-shop/components/CCTVLedger.tsx` | SL-9, SL-10 (supplier-specific UI tweaks) |
 | `prisma/schema.prisma` + new migration | PL-4 (`CCTVRepairPart` model for repair parts), SL-5 (`isActive` on supplier) |
+
+---
+
+## 13. Settings/Admin Feature Audit + Subscription Model Audit
+
+This section audits the three Settings/Admin features (Dashboard, Settings, Admin CCTV Page) AND the subscription model — specifically comparing the user's described 7-step subscription flow against what's actually implemented.
+
+Bug IDs are prefixed: **DB** (Dashboard), **ST** (Settings), **AP** (Admin CCTV Page), **SUB** (Subscription).
+
+### 13.1 Dashboard
+
+**Files:** `src/app/api/businesses/[id]/cctv/dashboard/route.ts` · `src/modules/cctv-shop/components/CCTVDashboard.tsx` (rendered by `CCTVShell.tsx`)
+
+> The Dashboard API was already covered in §8 (workaround for serial-tracked stock). Findings there: low-stock count correct (uses IN_STOCK override), total stock value correct.
+
+| ID | Severity | Bug |
+|---|---|---|
+| **DB-1** | High | Dashboard does not show subscription status. A business that is `expiring_soon` or `read_only` shows the same dashboard as an `active` business. No banner, no warning, no days-until-expiry indicator. The user has no idea their subscription is about to lapse. |
+| **DB-2** | Medium | "Today's Sales" (route line 21–26) sums `totalAmount` of sales today — but `totalAmount` is post-discount. A shop with ৳10000 in sales and ৳2000 in discounts shows "Today's Sales: ৳8000" with no indication of the discount. Should show both gross and net. |
+| **DB-3** | Medium | "Quick Actions" (per `CCTVShell.tsx` rendering) are Buy / Sell / Repair / Daily Summary. No "Pay Subscription" quick action — even though per the user's flow, paying is the most critical action when the subscription is expiring. Should show a prominent "Pay Subscription" button when `subscriptionStage` is `expiring_soon` or later. |
+| **DB-4** | Low | "Recent Sales" (route line 74–79) shows last 5 sales with `customerName`, `totalAmount`, `saleDate`, `paymentType`. Doesn't show `dueAmount` — a sale with ৳5000 due shows as "৳5000 · credit" with no indication that it's unpaid. |
+| **DB-5** | Low | "Recent Purchases" (route line 82–87) shows last 5 purchases with `supplierName`, `totalAmount`, `purchaseDate`. Doesn't show `dueAmount` either. |
+| **DB-6** | Low | No "today's repairs" or "today's warranty claims" on the dashboard. A shop with 10 repairs received today sees 0 mention of repairs on the dashboard. |
+
+### 13.2 Settings (In-app)
+
+**Files:** `src/modules/cctv-shop/components/CCTVSettings.tsx`
+
+The Settings page has 4 tabs: Password, Users, Permissions, Subscription.
+
+| ID | Severity | Bug |
+|---|---|---|
+| **ST-1** | **Critical** | **Subscription tab is a "Coming Soon" placeholder.** Lines 442–452 of `CCTVSettings.tsx`:
+```tsx
+function SubscriptionTab({ businessId }: { businessId?: string }) {
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 p-8 shadow-sm text-center">
+      <p className="text-sm font-semibold text-gray-700">Subscription Management</p>
+      <p className="text-xs text-gray-400 mt-1">Coming soon</p>
+    </div>
+  );
+}
+```
+The `/api/businesses/[id]/subscription/pay` POST endpoint exists and works, but the CCTV UI has no form to call it. Users cannot submit a bKash payment from within the CCTV module. This breaks step 2 of the user's intended flow ("user sends money via bKash + puts the transaction ID and sends"). |
+| **ST-2** | High | Password tab: min length is 4 characters (line 81). Industry standard is 8. A 4-character password is brute-forceable in seconds. |
+| **ST-3** | High | Users tab: creating a user requires `fullName, username, password` but no email. No password strength indicator. No "force password change on first login" flag. The created user can log in immediately with the admin-set password — if the admin mistypes it, the user is locked out with no recovery path (no email to send a reset link to). |
+| **ST-4** | High | Users tab: no role-based permission editor. The `role` field accepts `admin | manager | staff` (line 354–359), but the actual permissions for each role are not shown or editable. The Permissions tab (lines 379–438) is read-only — it shows the current user's permissions and the available roles, but doesn't let an admin customize what each role can do. |
+| **ST-5** | Medium | Users tab: no "edit user" flow. You can create and activate/deactivate, but can't change a user's name, username, phone, or role after creation. No `users/[userId]/route.ts` PATCH for these fields (only `password` PATCH exists). |
+| **ST-6** | Medium | Users tab: no "delete user". Only deactivate. A deactivated user with a typo'd username clutters the user list forever. |
+| **ST-7** | Medium | Permissions tab: shows `Object.entries(perms)` (line 410) — the permission keys are raw strings like `can_create_sale`, `can_view_reports`. No human-readable labels. A shop owner sees `can_create_sale: ✓` with no explanation. Should have a label map. |
+| **ST-8** | Medium | No "business profile" tab. The shop's name, address, phone, BIN/TIN (for VAT), logo — none of these are editable from the in-app Settings. They're set at registration time and immutable. The `Business` model has these fields but no UI to edit them. |
+| **ST-9** | Medium | No "payment methods" config. The shop accepts cash/bank/bKash/Nagad per `PaymentMethodSelector`, but there's no way to configure which methods are active for THIS business. A shop that doesn't use bKash still shows it as an option at the POS. |
+| **ST-10** | Low | Password tab uses `useAuthStore.getState().session` (line 92–93) to get the current user ID — this is a non-reactive read inside an event handler. Works, but the pattern is inconsistent with the rest of the component which uses the hook form. |
+| **ST-11** | Low | No "export settings" or "audit log" of who changed what. A multi-user shop can't tell who changed a password or created a user. |
+
+### 13.3 Admin CCTV Page (Super-admin)
+
+**Files:** `src/app/admin/cctv/page.tsx` · `src/app/admin/catalog/cctv/CCTVCatalogContent.tsx`
+
+| ID | Severity | Bug |
+|---|---|---|
+| **AP-1** | High | The "DB Hardening" score (line 82) is hardcoded to "98/100" — not computed from actual database state. A shop with 0 products and no migrations still shows 98/100. Misleading. |
+| **AP-2** | High | The "Module Status: Live" (line 74) and "Production-ready" (line 75) are hardcoded strings. No actual health check. If the CCTV module is broken, this still says "Live". |
+| **AP-3** | High | The Overview tab (lines 106–155) is entirely static text — a feature list with bullet points. No dynamic data: no count of CCTV businesses, no count of products in the master catalog, no count of sales across all tenants, no revenue summary. The super-admin gets zero operational insight from this page. |
+| **AP-4** | Medium | The Catalog tab embeds `CCTVCatalogContent` — but I didn't audit that component's full flow (CSV import for the MASTER catalog, not per-business). The master catalog is shared across all CCTV tenants. Adding a product here makes it available to every tenant's import. No audit of who added what, no approval workflow. |
+| **AP-5** | Medium | No "tenants" view. The super-admin can't see a list of all CCTV businesses, their subscription status, their last payment date, their data volume. The `admin/clients/page.tsx` may have this, but it's not linked from the CCTV admin page. |
+| **AP-6** | Medium | No "subscription management" section on the CCTV admin page. The super-admin manages received payments from `/admin` (the global admin), not from the CCTV-specific page. A super-admin focused on CCTV has to context-switch. |
+| **AP-7** | Low | The header badge "Live" (line 36) with an animated pulse dot implies real-time status. It's static. |
+| **AP-8** | Low | No dark mode testing evident — the hardcoded colors (`text-emerald-600`, `text-blue-600`) don't use the shadcn theme tokens (`text-success-foreground`, etc.), so dark mode may render with poor contrast. |
+
+### 13.4 Subscription Model — Audit against the user's 7-step intended flow
+
+This is the critical part of this section. The user described a 7-step subscription flow. I compared each step against the actual implementation.
+
+#### The user's intended flow (verbatim)
+
+1. User pays ৳500 each month
+2. For the payment he just sends money by bKash (not using our software) and puts the transaction ID and sends
+3. In the super admin panel we will get a payment receive section where super admin can see who sent it, how much sent, for which software, and the TX ID
+4. When super admin verifies the TX ID is right then it will mark as done and the user is good to use the software again
+5. When a user fails to make a payment within 7 days the system will give him warning of losing access
+6. When he failed to make payment within next 3 days he will able to login and access the payment option and reports and can't see any other features
+7. When he failed to do so within next 5 days the whole data will be deleted without backup only the ac will be available, so no duplicate ac
+
+#### Step-by-step comparison
+
+| Step | User's intent | Implemented? | Verdict |
+|---|---|---|---|
+| **1. ৳500/month** | ৳500/month flat price | ৳800/month (Pro), ৳1500/month (Pro AI), ৳0 (Free). No ৳500 tier. Prices in `src/lib/feature-gate.ts` (TIER_CONFIGS) + DB-configurable via `paymentConfig` table. | ❌ **SUB-3** |
+| **2. User submits TX ID via software** | User sends bKash payment externally, enters TX ID in software | `/api/businesses/[id]/subscription/pay` POST exists — accepts `method, trxId, amount, billingPeriod, note`, creates `PaymentTransaction` (status=pending). BUT the CCTV Settings → Subscription tab is a "Coming Soon" placeholder (ST-1). The endpoint works; the UI doesn't call it. | ❌ **SUB-2** (UI gap) |
+| **3. Super admin sees submissions** | Super admin sees who sent, how much, for which business, TX ID | `/api/super-admin/pending-payments` GET exists — lists pending `PaymentTransaction`s with business info (name, shopCode, tier, subscriptionEnd, stage). ✅ The data is there. But the flow is inverted: the implemented model expects the super admin to ALSO upload their bKash statement (`/api/super-admin/received-payments` POST), and an auto-matching engine matches the two by TRX ID + amount ±৳5. The user's intent is a direct verify flow, not a two-sided match. | ⚠️ **SUB-5** (inverted flow) |
+| **4. Super admin verifies → marks done** | Super admin verifies TX ID → marks as done → user can use software | Two paths exist: (a) **auto-match** — when super admin uploads a `ReceivedPayment` with the same TRX ID, `tryMatchReceivedPayment()` auto-matches and extends subscription. (b) **manual match** — `/api/super-admin/received-payments/[id]/match` POST manually links a `ReceivedPayment` to a `PaymentTransaction`. **BUT there is no "direct verify" endpoint** — you cannot approve a `PaymentTransaction` without a corresponding `ReceivedPayment`. If the super admin doesn't upload their bKash statement, there is no way to mark a payment as done. Also `/api/super-admin/payments/[id]/reject` exists (reject with reason) but no `/verify` or `/approve`. | ❌ **SUB-5** (no direct verify) |
+| **5. 7 days no payment → warning** | 7 days after subscription end with no payment → warning | The implemented lifecycle (`runSubscriptionLifecycleJob` in `src/lib/cron-jobs.ts`) transitions `active → expiring_soon` when `subscriptionEnd` is **within 7 days BEFORE expiry** — not 7 days after. The warning is a pre-expiry heads-up, not a post-expiry grace warning. After expiry, the business immediately goes to `read_only` (day 0, not day 7). | ❌ **SUB-4** (timeline mismatch) |
+| **6. +3 days → restricted access (payment + reports only)** | Day 10 total: can login, access payment + reports, nothing else | The `read_only` stage (implemented at day 0, not day 7) blocks writes via `requireActiveSubscription` guard — BUT **the guard is never called on CCTV routes** (SUB-1). Even if it were called, the timeline is wrong: `read_only` starts at expiry (day 0) and lasts 14 days, not starts at day 7 and lasts 3 days. The "payment + reports only" intent IS implemented in the guard (reports + payment endpoints are exempted from the guard), but the enforcement is dead code. | ❌ **SUB-1 + SUB-4** |
+| **7. +5 days → delete data, keep account, no duplicates** | Day 15 total: delete all data without backup, keep account shell, prevent duplicate re-registration | The implemented lifecycle transitions `read_only → data_wiped` at **14 days after subscriptionEnd** (not day 10). It does a SOFT delete (sets `dataSoftDeletedAt`, keeps the rows) with a 30-day restore window — not a hard delete. Permanent purge happens at `dataPurgeDate` = 30 days after `data_wiped` = day 44 total. The "no duplicate account" constraint IS satisfied — the `Business` row persists, so the same phone can't re-register. But the timeline (day 44 vs day 15) and the soft-delete-with-restore vs hard-delete-immediately are both wrong. | ❌ **SUB-4 + SUB-6** |
+
+#### Detailed subscription bug list
+
+| ID | Severity | Bug |
+|---|---|---|
+| **SUB-1** | **Critical** | **`requireActiveSubscription` guard is never called anywhere in the codebase.** `grep -r "requireActiveSubscription"` finds only the definition in `src/lib/subscription-guard.ts` — zero call sites. The CCTV sale POST (`src/app/api/businesses/[id]/cctv/sales/route.ts`), purchase POST, repair POST, expense POST, payment POST — none of them check subscription stage. A business in `read_only` or `data_wiped` stage can still create sales, purchases, repairs, expenses. The entire 4-stage lifecycle is dead code. The guard was designed and documented but never wired in. |
+| **SUB-2** | **Critical** | **CCTV Settings → Subscription tab is a "Coming Soon" placeholder** (ST-1). The `/subscription/pay` endpoint works, but the CCTV UI has no form. Users can't submit a bKash payment from the CCTV module. The `SubscriptionStatus` component exists at `src/modules/pharmacy/components/SubscriptionStatus.tsx` (pharmacy module) but is NOT in the CCTV module. CCTV users have no way to pay. |
+| **SUB-3** | High | **Price mismatch.** User's intent: ৳500/month. Configured: ৳800/month (Pro), ৳1500/month (Pro AI), ৳0 (Free). No ৳500 tier exists. The prices are in `src/lib/feature-gate.ts` (TIER_CONFIGS) and DB-configurable via `paymentConfig` table (`proMonthly`, `proAiMonthly`). To match the user's intent, either add a new ৳500 tier or change `proMonthly` to 500 in the DB. |
+| **SUB-4** | **Critical** | **Timeline mismatch.** The implemented lifecycle (in `runSubscriptionLifecycleJob`) is: |
+|   |   | • `active → expiring_soon`: 7 days **before** `subscriptionEnd` (pre-expiry warning) |
+|   |   | • `expiring_soon → read_only`: at `subscriptionEnd` (day 0 of expiry) — writes blocked |
+|   |   | • `read_only → data_wiped`: 14 days after `subscriptionEnd` (day 14) — data soft-deleted |
+|   |   | • `data_wiped → true purge`: 30 days after `data_wiped` (day 44) — permanent delete |
+|   |   | The user's intended flow is: |
+|   |   | • Day 7 after expiry: warning |
+|   |   | • Day 10 after expiry: restricted access (3 days) |
+|   |   | • Day 15 after expiry: hard delete, no restore |
+|   |   | These are completely different timelines. The implemented flow gives a 44-day total grace window; the user wants 15 days. |
+| **SUB-5** | High | **Verification flow is inverted.** The user describes: "super admin sees the submission → verifies → marks done". The implemented flow requires the super admin to upload a `ReceivedPayment` (from their bKash statement) FIRST, then an auto-matching engine matches by TRX ID + amount ±৳5. The manual match endpoint (`/received-payments/[id]/match`) requires a `ReceivedPayment` to exist. **There is no endpoint to directly approve a `PaymentTransaction`** without a `ReceivedPayment`. If the super admin doesn't upload their statement, pending payments sit forever. Need to add `/api/super-admin/payments/[id]/verify` POST that directly marks a `PaymentTransaction` as matched and extends the subscription. |
+| **SUB-6** | Medium | **Soft-delete vs hard-delete.** The implemented `data_wiped` stage sets `dataSoftDeletedAt` and keeps all rows. `canRestoreData()` returns true if `dataPurgeDate` hasn't passed. `restoreBusinessData()` clears the soft-delete flag. This means a user who pays on day 20 (after data wipe) gets their data back. The user's intent is "whole data will be deleted without backup" at day 15 — no restore. The "no duplicate account" part IS correct (Business row persists). But the restore window contradicts "without backup". Decision needed: is the restore window a feature (grace for late payers) or a bug (contradicts the policy)? |
+| **SUB-7** | High | **Cron job not verified as running.** The `/api/cron/subscription-lifecycle` POST endpoint exists and `runSubscriptionLifecycleJob()` works, but there's no evidence of an external scheduler triggering it. The route comment says "Triggered daily at 02:00 UTC by an external scheduler" — but there's no cron config in the repo, no Vercel cron config, no systemd timer. If the cron isn't running, no transitions happen, and expired businesses stay `active` forever. Need to verify the scheduler is configured in production. |
+| **SUB-8** | High | **`expiring_soon` stage doesn't restrict anything.** The guard (if it were called) allows writes in both `active` and `expiring_soon`. The user's intent for the warning stage (step 5) is just a warning — no restriction. ✅ This part matches. But the UI doesn't show the warning (DB-1). So even if the guard were called, the user wouldn't know they're in `expiring_soon`. |
+| **SUB-9** | Medium | **No "subscription expired" banner in the CCTV shell.** The `subscriptionStage` is on the `Business` model and returned by the session, but `CCTVShell.tsx` doesn't render any banner. A user in `read_only` mode (if the guard were enforced) would see the full UI, click "Sell", and get a 403 error with no prior warning. Should show a persistent red banner: "Subscription expired. Pay now to restore access. Data will be deleted in X days." |
+| **SUB-10** | Medium | **Auto-match tolerance ±৳5 is too tight for ৳500 payments.** `AMOUNT_TOLERANCE_BDT = 5` in `payment-matching.ts` line 21. For a ৳500 payment, a ৳5 tolerance is 1%. bKash sometimes rounds or deducts fees; a user sending ৳500 might show as ৳495 or ৳505 on the statement. Auto-match would fail, forcing manual match. For a ৳800 payment, ৳5 is 0.6% — fine. Should scale the tolerance with the amount (e.g. 1% or min ৳10). |
+| **SUB-11** | Medium | **No "billing period" selection in the pay endpoint.** The `/subscription/pay` POST accepts `billingPeriod: "month" | "year"` (line 60), but the expected amount is computed based on this. If the user submits `billingPeriod: "year"` with ৳500 (instead of ৳5000 annual), the auto-match will fail (amount too low). The UI (once built) should lock the billing period to the tier's allowed options and show the expected amount prominently. |
+| **SUB-12** | Medium | **No duplicate TRX ID check across businesses.** `payment-matching.ts` line 73–92 searches for pending `PaymentTransaction`s by `trxId + status: pending + method`. If two businesses submit the same TRX ID (one typo, one real), the auto-match picks the closest amount — which might be the wrong business. The `existing` check in `/subscription/pay` (line 74–86) only checks for pending payments with that TRX ID globally, not per-business. A TRX ID can only be pending once at a time — but once matched, the same TRX ID can be re-submitted by a different business. Should check TRX ID uniqueness across ALL statuses (pending + matched), not just pending. |
+| **SUB-13** | Medium | **No "payment received" notification to the user via SMS/WhatsApp.** `payment-matching.ts` line 211 creates a `NotificationLog` entry — but that's in-app. The user has to log in to see it. Bangladesh users expect an SMS confirmation. The `email.ts` lib exists but isn't called here. |
+| **SUB-14** | Medium | **No "subscription expiring" SMS reminder.** The cron job creates `NotificationLog` entries (in-app), but no SMS. A user who doesn't log in for 7 days before expiry never sees the warning. |
+| **SUB-15** | Low | **`subscriptionStart` is never updated on payment.** `payment-matching.ts` updates `subscriptionEnd`, `subscriptionStage`, `subscriptionStatus`, `aiEnabled` — but not `subscriptionStart`. A business that pays monthly for a year has `subscriptionStart` from the first payment, which is correct. But if a business lapses and re-pays, `subscriptionStart` still shows the original date — the "subscription age" metric is wrong. |
+| **SUB-16** | Low | **No "trial" period handling visible.** The cron job filters `subscriptionStatus: { in: ["trial", "active"] }` for the expiring_soon transition, but there's no UI to set a trial period or convert trial → active. The `subscriptionStatus` field accepts "trial" but no endpoint sets it. |
+| **SUB-17** | Low | **No subscription invoice PDF.** `SubscriptionInvoice` records are created on match (line 176–187 of payment-matching.ts), but there's no endpoint to download a PDF invoice for tax purposes. |
+| **SUB-18** | Low | **No "payment history" UI in CCTV.** The `/subscription/payments` GET endpoint exists and returns the user's payment history, but the CCTV Subscription tab is "Coming Soon" — so the history is unreachable. |
+
+### 13.5 Recommended fixes (prioritized)
+
+#### P0 — blocks the subscription model from working at all
+
+- **SUB-1**: Wire `requireActiveSubscription` into every CCTV write route. At the top of each POST/PATCH/DELETE handler in `src/app/api/businesses/[id]/cctv/`, add:
+  ```ts
+  const guard = await requireActiveSubscription(businessId);
+  if (!guard.allowed) return guard.error;
+  ```
+  Files to update: `sales/route.ts`, `sales/[saleId]/items/route.ts`, `purchases/route.ts`, `repairs/route.ts`, `repairs/[repairId]/route.ts`, `expenses/route.ts`, `estimates/route.ts`, `estimates/[estimateId]/convert/route.ts`, `products/route.ts`, `categories/route.ts`, `customers/route.ts`, `suppliers/route.ts`, `payments/route.ts`. Reports + export endpoints should be EXEMPT (the user's step 6 requires reports to remain accessible).
+
+- **SUB-2**: Build the CCTV Subscription tab. Replace the "Coming Soon" placeholder (lines 442–452 of `CCTVSettings.tsx`) with a real form that:
+  - Shows current tier, status, subscriptionEnd, days remaining
+  - Shows a "Pay Now" form (method selector, TRX ID input, amount, billing period, note)
+  - Calls `/api/businesses/[id]/subscription/pay` POST
+  - Shows payment history via `/api/businesses/[id]/subscription/payments` GET
+  - Shows expected amount prominently (from the tier config or `paymentConfig`)
+
+- **SUB-3**: Set the price to ৳500/month. Either:
+  - Add a new tier `"basic"` with `price: 500` in `TIER_CONFIGS`, OR
+  - Update `proMonthly` to 500 in the `paymentConfig` DB row (via `/api/super-admin/ai-config` or a direct DB update), OR
+  - Add a UI in the super-admin panel to configure the monthly price.
+
+- **SUB-4**: Adjust the lifecycle timeline in `runSubscriptionLifecycleJob` (in `src/lib/cron-jobs.ts`) to match the user's intent:
+  - Day 0 (expiry): stay in `expiring_soon` or move to a new `grace` stage — writes still allowed, warning shown
+  - Day 7 (after expiry): transition to `read_only` — writes blocked, payment + reports only
+  - Day 10 (after expiry): transition to a `restricted` stage — same as `read_only` but with a "final warning" notification
+  - Day 15 (after expiry): transition to `data_wiped` — HARD delete (not soft), no restore window
+  - Remove the 30-day purge window; make the day-15 deletion permanent immediately
+  - Keep the `Business` row (for "no duplicate account") but delete all CCTV data rows (sales, purchases, repairs, products, serials, etc.)
+
+- **SUB-5**: Add a direct-verify endpoint. Create `/api/super-admin/payments/[id]/verify` POST that:
+  - Marks the `PaymentTransaction` as `status: "matched"` with `matchedBy: superAdminId`
+  - Extends the business subscription by 1 month (or the tier's monthly price)
+  - Resets `subscriptionStage` to `"active"`
+  - Restores soft-deleted data if applicable (if SUB-6 keeps the restore window)
+  - Sends a notification to the user
+  - Does NOT require a `ReceivedPayment` to exist
+
+#### P1 — data correctness + enforcement
+
+- **SUB-6**: Decide on soft-delete vs hard-delete. If the user's intent is "no backup", change `data_wiped` to hard-delete all CCTV data rows and remove the `canRestoreData` / `restoreBusinessData` logic. If the restore window is a feature, document it and update the user's expectation.
+- **SUB-7**: Verify the cron scheduler. Check production deployment for a cron config (Vercel cron, systemd, Cloud Scheduler) that hits `/api/cron/subscription-lifecycle` daily. If missing, configure one.
+- **SUB-9**: Add a subscription-status banner to `CCTVShell.tsx`. Fetch the business's `subscriptionStage` + `subscriptionEnd` + `dataWipeDate` on shell mount; render a red/amber banner when not `active`.
+- **SUB-10**: Scale the auto-match tolerance. Change `AMOUNT_TOLERANCE_BDT = 5` to `Math.max(5, amount * 0.01)` (1% or ৳5, whichever is higher).
+- **SUB-12**: Check TRX ID uniqueness across all statuses in `/subscription/pay` POST. Change the `existing` query (line 74–86) from `status: "pending"` to no status filter — reject any TRX ID that has ever been submitted.
+- **SUB-13 / SUB-14**: Wire SMS/WhatsApp notifications. Call `email.ts` (or an SMS gateway) on subscription expiring + payment received.
+- **DB-1**: Show subscription status on the dashboard.
+- **DB-3**: Add "Pay Subscription" quick action when stage is `expiring_soon` or later.
+- **ST-2**: Increase min password length to 8.
+- **ST-5 / ST-6**: Add edit + delete user endpoints + UI.
+- **AP-1 / AP-2 / AP-3**: Replace hardcoded "98/100" and "Live" with real computed values; add tenant counts + revenue summary.
+
+#### P2 — UX / consistency
+
+- **DB-2, DB-4, DB-5, DB-6**: Dashboard shows gross vs net sales, due amounts, repairs.
+- **ST-3, ST-4, ST-7**: User creation: email field, password strength, force-change flag, role permission editor.
+- **ST-8, ST-9**: Business profile edit tab, payment methods config.
+- **AP-4, AP-5, AP-6**: Master catalog audit trail, tenants view, subscription management on CCTV admin page.
+- **SUB-8**: Enforce `expiring_soon` as a warning-only stage (already correct in code, just needs UI).
+- **SUB-11**: Lock billing period in the pay UI; show expected amount.
+- **SUB-15**: Update `subscriptionStart` on re-payment after lapse.
+- **SUB-16**: Trial period UI.
+- **SUB-17**: Subscription invoice PDF.
+- **SUB-18**: Payment history UI (depends on SUB-2).
+
+#### P3 — polish
+
+- **ST-10, ST-11**: Reactive session read, audit log of settings changes.
+- **AP-7, AP-8**: Static badge, dark mode contrast.
+
+### 13.6 Files to touch for Section 13 fixes
+
+| File | Fix IDs |
+|---|---|
+| `src/app/api/businesses/[id]/cctv/sales/route.ts` | SUB-1 |
+| `src/app/api/businesses/[id]/cctv/sales/[saleId]/items/route.ts` | SUB-1 |
+| `src/app/api/businesses/[id]/cctv/purchases/route.ts` | SUB-1 |
+| `src/app/api/businesses/[id]/cctv/repairs/route.ts` | SUB-1 |
+| `src/app/api/businesses/[id]/cctv/repairs/[repairId]/route.ts` | SUB-1 |
+| `src/app/api/businesses/[id]/cctv/expenses/route.ts` | SUB-1 |
+| `src/app/api/businesses/[id]/cctv/estimates/route.ts` | SUB-1 |
+| `src/app/api/businesses/[id]/cctv/estimates/[estimateId]/convert/route.ts` | SUB-1 |
+| `src/app/api/businesses/[id]/cctv/products/route.ts` | SUB-1 |
+| `src/app/api/businesses/[id]/cctv/categories/route.ts` | SUB-1 |
+| `src/app/api/businesses/[id]/cctv/customers/route.ts` | SUB-1 |
+| `src/app/api/businesses/[id]/cctv/suppliers/route.ts` | SUB-1 |
+| `src/app/api/businesses/[id]/cctv/payments/route.ts` | SUB-1 (note: payment endpoint must be EXEMPT — user needs to pay in read_only mode) |
+| `src/modules/cctv-shop/components/CCTVSettings.tsx` | SUB-2, ST-1, ST-2, ST-3, ST-4, ST-5, ST-6, ST-7, ST-8, ST-9, ST-11 |
+| `src/app/api/businesses/[id]/users/[userId]/route.ts` | ST-5 (add PATCH for name/username/phone/role) |
+| `src/modules/cctv-shop/components/CCTVShell.tsx` | SUB-9 (subscription banner) |
+| `src/lib/feature-gate.ts` | SUB-3 (৳500 tier or price change) |
+| `src/lib/payment-config.ts` | SUB-3 (DB-configurable price) |
+| `src/lib/cron-jobs.ts` (`runSubscriptionLifecycleJob`) | SUB-4, SUB-6 (timeline + hard delete) |
+| `src/lib/subscription-guard.ts` | SUB-6 (remove restore if hard delete chosen) |
+| `src/lib/payment-matching.ts` | SUB-10, SUB-12, SUB-15 |
+| `src/app/api/super-admin/payments/[id]/verify/route.ts` (new) | SUB-5 |
+| `src/app/api/businesses/[id]/subscription/pay/route.ts` | SUB-12 (TRX ID uniqueness) |
+| `src/app/admin/cctv/page.tsx` | AP-1, AP-2, AP-3, AP-4, AP-5, AP-6 |
+| `src/app/api/businesses/[id]/cctv/dashboard/route.ts` | DB-1, DB-2 |
+| `src/modules/cctv-shop/components/CCTVDashboard.tsx` | DB-1, DB-2, DB-3, DB-4, DB-5, DB-6 |
+| `src/lib/email.ts` or new SMS gateway | SUB-13, SUB-14 |
+| `prisma/schema.prisma` + new migration | SUB-6 (if hard delete, add `dataHardDeletedAt`), ST-5 (user edit fields) |
 
 ---
 
