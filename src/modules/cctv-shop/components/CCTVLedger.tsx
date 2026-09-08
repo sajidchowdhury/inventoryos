@@ -31,6 +31,7 @@ interface LedgerEntry {
   credit: number;
   balance: number;
   type: string;
+  reference?: string;
 }
 
 interface LedgerData {
@@ -122,6 +123,72 @@ export function CCTVLedger({ type }: { type: 'customer' | 'supplier' }) {
       const isDiscount = actionMode === 'discount';
       const baseType = isCustomer ? 'customer_payment' : 'supplier_payment';
       const discountType = isCustomer ? 'customer_discount' : 'supplier_discount';
+
+      // CL-8 fix: find the first outstanding sale/purchase from the ledger
+      // entries to link the payment to. The ledger entries for sales have
+      // type='sale' and a positive debit (totalAmount) with a reference field
+      // containing the sale ID. We look for the first sale entry that still
+      // has a balance (debit > credit) to link the payment to.
+      // If no outstanding sale is found, the payment is unlinked (referenceId
+      // = null) — allowed per PM-1.
+      let referenceId: string | null = null;
+      let referenceType: string | null = null;
+
+      if (!isDiscount && ledger?.entries) {
+        // Find the first sale/purchase entry with an outstanding balance
+        // (where debit > credit, meaning they still owe for this invoice)
+        for (const entry of ledger.entries) {
+          if (isCustomer && entry.type === 'sale' && entry.debit > entry.credit) {
+            // The reference field on sale entries contains the sale ID
+            // (set by the customer-ledger route: description includes the
+            // invoice no, and reference is the saleId)
+            // We need to find the saleId. The ledger entry doesn't directly
+            // expose it, but we can find it from the sale's invoiceNo
+            // in the description. For now, we'll fetch the customer's
+            // outstanding sales and pick the first one.
+            break; // We'll fetch below
+          }
+          if (!isCustomer && entry.type === 'purchase' && entry.debit > entry.credit) {
+            break;
+          }
+        }
+
+        // Fetch outstanding sales/purchases for this party
+        if (isCustomer) {
+          const salesRes = await fetch(
+            `/api/businesses/${businessId}/cctv/sales?pageSize=100`
+          );
+          if (salesRes.ok) {
+            const salesData = await salesRes.json();
+            const outstanding = (salesData.sales || []).find(
+              (s: any) =>
+                s.customerId === selectedId &&
+                Number(s.dueAmount) > 0
+            );
+            if (outstanding) {
+              referenceId = outstanding.id;
+              referenceType = 'sale';
+            }
+          }
+        } else {
+          const purchasesRes = await fetch(
+            `/api/businesses/${businessId}/cctv/purchases?pageSize=100`
+          );
+          if (purchasesRes.ok) {
+            const purchasesData = await purchasesRes.json();
+            const outstanding = (purchasesData.purchases || []).find(
+              (p: any) =>
+                p.supplierId === selectedId &&
+                Number(p.dueAmount) > 0
+            );
+            if (outstanding) {
+              referenceId = outstanding.id;
+              referenceType = 'purchase';
+            }
+          }
+        }
+      }
+
       const res = await fetch(`/api/businesses/${businessId}/cctv/payments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -133,6 +200,12 @@ export function CCTVLedger({ type }: { type: 'customer' | 'supplier' }) {
           paymentMethod: isDiscount ? 'cash' : paymentMethod, // discounts are always cash adjustments
           paymentDate,
           notes: paymentNotes || null,
+          // CL-8 fix: send referenceId + referenceType so the payment is
+          // linked to a sale/purchase (PM-1 fix). The /payments endpoint
+          // (PM-3 fix) will update the linked sale's/purchase's
+          // paidAmount/dueAmount.
+          referenceId,
+          referenceType,
         }),
       });
       if (res.ok) {
