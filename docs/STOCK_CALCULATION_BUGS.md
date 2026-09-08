@@ -6,6 +6,7 @@
 >   - Section 8: Inventory-section feature audit (products list, product form, categories, CSV import, serial search, stock report UI)
 >   - Section 9: Sales-section feature audit (POS, sales invoice, estimates, payments)
 >   - Section 10: Repairs & Service feature audit (repairs, repair token, warranty dashboard)
+>   - Section 11: Customers & Expenses feature audit (customer ledger, due collection, expenses)
 > **Status:** Open — fixes not yet applied
 
 ---
@@ -37,6 +38,13 @@ The Repairs & Service audit (Section 10) found 5 more critical/high bugs:
 - **Repair PATCH sets serial to `IN_STOCK` on `ready`** — a serial still owned by the customer is now indistinguishable from sellable inventory; can be re-sold (RP-4).
 - **Warranty Dashboard includes `RETURNED_TO_CUSTOMER` items in active/expiring/expired counts** — a returned product shouldn't be on the warranty dashboard at all, and once it is, it pollutes all three stats (W-1).
 - **Repair `repairCost` is stored but never invoiced** — no payment is collected and no ledger entry is written; the shop's books silently miss all repair revenue (RP-7).
+
+The Customers & Expenses audit (Section 11) found 5 more critical/high bugs:
+- **Customer Ledger's "Returns" query is broken** — `cCTVReturn.findMany` joins `items` by `productId IN [sale.id]` (should be `saleId IN [sale.id]`); returns are silently dropped from every ledger. Also no `cctv/returns/` route exists, so returns can't actually be created anyway (CL-1).
+- **Customer Ledger ignores standalone payments when computing the customer-list balances** — the customer-list endpoint (no `customerId`) sums `sale.totalAmount - sale.paidAmount` and never queries the `payments` table; balances diverge from the per-customer ledger which DOES include payments (CL-2).
+- **No edit/delete customer endpoint exists** — once a customer is created, it can't be modified or removed; phone/typos are permanent (CU-1).
+- **Due Collection's aging is computed from the oldest unpaid sale, not the oldest unpaid invoice by FIFO** — if a customer has a 6-month-old unpaid sale and a 1-day-old unpaid sale, both get aged by the oldest date, lumping the new sale into the "90+ days" bucket (DC-2).
+- **Expenses POST hardcodes `paymentMethod` to cash via `paymentMethodToAccount` fallback** — the API accepts a `paymentMethod` field but the UI never sends one, so all expenses silently hit the cash ledger account even when paid by bKash/bank (EX-2).
 
 ---
 
@@ -709,6 +717,174 @@ The `CCTVRepair` model is at `prisma/schema.prisma` and the relevant API routes 
 | `src/modules/cctv-shop/components/CCTVRepairToken.tsx` | RT-1, RT-2, RT-3, RT-4, RT-5, RT-6, RT-7, RT-8 |
 | `src/modules/cctv-shop/components/CCTVWarrantyDashboard.tsx` | W-2, W-6, W-7, W-8, W-9, W-10, W-12 |
 | `prisma/schema.prisma` + new migration | RP-7 (`repairInvoiceId`), RT-3 (`estimatedReadyDate`), RT-2 (`repairChargePolicy` on `Business`), RP-4 (new `READY_FOR_PICKUP` status if chosen) |
+
+---
+
+## 11. Customers & Expenses Feature Audit
+
+This section audits the three Customers & Expenses features (Customer Ledger, Due Collection, Expenses) end-to-end (API + UI). The Payment flow that the Customer Ledger invokes is covered in Section 9.4 — those bugs are NOT re-listed here, but their impact on the ledger is called out where relevant.
+
+Bug IDs are prefixed: **CL** (Customer Ledger), **CU** (Customers CRUD), **DC** (Due Collection), **EX** (Expenses).
+
+### 11.1 Customer Ledger
+
+**Files:** `src/app/api/businesses/[id]/cctv/reports/customer-ledger/route.ts` · `src/app/api/businesses/[id]/cctv/customers/route.ts` · `src/modules/cctv-shop/components/CCTVLedger.tsx`
+
+| ID | Severity | Bug |
+|---|---|---|
+| **CL-1** | **Critical** | **The "Returns" query is broken and silently returns nothing.** Route lines 105–109 do `db.cCTVReturn.findMany({ where: { businessId }, include: { items: { where: { productId: { in: sales.flatMap(s => [s.id]) } } } } })`. Two bugs in one: (a) `sales.flatMap(s => [s.id])` produces an array of sale IDs, but the filter is `items.productId IN [sale.id]` — `productId` is a product ID, not a sale ID, so this never matches; (b) the result is never appended to the `entries` array even if it did match. So returns are silently invisible in every customer ledger. (Also note: there is no `/api/businesses/[id]/cctv/returns/` endpoint — only a shared `/businesses/[id]/returns/` — so CCTV returns can't actually be created from the CCTV module anyway.) |
+| **CL-2** | **Critical** | **The customer-list endpoint (no `customerId`) ignores standalone payments entirely.** Route lines 20–31 compute each customer's balance as `openingBalance + Σ(sale.totalAmount) − Σ(sale.paidAmount)`. This uses the per-sale `paidAmount` column, which is NOT updated by standalone `/payments` POSTs (see PM-3 in §9.4). The per-customer detail endpoint (lines 88–103) DOES include payments separately. Result: the customer-list balance diverges from the per-customer ledger balance whenever a standalone payment is recorded. Operator sees one number on the list, a different number on the detail. |
+| **CL-3** | High | Both balance computations (CL-2 + per-customer ledger) **ignore repair charges** entirely. Per RP-7 (§10.1), `repairCost` is never invoiced and never creates a sale or ledger entry. So a customer who had ৳5000 of repairs shows ৳0 in the ledger, even though the shop did ৳5000 of work for them. Combined with RP-7, the ledger is silently missing an entire revenue stream. |
+| **CL-4** | High | No pagination on the customer list (lines 13–17). A business with 5,000 customers loads all of them in one response. Worse, lines 20–31 do an N+1 query: for each customer, a separate `cCTVSale.findMany` query. 5,000 customers = 5,001 queries. Should use a single aggregation query with `_sum` and `groupBy`. |
+| **CL-5** | High | Per-customer ledger has no date filter. `sales.findMany({ where: { businessId, customerId } })` and `payments.findMany({ where: { businessId, customerId } })` return every transaction since the beginning of time. For a customer with 10 years of history, that's thousands of rows. No `?from=&to=` query param. |
+| **CL-6** | High | Ledger entries are sorted by date string only (line 112: `entries.sort((a, b) => a.date.localeCompare(b.date))`). Two entries on the same date — a sale in the morning and a payment in the afternoon — sort by date string ("2026-09-08" === "2026-09-08") and preserve their insertion order (sales first, then payments). But for a customer who paid on the same day they bought, the ledger shows `Sale (debit 5000) → balance 5000` then `Payment (credit 5000) → balance 0`. The balance progression is correct, but the order within a day is arbitrary. Should sort by date + type (sales before payments) or by a real timestamp. |
+| **CL-7** | Medium | Opening balance is added as a single entry on `customer.createdAt` (lines 57–66). If the customer was created in 2024 but the operator is viewing the ledger for 2026, the opening balance entry is from 2024 — outside the visible window if a date filter is added. The opening balance should be carried forward as the starting balance for any date range, not as a dated entry. |
+| **CL-8** | Medium | The "Receive Payment" / "Discount" buttons (UI lines 311–356) call `/payments` POST without a `referenceId`. This is the PM-1 root cause from §9.4 — the payment floats, no sale is credited. Combined with CL-2, the customer-list balance will diverge from the per-customer ledger. The fix should land in `/payments` (require or allocate `referenceId`), but the CCTVLedger UI also needs to surface the unallocated choice. |
+| **CL-9** | Medium | UI party selector (lines 211–223) is a `<select>` dropdown with one option per customer. A shop with 1,000 customers has a 1,000-option dropdown. No search, no infinite scroll. Unusable. Should be a searchable combobox (the `QuickPartyDialog` already implements this pattern for the POS). |
+| **CL-10** | Medium | UI ledger table (lines 360–397) renders all entries with no virtualization. A 1,000-entry ledger renders 1,000 rows in the DOM. Browser memory + scroll perf hit. |
+| **CL-11** | Medium | No CSV/Excel export. Accountants want a printable ledger per customer for a date range. UI has a Print button (line 188) but no export. |
+| **CL-12** | Low | UI summary card "Total They Owe" (line 289) shows `totalDebit - totalCredit` — which equals `balance` (line 135 of route). But the "Current Balance" card (line 292) also shows `balance`. Two cards showing the same number is redundant. |
+| **CL-13** | Low | The "Discount / Adjust" flow (UI lines 332–341) sets `paymentMethod: 'cash'` hardcoded (line 133 of CCTVLedger.tsx) because discounts are "always cash adjustments". But the ledger entry created is `DEBIT discount_given, CREDIT customer_receivable` (per PM-5 in §9.4) — no cash account is touched. So the `paymentMethod` field is misleading; it's recorded but unused. Should be omitted from the request body for discount mode. |
+| **CL-14** | Low | "Quick Pay" buttons (UI lines 346–355) set the payment amount to 25%/50%/75%/100% of the balance. But the payment POST sends `amount: paymentAmount` as a string (line 132 of UI). The API does `parseFloat(body.amount)` (line 74 of payments route). A ৳1000 balance at 25% = "250" string → parseFloat → 250. Works, but the type should be number not string. |
+| **CL-15** | Low | No "void payment" or "reverse entry" flow. A payment recorded in error can't be undone — only offset with another entry. Should support soft-delete with a reversing ledger entry. |
+
+**Recommended fixes:**
+- For **CL-1**: Either delete the broken returns query (if returns aren't a feature yet) or fix it: filter by `saleId IN sales.map(s => s.id)`, and actually push the returns into `entries` as credit entries. Also build a `/api/businesses/[id]/cctv/returns/` endpoint so returns can be created from the CCTV module.
+- For **CL-2**: Compute the customer-list balance the same way the per-customer ledger does — include payments. Or, better, fix PM-3 so payments update `sale.paidAmount`, and CL-2 becomes correct automatically.
+- For **CL-3**: Depends on RP-7. Once repair charges create sales or ledger entries, they'll flow into the ledger naturally.
+- For **CL-4**: Replace the N+1 with a single aggregation:
+  ```ts
+  const balances = await db.cCTVSale.groupBy({
+    by: ["customerId"],
+    where: { businessId },
+    _sum: { totalAmount: true, paidAmount: true },
+  });
+  ```
+- For **CL-5**: Add `?from=&to=` query params. Filter both `sales` and `payments` by date. Carry opening balance as the starting balance for the range.
+- For **CL-6**: Sort by `[date, type priority]` or by a real timestamp if available.
+- For **CL-9**: Replace the `<select>` with the existing `QuickPartyDialog` in "select" mode, or a `Combobox` from shadcn/ui.
+
+### 11.2 Customers (CRUD)
+
+**Files:** `src/app/api/businesses/[id]/cctv/customers/route.ts` · `src/modules/cctv-shop/components/QuickPartyDialog.tsx`
+
+> **⚠️ There is no `src/app/api/businesses/[id]/cctv/customers/[customerId]/route.ts` file at all.** Same gap as F-1 for products (§8.2). Customers can be created via POST and listed via GET, but cannot be edited or deleted.
+
+| ID | Severity | Bug |
+|---|---|---|
+| **CU-1** | **Critical** | **No edit or delete customer endpoint exists.** Once a customer is created, name/phone/address/openingBalance cannot be modified. A typo in the phone number at create time is permanent. There is no soft-delete either, so a duplicate or test customer clutters the ledger forever. |
+| **CU-2** | High | GET `/customers` (lines 7–12) returns customers directly as a bare array (`NextResponse.json(customers)`), not wrapped in `{ success: true, customers }`. POST returns the created customer object directly (`NextResponse.json(customer, { status: 201 })`), not wrapped. Every other CCTV endpoint wraps in `{ success: true, ... }`. The `QuickPartyDialog` happens to handle both shapes (line 72: `const newParty = await res.json()`), but the inconsistency is a trap for future consumers. |
+| **CU-3** | High | POST doesn't validate phone format. Schema requires `phone: String` (non-null) but allows any string including empty. POST line 22 defaults to `""`. A customer with `phone: ""` is created silently — and the `QuickPartyDialog` dedup logic (which uses `phone` for lookup) won't match future creates of the same customer. |
+| **CU-4** | High | No phone uniqueness check within a business. Schema has `@@index([phone])` but no `@@unique([businessId, phone])`. Two customers with the same phone can coexist. The `QuickPartyDialog` looks up by phone (line 49–53 of QuickPartyDialog) and returns the first match — silent ambiguity. |
+| **CU-5** | Medium | No paginated GET. `findMany({ where: { businessId }, orderBy: { name: "asc" } })` returns all customers. Same N+1 issue as CL-4 if any consumer iterates with per-customer queries. |
+| **CU-6** | Medium | `openingBalance` (line 24) defaults to 0 but accepts any number, including negative. A negative opening balance means the customer has a credit (we owe them). Not necessarily a bug, but no UI affordance to set it — `QuickPartyDialog` only collects name + phone + address. The opening balance field is effectively dead. |
+| **CU-7** | Medium | No search query param on GET. The `QuickPartyDialog` filters client-side (line 49–53) on the full list. With 5,000 customers, this loads all 5,000 then filters. Should support `?search=` server-side. |
+| **CU-8** | Low | `QuickPartyDialog` creates customers via POST (line 62) but doesn't return the new customer's `openingBalance` or `address` in the UI's `Party` interface (line 18 of QuickPartyDialog). The created customer has these fields in the DB but the UI never uses them. |
+| **CU-9** | Low | No "view customer details" page. From the ledger, you can see transactions, but there's no customer profile view showing address, opening balance, total lifetime value, last sale date, etc. |
+
+**Recommended fixes:**
+- For **CU-1**: Add `src/app/api/businesses/[id]/cctv/customers/[customerId]/route.ts` with GET (single), PATCH (edit name/phone/address/openingBalance/isActive), DELETE (soft-delete via `isActive: false` — schema needs an `isActive` column added).
+- For **CU-2**: Wrap responses: `return NextResponse.json({ success: true, customer }, { status: 201 })`.
+- For **CU-3**: Validate phone format (Bangladesh: 11-digit starting `01`, or `+8801...`). Reject empty.
+- For **CU-4**: Add `@@unique([businessId, phone])` to the schema + new migration. Handle P2002 in POST with a "phone already exists" message.
+- For **CU-5/CU-7**: Add `?search=&page=&pageSize=` to GET.
+
+### 11.3 Due Collection
+
+**Files:** `src/app/api/businesses/[id]/cctv/reports/due-collection/route.ts` · `src/modules/cctv-shop/components/CCTVDueCollection.tsx`
+
+| ID | Severity | Bug |
+|---|---|---|
+| **DC-1** | High | The aging calculation (lines 31–40) finds the **oldest unpaid sale** and ages the entire customer balance by that date. If a customer has a ৳100 sale from 90 days ago (unpaid) and a ৳5000 sale from yesterday (unpaid), the entire ৳5100 is bucketed as "90+ days". This is the opposite of FIFO — the new debt should be in "0-30 days", only the ৳100 should be "90+ days". Should compute aging per-sale, then bucket each sale's due amount separately. |
+| **DC-2** | High | The "customer has due" check (line 29: `if (balance > 0)`) includes the `openingBalance` in the balance. If a customer has `openingBalance: 500` and all their sales are fully paid, they still appear in the due collection report with ৳500 due — but `unpaidSalesCount: 0` and `oldestDueDate: null`. The UI then shows "0 unpaid sale(s) · oldest: —" (UI line 109) next to a ৳500 due, which is confusing. Should separate opening-balance due from sales due. |
+| **DC-3** | High | Same root cause as CL-2: balance is `openingBalance + Σ(totalAmount) − Σ(paidAmount)` (line 27). Standalone payments don't update `sale.paidAmount`, so a customer who paid ৳500 via `/payments` still shows ৳500 due here. The Due Collection report and the Customer Ledger detail disagree. |
+| **DC-4** | Medium | N+1 query pattern (lines 18–56): for each customer, a separate `cCTVSale.findMany`. 5,000 customers = 5,001 queries. Same fix as CL-4 — use `groupBy` aggregation. |
+| **DC-5** | Medium | No date filter. "As of" a specific date would be useful for month-end reporting. Currently always "now". |
+| **DC-6** | Medium | No "collect payment" action. The report shows who owes money, but there's no button to record a payment. User has to navigate to Customer Ledger → select customer → Receive Payment. Should add a "Collect" button on each row that opens the payment dialog pre-filled with the customer and amount. |
+| **DC-7** | Medium | No CSV export. A shop with 50 customers in "90+ days" wants to export the list for a collection agent. |
+| **DC-8** | Medium | UI requires a manual "Load Dues" button click (line 33) — doesn't auto-load on mount. Same UX issue as R-1 (§8.6) for Stock Report. |
+| **DC-9** | Low | Aging buckets (line 53) are hardcoded: `0-30 / 31-60 / 61-90 / 90+`. Some shops want `0-7 / 8-15 / 16-30 / 30+` for tighter early collection. Not configurable. |
+| **DC-10** | Low | No aging-by-amount breakdown. The report shows the customer's total due in one bucket. A ৳5000 due in "90+ days" — is that one ৳5000 sale or ten ৳500 sales? The report doesn't say. |
+| **DC-11** | Low | No SMS/WhatsApp integration. A shop identifying 30 customers in "90+ days" wants to send a reminder message. Currently they'd have to copy the phone number to their phone manually. |
+| **DC-12** | Low | UI doesn't display `totalPurchases` or `totalPaid` (the API returns them, line 25–26, but the UI only shows `balance`, `unpaidSalesCount`, `oldestDueDate`). Useful context — a customer who bought ৳50000 and paid ৳49000 is a different risk profile than one who bought ৳1000 and paid ৳0. |
+
+**Recommended fixes:**
+- For **DC-1**: Compute aging per unpaid sale, bucket each separately, and report per-bucket totals per customer:
+  ```ts
+  const buckets = { "0-30": 0, "31-60": 0, "61-90": 0, "90+": 0 };
+  for (const sale of unpaidSales) {
+    const days = Math.floor((now - sale.saleDate) / (1000*60*60*24));
+    const key = days > 90 ? "90+" : days > 60 ? "61-90" : days > 30 ? "31-60" : "0-30";
+    buckets[key] += Number(sale.dueAmount);
+  }
+  ```
+- For **DC-2**: Show opening-balance due separately from sales due.
+- For **DC-3**: Same fix as PM-3 / CL-2.
+- For **DC-4**: `groupBy` aggregation.
+- For **DC-6**: Add a "Collect" button that opens the payment dialog (reuse the CCTVLedger payment dialog component).
+- For **DC-8**: Auto-load on mount.
+
+### 11.4 Expenses
+
+**Files:** `src/app/api/businesses/[id]/cctv/expenses/route.ts` · `src/modules/cctv-shop/components/CCTVExpenses.tsx`
+
+| ID | Severity | Bug |
+|---|---|---|
+| **EX-1** | High | GET `/expenses` (lines 14–32) returns `totalAmount` as the sum of expenses **on the current page only** (line 24: `expenses.reduce(...)` over the paginated `expenses` array). If a shop has 200 expenses (page 1 of 50), `totalAmount` is the sum of those 50, not all 200. The UI (line 64) shows this as "Total Expenses" — wrong. Should be a separate `_sum` aggregation over all expenses, not over the page. |
+| **EX-2** | High | POST accepts a `paymentMethod` field (line 57) and uses it via `paymentMethodToAccount(body.paymentMethod || "cash")`. But the UI (`CCTVExpenses.tsx`) never sends `paymentMethod` in the request body (line 80: `JSON.stringify(form)` where `form` has only `category, description, amount, expenseDate`). So every expense silently hits the `CASH` ledger account even when the shop actually paid by bKash or bank. The Cash Book report then overstates cash outflow; the bKash/bank balance sheet accounts are understated. |
+| **EX-3** | High | No edit or delete endpoint. A ৳5000 rent expense recorded with the wrong date, wrong category, or wrong amount is permanent. Only option is to record an offsetting negative expense — but POST rejects `amount <= 0` (line 38). So errors are unrecoverable. |
+| **EX-4** | Medium | No `?from=&to=` or `?category=` filter on GET. The UI loads page 1 of 50 expenses. A shop wanting "tea expenses for September" has no way to filter. |
+| **EX-5** | Medium | Category list is hardcoded in both the UI (lines 21–29 of CCTVExpenses.tsx) and the API (no validation, but the schema comment says "rent, electricity, transport, tea, other"). No way to add a custom category from the UI. If a shop needs "marketing" or "legal fees", they have to use "other" — losing the ability to break down expenses by category. |
+| **EX-6** | Medium | No `paymentMethod` selector in the UI form (lines 194–239 of CCTVExpenses.tsx). Combined with EX-2, every expense is cash by default. Should expose the `PaymentMethodSelector` component used by POS. |
+| **EX-7** | Medium | No `paidTo` field. An expense has `category` and `description` but no payee. "Salary" — paid to whom? "Transport" — which driver? Useful for audit. |
+| **EX-8** | Medium | No receipt/invoice attachment. Bangladesh tax audit may require receipts for expenses above a threshold. Schema has no `attachmentUrl` field. |
+| **EX-9** | Low | UI total card (line 128–138) shows `totalAmount` in red with a "Total Expenses" label. Color implies "bad" — but expenses are a normal business activity. Confusing for a shop owner. Should be neutral gray or violet. |
+| **EX-10** | Low | UI list (lines 152–177) doesn't show `paymentMethod` (the API doesn't return it either — schema has no `paymentMethod` column on `CCTVExpense`). So even if EX-2 is fixed and the API records the method, the UI can't display it. |
+| **EX-11** | Low | No pagination UI. The API returns paginated results (50 per page) but the UI only shows page 1. No "Load more" or page selector. A shop with 200 expenses sees only the latest 50. |
+| **EX-12** | Low | No date-grouped summary (today, this week, this month, this year). The dashboard shows today's expenses (per `dashboard/route.ts` line 67–71) but the Expenses page shows no time-bucketed totals. |
+| **EX-13** | Low | Expense category color map (lines 101–109 of CCTVExpenses.tsx) is hardcoded. Adding a new category in the future means a new entry here, or it falls back to `categoryColor.other`. Should live in a shared constants file. |
+
+**Recommended fixes:**
+- For **EX-1**: Compute `totalAmount` from a separate `_sum` aggregation, not from the page:
+  ```ts
+  const totalAmount = (await db.cCTVExpense.aggregate({
+    where: { businessId },
+    _sum: { amount: true },
+  }))._sum.amount || 0;
+  ```
+- For **EX-2 / EX-6**: Add `paymentMethod` column to `CCTVExpense` schema. Add `PaymentMethodSelector` to the UI form. Send `paymentMethod` in the POST body. Validate against the enum.
+- For **EX-3**: Add PATCH `/expenses/[expenseId]` (edit category/description/amount/expenseDate/paymentMethod) and DELETE (soft-delete with reversing ledger entry).
+- For **EX-4**: Add `?from=&to=&category=` to GET.
+- For **EX-5**: Make categories configurable — add a `CCTVExpenseCategory` table or a JSON column on `Business`.
+- For **EX-7**: Add `paidTo: String?` to schema.
+- For **EX-8**: Add `attachmentUrl: String?` to schema; integrate file upload via the existing `public/` directory or an S3-compatible store.
+- For **EX-11**: Add "Load more" button or infinite scroll in the UI.
+
+### 11.5 Priority summary across the Customers & Expenses section
+
+| Priority | Bug IDs | What to fix first |
+|---|---|---|
+| **P0** (blocks normal use) | CL-1, CL-2, CU-1 | Fix or remove broken returns query; reconcile customer-list balance with per-customer ledger (or fix PM-3 to make both correct); add edit/delete customer endpoint |
+| **P1** (data correctness) | CL-3, CL-4, CL-5, CL-6, CU-2, CU-3, CU-4, DC-1, DC-2, DC-3, EX-1, EX-2, EX-3 | Repair charges in ledger (depends on RP-7); N+1 → groupBy; date filters on ledger; sort within day; response shape consistency; phone validation; phone uniqueness; per-sale aging buckets; separate opening-balance due; reconcile due-collection with payments; totalAmount from aggregation; paymentMethod on expenses; expense edit/delete |
+| **P2** (UX / consistency) | CL-7, CL-8, CL-9, CL-10, CL-11, CU-5, CU-6, CU-7, DC-4, DC-5, DC-6, DC-7, DC-8, EX-4, EX-5, EX-6, EX-7, EX-8 | Opening balance as carry-forward; unallocated payment UI; searchable combobox; virtualized ledger table; CSV export; paginated customer GET; opening balance UI; customer search; groupBy aggregation; date filter; collect button; CSV export; auto-load; date/category filter; configurable categories; paymentMethod selector; paidTo field; receipt attachment |
+| **P3** (polish) | CL-12, CL-13, CL-14, CL-15, CU-8, CU-9, DC-9, DC-10, DC-11, DC-12, EX-9, EX-10, EX-11, EX-12, EX-13 | Redundant cards; discount paymentMethod misuse; amount type; void payment; QuickPartyDialog missing fields; customer profile view; configurable buckets; per-amount breakdown; SMS integration; missing context fields; color semantics; paymentMethod display; pagination UI; time-bucketed totals; shared category constants |
+
+### 11.6 Files to touch for Section 11 fixes
+
+| File | Fix IDs |
+|---|---|
+| `src/app/api/businesses/[id]/cctv/reports/customer-ledger/route.ts` | CL-1, CL-2, CL-4, CL-5, CL-6, CL-7 |
+| `src/app/api/businesses/[id]/cctv/customers/route.ts` | CU-2, CU-3, CU-5, CU-7 |
+| `src/app/api/businesses/[id]/cctv/customers/[customerId]/route.ts` (new) | CU-1, CU-9 |
+| `src/app/api/businesses/[id]/cctv/returns/route.ts` (new, if returns are a feature) | CL-1 (depends on building the returns flow) |
+| `src/modules/cctv-shop/components/CCTVLedger.tsx` | CL-8, CL-9, CL-10, CL-11, CL-13 |
+| `src/modules/cctv-shop/components/QuickPartyDialog.tsx` | CU-3, CU-8 |
+| `src/app/api/businesses/[id]/cctv/reports/due-collection/route.ts` | DC-1, DC-2, DC-3, DC-4, DC-5 |
+| `src/modules/cctv-shop/components/CCTVDueCollection.tsx` | DC-6, DC-7, DC-8, DC-12 |
+| `src/app/api/businesses/[id]/cctv/expenses/route.ts` | EX-1, EX-2, EX-3, EX-4, EX-5 |
+| `src/app/api/businesses/[id]/cctv/expenses/[expenseId]/route.ts` (new) | EX-3 |
+| `src/modules/cctv-shop/components/CCTVExpenses.tsx` | EX-6, EX-7, EX-9, EX-11, EX-12, EX-13 |
+| `prisma/schema.prisma` + new migration | CU-1 (`isActive` on customer), CU-4 (`@@unique([businessId, phone])`), EX-2 (`paymentMethod` on expense), EX-3 (soft-delete), EX-7 (`paidTo`), EX-8 (`attachmentUrl`) |
 
 ---
 
