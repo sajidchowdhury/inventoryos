@@ -42,11 +42,42 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   try {
     // ── PHASE 1: All operations in a single transaction ──
     const result = await db.$transaction(async (tx) => {
-      // Look up the serial item
+      // RP-1 fix: Look up the serial item with a STATUS CHECK.
+      // Only allow receiving for repair if the serial was:
+      //   - SOLD (normal: customer bought it, now bringing it back for repair)
+      //   - RETURNED_TO_CUSTOMER (re-repair: was repaired before, returned,
+      //     now coming back again)
+      // Reject if the serial is:
+      //   - IN_STOCK (never sold — shouldn't be in a repair)
+      //   - IN_REPAIR (already in an open repair — can't have two)
+      //   - SENT_TO_SUPPLIER (sent to supplier — not available)
+      //   - REPLACED (replaced by supplier — the old serial is dead)
+      // If no serial item is found (free-text serial), we still allow
+      // the repair (the shop might be repairing a product bought elsewhere).
       const serialItem = await tx.cCTVSerialItem.findFirst({
-        where: { businessId, serialNumber: body.serialNumber },
+        where: {
+          businessId,
+          serialNumber: body.serialNumber,
+          status: { in: ["SOLD", "RETURNED_TO_CUSTOMER"] },
+        },
         include: { product: { select: { id: true, name: true } } },
       });
+
+      // If no serial found with the right status, check if one exists
+      // with a wrong status — give a helpful error message.
+      if (!serialItem) {
+        const existingSerial = await tx.cCTVSerialItem.findFirst({
+          where: { businessId, serialNumber: body.serialNumber },
+          select: { status: true },
+        });
+        if (existingSerial) {
+          throw new Error(
+            `Serial ${body.serialNumber} cannot be received for repair (current status: ${existingSerial.status}). Only SOLD or RETURNED_TO_CUSTOMER serials can be repaired.`
+          );
+        }
+        // No serial item at all — proceed without one (free-text repair).
+        // The shop might be repairing a product bought elsewhere.
+      }
 
       // Auto-detect warranty status
       let underWarranty = false;
@@ -147,6 +178,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   } catch (err: any) {
     console.error("[cctv/repairs] Transaction failed:", err);
     const msg = err?.message || "Failed to create repair";
-    return NextResponse.json({ error: msg }, { status: 500 });
+    // RP-1: serial status check errors return 400 (not 500)
+    const status = msg.includes("cannot be received for repair") ? 400 : 500;
+    return NextResponse.json({ error: msg }, { status });
   }
 }
