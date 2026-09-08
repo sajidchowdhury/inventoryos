@@ -1,5 +1,7 @@
-// GET /api/businesses/[id]/cctv/reports/supplier-ledger?supplierId=xxx
-// Returns all transactions for a supplier with running balance
+// GET /api/businesses/[id]/cctv/reports/supplier-ledger?supplierId=xxx&from=&to=
+// SL-3 fix: added ?from=&to= date filter for the per-supplier detail.
+// SL-4 fix: N+1 → groupBy aggregation on the list endpoint.
+// SL-8 fix: opening balance carried forward for date ranges.
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 
@@ -7,6 +9,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const { id: businessId } = await params;
   const { searchParams } = new URL(req.url);
   const supplierId = searchParams.get("supplierId");
+  const from = searchParams.get("from");
+  const to = searchParams.get("to");
 
   if (!supplierId) {
     // List all suppliers with their balances
@@ -67,21 +71,68 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
   const entries: Entry[] = [];
 
-  // Opening balance
-  if (Number(supplier.openingBalance) > 0) {
-    entries.push({
-      date: supplier.createdAt.toISOString().split("T")[0],
-      description: "Opening Balance",
-      debit: Number(supplier.openingBalance),
-      credit: 0,
-      balance: Number(supplier.openingBalance),
-      type: "opening",
-    });
+  // SL-3/SL-8 fix: compute date range + opening balance as carry-forward
+  const startDate = from ? new Date(from) : null;
+  const endDate = to ? new Date(to) : null;
+  if (endDate) endDate.setHours(23, 59, 59, 999);
+
+  let openingBalance: number;
+  if (startDate) {
+    // Compute balance as of the day before "from"
+    const dayBefore = new Date(startDate);
+    dayBefore.setHours(23, 59, 59, 999);
+    dayBefore.setDate(dayBefore.getDate() - 1);
+
+    const [priorPurchases, priorPayments] = await Promise.all([
+      db.cCTVPurchase.aggregate({
+        where: { businessId, supplierId, purchaseDate: { lte: dayBefore } },
+        _sum: { totalAmount: true, paidAmount: true },
+      }),
+      db.cCTVPayment.aggregate({
+        where: { businessId, supplierId, type: "supplier_payment", paymentDate: { lte: dayBefore } },
+        _sum: { amount: true },
+      }),
+    ]);
+
+    const priorPurchasesTotal = Number(priorPurchases._sum.totalAmount) || 0;
+    const priorPurchasesPaid = Number(priorPurchases._sum.paidAmount) || 0;
+    openingBalance = Number(supplier.openingBalance) + priorPurchasesTotal - priorPurchasesPaid;
+
+    if (openingBalance !== 0) {
+      entries.push({
+        date: from!,
+        description: "Brought Forward",
+        debit: openingBalance > 0 ? openingBalance : 0,
+        credit: openingBalance < 0 ? Math.abs(openingBalance) : 0,
+        balance: openingBalance,
+        type: "opening",
+      });
+    }
+  } else {
+    openingBalance = Number(supplier.openingBalance);
+    if (openingBalance > 0) {
+      entries.push({
+        date: supplier.createdAt.toISOString().split("T")[0],
+        description: "Opening Balance",
+        debit: openingBalance,
+        credit: 0,
+        balance: openingBalance,
+        type: "opening",
+      });
+    }
   }
 
   // Purchases (debit — we owe more)
+  // SL-3 fix: filter by date range if provided
+  const purchasesWhere: Record<string, unknown> = { businessId, supplierId };
+  if (startDate || endDate) {
+    purchasesWhere.purchaseDate = {};
+    if (startDate) purchasesWhere.purchaseDate.gte = startDate;
+    if (endDate) purchasesWhere.purchaseDate.lte = endDate;
+  }
+
   const purchases = await db.cCTVPurchase.findMany({
-    where: { businessId, supplierId },
+    where: purchasesWhere,
     select: { id: true, purchaseDate: true, totalAmount: true, paidAmount: true, invoiceNo: true },
     orderBy: { purchaseDate: "asc" },
   });
@@ -98,8 +149,16 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   }
 
   // Payments made (credit — we paid)
+  // SL-3 fix: filter by date range if provided
+  const paymentsWhere: Record<string, unknown> = { businessId, supplierId, type: "supplier_payment" };
+  if (startDate || endDate) {
+    paymentsWhere.paymentDate = {};
+    if (startDate) paymentsWhere.paymentDate.gte = startDate;
+    if (endDate) paymentsWhere.paymentDate.lte = endDate;
+  }
+
   const payments = await db.cCTVPayment.findMany({
-    where: { businessId, supplierId, type: "supplier_payment" },
+    where: paymentsWhere,
     select: { id: true, paymentDate: true, amount: true, paymentMethod: true, notes: true },
     orderBy: { paymentDate: "asc" },
   });
@@ -119,10 +178,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   entries.sort((a, b) => a.date.localeCompare(b.date));
 
   // Calculate running balance
-  let runningBalance = supplier.openingBalance;
+  let runningBalance = openingBalance;
   for (const entry of entries) {
     if (entry.type === "opening") {
-      runningBalance = supplier.openingBalance;
+      runningBalance = openingBalance;
     } else {
       runningBalance += entry.debit - entry.credit;
     }
@@ -141,6 +200,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       totalCredit,
       balance: runningBalance,
       entryCount: entries.length,
+      dateRange: { from: from || null, to: to || null },
     },
   });
 }
