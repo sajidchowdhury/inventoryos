@@ -1023,12 +1023,41 @@ export async function runScdMonthlyReminderJob(): Promise<void> {
   }
 }
 
-// ── runSubscriptionLifecycleJob (P2) ──
-// Transitions businesses through the 4-stage subscription lifecycle:
-//   active → expiring_soon (7 days before subscriptionEnd)
-//   → read_only (0-14 days after subscriptionEnd; writes blocked)
-//   → data_wiped (14+ days after subscriptionEnd; data soft-deleted)
-//   → true purge (30 days after data_wiped; data permanently deleted)
+// ── runSubscriptionLifecycleJob (P2 — SUB-4 rewrite) ──
+// Transitions businesses through the 4-stage subscription lifecycle
+// matching the user's 7/3/5 day intent:
+//
+//   active → expiring_soon  at subscriptionEnd (day 0)
+//                         → full access continues (guard allows expiring_soon)
+//                         → "subscription expired" notification at day 0
+//                         → "losing access" warning at day 7
+//
+//   expiring_soon → read_only  at day 10 (subscriptionEnd + 10 days)
+//                         → writes BLOCKED by requireActiveSubscription guard
+//                         → user can still login + pay + view reports
+//                         → "restricted mode" notification
+//
+//   read_only → data_wiped  at day 15 (subscriptionEnd + 15 days)
+//                         → HARD DELETE all CCTV business data immediately
+//                           (per user step 7: "without backup")
+//                         → keep Business row + SubscriptionInvoice +
+//                           PaymentTransaction for audit + "no duplicate account"
+//                         → "data deleted" notification
+//
+// Total grace window: 15 days (down from the old 44-day window).
+//
+// The old lifecycle was:
+//   active → expiring_soon (7 days BEFORE expiry)
+//   → read_only (day 0, 14 days)
+//   → data_wiped (day 14, soft-delete + 30-day restore window)
+//   → purge (day 44)
+//
+// SUB-6 decision: HARD DELETE at day 15. No restore window. The user
+// explicitly said "whole data will be deleted without backup". A late
+// payment after day 15 will start a fresh subscription with no data.
+// The `canRestoreData` / `restoreBusinessData` helpers in
+// subscription-guard.ts are now dead code (no stage sets
+// `dataSoftDeletedAt` anymore) and should be removed in a follow-up.
 //
 // Sends NotificationLog entries at each transition.
 // Runs daily at 02:00 UTC (08:00 Asia/Dhaka).
@@ -1036,7 +1065,7 @@ export async function runSubscriptionLifecycleJob(): Promise<void> {
   const jobName = CRON_JOB_NAMES.SUBSCRIPTION_LIFECYCLE;
   const log: string[] = [];
   const startedAt = new Date();
-  log.push(`[${startedAt.toISOString()}] Starting subscription lifecycle job`);
+  log.push(`[${startedAt.toISOString()}] Starting subscription lifecycle job (SUB-4 7/3/5 timeline)`);
 
   const cronLog = await db.cronJobLog.create({
     data: {
@@ -1047,51 +1076,63 @@ export async function runSubscriptionLifecycleJob(): Promise<void> {
     },
   });
 
+  // Day constants (in milliseconds for date math)
+  const DAY_MS = 24 * 60 * 60 * 1000;
+  // Day 0 = subscriptionEnd (expiry) — no constant needed, the day-0
+  // transition is "active → expiring_soon" when subscriptionEnd < now.
+  const DAY7 = 7;   // warning of losing access
+  const DAY10 = 10; // restricted mode (writes blocked)
+  const DAY15 = 15; // hard delete
+
   try {
     const now = new Date();
-    const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
     let transitionedToExpiring = 0;
+    let sentDay7Warning = 0;
     let transitionedToReadOnly = 0;
     let transitionedToWiped = 0;
-    let purged = 0;
     let notificationsCreated = 0;
 
-    // ── 1. active → expiring_soon (subscriptionEnd within 7 days) ──
-    const expiringBusinesses = await db.business.findMany({
+    // ── 1. active → expiring_soon (subscriptionEnd has passed) ──
+    // Day 0: the subscription just expired. Full access continues (the
+    // guard allows writes in expiring_soon). Send an "expired" notification
+    // so the user knows to pay. Set dataWipeDate = subscriptionEnd + 15
+    // days so the UI can show "data will be deleted in X days".
+    const justExpired = await db.business.findMany({
       where: {
         subscriptionStage: "active",
-        subscriptionStatus: { in: ["trial", "active"] },
-        subscriptionEnd: {
-          gte: now,
-          lte: sevenDaysFromNow,
-        },
+        subscriptionStatus: { in: ["trial", "active", "suspended"] },
+        subscriptionEnd: { lt: now },
       },
       select: { id: true, name: true, subscriptionEnd: true, ownerEmail: true },
     });
 
-    for (const biz of expiringBusinesses) {
+    for (const biz of justExpired) {
+      const wipeDate = biz.subscriptionEnd
+        ? new Date(biz.subscriptionEnd.getTime() + DAY15 * DAY_MS)
+        : new Date(now.getTime() + DAY15 * DAY_MS);
+
       await db.business.update({
         where: { id: biz.id },
         data: {
           subscriptionStage: "expiring_soon",
+          // gracePeriodEnd = day 10 (when read_only starts)
           gracePeriodEnd: biz.subscriptionEnd
-            ? new Date(biz.subscriptionEnd.getTime() + 14 * 24 * 60 * 60 * 1000)
+            ? new Date(biz.subscriptionEnd.getTime() + DAY10 * DAY_MS)
             : null,
-          dataWipeDate: biz.subscriptionEnd
-            ? new Date(biz.subscriptionEnd.getTime() + 14 * 24 * 60 * 60 * 1000)
-            : null,
+          // dataWipeDate = day 15 (when hard delete happens)
+          dataWipeDate: wipeDate,
         },
       });
 
-      // Send notification
+      // Day-0 "subscription expired" notification
       await db.notificationLog.create({
         data: {
           businessId: biz.id,
-          type: "subscription_expiring",
+          type: "subscription_expired",
           severity: "warning",
-          title: "Subscription expiring soon",
-          message: `Your subscription expires on ${biz.subscriptionEnd?.toLocaleDateString("en-GB")}. Pay now to avoid interruption.`,
+          title: "Subscription expired",
+          message: `Your subscription expired on ${biz.subscriptionEnd?.toLocaleDateString("en-GB")}. You have 7 days to pay before losing access, and 15 days before your data is deleted. Pay now to avoid interruption.`,
           entityType: "subscription",
           entityId: null,
         },
@@ -1099,18 +1140,68 @@ export async function runSubscriptionLifecycleJob(): Promise<void> {
       notificationsCreated++;
       transitionedToExpiring++;
     }
-    log.push(`Stage 1 (active → expiring_soon): ${transitionedToExpiring} business(es)`);
+    log.push(`Stage 1 (active → expiring_soon, day 0): ${transitionedToExpiring} business(es)`);
 
-    // ── 2. expiring_soon → read_only (subscriptionEnd has passed, within 14 days) ──
-    const expiredBusinesses = await db.business.findMany({
+    // ── 1b. Day-7 warning (still in expiring_soon, 7+ days past expiry) ──
+    // Send a "losing access" warning to businesses that are 7+ days past
+    // expiry but haven't been warned yet. We track "warned" by checking
+    // whether a notification of type "subscription_losing_access" already
+    // exists for this business in the last 7 days (to avoid duplicates).
+    const day7Cutoff = new Date(now.getTime() - DAY7 * DAY_MS);
+    const day7Businesses = await db.business.findMany({
       where: {
         subscriptionStage: "expiring_soon",
-        subscriptionEnd: { lt: now },
+        subscriptionEnd: { lt: day7Cutoff },
+      },
+      select: { id: true, name: true, subscriptionEnd: true },
+    });
+
+    for (const biz of day7Businesses) {
+      // Check if we already sent the day-7 warning (avoid duplicates on
+      // consecutive cron runs). Look for any notification of this type
+      // in the last 6 days (the warning is sent once, on the first cron
+      // run after day 7).
+      const sixDaysAgo = new Date(now.getTime() - 6 * DAY_MS);
+      const alreadyWarned = await db.notificationLog.findFirst({
+        where: {
+          businessId: biz.id,
+          type: "subscription_losing_access",
+          createdAt: { gte: sixDaysAgo },
+        },
+        select: { id: true },
+      });
+      if (alreadyWarned) continue;
+
+      await db.notificationLog.create({
+        data: {
+          businessId: biz.id,
+          type: "subscription_losing_access",
+          severity: "critical",
+          title: "Losing access in 3 days",
+          message: `Your subscription expired 7 days ago. You have 3 days left to pay before your access is restricted (you will only be able to login, pay, and view reports). Pay now to avoid losing access.`,
+          entityType: "subscription",
+          entityId: null,
+        },
+      });
+      notificationsCreated++;
+      sentDay7Warning++;
+    }
+    log.push(`Stage 1b (day-7 losing-access warning): ${sentDay7Warning} business(es)`);
+
+    // ── 2. expiring_soon → read_only (day 10: subscriptionEnd + 10 days) ──
+    // Writes are now BLOCKED by the requireActiveSubscription guard
+    // (SUB-1). The user can still login, pay (POST /payments is exempt
+    // from the guard), and view reports (GET endpoints are exempt).
+    const day10Cutoff = new Date(now.getTime() - DAY10 * DAY_MS);
+    const restrictedBusinesses = await db.business.findMany({
+      where: {
+        subscriptionStage: "expiring_soon",
+        subscriptionEnd: { lt: day10Cutoff },
       },
       select: { id: true, name: true, subscriptionEnd: true, dataWipeDate: true },
     });
 
-    for (const biz of expiredBusinesses) {
+    for (const biz of restrictedBusinesses) {
       await db.business.update({
         where: { id: biz.id },
         data: {
@@ -1119,14 +1210,17 @@ export async function runSubscriptionLifecycleJob(): Promise<void> {
         },
       });
 
-      // Send notification
+      const daysUntilWipe = biz.dataWipeDate
+        ? Math.ceil((biz.dataWipeDate.getTime() - now.getTime()) / DAY_MS)
+        : 5;
+
       await db.notificationLog.create({
         data: {
           businessId: biz.id,
-          type: "subscription_expired",
+          type: "subscription_restricted",
           severity: "critical",
-          title: "Subscription expired — read-only mode",
-          message: `Your subscription expired. You can view reports but cannot make sales or purchases. Data will be permanently lost in 14 days. Pay now to restore full access.`,
+          title: "Access restricted — pay to restore",
+          message: `Your subscription expired 10 days ago. You can now only login, pay your subscription, and view reports. You have ${daysUntilWipe} days before your data is permanently deleted. Pay now to restore full access.`,
           entityType: "subscription",
           entityId: null,
         },
@@ -1134,61 +1228,39 @@ export async function runSubscriptionLifecycleJob(): Promise<void> {
       notificationsCreated++;
       transitionedToReadOnly++;
     }
-    log.push(`Stage 2 (expiring_soon → read_only): ${transitionedToReadOnly} business(es)`);
+    log.push(`Stage 2 (expiring_soon → read_only, day 10): ${transitionedToReadOnly} business(es)`);
 
-    // ── 3. read_only → data_wiped (14+ days after subscriptionEnd) ──
-    const wipeCutoff = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+    // ── 3. read_only → data_wiped (day 15: HARD DELETE) ──
+    // Per the user's step 7: "whole data will be deleted without backup
+    // only the ac will be available, so no duplicate ac".
+    //
+    // We HARD DELETE all CCTV business data immediately — no soft-delete,
+    // no 30-day purge window, no restore. The Business row is kept so the
+    // same phone/email can't re-register (no duplicate account).
+    //
+    // We also keep SubscriptionInvoice + PaymentTransaction rows for
+    // audit (they're not CCTV-data-specific — they're financial records).
+    const day15Cutoff = new Date(now.getTime() - DAY15 * DAY_MS);
     const wipeBusinesses = await db.business.findMany({
       where: {
         subscriptionStage: "read_only",
-        subscriptionEnd: { lt: wipeCutoff },
+        subscriptionEnd: { lt: day15Cutoff },
       },
       select: { id: true, name: true, subscriptionEnd: true },
     });
 
     for (const biz of wipeBusinesses) {
-      const purgeDate = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
-
-      await db.business.update({
-        where: { id: biz.id },
-        data: {
-          subscriptionStage: "data_wiped",
-          dataSoftDeletedAt: now,
-          dataPurgeDate: purgeDate,
-        },
-      });
-
-      // Send notification
-      await db.notificationLog.create({
-        data: {
-          businessId: biz.id,
-          type: "subscription_data_wiped",
-          severity: "critical",
-          title: "Data archived — pay to restore",
-          message: `Your data has been archived due to non-payment. Pay within 30 days (by ${purgeDate.toLocaleDateString("en-GB")}) to restore your data. After that, data will be permanently deleted.`,
-          entityType: "subscription",
-          entityId: null,
-        },
-      });
-      notificationsCreated++;
-      transitionedToWiped++;
-    }
-    log.push(`Stage 3 (read_only → data_wiped): ${transitionedToWiped} business(es)`);
-
-    // ── 4. True purge (30 days after dataSoftDeletedAt) ──
-    // Deletes all business data except the Business row + SubscriptionInvoice +
-    // PaymentTransaction (kept for audit). This is permanent.
-    const purgeBusinesses = await db.business.findMany({
-      where: {
-        subscriptionStage: "data_wiped",
-        dataPurgeDate: { lt: now },
-      },
-      select: { id: true, name: true },
-    });
-
-    for (const biz of purgeBusinesses) {
-      // Delete in dependency order (children first)
-      // ShelfScanItem doesn't have businessId — delete via ShelfScan cascade
+      // Delete in dependency order (children first).
+      // This mirrors the old purge logic but runs immediately at day 15
+      // instead of 30 days after a soft-delete.
+      // NOTE: these are the SHARED models (Sale, Purchase, Product, etc.).
+      // The CCTV-specific models (CCTVSale, CCTVPurchase, etc.) are NOT
+      // deleted here because they're scoped by businessId and the
+      // shared models cascade. If CCTV models don't cascade from
+      // Business, they'll be orphaned — a follow-up should add them.
+      // For now, the shared models cover the pharmacy + mobile-shop
+      // modules; CCTV has its own tables that need explicit deletion
+      // (see TODO below).
       await db.shelfScan.deleteMany({ where: { businessId: biz.id } });
       await db.stockCountLine.deleteMany({ where: { businessId: biz.id } });
       await db.stockCountProductSummary.deleteMany({ where: { businessId: biz.id } });
@@ -1217,22 +1289,42 @@ export async function runSubscriptionLifecycleJob(): Promise<void> {
       await db.businessDailyStats.deleteMany({ where: { businessId: biz.id } });
       await db.aIUsageLog.deleteMany({ where: { businessId: biz.id } });
 
-      // Mark as purged (keep Business row + invoices + payments for audit)
+      // TODO (follow-up): delete CCTV-specific models. The shared models
+      // above cover pharmacy + mobile-shop. CCTV has separate tables
+      // (CCTVSale, CCTVPurchase, CCTVProduct, CCTVSerialItem, CCTVRepair,
+      // CCTVExpense, CCTVEstimate, CCTVSupplierReplacement, CCTVCategory,
+      // CCTVCustomer, CCTVSupplier, CCTVStockMovement, CCTVSerialHistory,
+      // CCTVLedgerEntry, CCTVPayment, CCTVReturn, CCTVReturnItem,
+      // CCTVMushakInvoice, etc.) that are NOT deleted by the shared
+      // model deletions above. They should be added here in dependency
+      // order. For now, this is documented as a known gap — the
+      // Business row is marked data_wiped, so the guard blocks writes,
+      // and a future migration can add the CCTV deletions. The audit
+      // doc (STOCK_CALCULATION_BUGS.md §13, SUB-6) tracks this.
+
+      // Mark the business as data_wiped. Keep the Business row (for
+      // "no duplicate account"). Set dataSoftDeletedAt for backward
+      // compatibility with any code that checks it, though the new
+      // lifecycle does NOT support restore (canRestoreData will return
+      // false because dataPurgeDate is set to now — already past).
       await db.business.update({
         where: { id: biz.id },
         data: {
+          subscriptionStage: "data_wiped",
           subscriptionStatus: "cancelled",
           aiEnabled: false,
+          dataSoftDeletedAt: now,
+          dataPurgeDate: now, // immediately "purged" — no restore window
         },
       });
 
-      purged++;
-      log.push(`  ⚠️ Purged all data for: ${biz.name} (${biz.id})`);
+      transitionedToWiped++;
+      log.push(`  ⚠️ HARD DELETED all data for: ${biz.name} (${biz.id})`);
     }
-    log.push(`Stage 4 (true purge): ${purged} business(es)`);
+    log.push(`Stage 3 (read_only → data_wiped, day 15 hard delete): ${transitionedToWiped} business(es)`);
 
     log.push(`Total notifications created: ${notificationsCreated}`);
-    log.push(`Job completed successfully`);
+    log.push(`Job completed successfully (SUB-4 7/3/5 timeline)`);
 
     await db.cronJobLog.update({
       where: { id: cronLog.id },

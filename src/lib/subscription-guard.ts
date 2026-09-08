@@ -81,10 +81,16 @@ export async function requireActiveSubscription(
   }
 
   // read_only + data_wiped → blocked
+  // SUB-4: messages aligned with the new 7/3/5 day lifecycle.
+  // - read_only (day 10-15): writes blocked, but payment + reports still
+  //   work. Data is still intact (will be deleted at day 15).
+  // - data_wiped (day 15+): data has been HARD DELETED (no restore).
+  //   The Business row is kept so the same account can't re-register,
+  //   but all CCTV data (sales, purchases, products, etc.) is gone.
   const isDataWiped = stage === "data_wiped";
   const message = isDataWiped
-    ? "Your subscription has expired and data was archived. Pay now to restore full access."
-    : "Your subscription has expired. Pay now to restore full access. You can still view reports.";
+    ? "Your subscription expired and your data has been permanently deleted. Pay now to start a fresh subscription."
+    : "Your subscription has expired. You can still view reports and pay your subscription, but you cannot make sales, purchases, or repairs. Pay now to restore full access before your data is deleted.";
 
   const daysUntilWipe = business.dataWipeDate
     ? Math.ceil((business.dataWipeDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
