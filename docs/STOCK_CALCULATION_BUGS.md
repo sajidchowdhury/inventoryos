@@ -129,19 +129,22 @@ In `purchases/route.ts` the code stores **both** `item.quantity` (whatever the f
 
 ---
 
-## 3. Secondary bug — "add item to existing sale" is unsafe
+## 3. Secondary bug — "add item to existing sale" is unsafe ✅ FIXED
+
+> **Fix (commit `719cd56`)**: full rewrite of `src/app/api/businesses/[id]/cctv/sales/[saleId]/items/route.ts`. The endpoint is now wrapped in `db.$transaction`, uses atomic `updateMany` for non-serial stock decrement, marks serials SOLD (same pattern as the main sale flow), writes `CCTVStockMovement` audit rows, creates balanced ledger entries, and respects the invoice discount when recalculating the total.
 
 ### File
 
 `src/app/api/businesses/[id]/cctv/sales/[saleId]/items/route.ts`
 
-### Problems
+### Problems (all fixed)
 
-1. **Not wrapped in `$transaction`.** Sale item creation, sale total recalculation, and stock decrement are three separate writes. If any one fails, the previous ones are already committed.
-2. **Stock decrement is not atomic.** Line 56–60 uses a plain `db.cCTVProduct.update({ data: { stock: { decrement: qty } } })` — no `WHERE stock >= qty` guard. Under concurrency this can drive stock negative. (The main sale flow on `sales/route.ts` line 152–158 uses `updateMany` with `stock: { gte: qty }` and checks `updated.count === 0` — that's the correct pattern.)
-3. **Serial items are not marked SOLD.** Line 34 stores `serialNumber` on the new SaleItem, but the matching `CCTVSerialItem` row is never updated. The serial stays `IN_STOCK` → the same serial can be sold again on another sale.
-4. **No stock-movement audit row.** Main sale flow writes a `CCTVStockMovement` (line 176); this flow does not. Product Movement report will miss items added this way.
-5. **No ledger entries.** Main sale flow calls `createLedgerEntries` (line 245); this flow does not. Books go out of balance.
+1. ~~**Not wrapped in `$transaction`.**~~ ✅ Fixed: the entire operation (sale item creation, stock/serial update, total recalculation, ledger entries) is now inside `db.$transaction`. If any step fails, all changes roll back.
+2. ~~**Stock decrement is not atomic.**~~ ✅ Fixed: non-serial items now use `updateMany` with `where: { id, stock: { gte: quantity } }` — race-safe. If 0 rows updated, throws "Insufficient stock" (400, not 500).
+3. ~~**Serial items are not marked SOLD.**~~ ✅ Fixed: serial items now find the `CCTVSerialItem` with `status: "IN_STOCK"`, throw if not found ("not in stock or already sold"), then mark it SOLD (status, sellPrice, saleDate, warrantyEnd, customerId, customerName) + create a `CCTVSerialHistory` entry. Same pattern as the main sale flow.
+4. ~~**No stock-movement audit row.**~~ ✅ Fixed: `CCTVStockMovement` audit row created for both serial and non-serial items, with `movementType: "SALE"`, `quantityChange`, `balanceAfter`, and `notes` including the serial number for serial items.
+5. ~~**No ledger entries.**~~ ✅ Fixed: balanced ledger entries created for the added item's value — CREDIT `sales_revenue` + DEBIT `customer_receivable` (credit sale) or DEBIT `cash` (paid sale). Uses `createLedgerEntries()` which verifies debits = credits.
+6. ~~**Invoice discount ignored when recalculating total.**~~ ✅ Fixed: `newTotal = Math.max(0, subtotal - invoiceDiscount)` where `invoiceDiscount = sale.discount`. The old code used `sum(sellPrice * qty)` as `totalAmount` with no discount subtraction. Now both `subtotal` and `totalAmount` are set correctly.
 
 ### Repro for double-sell
 
@@ -168,16 +171,17 @@ For serial items it's worse:
 
 After this fix, the `stock` column will always reflect reality. The per-reader overrides in Stock Report and Dashboard can stay (defensive) but are no longer load-bearing.
 
-### Fix 2 — Make "add item to sale" safe and transactional
+### Fix 2 — Make "add item to sale" safe and transactional ✅ DONE
 
-Rewrite `src/app/api/businesses/[id]/cctv/sales/[saleId]/items/route.ts` to:
+~~Rewrite `src/app/api/businesses/[id]/cctv/sales/[saleId]/items/route.ts` to:~~
 
-1. Wrap everything in `db.$transaction(async (tx) => { ... })`.
-2. For serial items, atomically find a serial with `serialNumber = body.serialNumber AND status = IN_STOCK`, throw if not found, then update it to `SOLD` (same pattern as the main sale flow at lines 96–131).
-3. For non-serial items, use `updateMany` with `where: { id, stock: { gte: qty } }` and check `updated.count === 0` to detect insufficient stock (same pattern as main flow lines 152–158).
-4. Always write a `CCTVStockMovement` row.
-5. Always create ledger entries (call `createLedgerEntries` with DEBIT cash/receivable + CREDIT sales_revenue, same as main sale flow lines 210–245).
-6. Recompute the sale's `subtotal`/`totalAmount`/`dueAmount` from the new full item list (the existing code does this on lines 39–41, but it must happen inside the transaction and the `discount` field must be respected, which the current code ignores).
+**Done (commit `719cd56`)**. Full rewrite delivers:
+1. ✅ Everything wrapped in `db.$transaction`
+2. ✅ Serial items: atomically find `serialNumber + status: IN_STOCK`, throw if not found, mark SOLD (same pattern as main sale flow). Also decrements product stock + writes `CCTVStockMovement` audit (per §1 fix).
+3. ✅ Non-serial items: `updateMany` with `where: { id, stock: { gte: qty } }`, check `updated.count === 0` → throw "Insufficient stock" (400).
+4. ✅ `CCTVStockMovement` audit row for both serial and non-serial.
+5. ✅ Ledger entries via `createLedgerEntries` — CREDIT `sales_revenue` + DEBIT `customer_receivable` (credit) or DEBIT `cash` (paid).
+6. ✅ Recomputes `subtotal`/`totalAmount`/`dueAmount` respecting `sale.discount` (was ignored before).
 
 ### Fix 3 — Make `PurchaseItem.quantity` and `serials.length` consistent
 
