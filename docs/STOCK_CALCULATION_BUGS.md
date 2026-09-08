@@ -7,6 +7,7 @@
 >   - Section 9: Sales-section feature audit (POS, sales invoice, estimates, payments)
 >   - Section 10: Repairs & Service feature audit (repairs, repair token, warranty dashboard)
 >   - Section 11: Customers & Expenses feature audit (customer ledger, due collection, expenses)
+>   - Section 12: Reports feature audit (all 13 reports — data accuracy + logic)
 > **Status:** Open — fixes not yet applied
 
 ---
@@ -45,6 +46,15 @@ The Customers & Expenses audit (Section 11) found 5 more critical/high bugs:
 - **No edit/delete customer endpoint exists** — once a customer is created, it can't be modified or removed; phone/typos are permanent (CU-1).
 - **Due Collection's aging is computed from the oldest unpaid sale, not the oldest unpaid invoice by FIFO** — if a customer has a 6-month-old unpaid sale and a 1-day-old unpaid sale, both get aged by the oldest date, lumping the new sale into the "90+ days" bucket (DC-2).
 - **Expenses POST hardcodes `paymentMethod` to cash via `paymentMethodToAccount` fallback** — the API accepts a `paymentMethod` field but the UI never sends one, so all expenses silently hit the cash ledger account even when paid by bKash/bank (EX-2).
+
+The Reports audit (Section 12) found 7 more critical/high bugs:
+- **Weekly Health report crashes on every load** — `weekly-health/route.ts` references `_sum.totalAmount` (a bare identifier) instead of `daySales._sum.totalAmount`; `Number(_sum.totalAmount)` throws `ReferenceError: _sum is not defined` at runtime. The report has never worked in production (WH-1).
+- **Weekly Health profit formula is wrong** — `profit: salesTotal - expensesTotal - purchasesTotal` counts the full purchase amount as an expense (COGS should be `costPrice × qty`, not purchase total); profit is massively understated whenever the shop buys inventory without selling it (WH-2).
+- **Daily Summary double-counts cash on credit sales** — credit sales are included in `sales.total` and `sales.paid` but the `paid` amount also appears as `customerPayments.total` (the standalone payment); when summed, the same cash is counted twice in `moneyIn` (DS-1).
+- **Daily Summary counts returns as a positive `total` but never subtracts from cash flow** — returns show in the summary card but `moneyOut` doesn't include them, so the net cash flow ignores refunds entirely (DS-2).
+- **Cash Book filters sales by `paymentType: "cash"` only** — credit sales are silently omitted, but the cash book is supposed to show ALL money in/out. A cash sale made with `paymentType: "credit"` (because the customer put ৳500 down on a ৳5000 sale) won't appear in the cash book even though ৳500 of cash was collected (CB-1).
+- **Profit & Loss computes COGS from `SaleItem.costPrice`, which is hardcoded to 0 for estimate-converted sales** (E-6 from §9.3) — net profit is overstated by 100% margin on every converted sale (PL-1).
+- **Top Products aggregates by `productName` (a free-text string), not `productId`** — two sales of the same product with slightly different name spellings ("Hikvision DS-2CD" vs "Hikvision DS-2CD2143G2") appear as two separate products in the ranking (TP-1).
 
 ---
 
@@ -885,6 +895,243 @@ Bug IDs are prefixed: **CL** (Customer Ledger), **CU** (Customers CRUD), **DC** 
 | `src/app/api/businesses/[id]/cctv/expenses/[expenseId]/route.ts` (new) | EX-3 |
 | `src/modules/cctv-shop/components/CCTVExpenses.tsx` | EX-6, EX-7, EX-9, EX-11, EX-12, EX-13 |
 | `prisma/schema.prisma` + new migration | CU-1 (`isActive` on customer), CU-4 (`@@unique([businessId, phone])`), EX-2 (`paymentMethod` on expense), EX-3 (soft-delete), EX-7 (`paidTo`), EX-8 (`attachmentUrl`) |
+
+---
+
+## 12. Reports Feature Audit (All 13 Reports)
+
+This section audits all 13 reports in the Reports section for data accuracy and logic. Six of these reports were already covered in earlier sections — their bugs are referenced here but NOT re-listed. Seven new reports are fully audited below.
+
+Bug IDs are prefixed: **RH** (Reports Hub), **DS** (Daily Summary), **WH** (Weekly Health), **SR** (Sales Report), **PR** (Purchase Report), **PL** (Profit & Loss), **CB** (Cash Book), **TP** (Top Products), **ES** (Expense Summary), **ST** (Stock Report), **PM** (Product Movement), **CL** (Customer Ledger), **SL** (Supplier Ledger).
+
+### 12.1 Reports already audited in earlier sections
+
+| Report | Section | Summary of findings |
+|---|---|---|
+| **Stock Report** | §2, §8.6 | ✅ API correct for both serial & non-serial (uses IN_STOCK count override). UI bugs in §8.6: no auto-load (R-1), missing out-of-stock card (R-2), print includes nav chrome (R-3). |
+| **Product Movement** | §2 | ⚠️ Total correct, running balance drifts for serial items. Recommended fix in §2. |
+| **Sales Report** | §2 | ⚠️ Correct if frontend sends `quantity` matching actual serial count. Fragile. |
+| **Purchase Report** | §2 | ⚠️ Same caveat as Sales Report. |
+| **Customer Ledger** | §11.1 | 🔴 CL-1 (broken returns query), CL-2 (list ignores payments), CL-4 (N+1), CL-5 (no date filter), + more. |
+| **Due Collection** | §11.3 | 🔴 DC-1 (non-FIFO aging), DC-2 (opening-balance confusion), DC-3 (ignores payments), + more. |
+
+### 12.2 Reports Hub
+
+**Files:** `src/modules/cctv-shop/components/CCTVReportsHub.tsx`
+
+| ID | Severity | Bug |
+|---|---|---|
+| **RH-1** | High | "Cash Book (Daily)" card navigates to `view: 'reports'` (line 79) — not to a cash-book view. The `reports` view is the Reports Hub itself. Clicking this card from the Reports Hub does nothing (navigates to the same page). The Cash Book UI (`CCTVCashBook.tsx`) exists but is unreachable from the hub. Should be `view: 'cash-book'`. |
+| **RH-2** | Medium | "Customer Ledgers" card navigates to `view: 'customers'` (line 100) and "Supplier Ledgers" to `view: 'suppliers'` (line 107). These are the same views used from the sidebar's Accounts group. The hub's `navigate()` doesn't pass any context, so the user lands on the customer/supplier ledger list and has to re-select. Works, but the labels in the hub ("Customer Ledgers") vs the nav ("Customers") are inconsistent. |
+| **RH-3** | Low | No descriptions of date ranges or filters. User clicks "Sales Report" without knowing it requires a date range. Should pre-fill last-30-days or note "date range required". |
+| **RH-4** | Low | 13 cards in a 2-column grid. On mobile, this is 13 rows of scrolling. No grouping by category (Sales / Inventory / Financial / Customer). |
+| **RH-5** | Low | No "Recently viewed" or "favorites". A shop owner who checks Daily Summary every morning still has to scroll past 12 other cards. |
+
+### 12.3 Daily Summary
+
+**Files:** `src/app/api/businesses/[id]/cctv/reports/daily-summary/route.ts` · `src/modules/cctv-shop/components/CCTVDailySummary.tsx`
+
+| ID | Severity | Bug |
+|---|---|---|
+| **DS-1** | **Critical** | **Double-counts cash on credit sales.** A credit sale creates a `cCTVSale` with `paidAmount: 500` (the deposit) and a `cCTVPayment` of ৳500 (recorded inside the sale POST, see `sales/route.ts` lines 193–206). The Daily Summary sums both: `salesPaid` includes the ৳500 (line 24), AND `customerPaymentTotal` includes the same ৳500 (line 65, since the payment has `type: "sale"` not `customer_payment`... wait, let me check). Actually the sale-internal payment has `type: "sale"` (sales/route.ts line 197), and the daily-summary filters `customerPayments` by `type: "customer_payment"` (line 62). So the sale-internal payment is NOT double-counted. BUT: if the customer later makes a standalone `/payments` POST for the remaining ৳4500, that payment has `type: "customer_payment"` and IS included in `customerPaymentTotal`. The ৳4500 is correctly counted as money in. **The real bug**: the ৳500 deposit is in `salesPaid` (line 24) but NOT in `customerPaymentTotal` (filtered out by `type`), so it's counted once. The ৳4500 standalone payment is in `customerPaymentTotal` but NOT in `salesPaid` (because `sale.paidAmount` is never updated by `/payments` POST per PM-3). So `moneyIn = salesPaid + customerPaymentTotal = 500 + 4500 = 5000`. Correct. **BUT** if PM-3 is fixed (payments update `sale.paidAmount`), then `salesPaid` becomes 5000 AND `customerPaymentTotal` is still 4500 → `moneyIn = 9500`. Double-count. The Daily Summary will break when PM-3 is fixed. Needs to be reconciled: either count `salesPaid` OR `customerPaymentTotal`, not both. |
+| **DS-2** | High | Returns are shown as a positive `total` in the summary card (UI line 171) but never subtracted from `moneyOut`. A ৳2000 return refund should reduce net cash flow by ৳2000, but the formula (line 79: `netMoneyOut = purchasePaid + expenseTotal + supplierPaymentTotal`) doesn't include returns. Net cash flow is overstated by the return amount. |
+| **DS-3** | High | `repairRevenue` is computed (line 50) and displayed (UI line 159) but the comment on line 76 admits confusion: "repairCost is what customer pays us. For now, not counting it in moneyIn since it's collected at return time." So repair revenue shows in the summary card but contributes ৳0 to `moneyIn`. A day with ৳5000 of repairs collected shows ৳5000 repair revenue but ৳0 money in from repairs. Misleading. Should count repair cost as moneyIn on the day the repair is marked `returned` (when the customer actually pays). |
+| **DS-4** | Medium | Purchase `due` is computed as `purchaseTotal - purchasePaid` (line 87), but `purchasePaid` is the sum of `cCTVPurchase.paidAmount` — which is the inline paid amount at purchase time. Standalone supplier payments (via `/payments` POST with `type: "supplier_payment"`) don't update `cCTVPurchase.paidAmount` (same root cause as PM-3 for sales). So the "Purchases Due" shown here is stale. |
+| **DS-5** | Medium | The "transactions" count in the hero card (UI line 111) is `sales.count + purchases.count + expenses.count` — ignores repairs, returns, and payments. Misleading "transactions" count. A day with 3 sales, 2 purchases, 1 expense, 5 repairs, 2 returns, and 8 payments shows "6 transactions" when there were really 21. |
+| **DS-6** | Medium | UI requires manual "Search" button click (line 35). Doesn't auto-load today's data on mount. Every other report auto-loads (or has a clear "click to load" empty state). The Daily Summary is the "Most used" report per the hub badge — should auto-load today. |
+| **DS-7** | Medium | No "previous day" / "next day" navigation. User has to type a date in the date picker. For daily review workflows, a "‹ Sep 7 | Sep 8 | Sep 9 ›" header would be much faster. |
+| **DS-8** | Low | The `details` section (UI lines 187–269) shows sales, purchases, expenses, repairs — but not returns or customer payments, even though the API returns them (lines 100–105 of route). Asymmetric. |
+| **DS-9** | Low | Time displayed as HH:MM (UI line 197, 24-hour format from `toLocaleTimeString("en-GB")`). No seconds. Fine for most cases but a shop with multiple sales in the same minute can't distinguish them. |
+| **DS-10** | Low | No "today" shortcut button. User has to type today's date manually if they navigated away. |
+
+### 12.4 Weekly Health
+
+**Files:** `src/app/api/businesses/[id]/cctv/reports/weekly-health/route.ts` · `src/modules/cctv-shop/components/CCTVWeeklyHealth.tsx`
+
+| ID | Severity | Bug |
+|---|---|---|
+| **WH-1** | **Critical** | **The report crashes on every load.** Lines 60–62 and 105–107 reference `_sum.totalAmount` / `_sum.amount` as bare identifiers:
+```ts
+const salesTotal = daySales._sum.totalAmount ? Number(_sum.totalAmount) : 0;
+```
+`_sum` is not defined — only `daySales._sum` is. `Number(_sum.totalAmount)` throws `ReferenceError: _sum is not defined`. The try/catch in the UI (`CCTVWeeklyHealth.tsx`) catches the 500 error and shows nothing. **This report has never worked in production.** Should be `Number(daySales._sum.totalAmount)`. |
+| **WH-2** | **Critical** | **Profit formula is wrong.** Line 71: `profit: salesTotal - expensesTotal - purchasesTotal`. This counts the FULL purchase amount as an expense. If a shop buys ৳50000 of inventory on Monday and sells ৳10000 on Tuesday, the weekly profit shows `-৳40000` — even though the shop has ৳50000 of inventory to sell next week. COGS should be `Σ(SaleItem.costPrice × quantity)`, not the purchase total. Purchases are cash flow, not expenses. |
+| **WH-3** | High | The "previous week" date range is computed wrong. Line 14: `previous7Start = new Date(sevenDaysAgo); previous7Start.setDate(previous7Start.getDate() - 7)`. `sevenDaysAgo` is `now - 6 days` (line 11, includes today = 7 days). So `previous7Start = now - 6 - 7 = now - 13 days`. The previous week should be `now - 13 days` to `now - 7 days` (7 days). But `prevWeekEnd` (line 85) is `sevenDaysAgo - 1 = now - 7 days`. So the previous week range is `[now-13, now-7]` = 7 days. Correct length, but the comparison is "this week (7 days ending today)" vs "previous week (7 days ending yesterday-7)". Off-by-one: should be "previous 7 days ending 7 days ago" = `[now-13, now-7]` inclusive = 7 days. Actually correct, but confusing. Worth a comment. |
+| **WH-4** | High | `profitChange` (line 113): `thisWeek.profit - (prevWeek.sales - prevWeek.expenses - prevWeek.purchases)`. This recomputes the previous week's profit using the same wrong formula (WH-2). So the change is "wrong minus wrong" — meaningless. |
+| **WH-5** | High | Health score (lines 121–126) starts at 50 and adds up to 50 more: +20 if profit > 0, +15 if sales growing, +10 if expenses shrinking, +5 if sales > 0. A shop with no sales, no expenses, no profit gets score 50 ("Average"). A shop with ৳1 of sales, ৳0 expenses, ৳1 profit, growing 100000% from ৳0.01 last week gets 90 ("Excellent"). A shop with ৳100000 of sales but flat growth and flat expenses gets 70 ("Good"). The score doesn't reflect absolute business health, only directional changes. Misleading "health" label. |
+| **WH-6** | High | `lowStockProducts` (line 136–138) counts products where `stock <= 5` — hardcoded threshold. The product's `minStock` field (which the shop owner sets per product) is ignored. A product with `minStock: 50` and `stock: 10` is NOT flagged; a product with `minStock: 0` and `stock: 3` IS flagged. Should use `stock <= minStock AND minStock > 0`. |
+| **WH-7** | Medium | Repair count uses `receivedDate` (line 54), but the repair revenue (line 55: `_sum: { repairCost }`) sums ALL repair costs for repairs RECEIVED this week — not repairs COMPLETED (returned to customer) this week. A repair received Monday with ৳500 cost (recorded Wednesday) shows ৳500 revenue for Monday, even though the customer hasn't paid yet. Combined with RP-7 (no payment flow), this is double-misleading. |
+| **WH-8** | Medium | No date range parameter. The report is always "last 7 days ending today". Can't view "week of Sep 1–7" if today is Sep 20. Should accept `?to=` param. |
+| **WH-9** | Medium | The 7 daily aggregate queries (lines 37–58) run in a `Promise.all` per day, but the days themselves are sequential (line 30: `for (let i = 6; i >= 0; i--)`). 7 days × 4 queries = 28 queries, 7 sequential rounds. Could be a single query with `groupBy` on date. Performance hit for shops with many transactions. |
+| **WH-10** | Low | "Smart insights" in the response (lines 149–159) include `bestDay` and `worstDay` — but only by sales, not by profit. A day with ৳10000 sales and ৳9000 expenses (৳1000 profit) is "better" than a day with ৳5000 sales and ৳1000 expenses (৳4000 profit), but the report calls the first one "best". |
+| **WH-11** | Low | No graph data validation. If `dailyData` is all zeros (no transactions in 7 days), the UI graph renders a flat line at 0. No "no data" state. |
+
+### 12.5 Sales Report (revisited)
+
+**Files:** `src/app/api/businesses/[id]/cctv/reports/sales-report/route.ts` · `src/modules/cctv-shop/components/CCTVSalesReport.tsx`
+
+> Already covered in §2 (data aggregation by `quantity` caveat). Additional findings:
+
+| ID | Severity | Bug |
+|---|---|---|
+| **SR-1** | High | `paymentMethod` filter (lines 27–28, 41–48) fetches ALL sales in the date range, then fetches payments matching the method, then filters sales by `saleIds.has(s.id)`. A sale with split payment (৳500 cash + ৳500 bKash) has TWO payment rows. Filtering by "cash" includes this sale (because the cash payment matches), but the sale's `totalAmount` (৳1000) is counted in full, not just the ৳500 cash portion. The "sales total" for cash-filtered results is overstated. |
+| **SR-2** | Medium | `methodBreakdown` (lines 55–63) sums ALL payments in the date range regardless of the sale filter. If the user filters by customerId, the method breakdown still includes all customers' payments. Misleading — the breakdown doesn't match the filtered sales. |
+| **SR-3** | Medium | No `?groupBy=day|week|month` param. The report returns a flat list of sales. For a 3-month range, that's hundreds of rows. No time-bucketed aggregation. |
+| **SR-4** | Low | `topProducts` (lines 64–74) keys by `productName` (free-text), not `productId`. Same bug as TP-1. Two sales of the same product with different name spellings appear as two products. |
+
+### 12.6 Purchase Report (revisited)
+
+**Files:** `src/app/api/businesses/[id]/cctv/reports/purchase-report/route.ts`
+
+> Already covered in §2. Additional findings:
+
+| ID | Severity | Bug |
+|---|---|---|
+| **PR-1** | High | `supplierBreakdown` (lines 53–57) keys by `pur.supplierName` — a denormalized string on the purchase. If the supplier's name is later edited (once CU-1 is fixed and edit is possible), old purchases still show the old name. The breakdown will have duplicate entries ("Old Name" and "New Name") for the same supplier. Should key by `supplierId` and join the supplier name. |
+| **PR-2** | Medium | No `?paymentMethod=` filter, unlike Sales Report. Asymmetric. |
+| **PR-3** | Low | `topProducts` keys by `productName` (line 44). Same bug as TP-1 / SR-4. |
+
+### 12.7 Profit & Loss
+
+**Files:** `src/app/api/businesses/[id]/cctv/reports/profit-loss/route.ts` · `src/modules/cctv-shop/components/CCTVProfitLoss.tsx`
+
+| ID | Severity | Bug |
+|---|---|---|
+| **PL-1** | **Critical** | **COGS is computed from `SaleItem.costPrice`, which is hardcoded to 0 for estimate-converted sales** (E-6 in §9.3). For any sale that came from converting an estimate, `costPrice = 0`, so COGS understates and net profit overstates by 100% margin on every converted sale. Should fetch the product's current `costPrice` at sale time (or at P&L computation time). |
+| **PL-2** | High | `totalRevenue` (line 26) is `Σ(sale.totalAmount)`, which is `subtotal - invoiceDiscount`. But the sale's `totalAmount` already has the discount subtracted. So the P&L shows post-discount revenue. The discount itself is NOT shown as a separate line item. A shop with ৳10000 in sales and ৳2000 in discounts shows "Total Revenue: ৳8000" with no indication that ৳2000 was discounted. Should show `grossRevenue`, `lessDiscount`, `netRevenue` separately. |
+| **PL-3** | High | `repairRevenue` (line 57) sums `repairCost` for repairs `receivedDate` in range. But per RP-7, `repairCost` is never actually collected — it's a stored field with no payment. So the P&L shows "repair revenue" of ৳5000 but no cash was received and no ledger entry was written. The net profit includes this phantom revenue. Combined with WH-7, this is consistent with the (broken) Weekly Health but inconsistent with the Cash Book (which doesn't count repairs at all). |
+| **PL-4** | Medium | No COGS for repairs. If a repair uses spare parts (e.g. a ৳500 HDD replaced under a ৳1000 repair), the ৳500 part cost is not subtracted from repair revenue. The schema has no "repair parts" model. Repair profit is overstated by the parts cost. |
+| **PL-5** | Medium | No `?format=monthly|quarterly|yearly` aggregation. The report returns a single period's totals. For a 3-month range, you get one number. No monthly breakdown within the range. |
+| **PL-6** | Medium | No comparison to previous period. "Profit this month vs last month" is a standard P&L view. Missing. |
+| **PL-7** | Low | `expenseByCategory` (lines 47–50) keys by `exp.category` — a free-text string. Same keying issue as TP-1. If a category is renamed (once EX-5 is fixed), old expenses keep the old name. |
+| **PL-8** | Low | No "gross margin %" or "net margin %" calculation. Just absolute numbers. A shop owner wants to know "am I making 10% or 30%?". |
+
+### 12.8 Cash Book
+
+**Files:** `src/app/api/businesses/[id]/cctv/reports/cash-book/route.ts` · `src/modules/cctv-shop/components/CCTVCashBook.tsx`
+
+| ID | Severity | Bug |
+|---|---|---|
+| **CB-1** | **Critical** | **Sales filtered by `paymentType: "cash"` only** (line 34). Credit sales are silently omitted entirely. But a "credit" sale with `paidAmount: 500` (the deposit) still had ৳500 of cash change hands. The cash book shows ৳0 for this sale. The ৳500 deposit is invisible. Should include ALL sales and use `paidAmount` as the cash-in amount, regardless of `paymentType`. |
+| **CB-2** | High | Customer payments (lines 51–69) include ALL methods (cash, bank, bkash, nagad). The "Cash Book" is supposed to track CASH. A ৳5000 bKash payment shows as cash-in ৳5000. The book conflates all payment methods into one "cash" total. Should either (a) filter by `paymentMethod: "cash"` only, or (b) be renamed to "Money Flow" and show per-method columns. |
+| **CB-3** | High | No opening balance. The cash book starts at ৳0 every day. A shop with ৳10000 cash on hand from yesterday shows "Net Cash: +৳5000" today — but the actual cash on hand is ৳15000. Without an opening balance, the "net cash" number is meaningless for reconciliation. Should accept `?openingBalance=` or compute it from all prior days' net cash. |
+| **CB-4** | High | Entries sorted by time string only (line 134: `a.time.localeCompare(b.time)`). Time is "HH:MM" — no seconds, no date. Two entries at "14:30" sort arbitrarily. Within a day this is mostly fine, but if the date filter is ever extended to a range, entries from different days at the same time would interleave. |
+| **CB-5** | Medium | Expenses (lines 114–131) are ALL included as cash-out, regardless of `paymentMethod`. Per EX-2, the UI never sends `paymentMethod`, so all expenses are cash — but once EX-2 is fixed, a bKash expense would still show as cash-out here. Same issue as CB-2. |
+| **CB-6** | Medium | No "closing balance" in the summary. The summary (lines 145–150) shows `totalIn`, `totalOut`, `netCash`, `transactionCount`. No `openingBalance` or `closingBalance`. Standard cash book format is `Opening + In - Out = Closing`. |
+| **CB-7** | Medium | No per-method breakdown. A shop wanting "cash in by method" (cash vs bKash vs bank) has to manually sum. Should show a small breakdown table. |
+| **CB-8** | Low | `description` for customer payments (line 63) is `Customer Payment (cash)` — doesn't include the customer name. A ৳5000 payment from "Rahim" shows as "Customer Payment (cash)" with no link to Rahim. Should join the customer name. |
+| **CB-9** | Low | No "reconcile" feature. The cash book should match the physical cash drawer at end of day. No "counted cash" input + variance calculation. |
+| **CB-10** | Low | Single-day only. No date range. A shop wanting "cash book for this week" can't. |
+
+### 12.9 Top Products
+
+**Files:** `src/app/api/businesses/[id]/cctv/reports/top-products/route.ts` · `src/modules/cctv-shop/components/CCTVTopProducts.tsx`
+
+| ID | Severity | Bug |
+|---|---|---|
+| **TP-1** | High | Aggregates by `productName` (line 32: `const key = item.productName`), a free-text string on `CCTVSaleItem`. Two sales of the same product with different name spellings ("Hikvision DS-2CD" vs "Hikvision DS-2CD2143G2") appear as two separate products. Should key by `productId` and join the product name. |
+| **TP-2** | High | `cost` uses `SaleItem.costPrice` (line 36), which is 0 for estimate-converted sales (E-6). So `profit` (line 37) = `revenue - 0` = 100% margin for converted sales. Top products by profit ranking is wrong — converted sales always rank highest. |
+| **TP-3** | Medium | No `?sortBy=` param. Always returns both `topByRevenue` and `topByQty` (lines 40–41). A shop wanting "top 50 by revenue" gets 50, but the API computes both lists. Minor waste. |
+| **TP-4** | Medium | `limit` defaults to 10 (line 10) but has no max. `?limit=10000` returns 10000 products. Should cap at, say, 100. |
+| **TP-5** | Medium | No category filter. A shop wanting "top products in Cameras category" can't filter. |
+| **TP-6** | Low | No "include zero-sales products" option. A shop wanting "all products ranked, including those with 0 sales" can't — only products with sales appear. |
+| **TP-7** | Low | No "trending" (period-over-period comparison). "Top products this month vs last month" is a common ask. |
+
+### 12.10 Expense Summary
+
+**Files:** `src/app/api/businesses/[id]/cctv/reports/expense-summary/route.ts` · `src/modules/cctv-shop/components/CCTVExpenseSummary.tsx`
+
+| ID | Severity | Bug |
+|---|---|---|
+| **ES-1** | High | `byCategory[exp.category].total += exp.amount` (line 32) — `exp.amount` is a Prisma `Decimal`, not a JS number. `Decimal + Decimal` works in Prisma but the result is a `Decimal`. The `pct` calculation (line 35: `data.total / total`) divides `Decimal` by `number` — works, but the response serialization may show `Decimal` objects instead of plain numbers. Inconsistent with other reports that use `Number(x.amount)`. |
+| **ES-2** | Medium | No `?category=` filter. The report always returns all categories. A shop wanting "only rent expenses for September" can't filter. |
+| **ES-3** | Medium | `expenses` array (line 47) returns ALL expense rows in the date range, not paginated. A shop with 5000 expenses in a year loads all 5000. |
+| **ES-4** | Medium | No trend data. "Expenses this month vs last month" by category is a common ask. The report gives one period's breakdown, no comparison. |
+| **ES-5** | Low | `avgPerExpense` (line 43) is `total / count`. For a shop with 1 expense of ৳50000 (rent), avg is ৳50000 — misleading. Should also show median or just remove the field. |
+| **ES-6** | Low | No "exclude category" option. A shop wanting "all expenses except rent" can't exclude. |
+| **ES-7** | Low | No CSV export. The bar chart is visual only; accountants want a table. |
+
+### 12.11 Stock Report (revisited)
+
+> Already covered in §2 and §8.6. No new findings.
+
+### 12.12 Product Movement (revisited)
+
+> Already covered in §2. No new findings.
+
+### 12.13 Customer Ledger (revisited)
+
+> Already covered in §11.1. No new findings.
+
+### 12.14 Supplier Ledger
+
+**Files:** `src/app/api/businesses/[id]/cctv/reports/supplier-ledger/route.ts` · `src/modules/cctv-shop/components/CCTVLedger.tsx` (type="supplier")
+
+> The `CCTVLedger` component is shared between customer and supplier ledgers (prop `type`). The supplier ledger reuses the same UI with `apiPath = 'supplier-ledger'`.
+
+| ID | Severity | Bug |
+|---|---|---|
+| **SL-1** | **Critical** | **Supplier-list balance ignores standalone payments** — same root cause as CL-2. Route lines 19–30 compute balance as `openingBalance + Σ(purchase.totalAmount) − Σ(purchase.paidAmount)`. Standalone supplier payments via `/payments` POST (type: `supplier_payment`) don't update `cCTVPurchase.paidAmount` (same bug as PM-3 for sales). The supplier-list balance diverges from the per-supplier ledger balance whenever a standalone supplier payment is recorded. |
+| **SL-2** | High | No "returns to supplier" query. The customer ledger has a (broken) returns query (CL-1); the supplier ledger has no equivalent. A supplier credit note or returned goods scenario is invisible. |
+| **SL-3** | High | No date filter on the per-supplier ledger. Same as CL-5. A supplier with 10 years of purchases loads all of them. |
+| **SL-4** | High | N+1 query on the supplier list (lines 19–30). Same as CL-4. 500 suppliers = 501 queries. |
+| **SL-5** | High | No edit/delete supplier endpoint (same as CU-1 for customers). The `suppliers/route.ts` only has GET and POST — no `suppliers/[supplierId]/route.ts`. Once a supplier is created, name/phone are immutable. |
+| **SL-6** | Medium | No purchase details in the ledger. Each purchase shows as "Purchase (INV-123)" with debit = total. No item-level breakdown. A shop wanting "what did I buy from supplier X on invoice Y" has to navigate to the purchase detail elsewhere. |
+| **SL-7** | Medium | Sort by date string only (line 104). Same as CL-6. Within a day, order is arbitrary. |
+| **SL-8** | Medium | Opening balance entry uses `supplier.createdAt` (line 58). If the supplier was created in 2024 and the operator views a 2026 date range (once SL-3 is fixed), the opening balance is outside the window. Same as CL-7. |
+| **SL-9** | Low | No "we owe" total at the top of the supplier list. The customer ledger UI shows "Total They Owe" (CL-12); the supplier ledger doesn't have an equivalent "Total We Owe" summary. |
+| **SL-10** | Low | No `paymentMethod` display in the ledger entries. A ৳5000 bKash payment to a supplier shows as "Payment (bkash)" — fine — but no breakdown by method. |
+
+### 12.15 Cross-report consistency matrix
+
+This matrix shows which reports agree with each other on key financial figures. "✗" means they disagree due to one of the bugs above.
+
+| Figure | Daily Summary | Weekly Health | P&L | Cash Book | Customer Ledger | Due Collection |
+|---|---|---|---|---|---|---|
+| **Total Sales** | `Σ(sale.totalAmount)` | `Σ(daySales.totalAmount)` | `Σ(sale.totalAmount)` | n/a (cash only) | `Σ(sale.totalAmount)` | `Σ(sale.totalAmount)` |
+| **Total COGS** | n/a | `purchasesTotal` ❌ (WH-2) | `Σ(SaleItem.costPrice × qty)` ❌ (PL-1) | n/a | n/a | n/a |
+| **Total Expenses** | `Σ(expense.amount)` | `Σ(dayExpenses.amount)` | `Σ(expense.amount)` | `Σ(expense.amount)` | n/a | n/a |
+| **Repair Revenue** | `Σ(repairCost)` but not in moneyIn ❌ (DS-3) | `Σ(repairCost)` | `Σ(repairCost)` ❌ (PL-3) | n/a | ৳0 ❌ (CL-3) | n/a |
+| **Customer Balance** | n/a | n/a | n/a | n/a | list vs detail disagree ❌ (CL-2) | disagrees with ledger ❌ (DC-3) |
+| **Net Cash Flow** | `salesPaid + customerPayments` ❌ (DS-1 if PM-3 fixed) | n/a | n/a | `totalIn - totalOut` ❌ (CB-1, CB-2) | n/a | n/a |
+| **Net Profit** | n/a | `sales - expenses - purchases` ❌ (WH-2) | `grossProfit + repairRev - expenses` ❌ (PL-1, PL-3) | n/a | n/a | n/a |
+
+**Key insight**: There is no single source of truth. Each report computes financial figures independently with different (often wrong) formulas. Fixing the upstream bugs (PM-3, RP-7, E-6) will make some reports correct but break others (DS-1 will double-count once PM-3 is fixed). A coordinated refactor is needed.
+
+### 12.16 Priority summary across the Reports section
+
+| Priority | Bug IDs | What to fix first |
+|---|---|---|
+| **P0** (blocks normal use) | WH-1, WH-2, DS-1, CB-1, PL-1 | Fix `_sum` reference error in weekly-health; fix profit formula (use COGS not purchases); reconcile daily-summary moneyIn before/after PM-3 fix; include all sales in cash book (use paidAmount); fetch real costPrice for P&L COGS |
+| **P1** (data correctness) | RH-1, DS-2, DS-3, DS-4, WH-4, WH-5, WH-6, WH-7, SR-1, PR-1, PL-2, PL-3, PL-4, CB-2, CB-3, TP-1, TP-2, ES-1, SL-1, SL-2, SL-3, SL-4, SL-5 | Cash book nav fix; returns in cash flow; repair revenue in moneyIn; purchase due reconciliation; weekly profit change + health score + low stock threshold + repair date; sales split-payment filter; supplier breakdown by ID; P&L discount line + phantom repair revenue + repair parts; cash book method filter + opening balance; top products by productId + real costPrice; expense Decimal serialization; supplier ledger bugs (mirror of customer ledger) |
+| **P2** (UX / consistency) | RH-2, RH-3, DS-5, DS-6, DS-7, WH-8, WH-9, SR-2, SR-3, PL-5, PL-6, CB-4, CB-5, CB-6, CB-7, TP-3, TP-4, TP-5, ES-2, ES-3, ES-4, SL-6, SL-7, SL-8 | Hub nav labels; date range hints; transaction count fix; auto-load daily summary; day navigation; weekly date param; weekly query batching; sales method breakdown match; sales groupBy; P&L monthly aggregation + comparison; cash book sort + method filter + closing balance + per-method breakdown; top products sortBy + limit cap + category filter; expense category filter + pagination + trend; supplier ledger item details + sort + opening balance carry-forward |
+| **P3** (polish) | RH-4, RH-5, DS-8, DS-9, DS-10, WH-10, WH-11, SR-4, PR-2, PR-3, PL-7, PL-8, CB-8, CB-9, CB-10, TP-6, TP-7, ES-5, ES-6, ES-7, SL-9, SL-10 | Hub grouping + favorites; daily details asymmetry + time format + today shortcut; weekly best-day by profit + no-data state; sales topProducts by productId; purchase method filter + topProducts by productId; P&L category keying + margin %; cash book customer name + reconcile + range; top products zero-sales + trending; expense median + exclude + CSV; supplier ledger "we owe" total + method breakdown |
+
+### 12.17 Files to touch for Section 12 fixes
+
+| File | Fix IDs |
+|---|---|
+| `src/modules/cctv-shop/components/CCTVReportsHub.tsx` | RH-1, RH-2, RH-3, RH-4, RH-5 |
+| `src/app/api/businesses/[id]/cctv/reports/daily-summary/route.ts` | DS-1, DS-2, DS-3, DS-4, DS-5 |
+| `src/modules/cctv-shop/components/CCTVDailySummary.tsx` | DS-5, DS-6, DS-7, DS-8, DS-9, DS-10 |
+| `src/app/api/businesses/[id]/cctv/reports/weekly-health/route.ts` | WH-1, WH-2, WH-4, WH-5, WH-6, WH-7, WH-8, WH-9 |
+| `src/modules/cctv-shop/components/CCTVWeeklyHealth.tsx` | WH-10, WH-11 |
+| `src/app/api/businesses/[id]/cctv/reports/sales-report/route.ts` | SR-1, SR-2, SR-3, SR-4 |
+| `src/modules/cctv-shop/components/CCTVSalesReport.tsx` | (UI follows API contract) |
+| `src/app/api/businesses/[id]/cctv/reports/purchase-report/route.ts` | PR-1, PR-2, PR-3 |
+| `src/app/api/businesses/[id]/cctv/reports/profit-loss/route.ts` | PL-1, PL-2, PL-3, PL-4, PL-5, PL-6, PL-7, PL-8 |
+| `src/modules/cctv-shop/components/CCTVProfitLoss.tsx` | (UI follows API contract) |
+| `src/app/api/businesses/[id]/cctv/reports/cash-book/route.ts` | CB-1, CB-2, CB-3, CB-4, CB-5, CB-6, CB-7, CB-8, CB-10 |
+| `src/modules/cctv-shop/components/CCTVCashBook.tsx` | (UI follows API contract) |
+| `src/app/api/businesses/[id]/cctv/reports/top-products/route.ts` | TP-1, TP-2, TP-3, TP-4, TP-5, TP-6, TP-7 |
+| `src/modules/cctv-shop/components/CCTVTopProducts.tsx` | (UI follows API contract) |
+| `src/app/api/businesses/[id]/cctv/reports/expense-summary/route.ts` | ES-1, ES-2, ES-3, ES-4, ES-5, ES-6, ES-7 |
+| `src/modules/cctv-shop/components/CCTVExpenseSummary.tsx` | (UI follows API contract) |
+| `src/app/api/businesses/[id]/cctv/reports/supplier-ledger/route.ts` | SL-1, SL-2, SL-3, SL-4, SL-6, SL-7, SL-8 |
+| `src/app/api/businesses/[id]/cctv/suppliers/route.ts` | SL-5 (same as CU-1 fix pattern) |
+| `src/app/api/businesses/[id]/cctv/suppliers/[supplierId]/route.ts` (new) | SL-5 |
+| `src/modules/cctv-shop/components/CCTVLedger.tsx` | SL-9, SL-10 (supplier-specific UI tweaks) |
+| `prisma/schema.prisma` + new migration | PL-4 (`CCTVRepairPart` model for repair parts), SL-5 (`isActive` on supplier) |
 
 ---
 
