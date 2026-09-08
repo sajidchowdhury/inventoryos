@@ -119,7 +119,7 @@ Any reader that uses `CCTVProduct.stock` directly is wrong after the first sale.
 | **Products List** (`GET /cctv/products`) | `CCTVProduct.stock` directly | ✅ **FIXED (§1)** — stock now decremented on serial sale | ✅ Correct |
 | **Stock Report** (`reports/stock`) | Override: `COUNT(serials WHERE status=IN_STOCK)` (lines 19–24) | ✅ Correct (override still works; stock column now also matches) | ✅ Correct |
 | **Dashboard** (`cctv/dashboard`) | Same IN_STOCK count override (lines 36–40, 52–56) | ✅ Correct (override still works; stock column now also matches) | ✅ Correct |
-| **Product Movement** (`reports/product-movement`) | Totals = IN_STOCK count (lines 99–104). Running balance = `Σ(qtyIn − qtyOut)` from `PurchaseItem.quantity` / `SaleItem.quantity` (lines 92–96) | ⚠️ Total correct. Running balance now includes serial sales via `CCTVStockMovement` audit row (§1 fix), but the report doesn't read `CCTVStockMovement` — it reads `SaleItem.quantity`. So running balance is correct only if `SaleItem.quantity` matches actual serials sold (still fragile — see §4 Fix 4). | ✅ Correct |
+| **Product Movement** (`reports/product-movement`) | Totals = IN_STOCK count (lines 99–104). Running balance now sourced from `CCTVStockMovement.balanceAfter` (Fix 4, commit `fd0ab73`) | ✅ **FIXED (Fix 4)** — running balance uses `CCTVStockMovement.balanceAfter` directly (authoritative). Fallback to old `PurchaseItem`/`SaleItem` approach for historical data with no movement rows. | ✅ Correct |
 | **Purchase Report** (`reports/purchase-report`) | Sums `PurchaseItem.quantity` (line 46) | ⚠️ Wrong if frontend sends `quantity` ≠ `serials.length` | ✅ Correct |
 | **Sales Report** (`reports/sales-report`) | Sums `SaleItem.quantity` (line 71) | ⚠️ Wrong if frontend sends `quantity` ≠ actual serials sold | ✅ Correct |
 
@@ -196,11 +196,15 @@ This ensures the Purchase Report (sums `PurchaseItem.quantity`) always agrees wi
 
 Chose the auto-correct strategy (overwrite `quantity` with `serials.length`) rather than the reject strategy — it's friendlier and the frontend doesn't need to send a matching `quantity` field.
 
-### Fix 4 — Make Product Movement running balance match actual stock for serial items
+### Fix 4 — Make Product Movement running balance match actual stock for serial items ✅ DONE
 
-In `src/app/api/businesses/[id]/cctv/reports/product-movement/route.ts`, when the product is serial-tracked, replace the running-balance computation (lines 92–96) with a serial-aware one. The simplest fix: recompute each `qtyIn` from the count of serials purchased (parse `PurchaseItem.serialNumbers`), and each `qtyOut` from the count of `SaleItem` rows that have a non-null `serialNumber` for that product. Then `Σ(qtyIn − qtyOut)` will equal `currentStock`.
+~~In `src/app/api/businesses/[id]/cctv/reports/product-movement/route.ts`, when the product is serial-tracked, replace the running-balance computation (lines 92–96) with a serial-aware one.~~
 
-A cleaner alternative: drop the synthetic running balance entirely for serial-tracked products and instead pull the truth from `CCTVSerialItemHistory` (each PURCHASED event = +1, each SOLD event = -1). That gives you a fully audited ledger that always reconciles.
+**Done (commit `fd0ab73`)**. The report now sources entries from `CCTVStockMovement` (the authoritative audit trail) instead of `PurchaseItem.quantity` / `SaleItem.quantity`. Each `CCTVStockMovement` row has the correct `quantityChange` (signed) and `balanceAfter` (the stock balance after this movement, computed at write time by the sale/purchase/repair flows). The running balance uses `balanceAfter` directly — the last entry's balance always equals the current stock. No recomputation, no drift.
+
+Chose the "pull from `CCTVStockMovement`" approach (the cleaner alternative noted in the original fix description) rather than the "recompute from `CCTVSerialItemHistory`" approach — `CCTVStockMovement` already has `balanceAfter` stored, so no recomputation is needed.
+
+**Fallback**: if no `CCTVStockMovement` rows exist for a product (historical data from before the §1 / §3 / Fix 3 fixes), the report falls back to the old `PurchaseItem` + `SaleItem` approach with recomputed running balance. The response includes a `source` field (`"stock_movement"` vs `"legacy_fallback"`) so the UI can indicate whether the running balance is authoritative.
 
 ### Fix 5 — Add an invariant test
 
