@@ -70,17 +70,47 @@ export async function POST(
       expectedAmount = period === "year" ? tierConfig.annualPrice : tierConfig.price;
     }
 
-    // ── Check if there's already a pending payment for this TRX ID ──
+    // ── Check if this TRX ID has EVER been submitted (SUB-12) ──
+    // Previously, we only checked for pending payments with this TRX
+    // ID. This allowed a TRX ID to be re-submitted by a different
+    // business after the first one was matched/rejected — creating
+    // ambiguity in the auto-match engine (two PaymentTransactions
+    // with the same TRX ID, one matched, one pending).
+    //
+    // Now we check across ALL statuses (pending + matched + rejected).
+    // If a TRX ID has ever been used, we reject the new submission.
+    // This prevents:
+    //   - Duplicate submissions (user submits the same TX ID twice)
+    //   - Cross-business TRX ID collisions (typo or fraud)
+    //   - Reuse of a matched TRX ID for a second month (the user should
+    //     get a NEW TX ID from bKash each time they pay)
+    //
+    // Edge case: if the super-admin rejects a payment (e.g. wrong
+    // amount), the user CANNOT resubmit with the same TX ID — they
+    // must make a new bKash payment and get a new TX ID. This is
+    // intentional and documented in the rejection message.
     const existing = await db.paymentTransaction.findFirst({
       where: {
         trxId: trxId.trim(),
-        status: "pending",
       },
+      select: { id: true, status: true, businessId: true },
     });
 
     if (existing) {
+      // Distinguish the error message based on the existing payment's
+      // status so the user knows what to do.
+      let errorMessage: string;
+      if (existing.status === "pending") {
+        errorMessage = "A pending payment with this TRX ID already exists. Please wait for the super-admin to verify it, or contact support if it's taking too long.";
+      } else if (existing.status === "matched") {
+        errorMessage = "This TRX ID has already been used for a verified payment. Each bKash/Nagad transaction can only be submitted once. Please make a new payment to get a new TRX ID.";
+      } else if (existing.status === "rejected") {
+        errorMessage = "This TRX ID was previously submitted but rejected. Please make a new payment to get a new TRX ID, or contact support if you believe the rejection was in error.";
+      } else {
+        errorMessage = `This TRX ID has already been submitted (status: ${existing.status}). Please use a new TRX ID.`;
+      }
       return NextResponse.json(
-        { error: "A pending payment with this TRX ID already exists. Please wait for verification." },
+        { error: errorMessage },
         { status: 409 }
       );
     }

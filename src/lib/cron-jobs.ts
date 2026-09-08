@@ -1289,18 +1289,43 @@ export async function runSubscriptionLifecycleJob(): Promise<void> {
       await db.businessDailyStats.deleteMany({ where: { businessId: biz.id } });
       await db.aIUsageLog.deleteMany({ where: { businessId: biz.id } });
 
-      // TODO (follow-up): delete CCTV-specific models. The shared models
-      // above cover pharmacy + mobile-shop. CCTV has separate tables
-      // (CCTVSale, CCTVPurchase, CCTVProduct, CCTVSerialItem, CCTVRepair,
-      // CCTVExpense, CCTVEstimate, CCTVSupplierReplacement, CCTVCategory,
-      // CCTVCustomer, CCTVSupplier, CCTVStockMovement, CCTVSerialHistory,
-      // CCTVLedgerEntry, CCTVPayment, CCTVReturn, CCTVReturnItem,
-      // CCTVMushakInvoice, etc.) that are NOT deleted by the shared
-      // model deletions above. They should be added here in dependency
-      // order. For now, this is documented as a known gap — the
-      // Business row is marked data_wiped, so the guard blocks writes,
-      // and a future migration can add the CCTV deletions. The audit
-      // doc (STOCK_CALCULATION_BUGS.md §13, SUB-6) tracks this.
+      // ── CCTV-specific models (SUB-4/SUB-6 follow-up) ──
+      // Delete in dependency order (children first, parents last).
+      // Children: items, history, claims, movements, ledger, payments,
+      // expenses, repairs, replacements (these have FKs to parent
+      // CCTV models OR are standalone business-scoped rows).
+      await db.cCTVSerialHistory.deleteMany({ where: { businessId: biz.id } });
+      await db.cCTVStockMovement.deleteMany({ where: { businessId: biz.id } });
+      await db.cCTVLedgerEntry.deleteMany({ where: { businessId: biz.id } });
+      await db.cCTVPayment.deleteMany({ where: { businessId: biz.id } });
+      await db.cCTVExpense.deleteMany({ where: { businessId: biz.id } });
+      await db.cCTVWarrantyClaim.deleteMany({ where: { businessId: biz.id } });
+      await db.cCTVSupplierReplacement.deleteMany({ where: { businessId: biz.id } });
+      await db.cCTVRepair.deleteMany({ where: { businessId: biz.id } });
+
+      // Children with FK to parent sale/purchase/return/estimate:
+      await db.cCTVSaleItem.deleteMany({ where: { businessId: biz.id } });
+      await db.cCTVPurchaseItem.deleteMany({ where: { businessId: biz.id } });
+      await db.cCTVReturnItem.deleteMany({ where: { businessId: biz.id } });
+      await db.cCTVEstimateItem.deleteMany({ where: { businessId: biz.id } });
+
+      // Parents (now their items are gone):
+      await db.cCTVSale.deleteMany({ where: { businessId: biz.id } });
+      await db.cCTVPurchase.deleteMany({ where: { businessId: biz.id } });
+      await db.cCTVReturn.deleteMany({ where: { businessId: biz.id } });
+      await db.cCTVEstimate.deleteMany({ where: { businessId: biz.id } });
+      await db.cCTVSerialItem.deleteMany({ where: { businessId: biz.id } });
+
+      // Top-level (products, parties, categories):
+      await db.cCTVProduct.deleteMany({ where: { businessId: biz.id } });
+      await db.cCTVCustomer.deleteMany({ where: { businessId: biz.id } });
+      await db.cCTVSupplier.deleteMany({ where: { businessId: biz.id } });
+      await db.cCTVCategory.deleteMany({ where: { businessId: biz.id } });
+
+      // NOTE: SubscriptionInvoice + PaymentTransaction are INTENTIONALLY
+      // KEPT (not deleted) — they're financial audit records needed for
+      // the super-admin to verify future payments and for revenue
+      // reporting. They're not CCTV-data-specific.
 
       // Mark the business as data_wiped. Keep the Business row (for
       // "no duplicate account"). Set dataSoftDeletedAt for backward

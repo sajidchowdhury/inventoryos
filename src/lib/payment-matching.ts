@@ -18,7 +18,18 @@ import { db } from "@/lib/db";
 import { getTierConfig } from "@/lib/feature-gate";
 import { canRestoreData, restoreBusinessData } from "@/lib/subscription-guard";
 
-const AMOUNT_TOLERANCE_BDT = 5; // ±5 BDT to handle rounding differences
+// SUB-10: The tolerance now scales with the amount — min ৳5 or 1% of
+// the expected amount, whichever is higher. For a ৳500 payment, this is
+// max(5, 5) = ৳5. For a ৳5000 annual payment, max(5, 50) = ৳50. For a
+// ৳1500 Pro AI payment, max(5, 15) = ৳15. This handles bKash/Nagad
+// rounding + fee deductions better than the old flat ৳5.
+//
+// The flat ৳5 minimum is kept so that very small amounts (e.g. a ৳100
+// test payment) still have a reasonable absolute tolerance.
+const MIN_TOLERANCE_BDT = 5;
+function amountTolerance(amount: number): number {
+  return Math.max(MIN_TOLERANCE_BDT, Math.abs(amount) * 0.01);
+}
 
 export interface MatchResult {
   matched: boolean;
@@ -114,8 +125,8 @@ export async function tryMatchReceivedPayment(
     }
   }
 
-  // Check if within tolerance
-  if (bestDiff > AMOUNT_TOLERANCE_BDT) {
+  // Check if within tolerance (SUB-10: scaled with the received amount)
+  if (bestDiff > amountTolerance(received.amount)) {
     // No match within tolerance — stays unmatched
     return {
       matched: false,
@@ -132,7 +143,7 @@ export async function tryMatchReceivedPayment(
 
   // Determine extension period: if amount matches annual price, extend 1 year;
   // otherwise extend 1 month
-  const isAnnual = Math.abs(bestMatch.amount - tierConfig.annualPrice) <= AMOUNT_TOLERANCE_BDT;
+  const isAnnual = Math.abs(bestMatch.amount - tierConfig.annualPrice) <= amountTolerance(tierConfig.annualPrice);
   const extensionDays = isAnnual ? 365 : 30;
 
   // Calculate new subscriptionEnd: extend from current end date (or now, whichever is later)
@@ -280,7 +291,7 @@ export async function manualMatchPayment(
 
   const business = transaction.business;
   const tierConfig = getTierConfig(business.subscriptionTier);
-  const isAnnual = Math.abs(transaction.amount - tierConfig.annualPrice) <= AMOUNT_TOLERANCE_BDT;
+  const isAnnual = Math.abs(transaction.amount - tierConfig.annualPrice) <= amountTolerance(tierConfig.annualPrice);
   const extensionDays = isAnnual ? 365 : 30;
   const now = new Date();
   const currentEnd = business.subscriptionEnd ?? now;
@@ -469,7 +480,7 @@ export async function directVerifyPayment(
   // tolerance), extend by 1 year; otherwise by 1 month. Same logic
   // as manualMatchPayment.
   const tierConfig = getTierConfig(business.subscriptionTier);
-  const isAnnual = Math.abs(transaction.amount - tierConfig.annualPrice) <= AMOUNT_TOLERANCE_BDT;
+  const isAnnual = Math.abs(transaction.amount - tierConfig.annualPrice) <= amountTolerance(tierConfig.annualPrice);
   const extensionDays = isAnnual ? 365 : 30;
   const now = new Date();
   const currentEnd = business.subscriptionEnd ?? now;

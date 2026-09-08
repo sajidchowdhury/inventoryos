@@ -30,6 +30,7 @@ import { CCTVDueCollection } from './CCTVDueCollection';
 import { CCTVTopProducts } from './CCTVTopProducts';
 import { CCTVExpenseSummary } from './CCTVExpenseSummary';
 import { CCTVSettings } from './CCTVSettings';
+import { CCTVSubscriptionBanner } from './CCTVSubscriptionBanner';
 import {
   Home, Package, ShoppingCart, Users, Building2, Receipt,
   BarChart3, Settings, Camera, Plus, TrendingUp, AlertTriangle, Boxes, ArrowLeftRight,
@@ -281,6 +282,10 @@ export function CCTVShell() {
       {/* Main Content */}
       <div className="flex flex-col min-h-0 flex-1 md:pl-64">
         <div className="flex-1 pb-20 md:pb-4 px-4 pt-4 max-w-[1200px] mx-auto w-full">
+          {/* SUB-9: subscription status banner (shows when not active) */}
+          <div className="mb-4">
+            <CCTVSubscriptionBanner />
+          </div>
           {activeView === 'dashboard' && <CCTVDashboard />}
           {activeView === 'products' && <CCTVProductsList />}
           {activeView === 'add-product' && <CCTVProductForm />}
