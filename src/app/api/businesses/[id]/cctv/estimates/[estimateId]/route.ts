@@ -1,6 +1,8 @@
 // GET/PATCH/DELETE /api/businesses/[id]/cctv/estimates/[estimateId]
+// SUB-1: Guarded by requireActiveSubscription — blocked in read_only / data_wiped
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { requireActiveSubscription } from "@/lib/subscription-guard";
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string; estimateId: string }> }) {
   const { id: businessId, estimateId } = await params;
@@ -19,6 +21,11 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string; estimateId: string }> }) {
   const { id: businessId, estimateId } = await params;
+
+  // SUB-1: Block writes if subscription is in read_only or data_wiped stage.
+  const guard = await requireActiveSubscription(businessId);
+  if (!guard.allowed) return guard.error!;
+
   const body = await req.json();
 
   const existing = await db.cCTVEstimate.findFirst({
@@ -73,6 +80,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string; estimateId: string }> }) {
   const { id: businessId, estimateId } = await params;
+
+  // SUB-1: Block writes if subscription is in read_only or data_wiped stage.
+  const guard = await requireActiveSubscription(businessId);
+  if (!guard.allowed) return guard.error!;
 
   const existing = await db.cCTVEstimate.findFirst({
     where: { id: estimateId, businessId },

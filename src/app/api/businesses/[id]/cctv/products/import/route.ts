@@ -1,8 +1,10 @@
 // POST /api/businesses/[id]/cctv/products/import
 // Action 'parse': parse CSV text, validate rows, return preview
 // Action 'import': import validated rows into database
+// SUB-1: Guarded by requireActiveSubscription — blocked in read_only / data_wiped
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { requireActiveSubscription } from "@/lib/subscription-guard";
 
 interface CSVRow {
   rowIndex: number;
@@ -73,6 +75,13 @@ function validateRow(headers: string[], values: string[], rowIndex: number): CSV
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id: businessId } = await params;
+
+  // SUB-1: Block writes if subscription is in read_only or data_wiped stage.
+  // Applies to both 'parse' (preview) and 'import' actions — a read-only
+  // business shouldn't be preparing imports either, since they can't execute.
+  const guard = await requireActiveSubscription(businessId);
+  if (!guard.allowed) return guard.error!;
+
   const body = await req.json();
 
   // ── PARSE action ──

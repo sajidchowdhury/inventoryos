@@ -1,11 +1,18 @@
 // POST /api/businesses/[id]/cctv/sales/[saleId]/items
 // Add a new item to an existing sale (editable invoices)
 // Recalculates total, updates due if no new payment
+// SUB-1: Guarded by requireActiveSubscription — blocked in read_only / data_wiped
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { requireActiveSubscription } from "@/lib/subscription-guard";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string; saleId: string }> }) {
   const { id: businessId, saleId } = await params;
+
+  // SUB-1: Block writes if subscription is in read_only or data_wiped stage.
+  const guard = await requireActiveSubscription(businessId);
+  if (!guard.allowed) return guard.error!;
+
   const body = await req.json();
 
   const sale = await db.cCTVSale.findFirst({

@@ -1,8 +1,10 @@
 // GET /api/businesses/[id]/cctv/repairs?status=xxx
 // POST /api/businesses/[id]/cctv/repairs — create a new repair (receive product from customer)
 // PHASE 1: Wrapped in $transaction() for atomic safety
+// SUB-1: Guarded by requireActiveSubscription — blocked in read_only / data_wiped
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { requireActiveSubscription } from "@/lib/subscription-guard";
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id: businessId } = await params;
@@ -23,6 +25,11 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id: businessId } = await params;
+
+  // SUB-1: Block writes if subscription is in read_only or data_wiped stage.
+  const guard = await requireActiveSubscription(businessId);
+  if (!guard.allowed) return guard.error!;
+
   const body = await req.json();
 
   if (!body.serialNumber) {
