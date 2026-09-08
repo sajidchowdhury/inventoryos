@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { CCTVSubscriptionTab } from './CCTVSubscriptionTab';
 
 const fadeUp = {
   initial: { opacity: 0, y: 16 },
@@ -439,14 +440,9 @@ function PermissionsTab({ businessId }: { businessId?: string }) {
 }
 
 // ── Subscription Tab ──
+// SUB-2: Now wired to the real CCTVSubscriptionTab component, which lets
+// users submit bKash/Nagad payments and view their payment history.
+// Previously this was a "Coming Soon" placeholder.
 function SubscriptionTab({ businessId }: { businessId?: string }) {
-  return (
-    <div className="bg-white rounded-2xl border border-gray-100 p-8 shadow-sm text-center">
-      <div className="w-16 h-16 rounded-2xl bg-violet-50 flex items-center justify-center mx-auto mb-4">
-        <CreditCard className="w-8 h-8 text-violet-400" />
-      </div>
-      <p className="text-sm font-semibold text-gray-700">Subscription Management</p>
-      <p className="text-xs text-gray-400 mt-1">Coming soon</p>
-    </div>
-  );
+  return <CCTVSubscriptionTab businessId={businessId} />;
 }
