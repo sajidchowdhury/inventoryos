@@ -312,19 +312,16 @@ Bug IDs are prefixed with the feature letter: **P**roducts List, **F**orm, **C**
 
 | ID | Severity | Bug |
 |---|---|---|
-| **F-1** | **Critical** | **No product edit or delete endpoint exists.** Once a product is created, it cannot be modified through the API or UI. The nav store has an `edit-product` view (per `CCTVShell.tsx`), but `CCTVProductForm.tsx` has no edit logic — header always says "Add Product" (line 92) and `handleSubmit` always uses POST (line 49). There is no GET-by-id, no PATCH/PUT, no DELETE. |
+| **F-1** | ~~**Critical**~~ ✅ **FIXED** | ~~No product edit or delete endpoint existed.~~ **Fix (commit `04f20b4`)**: new file `src/app/api/businesses/[id]/cctv/products/[productId]/route.ts` with GET (single product by id, not guarded), PATCH (edit name/brand/model/sku/categoryId/costPrice/sellPrice/minStock/warrantyMonths/unit/serialTracked/description/imageUrl/isActive, guarded by SUB-1, stock intentionally NOT editable), and DELETE (soft-delete via `isActive: false` if the product has purchases/sales/serials, hard-delete if no references, guarded by SUB-1). Updated `CCTVProductForm.tsx` to detect edit mode (when `activeView === 'edit-product'` + `contextId` is set), pre-fill via GET, submit via PATCH, show "Edit Product" header, disable stock field in edit mode, and add a red "Delete Product" button with confirm dialog. |
 | **F-2** | Medium | `parseInt(form.stock) \|\| 0` silently coerces invalid input ("abc") to 0 instead of erroring (line 61). |
 | **F-3** | Medium | No SKU uniqueness check, and no `@@unique([businessId, sku])` constraint in `prisma/schema.prisma`. Two products with the same SKU can coexist. |
 | **F-4** | Low | Form doesn't validate `costPrice <= sellPrice` — allows negative margin by accident. |
-| **F-5** | Low | Form has no "delete" affordance anywhere. Combined with F-1, products are effectively immutable once created. |
+| **F-5** | ~~Low~~ ✅ **FIXED** | ~~Form has no "delete" affordance anywhere.~~ **Fix (via F-1, commit `04f20b4`)**: a red "Delete Product" button with Trash2 icon now appears in edit mode, with a confirm dialog. Calls DELETE /products/[productId]. |
 
 **Recommended fixes:**
-- Add `src/app/api/businesses/[id]/cctv/products/[productId]/route.ts` with:
-  - `GET` — single product by id (must verify `businessId` matches)
-  - `PATCH` — edit fields (name, brand, model, sku, categoryId, costPrice, sellPrice, minStock, warrantyMonths, unit, isActive, imageUrl)
-  - `DELETE` — soft-delete (`isActive: false`) by default; hard-delete only if no purchases/sales/serials reference it
-- Update `CCTVProductForm.tsx` to detect the `edit-product` view (read `contextId` from `useCCTVNavStore`), pre-fill the form via GET, change submit to PATCH. The header should switch between "Add Product" and "Edit Product".
-- Add `@@unique([businessId, sku])` to the `CCTVProduct` model in `prisma/schema.prisma` and create a new migration. (Optional — only if SKU uniqueness is a business requirement.)
+- ~~Add `src/app/api/businesses/[id]/cctv/products/[productId]/route.ts` with GET, PATCH, DELETE~~ ✅ **DONE (commit `04f20b4`)** — see F-1 above.
+- ~~Update `CCTVProductForm.tsx` to detect the `edit-product` view, pre-fill via GET, submit via PATCH~~ ✅ **DONE** — header switches between "Add Product" and "Edit Product", stock field disabled in edit mode, delete button added.
+- Add `@@unique([businessId, sku])` to the `CCTVProduct` model in `prisma/schema.prisma` and create a new migration. (Optional — only if SKU uniqueness is a business requirement.) — **Still open (F-3).**
 
 ### 8.3 Categories
 
