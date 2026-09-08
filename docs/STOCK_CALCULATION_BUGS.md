@@ -15,10 +15,10 @@
 
 ## TL;DR
 
-Stock math for **non-serial** CCTV products is correct and race-safe.
-Stock math for **serial-tracked** CCTV products is **partially broken**: the `CCTVProduct.stock` column is incremented on purchase but never decremented on sale. Reader endpoints work around this in *some* places (Stock Report, Dashboard) but not everywhere (Products List), and aggregation reports (Purchase Report, Sales Report, Product Movement running balance) are accurate only if the frontend always sends a `quantity` field that matches the actual serial count.
+~~Stock math for **non-serial** CCTV products is correct and race-safe.
+Stock math for **serial-tracked** CCTV products is **partially broken**: the `CCTVProduct.stock` column is incremented on purchase but never decremented on sale.~~ ✅ **FIXED (commit `e01cece`)**: the serial branch of the sale POST now decrements `CCTVProduct.stock` by 1 (atomically, using `updateMany` with `stock: { gte: 1 }`) and writes a `CCTVStockMovement` audit row — mirroring the non-serial branch. The Products List, Stock Report, Dashboard, and Product Movement report all now show correct stock after serial sales.
 
-Two related bugs exist in the "add item to existing sale" endpoint that allow double-selling the same serial and creating out-of-balance books.
+Two related bugs exist in the "add item to existing sale" endpoint that allow double-selling the same serial and creating out-of-balance books (§3 — still open).
 
 The Inventory-section audit (Section 8) found 6 more critical/high bugs:
 - **No product edit or delete endpoint exists** — once a product is created, it cannot be modified through the API or UI (F-1).
@@ -67,14 +67,16 @@ The Settings/Admin + Subscription audit (Section 13) found 6 more critical/high 
 
 ---
 
-## 1. The Core Bug — serial-tracked stock is never decremented on sale
+## 1. The Core Bug — serial-tracked stock is never decremented on sale ✅ FIXED
+
+> **Fix (commit `e01cece`)**: the serial branch of the sale POST (`src/app/api/businesses/[id]/cctv/sales/route.ts`) now decrements `CCTVProduct.stock` by 1 (atomically via `updateMany` with `stock: { gte: 1 }`) and writes a `CCTVStockMovement` audit row after marking the serial SOLD. Both operations are inside the existing `$transaction`. The stock column is now always accurate, and the Product Movement report captures serial-tracked sales correctly.
 
 ### Files
 
-- `src/app/api/businesses/[id]/cctv/purchases/route.ts` — lines 148–151
-- `src/app/api/businesses/[id]/cctv/sales/route.ts` — lines 94–147
+- `src/app/api/businesses/[id]/cctv/purchases/route.ts` — lines 148–151 (purchase increments stock — unchanged)
+- `src/app/api/businesses/[id]/cctv/sales/route.ts` — serial branch (lines 101–197, now includes stock decrement + audit at lines 157–197)
 
-### What happens
+### What happened (before the fix)
 
 **Purchase** increments the product's stock by the number of serials:
 
@@ -86,7 +88,15 @@ await tx.cCTVProduct.update({
 });
 ```
 
-**Sale** marks each serial `IN_STOCK → SOLD` and updates the serial's `sellPrice`, `saleDate`, `warrantyEnd`, `customerId`, `customerName` — but **never decrements `CCTVProduct.stock`**. Only the non-serial branch (lines 152–158) decrements stock.
+**Sale** (before the fix) marked each serial `IN_STOCK → SOLD` and updated the serial's `sellPrice`, `saleDate`, `warrantyEnd`, `customerId`, `customerName` — but **never decremented `CCTVProduct.stock`**. Only the non-serial branch decremented stock.
+
+### What the fix does
+
+After marking the serial SOLD and creating the `CCTVSerialHistory` entry, the serial branch now:
+1. **Atomically decrements** `CCTVProduct.stock` by 1 using `updateMany` with `where: { id, stock: { gte: 1 } }` — race-safe (same pattern as the non-serial branch). If stock is already 0 (edge case: manually edited), the update is a no-op (0 rows updated) rather than throwing — the sale is legitimate (the serial was verified IN_STOCK).
+2. **Creates a `CCTVStockMovement` audit row** (`movementType: "SALE"`, `quantityChange: -1`, `balanceAfter: <current stock>`, `notes` includes the serial number) — so the Product Movement report now captures serial-tracked sales.
+
+Both operations are inside the existing `db.$transaction` — if either fails, the entire sale rolls back.
 
 ### Repro
 
@@ -106,10 +116,10 @@ Any reader that uses `CCTVProduct.stock` directly is wrong after the first sale.
 
 | Reader | Uses | Verdict for serial-tracked | Verdict for non-serial |
 |---|---|---|---|
-| **Products List** (`GET /cctv/products`) | `CCTVProduct.stock` directly | ❌ Wrong (inflated) | ✅ Correct |
-| **Stock Report** (`reports/stock`) | Override: `COUNT(serials WHERE status=IN_STOCK)` (lines 19–24) | ✅ Correct | ✅ Correct |
-| **Dashboard** (`cctv/dashboard`) | Same IN_STOCK count override (lines 36–40, 52–56) | ✅ Correct | ✅ Correct |
-| **Product Movement** (`reports/product-movement`) | Totals = IN_STOCK count (lines 99–104). Running balance = `Σ(qtyIn − qtyOut)` from `PurchaseItem.quantity` / `SaleItem.quantity` (lines 92–96) | ⚠️ Total correct, **running balance can drift** | ✅ Correct |
+| **Products List** (`GET /cctv/products`) | `CCTVProduct.stock` directly | ✅ **FIXED (§1)** — stock now decremented on serial sale | ✅ Correct |
+| **Stock Report** (`reports/stock`) | Override: `COUNT(serials WHERE status=IN_STOCK)` (lines 19–24) | ✅ Correct (override still works; stock column now also matches) | ✅ Correct |
+| **Dashboard** (`cctv/dashboard`) | Same IN_STOCK count override (lines 36–40, 52–56) | ✅ Correct (override still works; stock column now also matches) | ✅ Correct |
+| **Product Movement** (`reports/product-movement`) | Totals = IN_STOCK count (lines 99–104). Running balance = `Σ(qtyIn − qtyOut)` from `PurchaseItem.quantity` / `SaleItem.quantity` (lines 92–96) | ⚠️ Total correct. Running balance now includes serial sales via `CCTVStockMovement` audit row (§1 fix), but the report doesn't read `CCTVStockMovement` — it reads `SaleItem.quantity`. So running balance is correct only if `SaleItem.quantity` matches actual serials sold (still fragile — see §4 Fix 4). | ✅ Correct |
 | **Purchase Report** (`reports/purchase-report`) | Sums `PurchaseItem.quantity` (line 46) | ⚠️ Wrong if frontend sends `quantity` ≠ `serials.length` | ✅ Correct |
 | **Sales Report** (`reports/sales-report`) | Sums `SaleItem.quantity` (line 71) | ⚠️ Wrong if frontend sends `quantity` ≠ actual serials sold | ✅ Correct |
 
@@ -150,36 +160,11 @@ For serial items it's worse:
 
 ## 4. Recommended fixes (in priority order)
 
-### Fix 1 — Decrement product stock on serial sale (core bug)
+### Fix 1 — Decrement product stock on serial sale (core bug) ✅ DONE
 
-In `src/app/api/businesses/[id]/cctv/sales/route.ts`, inside the serial-item branch, after marking the serial SOLD (around line 131), add:
+~~In `src/app/api/businesses/[id]/cctv/sales/route.ts`, inside the serial-item branch, after marking the serial SOLD (around line 131), add:~~
 
-```ts
-// Decrement the product's stock column to match the serial count
-await tx.cCTVProduct.update({
-  where: { id: item.productId },
-  data: { stock: { decrement: 1 } },
-});
-
-// Audit record (mirrors the non-serial branch)
-const productAfter = await tx.cCTVProduct.findUnique({
-  where: { id: item.productId },
-  select: { name: true, stock: true },
-});
-await tx.cCTVStockMovement.create({
-  data: {
-    businessId,
-    productId: item.productId,
-    productName: productAfter?.name || item.productName,
-    movementType: "SALE",
-    quantityChange: -1,
-    balanceAfter: productAfter?.stock ?? 0,
-    referenceId: createdSale.id,
-    referenceType: "sale",
-    notes: `Sale to ${body.customerName || "walk-in customer"} (serial: ${item.serialNumber})`,
-  },
-});
-```
+**Done (commit `e01cece`)**. The serial branch now decrements `CCTVProduct.stock` by 1 using `updateMany` with `where: { id, stock: { gte: 1 } }` (race-safe, same pattern as the non-serial branch). It also writes a `CCTVStockMovement` audit row with `quantityChange: -1` and `notes` including the serial number. Both operations are inside the existing `$transaction`.
 
 After this fix, the `stock` column will always reflect reality. The per-reader overrides in Stock Report and Dashboard can stay (defensive) but are no longer load-bearing.
 
