@@ -6,9 +6,12 @@
 // RP-3 fix: state machine enforces allowed transitions.
 // RP-4 fix: serial status on 'ready' is IN_REPAIR (not IN_STOCK) — customer's
 //   property must NOT become sellable inventory.
+// RP-7 fix: when transitioning to 'returned' with repairCost > 0, creates a
+//   CCTVPayment + ledger entries so repair revenue hits the books.
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireActiveSubscription } from "@/lib/subscription-guard";
+import { createLedgerEntries, LEDGER_ACCOUNTS, paymentMethodToAccount } from "@/lib/ledger-helper";
 
 // RP-3: Allowed status transitions.
 // Key = current status, value = array of allowed next statuses.
@@ -174,6 +177,71 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
             where: { id: repair.serialItemId },
             data: { status: serialStatus },
           });
+        }
+      }
+
+      // ── RP-7 fix: Create repair payment + ledger entries ──
+      // When the repair transitions to 'returned' (customer picks up the
+      // product and pays), and the repairCost > 0, create:
+      //   1. A CCTVPayment record (type: "customer_payment", referenceId:
+      //      repairId, referenceType: "repair") — so the repair payment
+      //      shows up in the Cash Book, Daily Summary, and Customer Ledger.
+      //   2. Balanced ledger entries: DEBIT cash/receivable, CREDIT
+      //      sales_revenue (using sales_revenue since there's no separate
+      //      repair_revenue account in LEDGER_ACCOUNTS — a future
+      //      enhancement could add one).
+      //
+      // For warranty repairs (repairCost = 0), no payment or ledger
+      // entries are created — the repair is free.
+      //
+      // The repairCost used is the UPDATED cost (from body.repairCost if
+      // provided, or the existing repair.repairCost).
+      if (newStatus === "returned" && previousStatus !== "returned") {
+        const effectiveRepairCost =
+          body.repairCost !== undefined
+            ? parseFloat(body.repairCost) || 0
+            : Number(updatedRepair.repairCost) || 0;
+
+        if (effectiveRepairCost > 0) {
+          const paymentMethod = body.paymentMethod || "cash";
+
+          // 1. Create the payment record
+          await tx.cCTVPayment.create({
+            data: {
+              businessId,
+              type: "customer_payment",
+              customerId: repair.customerId || null,
+              amount: effectiveRepairCost,
+              paymentMethod,
+              paymentDate: new Date(),
+              notes: `Repair payment — ${repair.tokenNo || repairId} — ${repair.serialNumber}`,
+              referenceId: repairId,
+              referenceType: "repair",
+            },
+          });
+
+          // 2. Create balanced ledger entries
+          const paymentAccount = paymentMethodToAccount(paymentMethod);
+          await createLedgerEntries(tx, [
+            {
+              businessId,
+              accountId: paymentAccount,
+              entryType: "DEBIT",
+              amount: effectiveRepairCost,
+              referenceId: repairId,
+              referenceType: "repair",
+              description: `Repair payment via ${paymentMethod} — ${repair.tokenNo || repairId}`,
+            },
+            {
+              businessId,
+              accountId: LEDGER_ACCOUNTS.SALES_REVENUE,
+              entryType: "CREDIT",
+              amount: effectiveRepairCost,
+              referenceId: repairId,
+              referenceType: "repair",
+              description: `Repair revenue — ${repair.tokenNo || repairId} — ${repair.serialNumber}`,
+            },
+          ]);
         }
       }
 
