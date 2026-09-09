@@ -7,6 +7,7 @@ import { CCTVProductsList } from './CCTVProductsList';
 import { CCTVProductForm } from './CCTVProductForm';
 import { CCTVSales } from './CCTVSales';
 import { CCTVCashBook } from './CCTVCashBook';
+import { CCTVMonthlyUpload } from './CCTVMonthlyUpload';
 import { CCTVLedger } from './CCTVLedger';
 import { CCTVStockReport } from './CCTVStockReport';
 import { CCTVProductMovement } from './CCTVProductMovement';
@@ -35,7 +36,7 @@ import {
   Home, Package, ShoppingCart, Users, Building2, Receipt,
   BarChart3, Settings, Camera, Plus, TrendingUp, AlertTriangle, Boxes, ArrowLeftRight,
   Search, Wrench, RefreshCw, Shield, FileText, Tag, Upload, ChevronDown, ChevronRight,
-  Calendar, Heart, LogOut,
+  Calendar, Heart, LogOut, CreditCard, FileSpreadsheet,
 } from 'lucide-react';
 import { useCCTVNavStore } from '@/stores/cctv-nav-store-simple';
 import { useAuthStore } from '@/stores/auth-store';
@@ -112,6 +113,14 @@ const MENU_GROUPS: MenuGroup[] = [
       { view: 'reports', label: 'Cash Book', icon: Receipt },
       { view: 'stock-report', label: 'Stock Report', icon: Boxes },
       { view: 'product-movement', label: 'Product Movement', icon: ArrowLeftRight },
+    ],
+  },
+  {
+    id: 'monthly-upload',
+    label: 'Monthly Upload',
+    icon: FileSpreadsheet,
+    items: [
+      { view: 'monthly-upload', label: 'Bulk Import', icon: FileSpreadsheet },
     ],
   },
 ];
@@ -318,6 +327,7 @@ export function CCTVShell() {
           {activeView === 'top-products' && <CCTVTopProducts />}
           {activeView === 'expense-summary' && <CCTVExpenseSummary />}
           {activeView === 'settings' && <CCTVSettings />}
+          {activeView === 'monthly-upload' && <CCTVMonthlyUpload />}
         </div>
       </div>
     </div>
