@@ -76,7 +76,11 @@ const REPORTS = [
     gradient: 'from-orange-500 to-red-600',
   },
   {
-    view: 'reports' as const,
+    // RH-1: was `view: 'reports'` which is the same key the sidebar uses for
+    // the Cash Book — confusing because the Reports Hub is 'reports-hub'.
+    // The navigation technically worked (since 'reports' DOES render
+    // CCTVCashBook), but the view name was misleading. Now explicit.
+    view: 'cash-book' as const,
     title: 'Cash Book (Daily)',
     desc: 'Money in vs money out — every transaction for a single day',
     icon: DollarSign,

@@ -307,6 +307,10 @@ export function CCTVShell() {
           {activeView === 'expenses' && <CCTVExpenses />}
           {activeView === 'reports-hub' && <CCTVReportsHub />}
           {activeView === 'reports' && <CCTVCashBook />}
+          {/* RH-1: 'cash-book' is the explicit view name for the Cash Book.
+              'reports' is kept as an alias for backward compat (any code
+              that still navigates to 'reports' will render the Cash Book). */}
+          {activeView === 'cash-book' && <CCTVCashBook />}
           {activeView === 'stock-report' && <CCTVStockReport />}
           {activeView === 'product-movement' && <CCTVProductMovement />}
           {activeView === 'daily-summary' && <CCTVDailySummary />}

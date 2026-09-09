@@ -110,13 +110,25 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     });
   }
 
-  // 5. Expenses (all cash expenses)
+  // 5. Expenses — CB-5: filter by paymentMethod so a bKash expense doesn't
+  // appear as cash-out. The Cash Book shows cash flow PER METHOD; without
+  // this filter, a bKash expense would inflate the cash total.
+  // Default to "cash" if no paymentMethod on the expense row (backward
+  // compat with pre-EX-2 rows that had no paymentMethod column).
   const expenses = await db.cCTVExpense.findMany({
     where: {
       businessId,
       expenseDate: { gte: startOfDay, lte: endOfDay },
+      // CB-5: only include cash expenses in the cash book. The Cash Book
+      // is per-method — bKash/bank expenses belong in their own books.
+      // (If the user wants all expenses regardless of method, they can
+      // use the Expense Summary report.)
+      OR: [
+        { paymentMethod: "cash" },
+        { paymentMethod: null },  // pre-EX-2 rows default to cash
+      ],
     },
-    select: { id: true, category: true, description: true, amount: true, expenseDate: true },
+    select: { id: true, category: true, description: true, amount: true, expenseDate: true, paymentMethod: true },
     orderBy: { expenseDate: "asc" },
   });
   for (const exp of expenses) {
@@ -138,6 +150,25 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const totalOut = entries.reduce((sum, e) => sum + Number(e.amountOut), 0);
   const netCash = totalIn - totalOut;
 
+  // ── CB-7: per-method breakdown ──
+  // A shop wanting "cash in by method" (cash vs bKash vs bank) can now
+  // see it directly instead of summing manually. We bucket the day's
+  // customer + supplier + repair payments by paymentMethod.
+  const methodBreakdown: Record<string, { in: number; out: number }> = {};
+  const addMethod = (method: string, isOut: boolean, amount: number) => {
+    if (!method) method = "cash";  // pre-EX-2 fallback
+    if (!methodBreakdown[method]) methodBreakdown[method] = { in: 0, out: 0 };
+    if (isOut) methodBreakdown[method].out += amount;
+    else methodBreakdown[method].in += amount;
+  };
+  // Customer payments (in)
+  for (const pay of customerPayments) addMethod(pay.paymentMethod || "cash", false, Number(pay.amount));
+  // Purchase + supplier payments (out)
+  for (const pay of purchasePayments) addMethod(pay.paymentMethod || "cash", true, Number(pay.amount));
+  for (const pay of supplierPayments) addMethod(pay.paymentMethod || "cash", true, Number(pay.amount));
+  // Expenses (out — cash only per CB-5)
+  for (const exp of expenses) addMethod(exp.paymentMethod || "cash", true, Number(exp.amount));
+
   return NextResponse.json({
     success: true,
     date: targetDate.toISOString().split("T")[0],
@@ -148,5 +179,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       netCash,
       transactionCount: entries.length,
     },
+    // CB-7: per-method breakdown so the UI can show a small table.
+    methodBreakdown,
   });
 }

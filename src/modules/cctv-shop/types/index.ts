@@ -16,6 +16,7 @@ export type CCTVViewType =
   | 'expenses'
   | 'reports'
   | 'reports-hub'
+  | 'cash-book'
   | 'stock-report'
   | 'product-movement'
   | 'daily-summary'
