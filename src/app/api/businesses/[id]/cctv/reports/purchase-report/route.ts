@@ -1,4 +1,5 @@
-// GET /api/businesses/[id]/cctv/reports/purchase-report?from=&to=&supplierId=
+// GET /api/businesses/[id]/cctv/reports/purchase-report?from=&to=&supplierId=&paymentMethod=
+// PR-2: accepts ?paymentMethod= filter (asymmetric with Sales Report previously).
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 
@@ -8,6 +9,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const from = searchParams.get("from");
   const to = searchParams.get("to");
   const supplierId = searchParams.get("supplierId");
+  // PR-2: payment method filter — mirrors the Sales Report's filter.
+  const paymentMethod = searchParams.get("paymentMethod");
 
   if (!from || !to) {
     return NextResponse.json({ error: "from and to dates are required" }, { status: 400 });
@@ -33,13 +36,31 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     orderBy: { purchaseDate: "desc" },
   });
 
-  const totalAmount = purchases.reduce((s, x) => s + Number(x.totalAmount), 0);
-  const totalPaid = purchases.reduce((s, x) => s + Number(x.paidAmount), 0);
-  const totalDue = purchases.reduce((s, x) => s + Number(x.dueAmount), 0);
+  // PR-2: if paymentMethod filter, fetch matching supplier payments and
+  // filter purchases to those paid via that method. A purchase may have
+  // multiple payments; we include it if ANY payment matches the method.
+  let filteredPurchases = purchases;
+  if (paymentMethod && paymentMethod !== "all") {
+    const payments = await db.cCTVPayment.findMany({
+      where: {
+        businessId,
+        type: "purchase",
+        paymentMethod,
+        paymentDate: { gte: startDate, lte: endDate },
+      },
+      select: { referenceId: true },
+    });
+    const purchaseIds = new Set(payments.map((p) => p.referenceId));
+    filteredPurchases = purchases.filter((p) => purchaseIds.has(p.id));
+  }
+
+  const totalAmount = filteredPurchases.reduce((s, x) => s + Number(x.totalAmount), 0);
+  const totalPaid = filteredPurchases.reduce((s, x) => s + Number(x.paidAmount), 0);
+  const totalDue = filteredPurchases.reduce((s, x) => s + Number(x.dueAmount), 0);
 
   // Top purchased products
   const productPurchases: Record<string, { name: string; qty: number; cost: number }> = {};
-  for (const pur of purchases) {
+  for (const pur of filteredPurchases) {
     for (const item of pur.items) {
       const key = item.productName;
       if (!productPurchases[key]) productPurchases[key] = { name: key, qty: 0, cost: 0 };
@@ -51,21 +72,38 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
   // Supplier breakdown
   const supplierBreakdown: Record<string, number> = {};
-  for (const pur of purchases) {
+  for (const pur of filteredPurchases) {
     const key = pur.supplierName || "Unknown";
     supplierBreakdown[key] = (supplierBreakdown[key] || 0) + Number(pur.totalAmount);
+  }
+
+  // PR-2: payment method breakdown (mirrors Sales Report)
+  const filteredPurchaseIds = new Set(filteredPurchases.map((p) => p.id));
+  const methodPayments = await db.cCTVPayment.findMany({
+    where: {
+      businessId,
+      type: "purchase",
+      paymentDate: { gte: startDate, lte: endDate },
+      ...(supplierId ? { referenceId: { in: Array.from(filteredPurchaseIds) } } : {}),
+    },
+    select: { paymentMethod: true, amount: true },
+  });
+  const methodBreakdown: Record<string, number> = {};
+  for (const p of methodPayments) {
+    methodBreakdown[p.paymentMethod] = (methodBreakdown[p.paymentMethod] || 0) + Number(p.amount);
   }
 
   return NextResponse.json({
     success: true,
     summary: {
-      count: purchases.length,
+      count: filteredPurchases.length,
       totalAmount,
       totalPaid,
       totalDue,
       supplierBreakdown,
+      methodBreakdown, // PR-2
     },
-    purchases,
+    purchases: filteredPurchases,
     topProducts,
   });
 }
