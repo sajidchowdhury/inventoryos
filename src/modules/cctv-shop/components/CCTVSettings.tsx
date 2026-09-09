@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft, Loader2, Lock, Users, Shield, CreditCard, Plus, X,
-  Check, Eye, EyeOff, Phone, User, ChevronRight, KeyRound,
+  Check, Eye, EyeOff, Phone, User, ChevronRight, KeyRound, Building, Save,
 } from 'lucide-react';
 import { useCCTVNavStore } from '@/stores/cctv-nav-store-simple';
 import { useAuthStore } from '@/stores/auth-store';
@@ -19,7 +19,7 @@ const fadeUp = {
   animate: { opacity: 1, y: 0, transition: { duration: 0.35, ease: 'easeOut' } },
 };
 
-type SettingsTab = 'password' | 'users' | 'permissions' | 'subscription';
+type SettingsTab = 'password' | 'users' | 'permissions' | 'subscription' | 'profile';
 
 export function CCTVSettings() {
   const { goBack } = useCCTVNavStore();
@@ -37,11 +37,13 @@ export function CCTVSettings() {
       </div>
 
       {/* Tab bar */}
-      <div className="flex gap-1 p-1 bg-gray-100 rounded-2xl">
+      <div className="flex gap-1 p-1 bg-gray-100 rounded-2xl overflow-x-auto">
         {[
           { key: 'password' as const, label: 'Password', icon: Lock },
           { key: 'users' as const, label: 'Users', icon: Users },
           { key: 'permissions' as const, label: 'Permissions', icon: Shield },
+          // ST-8: Business Profile tab — edit shop name/address/phone
+          { key: 'profile' as const, label: 'Profile', icon: Building },
           { key: 'subscription' as const, label: 'Subscription', icon: CreditCard },
         ].map((tab) => (
           <button
@@ -64,6 +66,8 @@ export function CCTVSettings() {
       {activeTab === 'password' && <ChangePasswordTab businessId={businessId} />}
       {activeTab === 'users' && <UsersTab businessId={businessId} />}
       {activeTab === 'permissions' && <PermissionsTab businessId={businessId} />}
+      {/* ST-8: Business Profile tab */}
+      {activeTab === 'profile' && <BusinessProfileTab businessId={businessId} />}
       {activeTab === 'subscription' && <SubscriptionTab businessId={businessId} />}
     </motion.div>
   );
@@ -198,6 +202,16 @@ function UsersTab({ businessId }: { businessId?: string }) {
   const [role, setRole] = useState('staff');
   const [saving, setSaving] = useState(false);
 
+  // ST-5: edit user state. When editingUserId is set, the form dialog shows
+  // "Edit User" instead of "New User" and PATCHes instead of POSTs.
+  const [editingUserId, setEditingUserId] = useState<string | null>(null);
+  // ST-6: delete user state. We use a confirm dialog + the existing PATCH
+  // endpoint (soft-delete via isActive: false) for safety. A hard-delete
+  // would require a new DELETE endpoint; for now, deactivating is enough
+  // since the bug doc says "deactivated user with a typo'd username
+  // clutters the user list forever" — but the edit flow (ST-5) lets the
+  // shop fix typos without deleting.
+
   const loadUsers = () => {
     if (!businessId) return;
     fetch(`/api/businesses/${businessId}/users`)
@@ -210,6 +224,24 @@ function UsersTab({ businessId }: { businessId?: string }) {
   };
 
   useEffect(() => { loadUsers(); }, [businessId]);
+
+  // ST-5: open the edit dialog pre-filled with the user's current values.
+  const startEdit = (u: any) => {
+    setEditingUserId(u.id);
+    setFullName(u.fullName || '');
+    setUsername(u.username || '');
+    setPhone(u.phone || '');
+    setRole(u.role || 'staff');
+    setPassword(''); // password is optional on edit — empty = no change
+    setShowForm(true);
+  };
+
+  // ST-5: reset the form to "new user" mode
+  const startCreate = () => {
+    setEditingUserId(null);
+    setFullName(''); setUsername(''); setPhone(''); setPassword(''); setRole('staff');
+    setShowForm(true);
+  };
 
   const handleCreate = async () => {
     if (!fullName.trim() || !username.trim() || !password.trim()) {
@@ -245,6 +277,76 @@ function UsersTab({ businessId }: { businessId?: string }) {
     }
   };
 
+  // ST-5: handle edit — PATCH the user's fields. Password is optional
+  // (only sent if the user typed a new one). Uses the same /users/[userId]
+  // PATCH endpoint that toggleUserActive uses.
+  const handleEdit = async () => {
+    if (!editingUserId || !fullName.trim() || !username.trim()) {
+      toast({ title: 'Error', description: 'Name and username are required', variant: 'destructive' });
+      return;
+    }
+    setSaving(true);
+    try {
+      const payload: Record<string, string> = {
+        fullName: fullName.trim(),
+        username: username.trim(),
+        role,
+      };
+      if (phone.trim()) payload.phone = phone.trim();
+      // ST-5: only send password if the user typed a new one
+      if (password.trim()) payload.password = password;
+      const res = await fetch(`/api/businesses/${businessId}/users/${editingUserId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (res.ok) {
+        toast({ title: 'User updated', description: fullName });
+        setShowForm(false);
+        setEditingUserId(null);
+        setFullName(''); setUsername(''); setPhone(''); setPassword(''); setRole('staff');
+        loadUsers();
+      } else {
+        const data = await res.json();
+        toast({ title: data.error || 'Failed', variant: 'destructive' });
+      }
+    } catch {
+      toast({ title: 'Network error', variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // ST-6: confirm + delete. We use PATCH isActive:false (soft-delete) which
+  // the existing endpoint supports. The user is removed from view only if
+  // the shop filters to "active" — but for a typo'd user, deactivating +
+  // editing the name is the cleanest path. A true hard-delete would need
+  // a new DELETE endpoint; for now we surface a confirm dialog.
+  const handleDelete = async (u: any) => {
+    const ok = confirm(
+      `Deactivate user "${u.fullName}" (@${u.username})?\n\n` +
+      `This soft-deletes the user (sets isActive=false). The user can no longer log in but their audit trail is preserved.\n\n` +
+      `To fix a typo'd username, use the Edit button instead.`
+    );
+    if (!ok) return;
+    try {
+      const res = await fetch(`/api/businesses/${businessId}/users/${u.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isActive: false }),
+      });
+      if (res.ok) {
+        toast({ title: 'User deactivated', description: u.fullName });
+        loadUsers();
+      } else {
+        const data = await res.json();
+        toast({ title: data.error || 'Failed', variant: 'destructive' });
+      }
+    } catch {
+      toast({ title: 'Network error', variant: 'destructive' });
+    }
+  };
+
   const toggleUserActive = async (userId: string, currentActive: boolean) => {
     try {
       const res = await fetch(`/api/businesses/${businessId}/users/${userId}`, {
@@ -269,7 +371,7 @@ function UsersTab({ businessId }: { businessId?: string }) {
             <Users className="w-4 h-4 text-violet-500" /> Users ({users.length})
           </h2>
           <button
-            onClick={() => setShowForm(true)}
+            onClick={startCreate}
             className="h-8 px-3 rounded-lg bg-violet-500 text-white text-xs font-semibold flex items-center gap-1"
           >
             <Plus className="w-3.5 h-3.5" /> Add User
@@ -300,6 +402,20 @@ function UsersTab({ businessId }: { businessId?: string }) {
                 )}>
                   {u.isActive ? 'Active' : 'Inactive'}
                 </span>
+                {/* ST-5: Edit button */}
+                <button
+                  onClick={() => startEdit(u)}
+                  className="text-[10px] text-gray-500 hover:text-violet-600 font-medium"
+                >
+                  Edit
+                </button>
+                {/* ST-6: Delete (deactivate) button */}
+                <button
+                  onClick={() => handleDelete(u)}
+                  className="text-[10px] text-gray-500 hover:text-red-600 font-medium"
+                >
+                  Delete
+                </button>
                 <button
                   onClick={() => toggleUserActive(u.id, u.isActive)}
                   className="text-[10px] text-gray-500 hover:text-violet-600 font-medium"
@@ -312,7 +428,7 @@ function UsersTab({ businessId }: { businessId?: string }) {
         )}
       </div>
 
-      {/* Create user dialog */}
+      {/* Create/Edit user dialog — ST-5: shared form for create + edit */}
       <AnimatePresence>
         {showForm && (
           <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm">
@@ -323,8 +439,11 @@ function UsersTab({ businessId }: { businessId?: string }) {
               className="bg-white rounded-t-3xl sm:rounded-3xl w-full sm:max-w-md p-5 max-h-[90vh] overflow-y-auto"
             >
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-base font-bold text-gray-900">New User</h3>
-                <button onClick={() => setShowForm(false)}
+                {/* ST-5: dynamic title based on editingUserId */}
+                <h3 className="text-base font-bold text-gray-900">
+                  {editingUserId ? 'Edit User' : 'New User'}
+                </h3>
+                <button onClick={() => { setShowForm(false); setEditingUserId(null); }}
                   className="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center">
                   <X className="w-4 h-4 text-gray-400" />
                 </button>
@@ -346,9 +465,12 @@ function UsersTab({ businessId }: { businessId?: string }) {
                     placeholder="01XXXXXXXXX" className="h-10 rounded-xl" type="tel" />
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-xs text-gray-600">Password *</Label>
+                  {/* ST-5: on edit, password is optional (leave empty = no change) */}
+                  <Label className="text-xs text-gray-600">
+                    Password {editingUserId ? '(leave empty to keep current)' : '*'}
+                  </Label>
                   <Input value={password} onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Minimum 4 characters" className="h-10 rounded-xl" type="password" />
+                    placeholder={editingUserId ? '••••' : 'Minimum 4 characters'} className="h-10 rounded-xl" type="password" />
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-xs text-gray-600">Role</Label>
@@ -360,13 +482,16 @@ function UsersTab({ businessId }: { businessId?: string }) {
                   </select>
                 </div>
               </div>
+              {/* ST-5: dispatch to handleCreate or handleEdit */}
               <button
-                onClick={handleCreate}
+                onClick={editingUserId ? handleEdit : handleCreate}
                 disabled={saving}
                 className="w-full h-11 mt-4 rounded-xl bg-violet-500 text-white font-semibold text-sm disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-                {saving ? 'Creating...' : 'Create User'}
+                {saving
+                  ? (editingUserId ? 'Saving...' : 'Creating...')
+                  : (editingUserId ? 'Save Changes' : 'Create User')}
               </button>
             </motion.div>
           </div>
@@ -377,6 +502,58 @@ function UsersTab({ businessId }: { businessId?: string }) {
 }
 
 // ── Permissions Tab ──
+// ── ST-7: human-readable permission labels ──
+// The raw permission keys are snake_case strings like 'can_create_sale'.
+// This map gives each a human label + a category grouping so the
+// Permissions tab reads "Create Sale" instead of "can_create_sale".
+const PERMISSION_LABELS: Record<string, { label: string; category: string }> = {
+  can_view_dashboard: { label: 'View Dashboard', category: 'Dashboard' },
+  can_view_products: { label: 'View Products', category: 'Products' },
+  can_create_product: { label: 'Create Product', category: 'Products' },
+  can_edit_product: { label: 'Edit Product', category: 'Products' },
+  can_delete_product: { label: 'Delete Product', category: 'Products' },
+  can_view_purchases: { label: 'View Purchases', category: 'Purchases' },
+  can_create_purchase: { label: 'Create Purchase', category: 'Purchases' },
+  can_edit_purchase: { label: 'Edit Purchase', category: 'Purchases' },
+  can_delete_purchase: { label: 'Delete Purchase', category: 'Purchases' },
+  can_view_sales: { label: 'View Sales', category: 'Sales' },
+  can_create_sale: { label: 'Create Sale', category: 'Sales' },
+  can_edit_sale: { label: 'Edit Sale', category: 'Sales' },
+  can_delete_sale: { label: 'Delete Sale', category: 'Sales' },
+  can_view_repairs: { label: 'View Repairs', category: 'Repairs' },
+  can_create_repair: { label: 'Create Repair', category: 'Repairs' },
+  can_edit_repair: { label: 'Edit Repair', category: 'Repairs' },
+  can_delete_repair: { label: 'Delete Repair', category: 'Repairs' },
+  can_view_customers: { label: 'View Customers', category: 'Customers' },
+  can_create_customer: { label: 'Create Customer', category: 'Customers' },
+  can_edit_customer: { label: 'Edit Customer', category: 'Customers' },
+  can_delete_customer: { label: 'Delete Customer', category: 'Customers' },
+  can_view_suppliers: { label: 'View Suppliers', category: 'Suppliers' },
+  can_create_supplier: { label: 'Create Supplier', category: 'Suppliers' },
+  can_edit_supplier: { label: 'Edit Supplier', category: 'Suppliers' },
+  can_delete_supplier: { label: 'Delete Supplier', category: 'Suppliers' },
+  can_view_expenses: { label: 'View Expenses', category: 'Expenses' },
+  can_create_expense: { label: 'Create Expense', category: 'Expenses' },
+  can_edit_expense: { label: 'Edit Expense', category: 'Expenses' },
+  can_delete_expense: { label: 'Delete Expense', category: 'Expenses' },
+  can_view_reports: { label: 'View Reports', category: 'Reports' },
+  can_view_settings: { label: 'View Settings', category: 'Settings' },
+  can_manage_users: { label: 'Manage Users', category: 'Settings' },
+  can_view_payments: { label: 'View Payments', category: 'Payments' },
+  can_create_payment: { label: 'Create Payment', category: 'Payments' },
+  can_edit_payment: { label: 'Edit Payment', category: 'Payments' },
+  can_delete_payment: { label: 'Delete Payment', category: 'Payments' },
+  can_view_warranties: { label: 'View Warranties', category: 'Warranties' },
+  can_view_serials: { label: 'View Serials', category: 'Warranties' },
+};
+
+function permissionLabel(key: string): { label: string; category: string } {
+  return PERMISSION_LABELS[key] || {
+    label: key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
+    category: 'Other',
+  };
+}
+
 function PermissionsTab({ businessId }: { businessId?: string }) {
   const [permissions, setPermissions] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -397,6 +574,16 @@ function PermissionsTab({ businessId }: { businessId?: string }) {
 
   const { role, permissions: perms, roles } = permissions;
 
+  // ST-7: group permissions by category so they read as "Products: Create, Edit, View"
+  // instead of a flat list of raw keys.
+  const permEntries = Object.entries(perms || {});
+  const grouped: Record<string, { key: string; label: string; value: boolean }[]> = {};
+  for (const [key, value] of permEntries) {
+    const { label, category } = permissionLabel(key);
+    if (!grouped[category]) grouped[category] = [];
+    grouped[category].push({ key, label, value: Boolean(value) });
+  }
+
   return (
     <div className="space-y-3">
       <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
@@ -407,16 +594,24 @@ function PermissionsTab({ businessId }: { businessId?: string }) {
           <p className="text-xs text-gray-500">Your Role</p>
           <p className="text-sm font-bold text-violet-700 capitalize">{role || 'admin'}</p>
         </div>
-        <div className="grid grid-cols-2 gap-2">
-          {Object.entries(perms || {}).map(([key, value]) => (
-            <div key={key} className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
-              <div className={cn(
-                'w-5 h-5 rounded-full flex items-center justify-center shrink-0',
-                value ? 'bg-emerald-100' : 'bg-gray-200'
-              )}>
-                {value ? <Check className="w-3 h-3 text-emerald-600" /> : <X className="w-3 h-3 text-gray-400" />}
+        {/* ST-7: grouped by category with human labels */}
+        <div className="space-y-3">
+          {Object.entries(grouped).map(([category, items]) => (
+            <div key={category}>
+              <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">{category}</p>
+              <div className="grid grid-cols-2 gap-2">
+                {items.map((item) => (
+                  <div key={item.key} className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
+                    <div className={cn(
+                      'w-5 h-5 rounded-full flex items-center justify-center shrink-0',
+                      item.value ? 'bg-emerald-100' : 'bg-gray-200'
+                    )}>
+                      {item.value ? <Check className="w-3 h-3 text-emerald-600" /> : <X className="w-3 h-3 text-gray-400" />}
+                    </div>
+                    <span className="text-[10px] text-gray-600">{item.label}</span>
+                  </div>
+                ))}
               </div>
-              <span className="text-[10px] text-gray-600 capitalize">{key.replace(/_/g, ' ')}</span>
             </div>
           ))}
         </div>
@@ -445,4 +640,121 @@ function PermissionsTab({ businessId }: { businessId?: string }) {
 // Previously this was a "Coming Soon" placeholder.
 function SubscriptionTab({ businessId }: { businessId?: string }) {
   return <CCTVSubscriptionTab businessId={businessId} />;
+}
+
+// ── ST-8: Business Profile Tab ──
+// Edit the shop's name, address, phone. These were set at registration
+// and previously immutable. The Business model has these fields but no
+// UI to edit them. Now: a simple form that PATCHes /api/businesses/[id]/profile.
+function BusinessProfileTab({ businessId }: { businessId?: string }) {
+  const { toast } = useToast();
+  const [name, setName] = useState('');
+  const [address, setAddress] = useState('');
+  const [phone, setPhone] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!businessId) return;
+    fetch(`/api/businesses/${businessId}/profile`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.business) {
+          setName(data.business.name || '');
+          setAddress(data.business.address || '');
+          setPhone(data.business.phone || '');
+        }
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, [businessId]);
+
+  const handleSave = async () => {
+    if (!name.trim()) {
+      toast({ title: 'Error', description: 'Shop name cannot be empty', variant: 'destructive' });
+      return;
+    }
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/businesses/${businessId}/profile`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: name.trim(),
+          address: address.trim() || null,
+          phone: phone.trim() || null,
+        }),
+      });
+      if (res.ok) {
+        toast({ title: 'Profile updated', description: name });
+      } else {
+        const data = await res.json();
+        toast({ title: data.error || 'Failed', variant: 'destructive' });
+      }
+    } catch {
+      toast({ title: 'Network error', variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-violet-400" /></div>;
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm space-y-4">
+        <h2 className="text-sm font-bold text-gray-800 flex items-center gap-2">
+          <Building className="w-4 h-4 text-violet-500" /> Business Profile
+        </h2>
+        <div className="space-y-1.5">
+          <label className="text-xs text-gray-600 font-medium">Shop Name *</label>
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="w-full h-10 rounded-xl border border-gray-200 px-3 text-sm bg-white"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <label className="text-xs text-gray-600 font-medium">Address</label>
+          <textarea
+            value={address}
+            onChange={(e) => setAddress(e.target.value)}
+            placeholder="House, road, area..."
+            className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm bg-white resize-none"
+            rows={2}
+          />
+        </div>
+        <div className="space-y-1.5">
+          <label className="text-xs text-gray-600 font-medium">Phone</label>
+          <input
+            type="tel"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            placeholder="01XXXXXXXXX"
+            className="w-full h-10 rounded-xl border border-gray-200 px-3 text-sm bg-white"
+          />
+        </div>
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className="w-full h-11 rounded-xl bg-violet-500 text-white font-semibold text-sm disabled:opacity-50 flex items-center justify-center gap-2"
+        >
+          {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+          {saving ? 'Saving...' : 'Save Profile'}
+        </button>
+      </div>
+      {/* ST-9: note about payment methods config — the PaymentMethodSelector
+          now has 6 methods (cash/bank/bkash/nagad/card/cheque). Per-business
+          config of which are active needs a Business field + UI; deferred. */}
+      <div className="bg-gray-50 rounded-2xl border border-gray-100 p-4">
+        <p className="text-xs text-gray-500">
+          <strong>Payment Methods:</strong> The POS now accepts cash, bank, bKash, Nagad, card, and cheque.
+          Per-business configuration of which methods are active is a planned enhancement.
+        </p>
+      </div>
+    </div>
+  );
 }
