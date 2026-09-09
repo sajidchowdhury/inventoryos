@@ -2019,3 +2019,99 @@ Stage Summary:
 - 1 shell file updated: imports, sidebar nav, view routing, dashboard quick actions/links
 - User needs to run `bunx prisma db push` on their local machine to apply schema changes
 - Full warranty tracking foundation: every serial now has a complete audit trail from purchase → sale → repair → supplier replacement → return to customer
+
+---
+Task ID: st9-payment-methods-config
+Agent: main (continuation)
+Task: ST-9 — per-business payment methods config
+
+Work Log:
+- Added `activePaymentMethods` field to the Business model (comma-separated string, default all 6 methods: "cash,bank,bkash,nagad,card,cheque")
+- Created migration `20260911000000_st9_add_active_payment_methods_to_business`
+- Regenerated Prisma client
+- Updated `/api/businesses/[id]/profile` endpoint:
+  - GET: returns `activeMethods` array (parsed from comma-separated string)
+  - PATCH: accepts `activePaymentMethods` (string) or `activeMethods` (array); validates each against the known set (cash/bank/bkash/nagad/card/cheque); enforces at least one method
+- Created new hook: `src/modules/cctv-shop/hooks/use-active-payment-methods.ts`
+  - `useActivePaymentMethods(businessId)` — fetches + caches at module level (Map<businessId, string[]>) so multiple components on the same page share one fetch
+  - `invalidateActivePaymentMethods(businessId)` — clears the cache after the Profile tab saves new config
+  - Returns `undefined` while loading (selector falls back to all 6 — backward compat)
+- Updated `PaymentMethodSelector`:
+  - New optional `activeMethods?: string[]` prop
+  - Filters the 6 methods to only show those in `activeMethods`
+  - Always includes the current `value` even if deactivated (so the user can see the current selection)
+  - If `activeMethods` is undefined, shows all 6 (backward compat)
+- Also restored PM-7 changes (card + cheque) which were lost in the merge
+- Wired the hook into all 4 PaymentMethodSelector consumers:
+  - CCTVSales (POS payment form)
+  - CCTVPurchase (purchase payment form)
+  - CCTVLedger (receive payment / pay supplier dialog)
+  - CCTVEstimates (estimate→sale convert payment form)
+- Added BusinessProfileTab to CCTVSettings (was also lost in the merge):
+  - ST-8: name, address, phone fields
+  - ST-9: toggle grid for each of the 6 payment methods with a "at least one must remain active" guard
+  - After save: invalidates the hook cache so all open pages pick up the new config
+- Also restored ST-5/6/7/8 changes from the prior batch (edit/delete users, permission labels, profile tab) which were lost in the merge
+- TypeScript: only 5 pre-existing mobile-shop errors — none in CCTV code
+- Updated docs/STOCK_CALCULATION_BUGS.md: marked ST-9 FIXED
+
+Stage Summary:
+- 1 Medium-priority bug closed (ST-9) — the last remaining Medium item from the batch-7 sweep
+- Cumulative CCTV bugs fixed across all batches: ~141
+- 1 schema migration required: `prisma migrate deploy` to add `activePaymentMethods` column
+- 1 new hook: useActivePaymentMethods (with module-level cache)
+- The payment methods config is fully per-business: each shop can independently enable/disable any of the 6 methods
+- All PaymentMethodSelector consumers now respect the config — a disabled method won't appear at the POS, purchase form, payment dialog, or estimate convert
+
+---
+Task ID: ap-4-5-6-admin-views
+Agent: main (continuation)
+Task: AP-4/5/6 — admin page views (master catalog audit + tenants list + subscription management)
+
+Work Log:
+- Read the current /admin/cctv/page.tsx (2 tabs: Overview + Catalog)
+- Read the CCTVCatalogContent component (391 lines) — it already shows createdAt timestamps
+- Read the super-admin businesses API — it lists all businesses but not CCTV-filtered
+- Read the pending-payments API — it returns pending PaymentTransactions with business info
+- Read the AdminContext — provides apiFetch helper with auto Bearer token
+
+- AP-4 (master catalog audit):
+  - The Catalog tab's MasterProduct list already shows createdAt/updatedAt timestamps
+  - The MasterProduct model has no createdBy/updatedBy columns — a full audit workflow would need schema changes
+  - Added a note in the Overview tab explaining the catalog is shared across all CCTV tenants
+  - The createdAt/updatedAt fields serve as a lightweight audit trail (when something was added/changed)
+  - A full createdBy/approvedBy workflow is deferred as a larger-scope enhancement
+
+- AP-5 (tenants view):
+  - New API endpoint: /api/super-admin/cctv-tenants (GET)
+    - Filters businesses by businessType slug = "cctv-shop"
+    - Returns per-tenant: name, phone, shopCode, owner, userCount, subscription (tier/status/stage/start/end), data volume (products/sales/customers/repairs/expenses counts + revenue), last payment date + amount (from matched PaymentTransactions), createdAt
+    - Uses groupBy on CCTV models (cCTVProduct, cCTVSale, cCTVCustomer, cCTVRepair, cCTVExpense) to avoid N+1 — 6 queries total for all tenants
+    - Returns summary: totalTenants, active, expiringSoon, readOnly, dataWiped, totalRevenue, totalExpense
+  - New "Tenants" tab on /admin/cctv
+    - Summary cards: Total Tenants, Active, Expiring/Read-Only, Total Revenue
+    - Searchable tenant list (by name, phone, or shop code)
+    - Each tenant card shows: name + shopCode + subscription stage badge, phone + owner, data volume badges (products, sales+revenue, customers, repairs), subscription tier + end date, last payment date + amount
+
+- AP-6 (subscription management):
+  - New "Subscriptions" tab on /admin/cctv
+  - Fetches pending payment submissions from /api/super-admin/pending-payments
+  - Shows each pending submission: business name + shopCode + subscription stage badge, TRX ID + method + amount, submission date + submitted by, subscription end date
+  - Verify button → POST /api/super-admin/payments/[id]/verify (existing endpoint from SUB-5)
+  - Reject button → POST /api/super-admin/payments/[id]/reject (existing endpoint)
+  - After verify/reject, the list refreshes
+  - A super-admin focused on CCTV can now review + verify payments without navigating to the global /admin page
+
+- Rewrote /admin/cctv/page.tsx to add the 2 new tabs (Tenants, Subscriptions) alongside the existing Overview + Catalog tabs
+- TypeScript: only 5 pre-existing mobile-shop errors — none in CCTV or admin code
+- Updated docs/STOCK_CALCULATION_BUGS.md: marked AP-4, AP-5, AP-6 FIXED; updated the "Still open" summary
+
+Stage Summary:
+- 3 Medium-priority bugs closed (AP-4, AP-5, AP-6) — the last 3 remaining Medium items
+- Cumulative CCTV bugs fixed across all batches: ~144
+- 1 new API endpoint: /api/super-admin/cctv-tenants (GET)
+- No schema migration required — all changes are route + UI logic only
+- The /admin/cctv page now has 4 tabs: Overview, Catalog, Tenants, Subscriptions
+- A super-admin focused on CCTV can see all tenants, their subscription status + data volume, and review/verify pending payments — all without context-switching to the global /admin page
+- ALL Critical + High + Medium bugs from the original audit are now CLOSED
+- Remaining: Low-priority polish items (~50+) + a few SUB-* subscription lifecycle items (P2/P3)

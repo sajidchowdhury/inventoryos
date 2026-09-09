@@ -8,6 +8,11 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const { id: businessId } = await params;
   const { searchParams } = new URL(req.url);
   const search = searchParams.get("search") || "";
+  // P-5: Pagination metadata — page/pageSize/total/totalPages so the UI can tell
+  // whether more pages exist. Default pageSize=50 (matches earlier behaviour).
+  const page = Math.max(1, parseInt(searchParams.get("page") || "1") || 1);
+  const pageSize = Math.min(200, Math.max(1, parseInt(searchParams.get("pageSize") || "50") || 50));
+  const skip = (page - 1) * pageSize;
   const where: Record<string, unknown> = { businessId, isActive: true };
   if (search) {
     where.OR = [
@@ -22,11 +27,17 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       where,
       include: { category: { select: { id: true, name: true, color: true, icon: true, slug: true } } },
       orderBy: { name: "asc" },
-      take: 50,
+      skip,
+      take: pageSize,
     }),
     db.cCTVProduct.count({ where }),
   ]);
-  return NextResponse.json({ success: true, products, total });
+  return NextResponse.json({
+    success: true,
+    products,
+    total,
+    pagination: { page, pageSize, total, totalPages: Math.ceil(total / pageSize) },
+  });
 }
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

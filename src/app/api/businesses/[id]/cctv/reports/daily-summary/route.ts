@@ -58,26 +58,47 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const returnTotal = returns.reduce((s, x) => s + Number(x.totalAmount), 0);
 
   // 6. Customer payments received
+  // DS-1 fix: Separate linked payments (referenceId set → sale was already
+  // updated by PM-3, so the amount is already in salesPaid) from unlinked
+  // payments (referenceId null → payment floats, NOT in salesPaid).
+  //
+  // moneyIn = salesPaid + unlinkedCustomerPayments
+  // (linked payments are already in salesPaid via PM-3, so we only add
+  // the unlinked ones to avoid double-counting)
   const customerPayments = await db.cCTVPayment.findMany({
     where: { businessId, type: "customer_payment", paymentDate: { gte: startOfDay, lte: endOfDay } },
-    select: { id: true, amount: true, paymentMethod: true, paymentDate: true },
+    select: { id: true, amount: true, paymentMethod: true, paymentDate: true, referenceId: true },
   });
   const customerPaymentTotal = customerPayments.reduce((s, x) => s + Number(x.amount), 0);
+  // Linked payments (referenceId is set → already counted in salesPaid via PM-3)
+  const linkedCustomerPaymentTotal = customerPayments
+    .filter((p) => p.referenceId !== null)
+    .reduce((s, x) => s + Number(x.amount), 0);
+  // Unlinked payments (referenceId is null → NOT in salesPaid, need to add)
+  const unlinkedCustomerPaymentTotal = customerPaymentTotal - linkedCustomerPaymentTotal;
 
   // 7. Supplier payments made
+  // DS-1 fix: Same logic — linked supplier payments (referenceId → purchase)
+  // are already in purchasePaid via PM-3. Only unlinked ones need to be added.
   const supplierPayments = await db.cCTVPayment.findMany({
     where: { businessId, type: "supplier_payment", paymentDate: { gte: startOfDay, lte: endOfDay } },
-    select: { id: true, amount: true, paymentMethod: true, paymentDate: true },
+    select: { id: true, amount: true, paymentMethod: true, paymentDate: true, referenceId: true },
   });
   const supplierPaymentTotal = supplierPayments.reduce((s, x) => s + Number(x.amount), 0);
+  const linkedSupplierPaymentTotal = supplierPayments
+    .filter((p) => p.referenceId !== null)
+    .reduce((s, x) => s + Number(x.amount), 0);
+  const unlinkedSupplierPaymentTotal = supplierPaymentTotal - linkedSupplierPaymentTotal;
 
   // Calculate net cash flow
-  const moneyIn = salesPaid + customerPaymentTotal;
-  const moneyOut = purchasePaid + expenseTotal + supplierPaymentTotal + repairRevenue; // repair cost is money we spend (if we pay technician) — but actually repairCost is what customer pays us. Let me reconsider.
-  // Actually repairCost is revenue from customer when they pick up. For now, not counting it in moneyIn since it's collected at return time.
-  const netMoneyIn = salesPaid + customerPaymentTotal;
-  const netMoneyOut = purchasePaid + expenseTotal + supplierPaymentTotal;
-  const netCashFlow = netMoneyIn - netMoneyOut;
+  // DS-1 fix: moneyIn = salesPaid (includes linked standalone payments via PM-3)
+  //   + unlinked customer payments (not in any sale's paidAmount)
+  // DS-2 fix: moneyOut now includes returns (refunds to customers)
+  // moneyOut = purchasePaid (includes linked standalone supplier payments via PM-3)
+  //   + unlinked supplier payments + expenses + returns
+  const moneyIn = salesPaid + unlinkedCustomerPaymentTotal;
+  const moneyOut = purchasePaid + unlinkedSupplierPaymentTotal + expenseTotal + returnTotal;
+  const netCashFlow = moneyIn - moneyOut;
 
   return NextResponse.json({
     success: true,
@@ -91,8 +112,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       customerPayments: { count: customerPayments.length, total: customerPaymentTotal },
       supplierPayments: { count: supplierPayments.length, total: supplierPaymentTotal },
       netCashFlow,
-      moneyIn: netMoneyIn,
-      moneyOut: netMoneyOut,
+      moneyIn,
+      moneyOut,
     },
     details: {
       sales,

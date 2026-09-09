@@ -118,6 +118,14 @@ model Business {
   // Falls back to Business.phone if null.
   ownerWhatsapp      String?
 
+  // ── ST-9: Per-business payment methods config ──
+  // Comma-separated list of active payment methods (e.g. "cash,bank,bkash").
+  // The PaymentMethodSelector reads this to decide which methods to show
+  // at the POS / payment forms. Default = all 6 methods (backward compat).
+  // A shop that doesn't use bKash can set this to "cash,bank,nagad" and
+  // bKash won't appear as an option anywhere in the CCTV module.
+  activePaymentMethods String? @default("cash,bank,bkash,nagad,card,cheque")
+
   user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   businessType BusinessType @relation(fields: [businessTypeId], references: [id])
   businessUsers BusinessUser[]
@@ -3647,14 +3655,23 @@ model CCTVPayment {
 
 // ── 11. CCTV Expenses ──
 model CCTVExpense {
-  id          String   @id @default(cuid())
-  businessId  String
-  category    String   // rent, electricity, transport, tea, other
-  description String?
-  amount      Decimal  @default(0) @db.Decimal(12, 2)
-  expenseDate DateTime @default(now())
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id            String   @id @default(cuid())
+  businessId    String
+  category      String   // rent, electricity, transport, tea, other, or any custom string the shop configures
+  description   String?
+  amount        Decimal  @default(0) @db.Decimal(12, 2)
+  paymentMethod String   @default("cash") // EX-2: cash, bank, bkash, nagad
+  // EX-7: who was paid (salary → employee name, transport → driver, etc.).
+  // Useful for audit. Nullable for backward compat with pre-EX-7 rows.
+  paidTo        String?
+  // EX-8: receipt / invoice attachment URL. Bangladesh tax audit may
+  // require receipts for expenses above a threshold. Stored as a URL
+  // (the UI uploads to whatever object storage the business uses, then
+  // stores the link here). Nullable for backward compat.
+  attachmentUrl String?
+  expenseDate   DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
 
@@ -3662,6 +3679,7 @@ model CCTVExpense {
   @@index([expenseDate])
   @@index([businessId, expenseDate])
   @@index([businessId, category])
+  @@index([businessId, paidTo])
   @@map("cctv_expenses")
 }
 

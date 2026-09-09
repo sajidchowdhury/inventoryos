@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft, Loader2, Lock, Users, Shield, CreditCard, Plus, X,
-  Check, Eye, EyeOff, Phone, User, ChevronRight, KeyRound,
+  Check, Eye, EyeOff, Phone, User, ChevronRight, KeyRound, Building, Save,
 } from 'lucide-react';
 import { useCCTVNavStore } from '@/stores/cctv-nav-store-simple';
 import { useAuthStore } from '@/stores/auth-store';
@@ -13,13 +13,15 @@ import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { CCTVSubscriptionTab } from './CCTVSubscriptionTab';
+import { PAYMENT_METHODS } from './PaymentMethodSelector';
+import { invalidateActivePaymentMethods } from '../hooks/use-active-payment-methods';
 
 const fadeUp = {
   initial: { opacity: 0, y: 16 },
   animate: { opacity: 1, y: 0, transition: { duration: 0.35, ease: 'easeOut' } },
 };
 
-type SettingsTab = 'password' | 'users' | 'permissions' | 'subscription';
+type SettingsTab = 'password' | 'users' | 'permissions' | 'subscription' | 'profile';
 
 export function CCTVSettings() {
   const { goBack } = useCCTVNavStore();
@@ -37,11 +39,12 @@ export function CCTVSettings() {
       </div>
 
       {/* Tab bar */}
-      <div className="flex gap-1 p-1 bg-gray-100 rounded-2xl">
+      <div className="flex gap-1 p-1 bg-gray-100 rounded-2xl overflow-x-auto">
         {[
           { key: 'password' as const, label: 'Password', icon: Lock },
           { key: 'users' as const, label: 'Users', icon: Users },
           { key: 'permissions' as const, label: 'Permissions', icon: Shield },
+          { key: 'profile' as const, label: 'Profile', icon: Building },
           { key: 'subscription' as const, label: 'Subscription', icon: CreditCard },
         ].map((tab) => (
           <button
@@ -64,6 +67,7 @@ export function CCTVSettings() {
       {activeTab === 'password' && <ChangePasswordTab businessId={businessId} />}
       {activeTab === 'users' && <UsersTab businessId={businessId} />}
       {activeTab === 'permissions' && <PermissionsTab businessId={businessId} />}
+      {activeTab === 'profile' && <BusinessProfileTab businessId={businessId} />}
       {activeTab === 'subscription' && <SubscriptionTab businessId={businessId} />}
     </motion.div>
   );
@@ -445,4 +449,175 @@ function PermissionsTab({ businessId }: { businessId?: string }) {
 // Previously this was a "Coming Soon" placeholder.
 function SubscriptionTab({ businessId }: { businessId?: string }) {
   return <CCTVSubscriptionTab businessId={businessId} />;
+}
+
+// ── ST-8 + ST-9: Business Profile Tab ──
+// ST-8: Edit the shop's name, address, phone (previously immutable after registration).
+// ST-9: Configure which payment methods are active for this business. The
+// PaymentMethodSelector reads this config via useActivePaymentMethods to
+// decide which methods to show at the POS / payment forms. A shop that
+// doesn't use bKash can disable it here and it won't appear anywhere.
+function BusinessProfileTab({ businessId }: { businessId?: string }) {
+  const { toast } = useToast();
+  const [name, setName] = useState('');
+  const [address, setAddress] = useState('');
+  const [phone, setPhone] = useState('');
+  const [activeMethods, setActiveMethods] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!businessId) return;
+    fetch(`/api/businesses/${businessId}/profile`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.business) {
+          setName(data.business.name || '');
+          setAddress(data.business.address || '');
+          setPhone(data.business.phone || '');
+          setActiveMethods(data.business.activeMethods || ['cash', 'bank', 'bkash', 'nagad', 'card', 'cheque']);
+        }
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, [businessId]);
+
+  const toggleMethod = (method: string) => {
+    setActiveMethods((prev) => {
+      if (prev.includes(method)) {
+        // ST-9: don't allow disabling the last method
+        if (prev.length <= 1) {
+          toast({ title: 'Cannot disable', description: 'At least one payment method must remain active', variant: 'destructive' });
+          return prev;
+        }
+        return prev.filter((m) => m !== method);
+      }
+      return [...prev, method];
+    });
+  };
+
+  const handleSave = async () => {
+    if (!name.trim()) {
+      toast({ title: 'Error', description: 'Shop name cannot be empty', variant: 'destructive' });
+      return;
+    }
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/businesses/${businessId}/profile`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: name.trim(),
+          address: address.trim() || null,
+          phone: phone.trim() || null,
+          activeMethods, // ST-9: send as array; the API accepts both array + comma-separated string
+        }),
+      });
+      if (res.ok) {
+        toast({ title: 'Profile updated', description: name });
+        // ST-9: invalidate the cache so all PaymentMethodSelector instances
+        // on other pages pick up the new config on their next render.
+        if (businessId) invalidateActivePaymentMethods(businessId);
+      } else {
+        const data = await res.json();
+        toast({ title: data.error || 'Failed', variant: 'destructive' });
+      }
+    } catch {
+      toast({ title: 'Network error', variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-violet-400" /></div>;
+  }
+
+  return (
+    <div className="space-y-3">
+      {/* ST-8: Business profile fields */}
+      <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm space-y-4">
+        <h2 className="text-sm font-bold text-gray-800 flex items-center gap-2">
+          <Building className="w-4 h-4 text-violet-500" /> Business Profile
+        </h2>
+        <div className="space-y-1.5">
+          <label className="text-xs text-gray-600 font-medium">Shop Name *</label>
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="w-full h-10 rounded-xl border border-gray-200 px-3 text-sm bg-white"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <label className="text-xs text-gray-600 font-medium">Address</label>
+          <textarea
+            value={address}
+            onChange={(e) => setAddress(e.target.value)}
+            placeholder="House, road, area..."
+            className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm bg-white resize-none"
+            rows={2}
+          />
+        </div>
+        <div className="space-y-1.5">
+          <label className="text-xs text-gray-600 font-medium">Phone</label>
+          <input
+            type="tel"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            placeholder="01XXXXXXXXX"
+            className="w-full h-10 rounded-xl border border-gray-200 px-3 text-sm bg-white"
+          />
+        </div>
+      </div>
+
+      {/* ST-9: Payment methods config */}
+      <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm space-y-3">
+        <h2 className="text-sm font-bold text-gray-800 flex items-center gap-2">
+          <CreditCard className="w-4 h-4 text-violet-500" /> Active Payment Methods
+        </h2>
+        <p className="text-[11px] text-gray-500">
+          Toggle which payment methods are available at the POS and payment forms.
+          A shop that doesn't use bKash or card can disable them here — they won't
+          appear as options when recording sales, purchases, or payments.
+        </p>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          {PAYMENT_METHODS.map((method) => {
+            const Icon = method.icon;
+            const isActive = activeMethods.includes(method.value);
+            return (
+              <button
+                key={method.value}
+                type="button"
+                onClick={() => toggleMethod(method.value)}
+                className={cn(
+                  'flex items-center justify-center gap-1.5 rounded-xl border-2 transition-all active:scale-95 h-11 px-3',
+                  isActive
+                    ? `${method.bg} ${method.border} ${method.color}`
+                    : 'bg-white border-gray-200 text-gray-400'
+                )}
+              >
+                <Icon className="w-4 h-4" />
+                <span className="text-xs font-semibold">{method.label}</span>
+                {isActive && <Check className="w-3 h-3" />}
+              </button>
+            );
+          })}
+        </div>
+        <p className="text-[10px] text-gray-400">
+          {activeMethods.length} of {PAYMENT_METHODS.length} methods active. At least one must remain active.
+        </p>
+      </div>
+
+      {/* Save button */}
+      <button
+        onClick={handleSave}
+        disabled={saving}
+        className="w-full h-11 rounded-xl bg-violet-500 text-white font-semibold text-sm disabled:opacity-50 flex items-center justify-center gap-2"
+      >
+        {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+        {saving ? 'Saving...' : 'Save Profile'}
+      </button>
+    </div>
+  );
 }

@@ -47,6 +47,35 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: "At least one item is required" }, { status: 400 });
   }
 
+  // SL-4 / SL-7(POS): Reject invalid quantities and amounts up-front.
+  // Previously:
+  //   - SL-4: a negative `quantity` was passed through; for non-serial items
+  //     the backend's `decrement: -3` would silently INCREASE stock via a
+  //     "sale". The frontend's `parseInt(qty) || 1` coerces 0→1 but accepts
+  //     -3 as -3.
+  //   - SL-7(POS): a negative `paidAmount` produced a CCTVPayment row with
+  //     amount<0 plus a DEBIT cash −N + CREDIT receivable −N ledger entry —
+  //     both directions inverted.
+  // Now we validate every item's quantity and the sale-level paidAmount /
+  // invoiceDiscount before touching the DB, returning a 400 instead of a
+  // corrupted sale.
+  for (const [i, item] of body.items.entries()) {
+    const qty = Number(item.quantity);
+    if (!Number.isFinite(qty) || qty <= 0 || !Number.isInteger(qty)) {
+      return NextResponse.json(
+        { error: `Item ${i + 1}: quantity must be a positive integer (got "${item.quantity}")` },
+        { status: 400 },
+      );
+    }
+    const sp = Number(item.sellPrice);
+    if (!Number.isFinite(sp) || sp < 0) {
+      return NextResponse.json(
+        { error: `Item ${i + 1}: sellPrice must be ≥ 0 (got "${item.sellPrice}")` },
+        { status: 400 },
+      );
+    }
+  }
+
   // Calculate subtotal (sum of sell price * qty per item)
   let subtotal = 0;
   for (const item of body.items) {
@@ -54,10 +83,36 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   }
 
   // Apply invoice-level discount (if provided)
-  const invoiceDiscount = body.invoiceDiscount || 0;
+  // SL-6: previously `Math.max(0, subtotal - invoiceDiscount)` let a discount
+  // > subtotal silently produce a ৳0 "free sale". Now we reject discounts that
+  // exceed the subtotal — the cashier must have made a typo.
+  const invoiceDiscount = Number(body.invoiceDiscount) || 0;
+  if (!Number.isFinite(invoiceDiscount) || invoiceDiscount < 0) {
+    return NextResponse.json(
+      { error: "Invoice discount must be ≥ 0" },
+      { status: 400 },
+    );
+  }
+  if (invoiceDiscount > subtotal) {
+    return NextResponse.json(
+      { error: `Invoice discount (৳${invoiceDiscount}) cannot exceed subtotal (৳${subtotal})` },
+      { status: 400 },
+    );
+  }
   const totalAmount = Math.max(0, subtotal - invoiceDiscount);
 
-  const paidAmount = body.paidAmount !== undefined ? body.paidAmount : totalAmount;
+  // SL-7(POS): Reject negative paidAmount. Allow 0 (full credit sale) and
+  // amounts > totalAmount (customer overpays / advance on account — recorded
+  // as a negative balance on the receivable; UI doesn't currently expose this
+  // but the books stay correct).
+  const rawPaid = body.paidAmount !== undefined ? Number(body.paidAmount) : totalAmount;
+  if (!Number.isFinite(rawPaid) || rawPaid < 0) {
+    return NextResponse.json(
+      { error: `paidAmount must be ≥ 0 (got "${body.paidAmount}")` },
+      { status: 400 },
+    );
+  }
+  const paidAmount = rawPaid;
   const dueAmount = Math.max(0, totalAmount - paidAmount);
 
   try {

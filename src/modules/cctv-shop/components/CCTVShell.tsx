@@ -316,6 +316,10 @@ export function CCTVShell() {
           {activeView === 'expenses' && <CCTVExpenses />}
           {activeView === 'reports-hub' && <CCTVReportsHub />}
           {activeView === 'reports' && <CCTVCashBook />}
+          {/* RH-1: 'cash-book' is the explicit view name for the Cash Book.
+              'reports' is kept as an alias for backward compat (any code
+              that still navigates to 'reports' will render the Cash Book). */}
+          {activeView === 'cash-book' && <CCTVCashBook />}
           {activeView === 'stock-report' && <CCTVStockReport />}
           {activeView === 'product-movement' && <CCTVProductMovement />}
           {activeView === 'daily-summary' && <CCTVDailySummary />}
@@ -374,6 +378,11 @@ function CCTVDashboard() {
           { label: 'Sell Products', icon: TrendingUp, view: 'sales' as const, gradient: 'from-emerald-500 to-teal-600' },
           { label: 'New Repair', icon: Wrench, view: 'repairs' as const, gradient: 'from-amber-500 to-orange-600' },
           { label: 'Daily Summary', icon: Calendar, view: 'daily-summary' as const, gradient: 'from-violet-500 to-purple-600' },
+          // DB-3: Pay Subscription quick action — always visible, navigates
+          // to the Settings → Subscription tab. The CCTVSubscriptionBanner
+          // above already shows the stage, but a quick action makes it
+          // easy to jump straight to the payment flow.
+          { label: 'Pay Subscription', icon: CreditCard, view: 'settings' as const, gradient: 'from-rose-500 to-red-600' },
         ].map((action) => (
           <button
             key={action.label}

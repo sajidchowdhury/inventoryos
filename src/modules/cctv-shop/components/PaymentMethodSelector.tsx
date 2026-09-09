@@ -1,7 +1,7 @@
 'use client';
 
 import {
-  Banknote, Landmark, Smartphone, Wallet,
+  Banknote, Landmark, Smartphone, Wallet, CreditCard, FileCheck,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -10,6 +10,9 @@ export const PAYMENT_METHODS = [
   { value: 'bank', label: 'Bank', icon: Landmark, color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-200' },
   { value: 'bkash', label: 'bKash', icon: Smartphone, color: 'text-pink-600', bg: 'bg-pink-50', border: 'border-pink-200' },
   { value: 'nagad', label: 'Nagad', icon: Wallet, color: 'text-orange-600', bg: 'bg-orange-50', border: 'border-orange-200' },
+  // PM-7: added card (POS terminal) and cheque for Bangladesh CCTV shops.
+  { value: 'card', label: 'Card', icon: CreditCard, color: 'text-violet-600', bg: 'bg-violet-50', border: 'border-violet-200' },
+  { value: 'cheque', label: 'Cheque', icon: FileCheck, color: 'text-cyan-600', bg: 'bg-cyan-50', border: 'border-cyan-200' },
 ] as const;
 
 export type PaymentMethod = typeof PAYMENT_METHODS[number]['value'];
@@ -25,7 +28,8 @@ export function PaymentMethodSelector({ value, onChange, label, compact = false 
   return (
     <div className="space-y-1.5">
       {label && <label className="text-xs text-gray-600 font-medium">{label}</label>}
-      <div className={cn('grid gap-2', compact ? 'grid-cols-4' : 'grid-cols-2 sm:grid-cols-4')}>
+      {/* PM-7: 6 methods now — use grid-cols-3 on larger screens for a tidy 2-row layout */}
+      <div className={cn('grid gap-2', compact ? 'grid-cols-3 sm:grid-cols-6' : 'grid-cols-2 sm:grid-cols-3')}>
         {PAYMENT_METHODS.map((method) => {
           const Icon = method.icon;
           const isSelected = value === method.value;

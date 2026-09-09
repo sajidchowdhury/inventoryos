@@ -63,6 +63,26 @@ function validateRow(headers: string[], values: string[], rowIndex: number): CSV
   if (data.stock && isNaN(parseInt(data.stock))) warnings.push("Stock is not a number, defaulting to 0");
   if (data.warrantyMonths && isNaN(parseInt(data.warrantyMonths))) warnings.push("Warranty months is not a number");
 
+  // I-9: Reject negative numeric inputs. Previously `parseInt(row.data.stock) || 0`
+  // accepted stock="-5" → -5, allowing a CSV import to seed negative inventory.
+  // Same for minStock and warrantyMonths. Negative cost/sell prices are also
+  // nonsensical for a CCTV shop.
+  if (data.costPrice && !isNaN(parseFloat(data.costPrice)) && parseFloat(data.costPrice) < 0) {
+    errors.push("Cost price must be ≥ 0");
+  }
+  if (data.sellingPrice && !isNaN(parseFloat(data.sellingPrice)) && parseFloat(data.sellingPrice) < 0) {
+    errors.push("Selling price must be ≥ 0");
+  }
+  if (data.stock && !isNaN(parseInt(data.stock)) && parseInt(data.stock) < 0) {
+    errors.push("Stock must be ≥ 0");
+  }
+  if (data.lowStockAlert && !isNaN(parseInt(data.lowStockAlert)) && parseInt(data.lowStockAlert) < 0) {
+    errors.push("Low stock alert must be ≥ 0");
+  }
+  if (data.warrantyMonths && !isNaN(parseInt(data.warrantyMonths)) && parseInt(data.warrantyMonths) < 0) {
+    errors.push("Warranty months must be ≥ 0");
+  }
+
   // Warning for missing optional fields
   if (!data.category) warnings.push("No category specified");
 
@@ -150,12 +170,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     for (const row of importable) {
       try {
-        // Check if product already exists in this business (by name + brand)
+        // I-8: Check if product already exists (case-insensitive name + brand).
+        // Previously `name: row.data.name, brand: row.data.brand` was an
+        // EXACT match — "hikvision DS-2CD" did not collide with "Hikvision
+        // DS-2CD" so the import created a duplicate product. Now both
+        // sides use mode: insensitive.
         const existingProduct = await db.cCTVProduct.findFirst({
           where: {
             businessId,
-            name: row.data.name,
-            brand: row.data.brand,
+            name: { equals: row.data.name, mode: "insensitive" },
+            brand: { equals: row.data.brand, mode: "insensitive" },
           },
         });
 
@@ -185,6 +209,19 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           masterCatalogLinked++;
         }
 
+        // I-9 (defense in depth): clamp any negative numeric inputs to 0
+        // even if they slip past validateRow (e.g. a hand-edited `rows`
+        // payload POSTed directly to this endpoint). Negative stock or
+        // prices in the DB would corrupt every downstream report.
+        const clampInt = (v: string | undefined, fallback = 0) => {
+          const n = parseInt(v || "");
+          return Number.isFinite(n) && n > 0 ? n : fallback;
+        };
+        const clampFloat = (v: string | undefined, fallback = 0) => {
+          const n = parseFloat(v || "");
+          return Number.isFinite(n) && n > 0 ? n : fallback;
+        };
+
         await db.cCTVProduct.create({
           data: {
             businessId,
@@ -193,11 +230,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
             brand: row.data.brand,
             model: row.data.model || null,
             sku: row.data.sku || null,
-            costPrice: parseFloat(row.data.costPrice) || 0,
-            sellPrice: parseFloat(row.data.sellingPrice) || 0,
-            stock: parseInt(row.data.stock) || 0,
-            minStock: parseInt(row.data.lowStockAlert) || 0,
-            warrantyMonths: parseInt(row.data.warrantyMonths) || 0,
+            costPrice: clampFloat(row.data.costPrice),
+            sellPrice: clampFloat(row.data.sellingPrice),
+            stock: clampInt(row.data.stock),
+            minStock: clampInt(row.data.lowStockAlert),
+            warrantyMonths: clampInt(row.data.warrantyMonths),
             serialTracked: row.data.serialTracked === "true" || row.data.serialTracked === "1",
             unit: row.data.unit || "piece",
           },

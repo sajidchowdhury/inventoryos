@@ -16,6 +16,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { QuickPartyDialog } from './QuickPartyDialog';
 import { PaymentMethodSelector } from './PaymentMethodSelector';
+import { useActivePaymentMethods } from '../hooks/use-active-payment-methods';
 
 interface Estimate {
   id: string;
@@ -81,6 +82,7 @@ export function CCTVEstimates() {
   const businessId = useAuthStore((s) => s.session?.business?.id);
   const businessName = useAuthStore((s) => s.session?.business?.name || 'CCTV Shop');
   const { toast } = useToast();
+  const activePaymentMethods = useActivePaymentMethods(businessId);
 
   const [view, setView] = useState<'list' | 'editor' | 'detail' | 'convert'>('list');
   const [estimates, setEstimates] = useState<Estimate[]>([]);
@@ -412,6 +414,7 @@ export function CCTVEstimates() {
             value={paymentMethod}
             onChange={setPaymentMethod}
             label="Payment Method"
+            activeMethods={activePaymentMethods}
           />
 
           <div className="bg-amber-50 rounded-xl p-3 text-xs text-amber-700">

@@ -46,36 +46,45 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (body.notes !== undefined) updateData.notes = body.notes || null;
   if (body.validUntil !== undefined) updateData.validUntil = body.validUntil ? new Date(body.validUntil) : null;
 
-  // If items provided, replace all items
-  if (body.items && Array.isArray(body.items)) {
-    // Delete existing items
-    await db.cCTVEstimateItem.deleteMany({ where: { estimateId } });
-    // Create new items
-    let totalAmount = 0;
-    for (const item of body.items) {
-      totalAmount += (parseFloat(item.unitPrice) || 0) * (parseInt(item.quantity) || 1);
-      await db.cCTVEstimateItem.create({
-        data: {
-          estimateId,
-          businessId,
-          productId: item.productId || null,
-          productName: item.productName,
-          quantity: parseInt(item.quantity) || 1,
-          unitPrice: parseFloat(item.unitPrice) || 0,
-          notes: item.notes || null,
-        },
+  // E-8 fix: wrap the item replacement + estimate update in a transaction
+  // so a failure halfway doesn't leave the estimate with 0 items.
+  try {
+    const updated = await db.$transaction(async (tx) => {
+      // If items provided, replace all items (inside transaction)
+      if (body.items && Array.isArray(body.items)) {
+        await tx.cCTVEstimateItem.deleteMany({ where: { estimateId } });
+        let totalAmount = 0;
+        for (const item of body.items) {
+          totalAmount += (parseFloat(item.unitPrice) || 0) * (parseInt(item.quantity) || 1);
+          await tx.cCTVEstimateItem.create({
+            data: {
+              estimateId,
+              businessId,
+              productId: item.productId || null,
+              productName: item.productName,
+              quantity: parseInt(item.quantity) || 1,
+              unitPrice: parseFloat(item.unitPrice) || 0,
+              notes: item.notes || null,
+            },
+          });
+        }
+        updateData.totalAmount = totalAmount;
+      }
+
+      const updatedEstimate = await tx.cCTVEstimate.update({
+        where: { id: estimateId },
+        data: updateData,
+        include: { items: true },
       });
-    }
-    updateData.totalAmount = totalAmount;
+
+      return updatedEstimate;
+    });
+
+    return NextResponse.json({ success: true, estimate: updated });
+  } catch (err: any) {
+    console.error("[cctv/estimates PATCH] Transaction failed:", err);
+    return NextResponse.json({ error: err?.message || "Failed to update estimate" }, { status: 500 });
   }
-
-  const updated = await db.cCTVEstimate.update({
-    where: { id: estimateId },
-    data: updateData,
-    include: { items: true },
-  });
-
-  return NextResponse.json({ success: true, estimate: updated });
 }
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string; estimateId: string }> }) {

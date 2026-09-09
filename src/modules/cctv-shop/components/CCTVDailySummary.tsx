@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import {
   ArrowLeft, Loader2, Calendar, TrendingUp, ShoppingCart, Wrench,
   Receipt, RefreshCw, DollarSign, ArrowDown, ArrowUp, Printer, Search,
+  ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import { useCCTVNavStore } from '@/stores/cctv-nav-store-simple';
 import { useAuthStore } from '@/stores/auth-store';
@@ -30,7 +31,10 @@ export function CCTVDailySummary() {
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
-  const [hasSearched, setHasSearched] = useState(false);
+  // DS-6: auto-load today on mount. The Daily Summary is the "Most used"
+  // report per the Reports Hub badge — every other report auto-loads.
+  // Previously the user had to click "Search" to see anything for today.
+  const [hasSearched, setHasSearched] = useState(true);
 
   const handleSearch = () => {
     if (!businessId) return;
@@ -40,6 +44,30 @@ export function CCTVDailySummary() {
       .then((r) => r.json())
       .then((d) => { setData(d); setLoading(false); })
       .catch(() => setLoading(false));
+  };
+
+  // DS-6: auto-load on mount + when businessId changes (uses today's date)
+  useEffect(() => {
+    if (businessId) handleSearch();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [businessId]);
+
+  // DS-7: re-fetch when the user picks a new date (incl. prev/next buttons).
+  // The initial mount is handled by the businessId effect above; this one
+  // only fires on subsequent date changes (initial `date` equals today so
+  // the first run is a duplicate of the mount fetch — cheap enough).
+  useEffect(() => {
+    if (businessId && hasSearched) handleSearch();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [date]);
+
+  // DS-7: prev/next day navigation. The user can still type a date, but for
+  // daily-review workflows the "‹ Sep 7 | Sep 8 | Sep 9 ›" header is much
+  // faster than reopening the date picker.
+  const shiftDay = (deltaDays: number) => {
+    const d = new Date(date);
+    d.setDate(d.getDate() + deltaDays);
+    setDate(d.toISOString().split('T')[0]);
   };
 
   const handlePrint = () => window.print();
@@ -60,11 +88,22 @@ export function CCTVDailySummary() {
       </div>
 
       {/* Date picker + search */}
+      {/* DS-7: added ‹ date › quick-nav around the date input. */}
       <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm print:hidden">
         <div className="flex items-center gap-2">
+          <button onClick={() => shiftDay(-1)} disabled={loading}
+            className="h-10 w-10 rounded-xl border border-gray-200 text-gray-600 flex items-center justify-center disabled:opacity-40 hover:bg-gray-50"
+            title="Previous day">
+            <ChevronLeft className="w-4 h-4" />
+          </button>
           <Calendar className="w-4 h-4 text-violet-400" />
           <Input type="date" value={date} onChange={(e) => setDate(e.target.value)}
             className="h-10 rounded-xl text-sm max-w-xs" />
+          <button onClick={() => shiftDay(1)} disabled={loading}
+            className="h-10 w-10 rounded-xl border border-gray-200 text-gray-600 flex items-center justify-center disabled:opacity-40 hover:bg-gray-50"
+            title="Next day">
+            <ChevronRight className="w-4 h-4" />
+          </button>
           <button onClick={handleSearch} disabled={loading}
             className="ml-auto h-10 px-5 rounded-xl bg-gradient-to-r from-violet-500 to-purple-600 text-white text-xs font-semibold flex items-center gap-1.5 active:scale-95 transition-transform disabled:opacity-50">
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
@@ -80,8 +119,8 @@ export function CCTVDailySummary() {
       ) : !hasSearched ? (
         <div className="bg-white rounded-2xl border border-gray-100 p-12 shadow-sm text-center">
           <Calendar className="w-12 h-12 text-gray-200 mx-auto mb-3" />
-          <p className="text-sm font-medium text-gray-700">Pick a date and click Search</p>
-          <p className="text-xs text-gray-400 mt-1">Shows everything that happened on that day</p>
+          <p className="text-sm font-medium text-gray-700">Loading today's summary…</p>
+          <p className="text-xs text-gray-400 mt-1">Shows everything that happened on the selected day</p>
         </div>
       ) : data ? (
         <>
@@ -107,8 +146,18 @@ export function CCTVDailySummary() {
               </div>
               <div className="text-right">
                 <p className="text-xs text-white/80 uppercase tracking-wider">{data.date}</p>
+                {/* DS-5: "transactions" used to be sales+purchases+expenses
+                    only — ignoring repairs, returns, and customer payments.
+                    A day with 3 sales, 2 purchases, 1 expense, 5 repairs,
+                    2 returns, and 8 payments showed "6 transactions" when
+                    there were really 21. Now we include every event type. */}
                 <p className="text-sm font-semibold mt-1">
-                  {data.summary.sales.count + data.summary.purchases.count + data.summary.expenses.count} transactions
+                  {data.summary.sales.count
+                    + data.summary.purchases.count
+                    + data.summary.expenses.count
+                    + (data.summary.repairs?.count || 0)
+                    + (data.summary.returns?.count || 0)
+                    + (data.summary.customerPayments?.count || 0)} transactions
                 </p>
               </div>
             </div>
