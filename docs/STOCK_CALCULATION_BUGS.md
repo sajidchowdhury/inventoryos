@@ -1178,7 +1178,7 @@ The `/api/businesses/[id]/subscription/pay` POST endpoint exists and works, but 
 | **ST-6** | Medium | Users tab: no "delete user". Only deactivate. A deactivated user with a typo'd username clutters the user list forever. |
 | **ST-7** | Medium | Permissions tab: shows `Object.entries(perms)` (line 410) — the permission keys are raw strings like `can_create_sale`, `can_view_reports`. No human-readable labels. A shop owner sees `can_create_sale: ✓` with no explanation. Should have a label map. |
 | **ST-8** | Medium | No "business profile" tab. The shop's name, address, phone, BIN/TIN (for VAT), logo — none of these are editable from the in-app Settings. They're set at registration time and immutable. The `Business` model has these fields but no UI to edit them. |
-| **ST-9** | Medium | No "payment methods" config. The shop accepts cash/bank/bKash/Nagad per `PaymentMethodSelector`, but there's no way to configure which methods are active for THIS business. A shop that doesn't use bKash still shows it as an option at the POS. |
+| **ST-9** | ~~Medium~~ ✅ **FIXED** | ~~No "payment methods" config. The shop accepts cash/bank/bKash/Nagad per `PaymentMethodSelector`, but there's no way to configure which methods are active for THIS business. A shop that doesn't use bKash still shows it as an option at the POS.~~ **Fix**: new `activePaymentMethods` field on the Business model (comma-separated string, default all 6 methods). Schema migration `20260911000000_st9_add_active_payment_methods_to_business`. New hook `useActivePaymentMethods(businessId)` fetches + caches the config (module-level cache so multiple components on the same page share one fetch). `PaymentMethodSelector` accepts an optional `activeMethods` prop — only shows methods in that list (always includes the current `value` for visibility). Wired into CCTVSales, CCTVPurchase, CCTVLedger, CCTVEstimates. Settings → Profile tab has a toggle grid for each of the 6 methods with a "at least one must remain active" guard. After saving, the hook's cache is invalidated so all open pages pick up the new config on their next render. |
 | **ST-10** | Low | Password tab uses `useAuthStore.getState().session` (line 92–93) to get the current user ID — this is a non-reactive read inside an event handler. Works, but the pattern is inconsistent with the rest of the component which uses the hook form. |
 | **ST-11** | Low | No "export settings" or "audit log" of who changed what. A multi-user shop can't tell who changed a password or created a user. |
 
@@ -1309,7 +1309,7 @@ This is the critical part of this section. The user described a 7-step subscript
 
 - **DB-2, DB-4, DB-5, DB-6**: Dashboard shows gross vs net sales, due amounts, repairs.
 - **ST-3, ST-4, ST-7**: User creation: email field, password strength, force-change flag, role permission editor.
-- **ST-8, ST-9**: Business profile edit tab, payment methods config.
+- **ST-8, ST-9**: ✅ FIXED — Business profile edit tab + payment methods config (per-business activePaymentMethods field + useActivePaymentMethods hook + toggle UI in Profile tab).
 - **AP-4, AP-5, AP-6**: Master catalog audit trail, tenants view, subscription management on CCTV admin page.
 - **SUB-8**: Enforce `expiring_soon` as a warning-only stage (already correct in code, just needs UI).
 - **SUB-11**: Lock billing period in the pay UI; show expected amount.

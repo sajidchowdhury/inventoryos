@@ -118,6 +118,14 @@ model Business {
   // Falls back to Business.phone if null.
   ownerWhatsapp      String?
 
+  // ── ST-9: Per-business payment methods config ──
+  // Comma-separated list of active payment methods (e.g. "cash,bank,bkash").
+  // The PaymentMethodSelector reads this to decide which methods to show
+  // at the POS / payment forms. Default = all 6 methods (backward compat).
+  // A shop that doesn't use bKash can set this to "cash,bank,nagad" and
+  // bKash won't appear as an option anywhere in the CCTV module.
+  activePaymentMethods String? @default("cash,bank,bkash,nagad,card,cheque")
+
   user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   businessType BusinessType @relation(fields: [businessTypeId], references: [id])
   businessUsers BusinessUser[]

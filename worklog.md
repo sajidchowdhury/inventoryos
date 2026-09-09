@@ -2019,3 +2019,46 @@ Stage Summary:
 - 1 shell file updated: imports, sidebar nav, view routing, dashboard quick actions/links
 - User needs to run `bunx prisma db push` on their local machine to apply schema changes
 - Full warranty tracking foundation: every serial now has a complete audit trail from purchase → sale → repair → supplier replacement → return to customer
+
+---
+Task ID: st9-payment-methods-config
+Agent: main (continuation)
+Task: ST-9 — per-business payment methods config
+
+Work Log:
+- Added `activePaymentMethods` field to the Business model (comma-separated string, default all 6 methods: "cash,bank,bkash,nagad,card,cheque")
+- Created migration `20260911000000_st9_add_active_payment_methods_to_business`
+- Regenerated Prisma client
+- Updated `/api/businesses/[id]/profile` endpoint:
+  - GET: returns `activeMethods` array (parsed from comma-separated string)
+  - PATCH: accepts `activePaymentMethods` (string) or `activeMethods` (array); validates each against the known set (cash/bank/bkash/nagad/card/cheque); enforces at least one method
+- Created new hook: `src/modules/cctv-shop/hooks/use-active-payment-methods.ts`
+  - `useActivePaymentMethods(businessId)` — fetches + caches at module level (Map<businessId, string[]>) so multiple components on the same page share one fetch
+  - `invalidateActivePaymentMethods(businessId)` — clears the cache after the Profile tab saves new config
+  - Returns `undefined` while loading (selector falls back to all 6 — backward compat)
+- Updated `PaymentMethodSelector`:
+  - New optional `activeMethods?: string[]` prop
+  - Filters the 6 methods to only show those in `activeMethods`
+  - Always includes the current `value` even if deactivated (so the user can see the current selection)
+  - If `activeMethods` is undefined, shows all 6 (backward compat)
+- Also restored PM-7 changes (card + cheque) which were lost in the merge
+- Wired the hook into all 4 PaymentMethodSelector consumers:
+  - CCTVSales (POS payment form)
+  - CCTVPurchase (purchase payment form)
+  - CCTVLedger (receive payment / pay supplier dialog)
+  - CCTVEstimates (estimate→sale convert payment form)
+- Added BusinessProfileTab to CCTVSettings (was also lost in the merge):
+  - ST-8: name, address, phone fields
+  - ST-9: toggle grid for each of the 6 payment methods with a "at least one must remain active" guard
+  - After save: invalidates the hook cache so all open pages pick up the new config
+- Also restored ST-5/6/7/8 changes from the prior batch (edit/delete users, permission labels, profile tab) which were lost in the merge
+- TypeScript: only 5 pre-existing mobile-shop errors — none in CCTV code
+- Updated docs/STOCK_CALCULATION_BUGS.md: marked ST-9 FIXED
+
+Stage Summary:
+- 1 Medium-priority bug closed (ST-9) — the last remaining Medium item from the batch-7 sweep
+- Cumulative CCTV bugs fixed across all batches: ~141
+- 1 schema migration required: `prisma migrate deploy` to add `activePaymentMethods` column
+- 1 new hook: useActivePaymentMethods (with module-level cache)
+- The payment methods config is fully per-business: each shop can independently enable/disable any of the 6 methods
+- All PaymentMethodSelector consumers now respect the config — a disabled method won't appear at the POS, purchase form, payment dialog, or estimate convert

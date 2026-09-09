@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { QuickPartyDialog } from './QuickPartyDialog';
 import { PaymentMethodSelector } from './PaymentMethodSelector';
+import { useActivePaymentMethods } from '../hooks/use-active-payment-methods';
 
 interface Customer {
   id: string;
@@ -70,6 +71,7 @@ export function CCTVSales() {
   const { goBack, navigate } = useCCTVNavStore();
   const businessId = useAuthStore((s) => s.session?.business?.id);
   const { toast } = useToast();
+  const activePaymentMethods = useActivePaymentMethods(businessId);
 
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -528,6 +530,7 @@ export function CCTVSales() {
             value={paymentMethod}
             onChange={setPaymentMethod}
             label="Payment Method"
+            activeMethods={activePaymentMethods}
           />
         </div>
       )}

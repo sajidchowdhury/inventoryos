@@ -14,6 +14,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { PaymentMethodSelector } from './PaymentMethodSelector';
+import { useActivePaymentMethods } from '../hooks/use-active-payment-methods';
 
 interface Party {
   id: string;
@@ -60,6 +61,7 @@ export function CCTVLedger({ type }: { type: 'customer' | 'supplier' }) {
   const businessId = useAuthStore((s) => s.session?.business?.id);
   const businessName = useAuthStore((s) => s.session?.business?.name || 'CCTV Shop');
   const { toast } = useToast();
+  const activePaymentMethods = useActivePaymentMethods(businessId);
 
   const [parties, setParties] = useState<Party[]>([]);
   const [selectedId, setSelectedId] = useState('');
@@ -488,6 +490,7 @@ export function CCTVLedger({ type }: { type: 'customer' | 'supplier' }) {
                   value={paymentMethod}
                   onChange={setPaymentMethod}
                   label="Payment Method"
+                  activeMethods={activePaymentMethods}
                 />
               )}
 
