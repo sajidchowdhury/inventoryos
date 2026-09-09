@@ -65,16 +65,28 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   }
 
   // Purchases (debit — we owe more)
+  // SL-5: include item-level breakdown in the description so the ledger
+  // shows what was bought, not just "Purchase (INV-123)" with a total.
   const purchases = await db.cCTVPurchase.findMany({
     where: { businessId, supplierId },
-    select: { id: true, purchaseDate: true, totalAmount: true, paidAmount: true, invoiceNo: true },
+    select: { id: true, purchaseDate: true, totalAmount: true, paidAmount: true, invoiceNo: true, items: { select: { productName: true, quantity: true } } },
     orderBy: { purchaseDate: "asc" },
   });
 
   for (const pur of purchases) {
+    // SL-5: build a short item summary like "3 items: HDD x2, Cable x5"
+    // or "1 item: HDD x1" for single-item purchases. Capped at ~120 chars
+    // to keep the ledger readable.
+    const itemCount = pur.items.length;
+    let itemSummary = "";
+    if (itemCount > 0) {
+      const parts = pur.items.slice(0, 3).map((it) => `${it.productName} x${it.quantity}`);
+      const suffix = itemCount > 3 ? ` +${itemCount - 3} more` : "";
+      itemSummary = ` · ${itemCount} item${itemCount > 1 ? "s" : ""}: ${parts.join(", ")}${suffix}`;
+    }
     entries.push({
       date: pur.purchaseDate.toISOString().split("T")[0],
-      description: `Purchase${pur.invoiceNo ? ` (${pur.invoiceNo})` : ""}`,
+      description: `Purchase${pur.invoiceNo ? ` (${pur.invoiceNo})` : ""}${itemSummary}`,
       debit: Number(pur.totalAmount),
       credit: Number(pur.paidAmount),
       balance: 0,
