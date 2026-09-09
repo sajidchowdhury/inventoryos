@@ -10,7 +10,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     where: { businessId },
     orderBy: { name: "asc" },
   });
-  return NextResponse.json(suppliers);
+  // CU-2 fix: wrap in { success: true, suppliers } for consistency
+  return NextResponse.json({ success: true, suppliers });
 }
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -31,5 +32,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       openingBalance: body.openingBalance || 0,
     },
   });
-  return NextResponse.json(supplier, { status: 201 });
+  // CU-2 fix: wrap in { success: true, supplier } for consistency
+  return NextResponse.json({ success: true, supplier }, { status: 201 });
 }

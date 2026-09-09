@@ -65,5 +65,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       openingBalance: body.openingBalance || 0,  // CU-6: accepted from the UI now
     },
   });
-  return NextResponse.json(customer, { status: 201 });
+  // CU-2 fix: wrap in { success: true, customer } for consistency
+  return NextResponse.json({ success: true, customer }, { status: 201 });
 }

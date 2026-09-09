@@ -3,6 +3,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireActiveSubscription } from "@/lib/subscription-guard";
+import { slugify, uniqueCategorySlug } from "@/lib/cctv-slug";
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string; categoryId: string }> }) {
   const { id: businessId, categoryId } = await params;
@@ -23,18 +24,33 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const updateData: Record<string, unknown> = {};
   if (body.name !== undefined) {
     updateData.name = body.name;
-    updateData.slug = body.name.toLowerCase().replace(/[^a-z0-9\s-]/g, "").replace(/\s+/g, "-");
+    // C-3: Use the shared unique-slug helper. Previously PATCH auto-regenerated
+    // the slug from the new name without checking for collisions with other
+    // categories → P2002 on rename if the new name's slug was taken.
+    // Now we exclude this category's own id from the uniqueness check, and
+    // append -2, -3, ... if needed.
+    const requestedSlug = body.slug ? slugify(body.slug) : slugify(body.name);
+    updateData.slug = await uniqueCategorySlug(businessId, requestedSlug, categoryId);
   }
   if (body.color !== undefined) updateData.color = body.color;
   if (body.icon !== undefined) updateData.icon = body.icon;
   if (body.isActive !== undefined) updateData.isActive = body.isActive;
 
-  const updated = await db.cCTVCategory.update({
-    where: { id: categoryId },
-    data: updateData,
-  });
-
-  return NextResponse.json({ success: true, category: updated });
+  try {
+    const updated = await db.cCTVCategory.update({
+      where: { id: categoryId },
+      data: updateData,
+    });
+    return NextResponse.json({ success: true, category: updated });
+  } catch (err: any) {
+    if (err?.code === "P2002") {
+      return NextResponse.json(
+        { error: "Another category with that name already exists. Try a different name." },
+        { status: 409 },
+      );
+    }
+    throw err;
+  }
 }
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string; categoryId: string }> }) {

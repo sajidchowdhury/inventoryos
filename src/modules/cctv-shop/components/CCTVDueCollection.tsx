@@ -74,7 +74,8 @@ export function CCTVDueCollection() {
   const { toast } = useToast();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
-  const [hasSearched, setHasSearched] = useState(true); // DC-8: auto-load
+  // DC-8: auto-load on mount (same pattern as R-1 Stock Report).
+  const [hasSearched, setHasSearched] = useState(true);
 
   // DC-6: collect-payment dialog state. Opens pre-filled with the customer
   // and the full balance as the amount. Mirrors the CCTVLedger payment flow.
@@ -100,7 +101,7 @@ export function CCTVDueCollection() {
     }
   };
 
-  // DC-8: auto-load on mount
+  // DC-8: auto-load on mount + when businessId changes
   useEffect(() => {
     if (businessId) handleSearch();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -129,9 +130,6 @@ export function CCTVDueCollection() {
   };
 
   // DC-6: submit the payment via the standard /payments endpoint.
-  // The payment is linked to the customer's oldest unpaid sale (FIFO) if
-  // one exists, otherwise unlinked (the customer ledger will still show
-  // the payment reducing the balance).
   const handleCollect = async () => {
     if (!collectCustomer) return;
     const amount = parseFloat(collectAmount);
@@ -141,7 +139,6 @@ export function CCTVDueCollection() {
     }
     setSavingCollect(true);
     try {
-      // Fetch the customer's outstanding sales to find one to link to
       let referenceId: string | null = null;
       let referenceType: string | null = null;
       const salesRes = await fetch(`/api/businesses/${businessId}/cctv/sales?pageSize=100`);
@@ -176,7 +173,7 @@ export function CCTVDueCollection() {
         });
         setShowCollect(false);
         setCollectCustomer(null);
-        handleSearch(); // refresh the list
+        handleSearch();
       } else {
         const d = await res.json();
         toast({ title: d.error || 'Failed', variant: 'destructive' });

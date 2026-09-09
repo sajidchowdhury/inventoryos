@@ -29,6 +29,23 @@ function formatDateTime(dateStr: string | Date): string {
   });
 }
 
+// SI-3: Format warranty months as "X Year(s)" or "Y Month(s)".
+// Previously printed "24 Year" for 24 months — the original code did
+// `${months} ${months >= 12 ? 'Year' : 'Month'}` which never divided by 12
+// and never pluralized. Now we divide and pluralize correctly.
+function formatWarranty(months: number): string {
+  if (!months || months <= 0) return '—';
+  if (months >= 12) {
+    const years = months / 12;
+    // Show whole years without a decimal; fractional years (e.g. 18 months
+    // = 1.5 years) fall back to month units to avoid "1.5 Years" awkwardness.
+    if (Number.isInteger(years)) {
+      return `${years} Year${years > 1 ? 's' : ''}`;
+    }
+  }
+  return `${months} Month${months > 1 ? 's' : ''}`;
+}
+
 // Convert number to words (simple version for BDT)
 function numberToWords(num: number): string {
   if (num === 0) return 'Zero';
@@ -227,7 +244,15 @@ export function CCTVSaleInvoice() {
             </thead>
             <tbody>
               {(() => {
-                // Group items by productId to combine serials
+                // Group items by productId to combine serials.
+                // SI-6: Per-item warranty — previously the grouped row's
+                // `warrantyMonths` was initialized to 0 and never read from
+                // the actual items, so a 3-serial sale of a 12-month-warranty
+                // product showed "—" for warranty on that row. Now we take
+                // the MAX warranty across items in the group (serials of the
+                // same product can have different warranties if purchased at
+                // different times with extended terms — the max is the most
+                // generous one to show the customer).
               const grouped: Record<string, {
                 productName: string;
                 productId: string;
@@ -252,6 +277,10 @@ export function CCTVSaleInvoice() {
                 grouped[key].totalQty += item.quantity;
                 if (item.serialNumber) {
                   grouped[key].serials.push(item.serialNumber);
+                }
+                // SI-6: take the max warranty across items in the group
+                if ((item.warrantyMonths || 0) > grouped[key].warrantyMonths) {
+                  grouped[key].warrantyMonths = item.warrantyMonths || 0;
                 }
               }
 
@@ -280,9 +309,15 @@ export function CCTVSaleInvoice() {
                       )}
                     </td>
                     <td className="p-2 text-center text-gray-600 border-r border-gray-100">
-                      {item.warrantyMonths > 0 ? `${item.warrantyMonths} ${item.warrantyMonths >= 12 ? 'Year' : 'Month'}` : '—'}
+                      {formatWarranty(item.warrantyMonths)}
                     </td>
-                    <td className="p-2 text-center text-gray-700 border-r border-gray-100">{item.totalQty.toFixed(2)}</td>
+                    {/* SI-4: integer quantities. CCTV products are sold in
+                        whole units; printing "1.00" / "5.00" looked
+                        unprofessional. Now we print integers (and fall back
+                        to 2-decimal only if qty happens to be fractional). */}
+                    <td className="p-2 text-center text-gray-700 border-r border-gray-100">
+                      {Number.isInteger(item.totalQty) ? item.totalQty : item.totalQty.toFixed(2)}
+                    </td>
                     <td className="p-2 text-right text-gray-700 border-r border-gray-100">{formatBDT(item.unitPrice)}</td>
                     <td className="p-2 text-right font-semibold text-gray-900">{formatBDT(item.unitPrice * item.totalQty)}</td>
                   </tr>
@@ -335,7 +370,10 @@ export function CCTVSaleInvoice() {
                 <tbody>
                   <tr className="border-b border-gray-100">
                     <td className="py-1.5 text-gray-600">Total Qty :</td>
-                    <td className="py-1.5 text-right font-semibold text-gray-900">{totalQty.toFixed(2)}</td>
+                    {/* SI-4: same integer-qty fix as the per-row qty cell */}
+                    <td className="py-1.5 text-right font-semibold text-gray-900">
+                      {Number.isInteger(totalQty) ? totalQty : totalQty.toFixed(2)}
+                    </td>
                     <td className="py-1.5 pl-3 text-gray-600">Total Amount</td>
                     <td className="py-1.5 text-right font-bold text-gray-900">{formatBDT(subtotal)}</td>
                   </tr>

@@ -36,12 +36,18 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     ];
   }
 
+  // PM-6 fix: include customer + supplier names to avoid N+1 fetches
+  // in the UI. Uses left-join style includes (nullable relations).
   const [payments, total] = await Promise.all([
     db.cCTVPayment.findMany({
       where,
       orderBy: { paymentDate: "desc" },
       skip,
       take: pageSize,
+      include: {
+        customer: { select: { name: true } },
+        supplier: { select: { name: true } },
+      },
     }),
     db.cCTVPayment.count({ where }),
   ]);

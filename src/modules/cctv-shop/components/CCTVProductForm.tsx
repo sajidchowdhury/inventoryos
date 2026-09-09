@@ -83,6 +83,50 @@ export function CCTVProductForm() {
       toast({ title: 'Name and brand are required', variant: 'destructive' });
       return;
     }
+    // F-2: Previously `parseInt(form.stock) || 0` silently coerced invalid
+    // input ("abc") to 0. A shop owner who typed "10 pcs" instead of "10"
+    // would silently create a product with stock=0. Now we validate every
+    // numeric field up-front and surface the bad field to the user.
+    const numericFields: { key: keyof typeof form; label: string; kind: 'int' | 'float'; min: number }[] = [
+      { key: 'costPrice', label: 'Cost Price', kind: 'float', min: 0 },
+      { key: 'sellPrice', label: 'Sell Price', kind: 'float', min: 0 },
+      { key: 'minStock', label: 'Min Stock Alert', kind: 'int', min: 0 },
+      { key: 'warrantyMonths', label: 'Warranty Months', kind: 'int', min: 0 },
+    ];
+    if (!isEdit) {
+      // stock is only sent in add mode (read-only in edit mode)
+      numericFields.push({ key: 'stock', label: 'Stock', kind: 'int', min: 0 });
+    }
+    for (const f of numericFields) {
+      const raw = (form[f.key] as string).trim();
+      if (raw === '') continue; // empty is allowed → falls back to 0
+      const n = f.kind === 'int' ? parseInt(raw, 10) : parseFloat(raw);
+      if (!Number.isFinite(n)) {
+        toast({
+          title: `Invalid ${f.label}`,
+          description: `"${raw}" is not a valid number`,
+          variant: 'destructive',
+        });
+        return;
+      }
+      if (n < f.min) {
+        toast({
+          title: `Invalid ${f.label}`,
+          description: `${f.label} must be ≥ ${f.min}`,
+          variant: 'destructive',
+        });
+        return;
+      }
+      if (f.kind === 'int' && !Number.isInteger(n)) {
+        toast({
+          title: `Invalid ${f.label}`,
+          description: `${f.label} must be a whole number`,
+          variant: 'destructive',
+        });
+        return;
+      }
+    }
+
     setSaving(true);
     try {
       const payload = {
