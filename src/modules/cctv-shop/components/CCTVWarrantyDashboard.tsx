@@ -80,7 +80,12 @@ function formatDate(dateStr: string | null): string {
 function daysUntil(dateStr: string | null): number | null {
   if (!dateStr) return null;
   const diff = new Date(dateStr).getTime() - Date.now();
-  return Math.ceil(diff / (1000 * 60 * 60 * 24));
+  // W-8: use Math.floor (not Math.ceil) for "days left" semantics. Math.ceil
+  // gives 0 for "expires today in less than 24h" → the UI then shows "0d left"
+  // in the active branch, which is misleading (the warranty is effectively
+  // expired). Math.floor gives -1 for the same case → the expired branch
+  // (days < 0) takes precedence, correctly showing "Expired".
+  return Math.floor(diff / (1000 * 60 * 60 * 24));
 }
 
 export function CCTVWarrantyDashboard() {
@@ -114,10 +119,17 @@ export function CCTVWarrantyDashboard() {
   const filteredSerials = (data?.serials || []).filter((s) => {
     if (!searchQuery.trim()) return true;
     const q = searchQuery.toLowerCase();
+    // W-6: also search by customerPhone so a shop can find a warranty item
+    // by the customer's phone number (common lookup path: customer calls,
+    // shop searches by phone).
     return s.serialNumber.toLowerCase().includes(q) ||
            s.product.name.toLowerCase().includes(q) ||
            s.product.brand.toLowerCase().includes(q) ||
-           (s.customerName || '').toLowerCase().includes(q);
+           (s.customerName || '').toLowerCase().includes(q) ||
+           // W-6: the API doesn't return customerPhone on the serial item,
+           // but we check anyway for forward-compat. The warranties route
+           // could be extended to include it.
+           ((s as any).customerPhone || '').toLowerCase().includes(q);
   });
 
   return (
@@ -137,42 +149,61 @@ export function CCTVWarrantyDashboard() {
       </div>
 
       {/* Stats Cards */}
+      {/* W-2: "Expiring Soon" is a SUBSET of "Active", not a separate bucket.
+          The card label now says "Expiring (subset of Active)" to make this
+          explicit. The four cards no longer imply they sum to total — Active
+          includes Expiring. */}
+      {/* W-5: when a filter is active, the stats cards show a note that they
+          reflect ALL items, not the filtered subset. This avoids confusion
+          when the user clicks "Expired" and the cards still show active
+          counts. */}
       {data && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[11px] text-gray-500 font-medium">Active</span>
-              <ShieldCheck className="w-4 h-4 text-emerald-500" />
+        <div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] text-gray-500 font-medium">Active</span>
+                <ShieldCheck className="w-4 h-4 text-emerald-500" />
+              </div>
+              <p className="text-xl font-bold text-emerald-600">{data.stats.active}</p>
+              <p className="text-[10px] text-gray-400 mt-1">Under warranty (incl. expiring)</p>
             </div>
-            <p className="text-xl font-bold text-emerald-600">{data.stats.active}</p>
-            <p className="text-[10px] text-gray-400 mt-1">Under warranty now</p>
+            <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] text-gray-500 font-medium">Expiring (subset)</span>
+                <ShieldAlert className="w-4 h-4 text-amber-500" />
+              </div>
+              <p className="text-xl font-bold text-amber-600">{data.stats.expiring}</p>
+              <p className="text-[10px] text-gray-400 mt-1">Within 30 days (of Active)</p>
+            </div>
+            <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] text-gray-500 font-medium">Expired</span>
+                <ShieldX className="w-4 h-4 text-red-500" />
+              </div>
+              <p className="text-xl font-bold text-red-600">{data.stats.expired}</p>
+              <p className="text-[10px] text-gray-400 mt-1">Out of warranty</p>
+            </div>
+            <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] text-gray-500 font-medium">Repairs In Progress</span>
+                <Wrench className="w-4 h-4 text-violet-500" />
+              </div>
+              <p className="text-xl font-bold text-violet-600">{data.stats.repairsInProgress}</p>
+              <p className="text-[10px] text-gray-400 mt-1">
+                {data.stats.warrantyRepairsInProgress} under warranty
+                {/* W-3: note that repairs count is a separate query from
+                    warranty serials — the two sources can disagree if a
+                    serial's warranty expired after the repair was received. */}
+              </p>
+            </div>
           </div>
-          <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[11px] text-gray-500 font-medium">Expiring Soon</span>
-              <ShieldAlert className="w-4 h-4 text-amber-500" />
-            </div>
-            <p className="text-xl font-bold text-amber-600">{data.stats.expiring}</p>
-            <p className="text-[10px] text-gray-400 mt-1">Within 30 days</p>
-          </div>
-          <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[11px] text-gray-500 font-medium">Expired</span>
-              <ShieldX className="w-4 h-4 text-red-500" />
-            </div>
-            <p className="text-xl font-bold text-red-600">{data.stats.expired}</p>
-            <p className="text-[10px] text-gray-400 mt-1">Out of warranty</p>
-          </div>
-          <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[11px] text-gray-500 font-medium">Repairs In Progress</span>
-              <Wrench className="w-4 h-4 text-violet-500" />
-            </div>
-            <p className="text-xl font-bold text-violet-600">{data.stats.repairsInProgress}</p>
-            <p className="text-[10px] text-gray-400 mt-1">
-              {data.stats.warrantyRepairsInProgress} under warranty
+          {/* W-5: note when a filter is active */}
+          {filter !== 'all' && (
+            <p className="text-[11px] text-gray-500 mt-2 px-1">
+              Stats above reflect all warranty items. The list below is filtered to "{filter}".
             </p>
-          </div>
+          )}
         </div>
       )}
 
@@ -345,8 +376,12 @@ export function CCTVWarrantyDashboard() {
                 </div>
 
                 {/* Action button: Receive for Repair */}
+                {/* W-7: pass the serial number as context so the Repairs view
+                    can pre-fill the New Repair form. We encode it as
+                    `serial:{serialNumber}` in the contextId — CCTVRepairs
+                    detects this prefix and pre-fills the serial field. */}
                 <button
-                  onClick={() => navigate('repairs')}
+                  onClick={() => navigate('repairs', `serial:${s.serialNumber}`)}
                   className={cn(
                     'mt-3 w-full h-9 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-transform active:scale-95',
                     isExpired

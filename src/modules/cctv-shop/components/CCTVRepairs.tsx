@@ -142,9 +142,19 @@ export function CCTVRepairs() {
     loadRepairs();
   }, [businessId]);
 
-  // If contextId is set (clicked from somewhere), load that repair
+  // If contextId is set (clicked from somewhere), load that repair.
+  // W-7: if contextId starts with `serial:`, it's a pre-fill request from
+  // the Warranty Dashboard — we set the serial number field and open the
+  // New Repair form instead of selecting an existing repair.
   useEffect(() => {
-    if (contextId && repairs.length > 0) {
+    if (!contextId) return;
+    if (contextId.startsWith('serial:')) {
+      const sn = contextId.slice('serial:'.length);
+      setSerialNumber(sn);
+      setShowForm(true);
+      return;
+    }
+    if (repairs.length > 0) {
       const r = repairs.find((x) => x.id === contextId);
       if (r) setSelectedRepair(r);
     }
