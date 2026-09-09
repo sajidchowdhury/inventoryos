@@ -18,11 +18,18 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   });
 
   // Today's sales
+  // DB-2: return both gross (subtotal, pre-discount) and net (totalAmount,
+  // post-discount) so the dashboard can show "Today's Sales: ৳8000 (gross
+  // ৳10000, less ৳2000 discount)". Previously only the net was shown with
+  // no indication of the discount.
   const todaySales = await db.cCTVSale.findMany({
     where: { businessId, saleDate: { gte: startOfDay, lte: endOfDay } },
-    select: { totalAmount: true, paidAmount: true },
+    select: { totalAmount: true, paidAmount: true, subtotal: true, discount: true },
   });
   const todaySalesTotal = todaySales.reduce((s, sale) => s + Number(sale.totalAmount), 0);
+  // DB-2: gross = sum(subtotal), totalDiscount = sum(discount), net = totalAmount
+  const todayGross = todaySales.reduce((s, sale) => s + Number(sale.subtotal || sale.totalAmount), 0);
+  const todayDiscount = todaySales.reduce((s, sale) => s + Number(sale.discount || 0), 0);
   const todaySaleCount = todaySales.length;
 
   // Low stock products
@@ -90,7 +97,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     success: true,
     stats: {
       totalProducts,
-      todaySalesTotal,
+      todaySalesTotal,  // net (post-discount) — same as before
+      // DB-2: gross + discount so the UI can show the breakdown
+      todayGross,
+      todayDiscount,
       todaySaleCount,
       lowStockCount,
       totalStockValue,

@@ -80,6 +80,13 @@ export function paymentMethodToAccount(method: string): string {
     case "bank": return LEDGER_ACCOUNTS.BANK;
     case "bkash": return LEDGER_ACCOUNTS.BKASH;
     case "nagad": return LEDGER_ACCOUNTS.NAGAD;
+    // PM-7: card + cheque map to BANK (the closest equivalent — both are
+    // non-cash instruments that eventually settle into a bank account).
+    // A future enhancement could add dedicated CARD_RECEIVABLE and
+    // CHEQUE_RECEIVABLE ledger accounts for shops that need to track
+    // these separately.
+    case "card": return LEDGER_ACCOUNTS.BANK;
+    case "cheque": return LEDGER_ACCOUNTS.BANK;
     default: return LEDGER_ACCOUNTS.CASH;
   }
 }

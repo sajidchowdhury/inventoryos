@@ -35,7 +35,7 @@ import {
   Home, Package, ShoppingCart, Users, Building2, Receipt,
   BarChart3, Settings, Camera, Plus, TrendingUp, AlertTriangle, Boxes, ArrowLeftRight,
   Search, Wrench, RefreshCw, Shield, FileText, Tag, Upload, ChevronDown, ChevronRight,
-  Calendar, Heart, LogOut,
+  Calendar, Heart, LogOut, CreditCard,
 } from 'lucide-react';
 import { useCCTVNavStore } from '@/stores/cctv-nav-store-simple';
 import { useAuthStore } from '@/stores/auth-store';
@@ -368,6 +368,11 @@ function CCTVDashboard() {
           { label: 'Sell Products', icon: TrendingUp, view: 'sales' as const, gradient: 'from-emerald-500 to-teal-600' },
           { label: 'New Repair', icon: Wrench, view: 'repairs' as const, gradient: 'from-amber-500 to-orange-600' },
           { label: 'Daily Summary', icon: Calendar, view: 'daily-summary' as const, gradient: 'from-violet-500 to-purple-600' },
+          // DB-3: Pay Subscription quick action — always visible, navigates
+          // to the Settings → Subscription tab. The CCTVSubscriptionBanner
+          // above already shows the stage, but a quick action makes it
+          // easy to jump straight to the payment flow.
+          { label: 'Pay Subscription', icon: CreditCard, view: 'settings' as const, gradient: 'from-rose-500 to-red-600' },
         ].map((action) => (
           <button
             key={action.label}
