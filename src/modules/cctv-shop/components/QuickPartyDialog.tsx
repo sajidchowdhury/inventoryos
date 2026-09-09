@@ -40,6 +40,11 @@ export function QuickPartyDialog({ type, open, onClose, onSelect, existingPartie
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
+  // CU-6: opening balance field. For customers, a positive opening balance
+  // means the customer already owes money (carry-forward). For suppliers,
+  // it means we already owe them. The field was accepted by the POST
+  // endpoint but never exposed in the UI — it was effectively dead.
+  const [openingBalance, setOpeningBalance] = useState('');
   const [saving, setSaving] = useState(false);
 
   const isCustomer = type === 'customer';
@@ -66,6 +71,8 @@ export function QuickPartyDialog({ type, open, onClose, onSelect, existingPartie
           name: name.trim(),
           phone: phone.trim(),
           address: address.trim() || null,
+          // CU-6: send openingBalance if provided
+          ...(openingBalance ? { openingBalance: parseFloat(openingBalance) || 0 } : {}),
         }),
       });
       if (res.ok) {
@@ -75,6 +82,7 @@ export function QuickPartyDialog({ type, open, onClose, onSelect, existingPartie
         // Reset
         setName('');
         setPhone('');
+        setOpeningBalance(''); // CU-6
         setMode('select');
         setSearch('');
       } else {
@@ -94,6 +102,7 @@ export function QuickPartyDialog({ type, open, onClose, onSelect, existingPartie
     setName('');
     setPhone('');
     setAddress('');
+    setOpeningBalance(''); // CU-6
     onClose();
   };
 
@@ -203,6 +212,26 @@ export function QuickPartyDialog({ type, open, onClose, onSelect, existingPartie
                       placeholder="House, road, area..."
                       className="rounded-xl pl-10 text-sm resize-none" rows={2} />
                   </div>
+                </div>
+
+                {/* CU-6: opening balance. For customers, positive = they already
+                    owe money. For suppliers, positive = we already owe them. */}
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-gray-600">
+                    Opening Balance (৳) — {isCustomer ? 'customer already owes' : 'we already owe'}
+                  </Label>
+                  <Input
+                    type="number"
+                    value={openingBalance}
+                    onChange={(e) => setOpeningBalance(e.target.value)}
+                    placeholder="0"
+                    className="h-10 rounded-xl text-sm"
+                    min="0"
+                    step="0.01"
+                  />
+                  <p className="text-[10px] text-gray-400">
+                    Carry-forward balance from a previous system. Leave 0 for new parties.
+                  </p>
                 </div>
 
                 <div className="flex gap-2 pt-2">

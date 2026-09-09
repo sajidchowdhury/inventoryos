@@ -22,29 +22,15 @@ interface PaymentMethodSelectorProps {
   onChange: (value: string) => void;
   label?: string;
   compact?: boolean;
-  /** ST-9: optional list of active method codes. If provided, only those
-   * methods are shown. If undefined, all 6 methods are shown (backward
-   * compat). If `value` is not in `activeMethods`, it still shows so the
-   * user can see the current selection — but they can't switch to a
-   * method that's not active. */
-  activeMethods?: string[];
 }
 
-export function PaymentMethodSelector({ value, onChange, label, compact = false, activeMethods }: PaymentMethodSelectorProps) {
-  // ST-9: filter the list to active methods. If activeMethods is undefined,
-  // show all (backward compat). Always include the current `value` so the
-  // user can see what's selected even if it was deactivated since the last
-  // payment.
-  const visibleMethods = activeMethods
-    ? PAYMENT_METHODS.filter((m) => activeMethods.includes(m.value) || m.value === value)
-    : PAYMENT_METHODS;
-
+export function PaymentMethodSelector({ value, onChange, label, compact = false }: PaymentMethodSelectorProps) {
   return (
     <div className="space-y-1.5">
       {label && <label className="text-xs text-gray-600 font-medium">{label}</label>}
       {/* PM-7: 6 methods now — use grid-cols-3 on larger screens for a tidy 2-row layout */}
       <div className={cn('grid gap-2', compact ? 'grid-cols-3 sm:grid-cols-6' : 'grid-cols-2 sm:grid-cols-3')}>
-        {visibleMethods.map((method) => {
+        {PAYMENT_METHODS.map((method) => {
           const Icon = method.icon;
           const isSelected = value === method.value;
           return (
